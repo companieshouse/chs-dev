@@ -12,7 +12,7 @@
     "@oclif/core": "^3",
     "@oclif/plugin-autocomplete": "^0.2.0",
     "@oclif/plugin-help": "^3.0.1",
-    "@oclif/plugin-plugins": "^4",
+    "@oclif/plugin-plugins": "^5",
     "@types/semver": "^7.3.1",
     "glob": "^7.1.6",
     "semver": "^7.3.2",
