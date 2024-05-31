@@ -1,0 +1,91 @@
+{
+  "name": "chs-dev",
+  "version": "0.0.1",
+  "author": "Damian Dunajski (ddunajski@companieshouse.gov.uk)",
+  "bin": {
+    "chs-dev": "./bin/run.js"
+  },
+  "bugs": "https://github.com/companieshouse/chs-dev/issues",
+  "dependencies": {
+    "@inquirer/confirm": "^3.1.8",
+    "@oclif/config": "^1.15.1",
+    "@oclif/core": "^3",
+    "@oclif/plugin-autocomplete": "^0.2.0",
+    "@oclif/plugin-help": "^3.0.1",
+    "@oclif/plugin-plugins": "^4",
+    "@types/semver": "^7.3.1",
+    "glob": "^7.1.6",
+    "semver": "^7.3.2",
+    "simple-git": "^3.22.0",
+    "tslib": "^2",
+    "yaml": "^1.10.0"
+  },
+  "devDependencies": {
+    "@oclif/dev-cli": "^1.26",
+    "@oclif/test": "^1.2.6",
+    "@types/chai": "^4.2.11",
+    "@types/fs-extra": "^11.0.4",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^10.17.24",
+    "@typescript-eslint/eslint-plugin": "^7.11.0",
+    "@typescript-eslint/parser": "^7.11.0",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.2.0",
+    "eslint-plugin-standard": "^5.0.0",
+    "globby": "^10.0.2",
+    "mocha": "^10.3.0",
+    "nyc": "^14.1.1",
+    "oclif": "^4.11.3",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9",
+    "typescript": "^5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "/bin",
+    "/lib",
+    "/npm-shrinkwrap.json",
+    "/oclif.manifest.json"
+  ],
+  "homepage": "https://github.com/companieshouse/chs-dev",
+  "keywords": [
+    "oclif"
+  ],
+  "license": "MIT",
+  "main": "lib/index.js",
+  "oclif": {
+    "commands": {
+      "strategy": "explicit",
+      "target": "./lib/commands/index.js",
+      "identifier": "commands"
+    },
+    "hooks": {
+      "init": "./lib/hooks/node-version-check.js",
+      "generate-runnable-docker-compose": "./lib/hooks/generate-runnable-docker-compose.js",
+      "generate-development-docker-compose": "./lib/hooks/generate-development-docker-compose.js"
+    },
+    "bin": "chs-dev",
+    "plugins": [
+      "@oclif/plugin-help",
+      "@oclif/plugin-autocomplete"
+    ]
+  },
+  "repository": "companieshouse/chs-dev",
+  "scripts": {
+    "build": "tsc --build --clean && tsc -b",
+    "lint": "eslint 'src/*.ts' 'src/**/*.ts'",
+    "lint:fix": "eslint 'src/*.ts' 'src/**/*.ts' --fix",
+    "postpack": "rm -f oclif.manifest.json && rm -rf tmp",
+    "posttest": "eslint . --ext .ts --config .eslintrc",
+    "prepack": "rm -rf lib && tsc -b && oclif manifest && oclif readme",
+    "version": "oclif readme && git add README.md",
+    "pack": "oclif pack tarballs --targets 'linux-x64,darwin-arm64,darwin-x64' --parallel --no-xz"
+  },
+  "types": "lib/index.d.ts",
+  "type": "module"
+}
