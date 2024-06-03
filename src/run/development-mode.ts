@@ -23,7 +23,8 @@ export class DevelopmentMode {
         const controller = new AbortController();
         const { signal } = controller;
 
-        return new Promise((resolve, reject) => {
+        // eslint-disable-next-line no-async-promise-executor
+        return new Promise(async (resolve, reject) => {
             process.once("SIGINT", () => {
 
                 self.releaseLock();
@@ -42,9 +43,11 @@ export class DevelopmentMode {
                     .catch(reject);
             });
 
-            return this.dockerCompose.watch(signal).catch((reason?: any) => {
+            try {
+                return await this.dockerCompose.watch(signal);
+            } catch (_) {
                 self.releaseLock();
-            });
+            }
         });
     }
 

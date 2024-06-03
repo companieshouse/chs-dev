@@ -133,3 +133,5 @@ override.tf.json
 /dist
 /lib
 /tmp
+
+version
