@@ -84,7 +84,8 @@
     "posttest": "eslint . --ext .ts --config .eslintrc",
     "prepack": "rm -rf lib && tsc -b && oclif manifest && oclif readme",
     "version": "oclif readme && git add README.md",
-    "pack": "oclif pack tarballs --targets 'linux-x64,darwin-arm64,darwin-x64' --parallel --no-xz"
+    "pack": "oclif pack tarballs --targets 'linux-x64,darwin-arm64,darwin-x64' --parallel --no-xz",
+    "test": "echo 'not implemented yet'"
   },
   "types": "lib/index.d.ts",
   "type": "module"

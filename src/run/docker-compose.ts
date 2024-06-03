@@ -39,18 +39,24 @@ export class DockerCompose {
         );
     }
 
-    getServiceStatuses (): Record<string, string> {
+    getServiceStatuses (): Record<string, string> | undefined {
+        if (!existsSync(join(this.path, "docker-compose.yaml"))) {
+            return undefined;
+        }
+
         // Call docker compose and output the services and their status as a CSV
         // each service on an individual line
         const dockerComposePsOutput = execSync(
-            "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null",
+            "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"",
             { cwd: this.path }
         ).toString("utf-8");
 
         // Parse the compose output and load into a Record i.e. service name to
         // status
-        return Object.fromEntries(dockerComposePsOutput.split("\n")
-            .map(line => line.split(",")));
+        return dockerComposePsOutput.length > 0
+            ? Object.fromEntries(dockerComposePsOutput.split("\n")
+                .map(line => line.split(",")))
+            : undefined;
     }
 
     up (signal?: AbortSignal): Promise<void> {

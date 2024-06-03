@@ -1,24 +1,38 @@
+..PHONY = install
+install:
+	npm install
+
 .PHONY = clean
 clean:
 	rm -rf lib tmp dist
 
-lib:
-	mkdir lib
-
-lib/version: lib package.json
-	node -e 'const readFileSync = require("fs").readFileSync; console.log(JSON.parse(readFileSync("./package.json").toString("utf8")).version)' > lib/version
-
 .PHONY = build
-build: lib/version
+build: install
 	npm run build
 
 .PHONY = lint
-lint:
+lint: install
 	npm run lint
 
 .PHONY = lint-fix
-lint-fix:
+lint-fix: install
 	npm run lint:fix
 
-package: clean build
+version: package.json lib/index.js
+	node -e 'const readFileSync = require("fs").readFileSync; console.log(JSON.parse(readFileSync("./package.json").toString("utf8")).version)' | grep -Eo '^[[:digit:]]+\.[[:digit:]]+' | tee ./version
+
+package: clean build version
 	npm run pack
+
+.PHONY = test
+test: install
+	npm run test
+
+.PHONY: security-check
+security-check:
+	npm audit --audit-level=high
+
+
+.PHONY: sonar
+sonar:
+	@echo "Sonarqube not configured"

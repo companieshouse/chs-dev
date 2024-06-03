@@ -33,7 +33,7 @@ export default class Status extends Command {
         const state = this.stateManager.snapshot;
         const dockerComposeState = this.dockerCompose.getServiceStatuses();
 
-        const serviceState = (serviceName: string) => dockerComposeState[serviceName] || "Not running";
+        const serviceState = (serviceName: string) => dockerComposeState ? `(${dockerComposeState[serviceName]})` || "(Not running)" : "";
 
         this.log("Manually activated modules:");
         for (const module of state.modules) {
@@ -42,7 +42,7 @@ export default class Status extends Command {
 
         this.log("\nManually activated services:");
         for (const service of state.services) {
-            this.log(` - ${service} (${serviceState(service)})`);
+            this.log(` - ${service} ${serviceState(service)}`);
         }
 
         this.log("\nAutomatically activated services:");
@@ -52,7 +52,7 @@ export default class Status extends Command {
             .reduce(deduplicate, [])
             .sort();
         for (const serviceName of enabledServiceNames) {
-            this.log(` - ${serviceName} (${serviceState(serviceName)}) ${state.servicesWithLiveUpdate.includes(serviceName) ? "[LIVE UPDATE]" : ""}`);
+            this.log(` - ${serviceName} ${serviceState(serviceName)} ${state.servicesWithLiveUpdate.includes(serviceName) ? "[LIVE UPDATE]" : ""}`);
         }
 
         this.log("\nManually deactivated services:");
