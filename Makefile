@@ -1,4 +1,4 @@
-..PHONY = install
+.PHONY = install
 install:
 	@npm install
 
@@ -18,9 +18,10 @@ lint: install
 lint-fix: install
 	@npm run lint:fix
 
-version: package.json lib/index.js
+version: package.json
 	node -e 'const readFileSync = require("fs").readFileSync; console.log(JSON.parse(readFileSync("./package.json").toString("utf8")).version)' | grep -Eo '^[[:digit:]]+\.[[:digit:]]+' | tee ./version
 
+.PHONY = package
 package: clean build version
 	@npm run pack
 
