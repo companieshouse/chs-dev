@@ -1,69 +1,4 @@
-import { writeFileSync } from "fs";
-
-interface Logger {
-    log(msg: string): void
-}
-
-export interface LogHandler {
-    handle(logEntry: string): void
-}
-
-abstract class AbstractLogHandler implements LogHandler {
-
-    protected readonly verbose: boolean;
-
-    constructor (protected readonly logFile: string, protected readonly logger: Logger) {
-        this.verbose = "CHS_DEV_VERBOSE" in process.env;
-    };
-
-    handle (logEntry: string): void {
-        const logEntries = this.formatLogLines(logEntry);
-
-        this.writeToFile(logEntries);
-
-        this.logToConsole(logEntries);
-    }
-
-    protected abstract logToConsole(logEntries: string[]): void
-
-    private writeToFile (logEntries: string[]) {
-        writeFileSync(
-            this.logFile,
-            logEntries.join(),
-            {
-                flag: "a"
-            }
-        );
-    }
-
-    private formatLogLines (logEntry: string): string[] {
-        return logEntry.toString().trim().split("\n")
-            .map((line: string) => `${new Date().toISOString()} - ${line.trim()}\n`);
-    }
-}
-
-export class PatternMatchingConsoleLogHandler extends AbstractLogHandler {
-
-    constructor (private readonly pattern: RegExp, readonly logFile: string, readonly logger: Logger) {
-        super(logFile, logger);
-    }
-
-    protected logToConsole (logEntry: string[]): void {
-        const { logger, verbose } = this;
-
-        logEntry
-            .forEach((logEntry) => {
-                const matches = logEntry.match(this.pattern);
-
-                if (matches) {
-                    const [_, serviceName, serviceStatus] = matches;
-                    logger.log(`Service ${serviceName} ${serviceStatus}`);
-                } else if (verbose) {
-                    logger.log(logEntry);
-                }
-            });
-    }
-}
+import { AbstractLogHandler } from "./logs-handler";
 
 export class DockerComposeWatchLogHandler extends AbstractLogHandler {
 
@@ -121,3 +56,5 @@ export class DockerComposeWatchLogHandler extends AbstractLogHandler {
     }
 
 }
+
+export default DockerComposeWatchLogHandler;

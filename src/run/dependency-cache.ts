@@ -5,8 +5,10 @@ import { join } from "path";
 export class DependencyCache {
 
     constructor (private readonly path: string) {
-        if (!existsSync(join(path, "local/.m2"))) {
-            mkdirSync("local/.m2", { recursive: true });
+        const m2CachePath = join(path, "local/.m2");
+        
+        if (!existsSync(m2CachePath)) {
+            mkdirSync(m2CachePath, { recursive: true });
         }
     }
 
