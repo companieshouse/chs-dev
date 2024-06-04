@@ -21,12 +21,13 @@
     "yaml": "^1.10.0"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@oclif/dev-cli": "^1.26",
     "@oclif/test": "^1.2.6",
     "@types/chai": "^4.2.11",
     "@types/fs-extra": "^11.0.4",
     "@types/mocha": "^5.2.7",
-    "@types/node": "^10.17.24",
+    "@types/node": "^10.17.60",
     "@typescript-eslint/eslint-plugin": "^7.11.0",
     "@typescript-eslint/parser": "^7.11.0",
     "eslint": "^8.57.0",
@@ -36,9 +37,11 @@
     "eslint-plugin-promise": "^6.2.0",
     "eslint-plugin-standard": "^5.0.0",
     "globby": "^10.0.2",
+    "jest": "^29.7.0",
     "mocha": "^10.3.0",
     "nyc": "^14.1.1",
     "oclif": "^4.11.3",
+    "ts-jest": "^29.1.4",
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9",
     "typescript": "^5.3"
@@ -78,14 +81,15 @@
   "repository": "companieshouse/chs-dev",
   "scripts": {
     "build": "tsc --build --clean && tsc -b",
-    "lint": "eslint 'src/*.ts' 'src/**/*.ts'",
-    "lint:fix": "eslint 'src/*.ts' 'src/**/*.ts' --fix",
+    "lint": "eslint 'src/*.ts' 'src/**/*.ts test/**/*.ts'",
+    "lint:fix": "eslint 'src/*.ts' 'src/**/*.ts' test/**/*.ts --fix",
     "postpack": "rm -f oclif.manifest.json && rm -rf tmp",
     "posttest": "eslint . --ext .ts --config .eslintrc",
     "prepack": "rm -rf lib && tsc -b && oclif manifest && oclif readme",
     "version": "oclif readme && git add README.md",
     "pack": "oclif pack tarballs --targets 'linux-x64,darwin-arm64,darwin-x64' --parallel --no-xz",
-    "test": "echo 'not implemented yet'"
+    "test": "jest --detectOpenHandles",
+    "coverage": "jest --coverage --forceExit --passWithNoTests --detectOpenHandles"
   },
   "types": "lib/index.d.ts",
   "type": "module"
