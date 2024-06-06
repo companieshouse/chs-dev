@@ -1,17 +1,15 @@
 import { jest, expect } from "@jest/globals";
 import childProcess from "child_process";
 import fs from "fs";
+import { DependencyCache } from '../../src/run/dependency-cache'
 
 describe("DependencyCache", () => {
     const execSyncMock = jest.spyOn(childProcess, "execSync");
     const existsSyncMock = jest.spyOn(fs, "existsSync");
     const mkdirSyncMock = jest.spyOn(fs, "mkdirSync");
 
-    let DependencyCache;
-
     beforeEach(async () => {
         jest.resetAllMocks();
-        ({ DependencyCache } = await import("../../src/run/dependency-cache"));
     });
 
     it("creates local m2 cache when not in existence", () => {

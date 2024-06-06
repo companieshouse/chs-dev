@@ -1,6 +1,7 @@
 import { DockerCompose } from "../../src/run/docker-compose";
 import { expect, jest } from "@jest/globals";
 import fs from "fs";
+import { DevelopmentMode } from '../../src/run/development-mode'
 
 describe("DevelopmentMode", () => {
 
@@ -23,12 +24,10 @@ describe("DevelopmentMode", () => {
 
     const prompterMock = jest.fn();
 
-    let DevelopmentMode;
     let developmentMode;
 
     beforeEach(async () => {
         jest.resetAllMocks();
-        ({ DevelopmentMode } = await import("../../src/run/development-mode"));
 
         developmentMode = new DevelopmentMode(dockerComposeMock, "/home/user/project");
     });
