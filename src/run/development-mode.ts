@@ -9,11 +9,11 @@ export class DevelopmentMode {
 
     private readonly lockFile: string;
 
-    constructor(private readonly dockerCompose: DockerCompose, private readonly path: string) {
+    constructor (private readonly dockerCompose: DockerCompose, private readonly path: string) {
         this.lockFile = join(this.path, "local/.watch");
     }
 
-    async start(prompter?: Prompter): Promise<void> {
+    async start (prompter?: Prompter): Promise<void> {
         if (this.lockExists()) {
             throw new Error("ERROR! There are services running in development mode. Stop other development mode processes and try again.");
         }
@@ -26,19 +26,19 @@ export class DevelopmentMode {
         // eslint-disable-next-line no-async-promise-executor
         return new Promise((resolve, reject) => {
             process.once("SIGINT", () => {
-                    this.sigintHandler(controller, prompter)
+                this.sigintHandler(controller, prompter)
                     .then(resolve)
                     .catch(reject);
             });
 
             return this.dockerCompose.watch(signal).catch((err) => {
                 this.releaseLock();
-                reject(err)
+                reject(err);
             });
         });
     }
 
-    protected sigintHandler(controller: AbortController, prompter?: Prompter): Promise<void> {
+    protected sigintHandler (controller: AbortController, prompter?: Prompter): Promise<void> {
         this.releaseLock();
 
         const stopEnvironment = prompter
@@ -50,21 +50,21 @@ export class DevelopmentMode {
                 return this.dockerCompose.down();
             }
         })
-            .then(() => controller.abort())
+            .then(() => controller.abort());
     }
 
-    private acquireLock() {
+    private acquireLock () {
         writeFileSync(
             this.lockFile,
             new Date().toISOString()
         );
     }
 
-    private lockExists(): boolean {
+    private lockExists (): boolean {
         return existsSync(this.lockFile);
     }
 
-    private releaseLock() {
+    private releaseLock () {
         unlinkSync(this.lockFile);
     }
 }

@@ -6,7 +6,7 @@ export class DependencyCache {
 
     constructor (private readonly path: string) {
         const m2CachePath = join(path, "local/.m2");
-        
+
         if (!existsSync(m2CachePath)) {
             mkdirSync(m2CachePath, { recursive: true });
         }
