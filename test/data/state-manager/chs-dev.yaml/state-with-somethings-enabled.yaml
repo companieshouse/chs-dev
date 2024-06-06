@@ -1,0 +1,9 @@
+modules:
+  - module-one
+services:
+  - service-one
+  - service-four
+servicesWithLiveUpdate:
+  - service-one
+excludedFiles:
+  - service-three

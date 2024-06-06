@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  mongo:
+    labels:
+      - chs.description=primary database storing Companies House data
+    image: docker.io/mongo:5
+    networks:
+      - chs
+    expose:
+      - 27017
+    ports:
+      - "27017:27017"
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "tilt-rs" ]
+    healthcheck:
+      test: test $$(echo "rs.initiate({_id:'tilt-rs',members:[{_id:0,host:\"mongo:27017\"}]}).ok || rs.status().ok" | mongo --port 27017 --quiet) -eq 1
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
