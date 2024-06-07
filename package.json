@@ -23,7 +23,7 @@
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@oclif/dev-cli": "^1.26",
-    "@oclif/test": "^1.2.6",
+    "@tsconfig/node20": "^20.1.4",
     "@types/chai": "^4.2.11",
     "@types/fs-extra": "^11.0.4",
     "@types/mocha": "^5.2.7",
@@ -42,6 +42,7 @@
     "nyc": "^14.1.1",
     "oclif": "^4.11.3",
     "ts-jest": "^29.1.4",
+    "ts-jest-resolver": "^2.0.1",
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9",
     "typescript": "^5.3"
@@ -88,8 +89,8 @@
     "prepack": "rm -rf lib && tsc -b && oclif manifest && oclif readme",
     "version": "oclif readme && git add README.md",
     "pack": "oclif pack tarballs --targets 'linux-x64,darwin-arm64,darwin-x64' --parallel --no-xz",
-    "test": "jest --detectOpenHandles",
-    "coverage": "jest --coverage --forceExit --passWithNoTests --detectOpenHandles"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles",
+    "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --forceExit --passWithNoTests --detectOpenHandles"
   },
   "types": "lib/index.d.ts",
   "type": "module"

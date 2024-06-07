@@ -1,9 +1,9 @@
 import { execSync, spawn } from "child_process";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import { LogHandler } from "./logs/logs-handler";
-import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler";
-import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler";
+import { LogHandler } from "./logs/logs-handler.js";
+import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
+import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
 
 interface Logger {
     log: (msg: string) => void;

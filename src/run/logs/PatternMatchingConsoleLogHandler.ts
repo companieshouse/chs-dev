@@ -1,4 +1,4 @@
-import { AbstractLogHandler, Logger } from "./logs-handler";
+import { AbstractLogHandler, Logger } from "./logs-handler.js";
 
 export default class PatternMatchingConsoleLogHandler extends AbstractLogHandler {
 

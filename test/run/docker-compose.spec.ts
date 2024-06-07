@@ -94,8 +94,6 @@ describe("DockerCompose", () => {
 
             const dockerCompose = new DockerCompose(tmpDir, logger);
 
-            console.log(Date.now());
-
             expect(dockerCompose.logFile).toBe(join(tmpDir, "local/.logs/compose.out.1706745600.txt"));
         });
     });

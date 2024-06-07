@@ -1,4 +1,4 @@
-import { AbstractLogHandler } from "./logs-handler";
+import { AbstractLogHandler } from "./logs-handler.js";
 
 export class DockerComposeWatchLogHandler extends AbstractLogHandler {
 
