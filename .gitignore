@@ -135,3 +135,6 @@ override.tf.json
 /tmp
 
 version
+
+!src/run/logs
+!test/run/logs

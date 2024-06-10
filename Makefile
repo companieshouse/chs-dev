@@ -26,12 +26,11 @@ package: clean build version
 	@npm run pack
 
 .PHONY = test-unit
-test-unit: install test
-	@echo "unit tests run"
+test-unit: test
 
 .PHONY = test
 test: install
-	@npm run test
+	@npm run coverage
 
 .PHONY: security-check
 security-check:

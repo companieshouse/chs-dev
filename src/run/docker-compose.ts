@@ -1,7 +1,9 @@
 import { execSync, spawn } from "child_process";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import { DockerComposeWatchLogHandler, LogHandler, PatternMatchingConsoleLogHandler } from "./logs-handler.js";
+import { LogHandler } from "./logs/logs-handler.js";
+import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
+import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
 
 interface Logger {
     log: (msg: string) => void;
@@ -15,9 +17,9 @@ const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
 
 export class DockerCompose {
 
-    private readonly logFile: string;
+    readonly logFile: string;
 
-    constructor (private readonly path: string, private readonly logger: Logger) {
+    constructor (readonly path: string, readonly logger: Logger) {
         const logsDir = join(this.path, "local/.logs");
         if (!existsSync(logsDir)) {
             mkdirSync(
