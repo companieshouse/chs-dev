@@ -4,7 +4,7 @@ import { basename, dirname, join } from "path";
 import yaml from "yaml";
 import glob from "glob";
 
-import { collect, deduplicate } from "../helpers/array-reducers";
+import { collect, deduplicate } from "../helpers/array-reducers.js";
 import { createHash } from "crypto";
 
 export interface DependencySpecification {
