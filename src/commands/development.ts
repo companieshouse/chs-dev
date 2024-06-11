@@ -29,74 +29,107 @@ export default class Development extends Command {
 
     private stateManager: StateManager;
 
-    constructor (argv: string[], config: Config) {
+    constructor(argv: string[], config: Config) {
         super(argv, config);
-        this.inventory = new Inventory(join(config.root, ".."), config.configDir);
-        this.stateManager = new StateManager(join(config.root, ".."));
+        this.inventory = new Inventory(process.cwd(), config.configDir);
+        this.stateManager = new StateManager(process.cwd());
     }
 
-    async run (): Promise<void> {
+    async run(): Promise<void> {
         const { args } = await this.parse(Development);
         const services: string[] = args.services ? args.services.split(",") : [];
         switch (args.command) {
-        case "services":
-            this.printAvailableServices();
-            break;
-        case "enable":
-            services.forEach(async service => {
-                this.validateService(service);
-                this.enableService(service);
-                await this.config.runHook("generate-development-docker-compose", { serviceName: service });
+            case "services":
+                this.printAvailableServices();
+                break;
+            case "enable":
+                if (services.length === 0) {
+                    this.error("Service not supplied");
 
-                await this.cloneServiceRepository(service);
+                    return;
+                }
 
-            });
-            await this.config.runHook("generate-runnable-docker-compose", {});
-            break;
-        case "disable":
-            services.forEach(service => {
-                this.validateService(service);
-                this.disableService(service);
-            });
-            await this.config.runHook("generate-runnable-docker-compose", {});
-            break;
+                const servicesEnabled = await services.map(async service => {
+                    if (this.validateService(service)) {
+                        this.enableService(service);
+                        await this.config.runHook("generate-development-docker-compose", { serviceName: service });
+
+                        await this.cloneServiceRepository(service);
+
+                        return true
+                    }
+
+                    return false
+                }).reduce(async (prev, next) => await prev || await next);
+
+                if (servicesEnabled) {
+                    await this.config.runHook("generate-runnable-docker-compose", {});
+                }
+                break;
+            case "disable":
+                if (services.length === 0) {
+                    this.error("Service not supplied");
+
+                    return;
+                }
+
+                const servicesDisabled = services.map(service => {
+                    if (this.validateService(service)) {
+                        this.disableService(service);
+
+                        return true;
+                    }
+
+                    return false
+                }).reduce((prev, next) => prev || next);
+
+                if (servicesDisabled) {
+                    await this.config.runHook("generate-runnable-docker-compose", {});
+                }
+                break;
         }
     }
 
-    private printAvailableServices (): void {
+    private printAvailableServices(): void {
         this.log("Available services:");
         for (const service of this.inventory.services.filter(item => item.repository !== null && item.repository !== undefined)) {
             this.log(` - ${service.name} (${service.description})`);
         }
     }
 
-    private validateService (serviceName: string) {
-        if (serviceName === null || serviceName === undefined) {
+    private validateService(serviceName: string): boolean {
+        if (serviceName == "" || serviceName === null || serviceName === undefined) {
             this.error("Service must be provided");
+            return false;
         }
+
         const service = this.inventory.services.find(item => item.name === serviceName);
         if (service === null || service === undefined) {
             this.error(`Service "${serviceName}" is not defined in inventory`);
+            return false;
         }
         if (service?.repository === null || service?.repository === undefined) {
             this.error(`Service "${serviceName}" does not have repository defined`);
+            return false;
         }
+
+        return true;
     }
 
-    private enableService (serviceName: string) {
+    private enableService(serviceName: string) {
         this.stateManager.includeServiceInLiveUpdate(serviceName);
         this.log(`Service "${serviceName}" is enabled`);
     }
 
-    private disableService (serviceName: string) {
+    private disableService(serviceName: string) {
         this.stateManager.excludeServiceFromLiveUpdate(serviceName);
         this.log(`Service "${serviceName}" is disabled`);
     }
 
-    private async cloneServiceRepository (serviceName: string): Promise<void> {
+    private async cloneServiceRepository(serviceName: string): Promise<void> {
         const service = this.inventory.services.find(item => item.name === serviceName) as Service;
 
-        const localPath = join(this.config.root, "..", "repositories", service.name);
+        const localPath = join(process.cwd(), "repositories", service.name);
         if (!existsSync(localPath)) {
             cli.action.start(`Cloning ${service.repository!.branch || "default"} branch of ${service.repository!.url} repository to ${relative(this.config.root, localPath)} directory`);
             // @ts-ignore

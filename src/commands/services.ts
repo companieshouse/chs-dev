@@ -32,8 +32,8 @@ export default class Services extends Command {
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
-        this.inventory = new Inventory(join(config.root, ".."), config.configDir);
-        this.stateManager = new StateManager(join(config.root, ".."));
+        this.inventory = new Inventory(process.cwd(), config.configDir);
+        this.stateManager = new StateManager(process.cwd());
     }
 
     async run (): Promise<void> {
