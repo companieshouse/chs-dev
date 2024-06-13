@@ -268,7 +268,7 @@ user_confirm_action() {
 
     if [ -z "${FORCE}" ]; then
         printf -- '%s\n-- To continue press y\n' "${prompt}"
-        read -r user_confirmation
+        read -r user_confirmation < /dev/tty
 
         case "${user_confirmation}" in
             [Yy]) return 0;;
