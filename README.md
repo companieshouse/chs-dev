@@ -10,8 +10,17 @@ To install the latest version CLI run the following command:
 ```sh
 curl -s -L \
     https://raw.githubusercontent.com/companieshouse/chs-dev/main/install.sh |
-    bash -c -
+    bash -s
 ```
+
+If using other options append following a `--` i.e.:
+
+```sh
+curl -s -L \
+    https://raw.githubusercontent.com/companieshouse/chs-dev/main/install.sh |
+    bash -s -- uninstall
+```
+
 
 You will need to add `${HOME}/.companies_house_config/bin` to your path:
 
