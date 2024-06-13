@@ -13,7 +13,6 @@ F_FG_CYAN="$(tput setaf 6)"
 F_BOLD="$(tput bold)"
 F_RESET="$(tput sgr0)"
 
-
 # Prints usage
 usage() {
   cat <<EOF
@@ -269,6 +268,7 @@ user_confirm_action() {
 
     if [ -z "${FORCE}" ]; then
         printf -- '%s\n-- To continue press y\n' "${prompt}"
+        # explicitly read from tty since stdin may be a pipe
         read -r user_confirmation < /dev/tty
 
         case "${user_confirmation}" in
