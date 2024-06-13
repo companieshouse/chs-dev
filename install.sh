@@ -137,7 +137,7 @@ determine_chipset() {
 
 # Downloads the releases to local file
 download_releases() {
-  curl -s -L \
+  curl --fail-with-body -s -L \
     -o "${releases_file}" \
     -H 'Accept: application/vnd.github+json' \
     https://api.github.com/repos/companieshouse/chs-dev/releases
@@ -149,9 +149,9 @@ determine_download_url() {
 
   if [ "${VERSION}" = "${DEFAULT_VERSION}" ]; then
     log DEBUG 'Fetching latest release'
-    curl -s -L -H \
+    curl --fail-with-body -s -L -H \
       'Accept: application/vnd.github+json' \
-      https://api.github.com/repos/companieshouse/chs-dev/releases/latest >"${release_file}"
+      https://api.github.com/repos/companieshouse/chs-dev/releases/latest >"${release_file}" || return $?
   else
     log DEBUG "Looking up version ${VERSION}"
     jq \
@@ -168,7 +168,7 @@ determine_download_url() {
     "${release_file}" >"${temp_d}"/download_url
 }
 
-# Downloads the tarball to temporary directory
+# Downloads the tarball to temporary directory.
 download_cli_tarball() {
   log DEBUG "Downloading - '${DOWNLOAD_URL}'"
 
@@ -305,7 +305,9 @@ install() {
   fi
 
   # Download the most recent releases and validate the version
-  download_releases
+  if ! download_releases; then
+    panic "Cannot download latest releases."
+  fi
 
   if [ ! "${VERSION}" = "${DEFAULT_VERSION}" ]; then
     if ! validate_version; then
