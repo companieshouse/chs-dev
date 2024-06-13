@@ -1,7 +1,7 @@
 import { DockerCompose } from "../../src/run/docker-compose";
 import { expect, jest } from "@jest/globals";
 import fs from "fs";
-import { DevelopmentMode } from '../../src/run/development-mode'
+import { DevelopmentMode } from "../../src/run/development-mode";
 
 describe("DevelopmentMode", () => {
 

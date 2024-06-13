@@ -1,11 +1,11 @@
 import confirm from "@inquirer/confirm";
 import { Command, Config } from "@oclif/core";
-import { join } from "path";
 
 import { DependencyCache } from "../run/dependency-cache.js";
 import { DevelopmentMode } from "../run/development-mode.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import { StateManager } from "../state/state-manager.js";
+import { join } from 'path';
 
 export default class Up extends Command {
 

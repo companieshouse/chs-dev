@@ -39,24 +39,45 @@ export default class Services extends Command {
     async run (): Promise<void> {
         const { args } = await this.parse(Services);
         const services: string[] = args.services ? args.services.split(",") : [];
+
+        let servicesModified = false;
+
         switch (args.command) {
         case "available":
             this.printAvailableServices();
             break;
         case "enable":
-            services.forEach(service => {
-                this.validateService(service);
-                this.enableService(service);
-            });
-            await this.config.runHook("generate-runnable-docker-compose", {});
+            if (services.length === 0) {
+                this.error("Service must be provided");
+                break;
+            }
+
+            servicesModified = services.map(service => {
+                if (this.validateService(service)) {
+                    this.enableService(service);
+                    return true;
+                }
+                return false;
+            }).reduce((prev, next) => prev || next);
             break;
         case "disable":
-            services.forEach(service => {
-                this.validateService(service);
-                this.disableService(service);
-            });
-            await this.config.runHook("generate-runnable-docker-compose", {});
+            if (services.length === 0) {
+                this.error("Service must be provided");
+                break;
+            }
+
+            servicesModified = services.map(service => {
+                if (this.validateService(service)) {
+                    this.disableService(service);
+                    return true;
+                }
+                return false;
+            }).reduce((prev, next) => prev || next);
             break;
+        }
+
+        if (servicesModified) {
+            await this.config.runHook("generate-runnable-docker-compose", {});
         }
     }
 
@@ -73,13 +94,16 @@ export default class Services extends Command {
         });
     }
 
-    private validateService (serviceName: string): void {
+    private validateService (serviceName: string): boolean {
         if (serviceName === null || serviceName === undefined) {
             this.error("Service must be provided");
+            return false;
         }
         if (!this.inventory.services.map(service => service.name).includes(serviceName)) {
             this.error(`Service "${serviceName}" is not defined in inventory`);
+            return false;
         }
+        return true;
     }
 
     private enableService (serviceName: string): void {

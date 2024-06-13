@@ -38,6 +38,8 @@ export default class Development extends Command {
     async run(): Promise<void> {
         const { args } = await this.parse(Development);
         const services: string[] = args.services ? args.services.split(",") : [];
+        let generateDockerCompose: boolean = false;
+
         switch (args.command) {
             case "services":
                 this.printAvailableServices();

@@ -1,7 +1,7 @@
 import { jest, expect } from "@jest/globals";
 import childProcess from "child_process";
 import fs from "fs";
-import { DependencyCache } from '../../src/run/dependency-cache'
+import { DependencyCache } from "../../src/run/dependency-cache";
 
 describe("DependencyCache", () => {
     const execSyncMock = jest.spyOn(childProcess, "execSync");
