@@ -24,8 +24,8 @@ OPTIONS
 -------
 
 -d <directory> - local directory to install CLI to (Defaults to ~/.chs-dev)
--f - forces the installation - will clobber existing installation. Without the flag,
-    user will have to confirm reinstallation
+-f - forces the installation - will overwrite existing installation if it
+    exists. Without the flag, user will have to confirm reinstallation
 -l <loglevel> - sets the log level to set logging output, valid options are DEBUG,
     INFO, WARN, ERROR (defaults to INFO)
 -S - when set does not create symlink to binary
@@ -172,7 +172,7 @@ determine_download_url() {
 download_cli_tarball() {
   log DEBUG "Downloading - '${DOWNLOAD_URL}'"
 
-  curl -s \
+  curl --fail-with-body -s \
     -o "${downloaded_cli_tar_file}" \
     -L \
     -H 'Accept: application/tar+gzip' \
