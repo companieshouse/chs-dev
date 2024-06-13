@@ -48,7 +48,7 @@ panic() {
 
 # Logs messages to terminal and controls logging
 log() {
-  log_level="${1?:level required}"
+  log_level="${1:?level required}"
   log_message="${2:?message required}"
 
   case "${LOGGING_LEVEL}" in
@@ -98,8 +98,7 @@ validate_version() {
       printf -- '%s' "$?" >"${temp_d}"/grep_status
     }
 
-  if ! grep -q '^0$' "${temp_d}"/jq_status ||
-    ! grep -q '^0$' "${temp_d}"/grep_status; then
+  if ! grep -q '^0$' "${temp_d}"/jq_status "${temp_d}"/grep_status; then
     log ERROR "Version ${VERSION} not found"
     return 1
   fi
@@ -110,12 +109,11 @@ validate_version() {
 # artifacts). Panics if not OSX or Linux compatible
 determine_operating_system() {
   log DEBUG 'determining operating system'
-  uname_out="$(uname -a)"
+  uname_out="$(uname -a | tr '[:upper:]' '[:lower:]')"
   case "${uname_out}" in
-  *Microsoft*) OS="linux" ;; #must be first since Windows subsystem for linux will have Linux in the name too
   *microsoft*) OS="linux" ;; #WARNING: My v2 uses ubuntu 20.4 at the moment slightly different name may not always work
-  Linux*) OS="linux" ;;
-  Darwin*) OS="darwin" ;; # Apple Mac
+  linux*) OS="linux" ;;
+  darwin*) OS="darwin" ;; # Apple Mac
   *)
     panic "Unsupported operating system. Must be Linux or Mac."
     ;;
@@ -126,7 +124,7 @@ determine_operating_system() {
 # Panics if the chipset is not arm64 or x86
 determine_chipset() {
   log DEBUG 'determining chipset'
-  uname_out="$(uname -m)"
+  uname_out="$(uname -m | tr '[:upper:]' '[:lower:]')"
 
   case "${uname_out}" in
   aarch64 | arm64) CHIPSET=arm64 ;;
