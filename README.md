@@ -60,6 +60,8 @@ reinstallation) of the chs-dev CLI. It can be use as follows
   (*Defaults to `${HOME}/.companies_house_config/bin`*)
 * `-v <version>` - when installing specifies the version of the CLI to use
   (*Defaults to the latest version*)
+* `-W` - suppresses the warning about the `chs-dev` executable not being on the
+  path
 * `-h` - prints usage information and exits
 
 #### COMMAND
