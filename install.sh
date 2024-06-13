@@ -13,6 +13,8 @@ F_FG_CYAN="$(tput setaf 6)"
 F_BOLD="$(tput bold)"
 F_RESET="$(tput sgr0)"
 
+if [ -p /dev/stdin ]; then set -- "$( cat )"; fi
+
 # Prints usage
 usage() {
   cat <<EOF
