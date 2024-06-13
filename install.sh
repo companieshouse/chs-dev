@@ -111,7 +111,7 @@ determine_operating_system() {
   log DEBUG 'determining operating system'
   uname_out="$(uname -a | tr '[:upper:]' '[:lower:]')"
   case "${uname_out}" in
-  *microsoft*) OS="linux" ;; #WARNING: My v2 uses ubuntu 20.4 at the moment slightly different name may not always work
+  *microsoft*) OS="linux" ;;
   linux*) OS="linux" ;;
   darwin*) OS="darwin" ;; # Apple Mac
   *)
