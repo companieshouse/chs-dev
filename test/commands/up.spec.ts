@@ -120,13 +120,13 @@ describe("Up command", () => {
             expect(dockerComposeUpMock).toHaveBeenCalledTimes(1)
         })
     
-        it("should call developmentMode start when no services in dev", async () => {
+        it("should call developmentMode start", async () => {
             await up.run();
     
             expect(startDevelopmentModeMock).toHaveBeenCalled();
         })
     
-        it("should update dependency cache when no services in dev mode", async () => {
+        it("should update dependency cache", async () => {
             await up.run();
     
             expect(dependencyCacheUpdateMock).toHaveBeenCalled();
