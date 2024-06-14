@@ -1,0 +1,96 @@
+[
+    {
+        "name": "service-one",
+        "module": "module-one",
+        "source": "services/modules/module-one/service-one.docker-compose.yaml",
+        "dependsOn": [],
+        "builder": "java",
+        "metadata": {}
+    },
+    {
+        "name": "service-two",
+        "module": "module-one",
+        "source": "services/modules/module-one/service-two.docker-compose.yaml",
+        "dependsOn": [
+            "service-one"
+        ],
+        "builder": "node",
+        "metadata": {}
+    },
+    {
+        "name": "service-three",
+        "module": "module-two",
+        "source": "services/modules/module-two/service-three.docker-compose.yaml",
+        "dependsOn": [
+            "service-one",
+            "service-two"
+        ],
+        "builder": "repository",
+        "metadata": {}
+    },
+    {
+        "name": "service-four",
+        "module": "module-three",
+        "source": "services/modules/module-three/service-four.docker-compose.yaml",
+        "dependsOn": [
+            "service-one"
+        ],
+        "builder": "java",
+        "metadata": {}
+    },
+    {
+        "name": "service-five",
+        "module": "module-three",
+        "source": "services/modules/module-three/service-five.docker-compose.yaml",
+        "dependsOn": [
+            "service-one",
+            "service-two",
+            "service-three"
+        ],
+        "builder": "node",
+        "metadata": {}
+    },
+    {
+        "name": "service-six",
+        "module": "module-four",
+        "source": "services/modules/module-four/service-six.docker-compose.yaml",
+        "dependsOn": [
+            "service-one",
+            "service-two",
+            "service-three",
+            "service-five"
+        ],
+        "builder": "",
+        "metadata": {}
+    },
+    {
+        "name": "service-seven",
+        "module": "module-five",
+        "source": "services/modules/module-five/service-seven.docker-compose.yaml",
+        "dependsOn": [
+            "service-one",
+            "service-two",
+            "service-three",
+            "service-five",
+            "service-six"
+        ],
+        "builder": "",
+        "metadata": {}
+    },
+    {
+        "name": "service-eight",
+        "module": "module-five",
+        "source": "services/modules/module-five/service-eight.docker-compose.yaml",
+        "dependsOn": [],
+        "builder": "",
+        "metadata": {}
+    },
+    {
+        "name": "service-nine",
+        "module": "module-six",
+        "source": "services/modules/module-six/service-nine.docker-compose.yaml",
+        "dependsOn": [],
+        "builder": "",
+        "metadata": {}
+    }
+]
