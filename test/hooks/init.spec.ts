@@ -1,17 +1,16 @@
-import { afterAll, beforeAll, expect, jest } from '@jest/globals';
-import { Hook, IConfig } from '@oclif/config';
-import { Config } from '@oclif/core';
+import { afterAll, beforeAll, expect, jest } from "@jest/globals";
+import { Hook, IConfig } from "@oclif/config";
 // @ts-expect-error
-import { exists, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { join } from "path";
 
 const getLatestReleaseVersionMock = jest.fn();
 
-jest.mock('../../src/helpers/latest-release', () => {
+jest.mock("../../src/helpers/latest-release", () => {
     return {
         getLatestReleaseVersion: getLatestReleaseVersionMock
-    }
-})
+    };
+});
 
 describe("init hook", () => {
 
@@ -27,8 +26,8 @@ describe("init hook", () => {
         ["1.2.1", `\n📣 There is a newer minor version (1.2.1) available (current version: ${version})\n`],
         ["2.0.0", `\n📣 There is a newer major version (2.0.0) available (current version: ${version})\n`],
         ["2.0.1", `\n📣 There is a newer major version (2.0.1) available (current version: ${version})\n`],
-        ["2.1.0", `\n📣 There is a newer major version (2.1.0) available (current version: ${version})\n`],
-    ]
+        ["2.1.0", `\n📣 There is a newer major version (2.1.0) available (current version: ${version})\n`]
+    ];
 
     const pjson = {
         "chs-dev": {
@@ -36,7 +35,7 @@ describe("init hook", () => {
                 "number-of-days": 14
             }
         }
-    }
+    };
 
     beforeAll(async () => {
 
@@ -52,14 +51,14 @@ describe("init hook", () => {
 
     afterAll(() => {
         rmSync(tempDir, { recursive: true, force: true });
-    })
+    });
 
     describe("first run through", () => {
         beforeEach(() => {
             jest.resetAllMocks();
 
             if (existsSync(dataDir)) {
-                rmSync(dataDir, { force: true, recursive: true })
+                rmSync(dataDir, { force: true, recursive: true });
             }
 
             // @ts-expect-error
@@ -72,57 +71,57 @@ describe("init hook", () => {
             // @ts-expect-error
             await initHook({
                 config: testConfig,
-                id: '',
+                id: "",
                 argv: [],
                 context: jest.fn()
-            })
+            });
 
             expect(existsSync(dataDir)).toBe(true);
-        })
+        });
 
         it("fetches the latest version", async () => {
             // @ts-expect-error
             await initHook({
                 config: testConfig,
-                id: '',
+                id: "",
                 argv: [],
                 context: jest.fn()
-            })
+            });
 
-            expect(getLatestReleaseVersionMock).toHaveBeenCalled()
-        })
+            expect(getLatestReleaseVersionMock).toHaveBeenCalled();
+        });
 
         it("fetches latest version when directory but not file exists", async () => {
-            mkdirSync(dataDir)
+            mkdirSync(dataDir);
 
             // @ts-expect-error
             await initHook({
                 config: testConfig,
-                id: '',
+                id: "",
                 argv: [],
                 context: jest.fn()
-            })
+            });
 
-            expect(getLatestReleaseVersionMock).toHaveBeenCalled()
-        })
+            expect(getLatestReleaseVersionMock).toHaveBeenCalled();
+        });
 
         for (const [newerVersion, expectedMessage] of differentVersionTestCases) {
             it(`displays correct message when there is newer version: ${newerVersion}`, async () => {
                 // @ts-expect-error
-                getLatestReleaseVersionMock.mockResolvedValue(newerVersion)
+                getLatestReleaseVersionMock.mockResolvedValue(newerVersion);
 
                 const consoleLogSpy = jest.spyOn(console, "log");
 
                 // @ts-expect-error
                 await initHook({
                     config: testConfig,
-                    id: '',
+                    id: "",
                     argv: [],
                     context: jest.fn()
-                })
+                });
 
-                expect(consoleLogSpy).toHaveBeenCalledWith(expectedMessage)
-            })
+                expect(consoleLogSpy).toHaveBeenCalledWith(expectedMessage);
+            });
         }
     });
 
@@ -139,19 +138,19 @@ describe("init hook", () => {
             getLatestReleaseVersionMock.mockResolvedValue(version);
 
             if (!existsSync(dataDir)) {
-                mkdirSync(dataDir)
+                mkdirSync(dataDir);
             }
 
             writeFileSync(
                 join(dataDir, "last-version-run-time"),
                 lastRunThrough
-            )
+            );
 
             const dateNowMock = jest.fn();
             dateNowMock.mockImplementation(() => currentTime.getTime());
 
             // @ts-expect-error
-            Date.now = dateNowMock
+            Date.now = dateNowMock;
         });
 
         it("checks version when after time passed", async () => {
@@ -163,13 +162,13 @@ describe("init hook", () => {
             // @ts-expect-error
             await initHook({
                 config: testConfig,
-                id: '',
+                id: "",
                 argv: [],
                 context: jest.fn()
-            })
+            });
 
-            expect(getLatestReleaseVersionMock).toHaveBeenCalled()
-        })
+            expect(getLatestReleaseVersionMock).toHaveBeenCalled();
+        });
 
         it("writes out current time when has checked version", async () => {
             currentTime = new Date(2024, 0, 16, 0, 0, 0, 0);
@@ -180,13 +179,13 @@ describe("init hook", () => {
             // @ts-expect-error
             await initHook({
                 config: testConfig,
-                id: '',
+                id: "",
                 argv: [],
                 context: jest.fn()
-            })
+            });
 
-            expect(readFileSync(join(dataDir, "last-version-run-time")).toString("utf8")).toEqual("2024-01-16T00:00:00.000Z")
-        })
+            expect(readFileSync(join(dataDir, "last-version-run-time")).toString("utf8")).toEqual("2024-01-16T00:00:00.000Z");
+        });
 
         it("does not check version when time passed not passed", async () => {
             currentTime = new Date(2024, 0, 13, 0, 0, 0, 0);
@@ -197,17 +196,17 @@ describe("init hook", () => {
             // @ts-expect-error
             await initHook({
                 config: testConfig,
-                id: '',
+                id: "",
                 argv: [],
                 context: jest.fn()
-            })
+            });
 
-            expect(getLatestReleaseVersionMock).not.toHaveBeenCalled()
-        })
+            expect(getLatestReleaseVersionMock).not.toHaveBeenCalled();
+        });
 
         it("checks version when CHS_DEV_CHECK_VERSION is set", async () => {
             process.env.CHS_DEV_CHECK_VERSION = "1";
-            
+
             currentTime = new Date(2024, 0, 13, 0, 0, 0, 0);
 
             // @ts-expect-error
@@ -216,13 +215,13 @@ describe("init hook", () => {
             // @ts-expect-error
             await initHook({
                 config: testConfig,
-                id: '',
+                id: "",
                 argv: [],
                 context: jest.fn()
-            })
+            });
 
-            expect(getLatestReleaseVersionMock).toHaveBeenCalled()
-        })
-    })
+            expect(getLatestReleaseVersionMock).toHaveBeenCalled();
+        });
+    });
 
-})
+});

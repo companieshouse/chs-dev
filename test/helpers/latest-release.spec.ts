@@ -8,7 +8,6 @@ const fetchMock = jest.fn();
 // @ts-expect-error
 global.fetch = fetchMock;
 
-
 describe("getLatestReleaseVersion", () => {
     let latestReleaseJson;
     beforeEach(() => {
@@ -21,26 +20,26 @@ describe("getLatestReleaseVersion", () => {
                     "test/data/latest-release/latest-release.json"
                 )
             ).toString("utf8")
-        )
+        );
 
         // @ts-expect-error
         fetchMock.mockResolvedValue({
             status: 200,
             json: () => Promise.resolve(latestReleaseJson)
-        })
-    })
+        });
+    });
 
     it("calls fetch to retrieve latest release", async () => {
         await getLatestReleaseVersion();
 
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases/latest"
-        )
-    })
+        );
+    });
 
-    it("returns the latest version", async() => {
+    it("returns the latest version", async () => {
         const result = await getLatestReleaseVersion();
 
-        expect(result).toEqual("0.1.5")
-    })
-})
+        expect(result).toEqual("0.1.5");
+    });
+});
