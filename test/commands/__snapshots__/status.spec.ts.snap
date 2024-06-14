@@ -1,0 +1,89 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Status command should log with their docker compose statuses 1`] = `
+[
+  [
+    "Manually activated modules:",
+  ],
+  [
+    " - module-one",
+  ],
+  [
+    "
+Manually activated services:",
+  ],
+  [
+    " - service-one (running)",
+  ],
+  [
+    " - service-two (running)",
+  ],
+  [
+    "
+Automatically activated services:",
+  ],
+  [
+    " - service-five (stopped) ",
+  ],
+  [
+    " - service-four (stopped) ",
+  ],
+  [
+    " - service-one (running) ",
+  ],
+  [
+    " - service-two (running) [LIVE UPDATE]",
+  ],
+  [
+    "
+Manually deactivated services:",
+  ],
+  [
+    " - service-three",
+  ],
+]
+`;
+
+exports[`Status command should log without docker compose statuses 1`] = `
+[
+  [
+    "Manually activated modules:",
+  ],
+  [
+    " - module-one",
+  ],
+  [
+    "
+Manually activated services:",
+  ],
+  [
+    " - service-one ",
+  ],
+  [
+    " - service-two ",
+  ],
+  [
+    "
+Automatically activated services:",
+  ],
+  [
+    " - service-five  ",
+  ],
+  [
+    " - service-four  ",
+  ],
+  [
+    " - service-one  ",
+  ],
+  [
+    " - service-two  [LIVE UPDATE]",
+  ],
+  [
+    "
+Manually deactivated services:",
+  ],
+  [
+    " - service-three",
+  ],
+]
+`;

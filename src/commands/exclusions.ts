@@ -36,39 +36,66 @@ export default class Exclusions extends Command {
     async run (): Promise<void> {
         const { args } = await this.parse(Exclusions);
         const exclusions: string[] = args.exclusions ? args.exclusions.split(",") : [];
+
+        let exclusionsModified = false;
+
         switch (args.command) {
         case "exclude":
-            exclusions.forEach(exclusion => {
-                this.excludeFile(exclusion);
-            });
+            if (exclusions.length === 0) {
+                this.error("Exclusion must be provided");
+                break;
+            }
+
+            exclusionsModified = exclusions.map(exclusion => {
+                return this.excludeFile(exclusion);
+            }).reduce((prev, next) => prev || next);
             break;
         case "include":
-            exclusions.forEach(exclusion => {
-                this.includeFile(exclusion);
-            });
+            if (exclusions.length === 0) {
+                this.error("Exclusion must be provided");
+                break;
+            }
+
+            exclusionsModified = exclusions.map(exclusion => {
+                return this.includeFile(exclusion);
+            }).reduce((prev, next) => prev || next);
             break;
         }
-        await this.config.runHook("generate-runnable-docker-compose", {});
+
+        if (exclusionsModified) {
+            await this.config.runHook("generate-runnable-docker-compose", {});
+        }
     }
 
-    private excludeFile (file: string): void {
-        this.validateService(file);
-        this.stateManager.includeFile(file);
-        this.log(`File "${file}" is excluded`);
+    private excludeFile (file: string): boolean {
+        if (this.validateService(file)) {
+            this.stateManager.includeFile(file);
+            this.log(`File "${file}" is excluded`);
+            return true;
+        } else {
+            return false;
+        }
     }
 
-    private includeFile (file: string): void {
-        this.validateService(file);
-        this.stateManager.excludeFile(file);
-        this.log(`File "${file}" is included`);
+    private includeFile (file: string): boolean {
+        if (this.validateService(file)) {
+            this.stateManager.excludeFile(file);
+            this.log(`File "${file}" is included`);
+            return true;
+        } else {
+            return false;
+        }
     }
 
-    private validateService (serviceName: string): void {
-        if (serviceName === null || serviceName === undefined) {
+    private validateService (serviceName: string): boolean {
+        if (serviceName === "" || serviceName === null || serviceName === undefined) {
             this.error("Exclusion must be provided");
+            return false;
         }
         if (!this.inventory.services.map(service => service.name).includes(serviceName)) {
             this.error(`Excluded service "${serviceName}" is not defined in inventory`);
+            return false;
         }
+        return true;
     }
 }
