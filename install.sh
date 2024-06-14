@@ -266,7 +266,7 @@ user_confirm_action() {
   prompt="${1:?prompt required}"
 
   if [ -z "${FORCE}" ]; then
-    printf -- '%s\n-- To continue press y\n' "${prompt}"
+    printf -- '%s\n-- To continue press y (or to exit press another key)\n' "${prompt}"
     # explicitly read from tty since stdin may be a pipe
     read -r user_confirmation </dev/tty
 
