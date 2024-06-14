@@ -1,0 +1,11 @@
+services:
+  service-seven:
+    labels:
+      - chs.repository.url=git@github.com:companieshouse/service-one.git
+      - chs.repository.branch=feature/my-branch
+      - chs.local.repoContext=chs-dev/
+    depends_on:
+      mongo:
+        condition: service_healthy
+      service-two:
+        condition: service_started

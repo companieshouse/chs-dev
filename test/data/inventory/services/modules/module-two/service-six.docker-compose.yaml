@@ -1,0 +1,10 @@
+services:
+  service-six:
+    labels:
+      - chs.repository.url=git@github.com:companieshouse/service-one.git
+      - chs.local.builder=repository
+    depends_on:
+      mongo:
+        condition: service_healthy
+      service-one:
+        condition: service_started

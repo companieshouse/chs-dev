@@ -1,0 +1,9 @@
+services:
+  service-three:
+    labels:
+      - chs.repository.url=git@github.com:companieshouse/service-one.git
+      - chs.local.builder=java
+    image: docker.io/helloworld
+    depends_on:
+      - mongo
+      - service-two

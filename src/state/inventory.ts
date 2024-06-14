@@ -21,15 +21,17 @@ export interface Module {
   name: string;
 }
 
+type OrNull<T> = T | null
+
 export interface Service {
   name: string;
   module: string;
-  description?: string;
+  description?: OrNull<string>;
   source: string;
   dependsOn: string[];
-  repository?: { url: string; branch?: string };
+  repository: OrNull<{ url: string; branch?: string | null }>;
   builder: string;
-  metadata: Record<string, string | undefined>
+  metadata: Record<string, OrNull<string> | undefined>
 }
 
 interface ServiceDefinition {
@@ -47,7 +49,7 @@ interface InventoryCache {
 const hasDependencies = (serviceDefinition: any) => {
     const dependsOn = "depends_on" in serviceDefinition
         ? serviceDefinition.depends_on
-        : "dependsOn" in serviceDefinition ? serviceDefinition.dependsOn : [];
+        : [];
 
     let outcome = false;
 
@@ -63,7 +65,7 @@ const hasDependencies = (serviceDefinition: any) => {
 };
 
 export class Inventory {
-    private readonly inventoryCacheFile: string;
+    readonly inventoryCacheFile: string;
     private __serviceFiles: string[] | undefined;
 
     constructor (private path: string, confDir: string) {
@@ -137,15 +139,20 @@ export class Inventory {
                     .map(([serviceName, serviceDefinition]: [string, ServiceDefinition]) => {
                         function findLabel (labels: string[], prefix: string): string | undefined {
                             const value = labels.find(label => label.startsWith(prefix));
-                            return value?.substring(value.indexOf("=") + 1);
+                            if (value) {
+                                return value.substring(value.indexOf("=") + 1);
+                            }
+                            return undefined;
                         }
+
+                        const repository = findLabel(serviceDefinition.labels, "chs.repository.url");
 
                         return {
                             name: serviceName,
                             module: item.module,
                             description: findLabel(serviceDefinition.labels, "chs.description"),
                             // eslint-disable-next-line no-negated-condition
-                            repository: findLabel(serviceDefinition.labels, "chs.repository.url") !== null
+                            repository: repository && repository !== null
                                 ? {
                                     url: findLabel(serviceDefinition.labels, "chs.repository.url") as string,
                                     branch: findLabel(serviceDefinition.labels, "chs.repository.branch")
