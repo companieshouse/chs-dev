@@ -82,7 +82,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
                 context: this.path,
                 args: {
                     ...(service.metadata.languageMajorVersion ? { LANGUAGE_MAJOR_VERSION: service.metadata.languageMajorVersion } : {}),
-                    REPO_PATH: join("./repositories", service.name)
+                    REPO_PATH: join(this.path, "repositories", service.name)
                 }
             };
         }
