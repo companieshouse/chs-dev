@@ -13,7 +13,7 @@ export const hook: Hook<"init"> = async function (options) {
 
     const dataDirectoryExists = existsSync(options.config.dataDir);
 
-    let checkVersion: boolean = "CHS_DEV_CHECK_VERSION" in process.env || !(
+    const checkVersion: boolean = "CHS_DEV_CHECK_VERSION" in process.env || !(
         dataDirectoryExists && existsSync(runTimeFile) && hasBeenRunRecently(executionTime, runThresholdDays, runTimeFile)
     );
 
@@ -32,7 +32,7 @@ export const hook: Hook<"init"> = async function (options) {
 
 };
 
-const hasBeenRunRecently:  (executionTime: number, dayThreshold: string, runTimeFile: string) => boolean = (executionTime: number, dayThreshold: string, runTimeFile: string) => {
+const hasBeenRunRecently: (executionTime: number, dayThreshold: string, runTimeFile: string) => boolean = (executionTime: number, dayThreshold: string, runTimeFile: string) => {
     let runRecently: boolean = true;
 
     const lastRun = readFileSync(runTimeFile).toString("utf8");
@@ -48,7 +48,7 @@ const hasBeenRunRecently:  (executionTime: number, dayThreshold: string, runTime
     }
 
     return runRecently;
-}
+};
 
 const checkCurrentVersionOfCliIsLatest = async (options) => {
     const latestVersion = await getLatestReleaseVersion();
@@ -60,7 +60,7 @@ const checkCurrentVersionOfCliIsLatest = async (options) => {
 
         logVersionDifference(latestVersionSemver, versionSemver);
     }
-}
+};
 
 const logVersionDifference = (latestVersionSemver: SemVer | null, versionSemver: SemVer | null) => {
     let versionDifference = "";
@@ -82,4 +82,4 @@ const logVersionDifference = (latestVersionSemver: SemVer | null, versionSemver:
     console.log(
         "=".repeat(80)
     );
-}
+};
