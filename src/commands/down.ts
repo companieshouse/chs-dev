@@ -17,7 +17,7 @@ export default class Down extends Command {
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.dockerCompose = new DockerCompose(join(config.root, ".."), {
+        this.dockerCompose = new DockerCompose(process.cwd(), {
             log: (msg: string) => this.log(msg)
         });
     }

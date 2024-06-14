@@ -23,13 +23,13 @@ export default class Up extends Command {
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.dockerCompose = new DockerCompose(join(config.root, ".."), {
+        this.dockerCompose = new DockerCompose(process.cwd(), {
             log: (msg: string) => this.log(msg)
         });
 
-        this.stateManager = new StateManager(join(config.root, ".."));
-        this.dependencyCache = new DependencyCache(join(config.root, ".."));
-        this.developmentMode = new DevelopmentMode(this.dockerCompose, join(config.root, ".."));
+        this.stateManager = new StateManager(process.cwd());
+        this.dependencyCache = new DependencyCache(process.cwd());
+        this.developmentMode = new DevelopmentMode(this.dockerCompose, process.cwd());
     }
 
     async run (): Promise<any> {
