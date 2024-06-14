@@ -70,7 +70,7 @@
       "identifier": "commands"
     },
     "hooks": {
-      "init": "./lib/hooks/node-version-check.js",
+      "init": "./lib/hooks/init.js",
       "generate-runnable-docker-compose": "./lib/hooks/generate-runnable-docker-compose.js",
       "generate-development-docker-compose": "./lib/hooks/generate-development-docker-compose.js"
     },
@@ -93,5 +93,10 @@
     "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --forceExit --passWithNoTests --detectOpenHandles"
   },
   "types": "lib/index.d.ts",
-  "type": "module"
+  "type": "module",
+  "chs-dev": {
+    "version-check-schedule": {
+      "number-of-days": "4"
+    }
+  }
 }
