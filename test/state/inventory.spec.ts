@@ -143,10 +143,10 @@ describe("Inventory", () => {
             const actual = inventory.services;
 
             for (const service of actual) {
-                service.source = service.source.replace(inventoryDir, "inventory")
+                service.source = service.source.replace(inventoryDir, "inventory");
             }
 
-            expect(actual).toMatchSnapshot()
+            expect(actual).toMatchSnapshot();
 
         });
 

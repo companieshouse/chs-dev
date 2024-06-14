@@ -1,6 +1,6 @@
 import { beforeAll, expect, jest } from "@jest/globals";
 import { Service } from "../../src/state/inventory";
-import { State } from "../../src/state/state-manager"
+import { State } from "../../src/state/state-manager";
 import { join } from "path";
 import { readFileSync } from "fs";
 import { Hook } from "@oclif/core";
@@ -12,24 +12,24 @@ jest.mock("../../src/state/state-manager", () => {
         StateManager: function () {
             return {
                 snapshot
-            }
+            };
         }
-    }
-})
+    };
+});
 
 describe("Hook: generate-runnable-docker-compose", () => {
 
     const generateDockerComposeFileMock =
         jest.fn();
-    
-    const generateTilefileMock = jest.fn()
+
+    const generateTilefileMock = jest.fn();
 
     const inventoryServicesFindMock = jest.fn();
 
     const testConfig = {
-        root: './',
+        root: "./",
         configDir: "/users/user/.config/chs-dev/"
-    }
+    };
 
     let services: Service[];
 
@@ -41,7 +41,7 @@ describe("Hook: generate-runnable-docker-compose", () => {
                 };
             }
         };
-    })
+    });
 
     jest.mock("../../src/generator/tiltfile-generator", () => {
         return {
@@ -51,7 +51,7 @@ describe("Hook: generate-runnable-docker-compose", () => {
                 };
             }
         };
-    })
+    });
 
     jest.mock("../../src/state/inventory", () => {
         return {
@@ -59,10 +59,10 @@ describe("Hook: generate-runnable-docker-compose", () => {
                 return {
                     services,
                     modules: services.map(service => ({ name: service.module }))
-                }
+                };
             }
-        }
-    })
+        };
+    });
 
     let generateRunnableDockerComposeHook: Hook<"generate-runnable-docker-compose">;
 
@@ -71,41 +71,40 @@ describe("Hook: generate-runnable-docker-compose", () => {
 
         const expectedServices = serviceNames
             .map(serviceName => services.find(service => service.name === serviceName))
-            .filter(service => typeof service !== 'undefined' && service !== null)
+            .filter(service => typeof service !== "undefined" && service !== null)
             .map(service => ({
                 ...service,
                 // @ts-expect-error
                 liveUpdate: servicesInLiveUpdate.includes(service.name)
-            })) 
+            }));
 
-
-        expect(generateDockerComposeCall[0]).toHaveLength(expectedServices.length)
+        expect(generateDockerComposeCall[0]).toHaveLength(expectedServices.length);
 
         for (const expectedService of expectedServices) {
-            expect(generateDockerComposeCall[0]).toContainEqual(expectedService)
+            expect(generateDockerComposeCall[0]).toContainEqual(expectedService);
         }
 
-        expect(generateDockerComposeCall[1]).toEqual(excludedServices)
-    }
+        expect(generateDockerComposeCall[1]).toEqual(excludedServices);
+    };
 
     beforeAll(() => {
         const servicesTestDataFile = join(process.cwd(), "test/data/generate-runnable-docker-compose-hook/services.json");
 
         services = JSON.parse(readFileSync(servicesTestDataFile).toString("utf8"));
-    })
+    });
 
     afterEach(() => {
         jest.restoreAllMocks();
-    })
+    });
 
     describe("no excluded services, not in development mode, one dependency", () => {
-        const expectedServicesEnabled = ["service-four", "service-one"]
+        const expectedServicesEnabled = ["service-four", "service-one"];
 
         beforeEach(async () => {
             jest.resetAllMocks();
 
             // @ts-expect-error
-            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook
+            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook;
 
             snapshot = {
                 modules: [],
@@ -114,7 +113,7 @@ describe("Hook: generate-runnable-docker-compose", () => {
                 ],
                 servicesWithLiveUpdate: [],
                 excludedFiles: []
-            }
+            };
         });
 
         it("generates docker compose file including the expected services", async () => {
@@ -122,56 +121,56 @@ describe("Hook: generate-runnable-docker-compose", () => {
             await generateRunnableDockerComposeHook({
                 config: testConfig,
                 context: jest.fn()
-            })
+            });
 
-            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1)
+            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1);
 
             expectDockerComposeCalledForServices(
                 expectedServicesEnabled
-            )
-        })
+            );
+        });
 
         it("generates tilt file", async () => {
             // @ts-expect-error
             await generateRunnableDockerComposeHook({
                 config: testConfig,
                 context: jest.fn()
-            })
+            });
 
             expect(generateTilefileMock).toHaveBeenCalledTimes(1);
 
             const generateTiltfileCall = generateTilefileMock.mock.calls[0];
 
-            const expectedServices = expectedServicesEnabled.map(serviceName => services.find(service => service.name === serviceName))
+            const expectedServices = expectedServicesEnabled.map(serviceName => services.find(service => service.name === serviceName));
 
-            expect(generateTiltfileCall[0]).toHaveLength(expectedServices.length)
+            expect(generateTiltfileCall[0]).toHaveLength(expectedServices.length);
 
             for (const expectedService of expectedServices) {
                 expect(generateTiltfileCall[0]).toContainEqual({
                     ...expectedService,
                     liveUpdate: false
-                })
+                });
             }
 
-            expect(generateTiltfileCall[1]).toEqual([])
-        })
-    })
+            expect(generateTiltfileCall[1]).toEqual([]);
+        });
+    });
 
     describe("enabled module with dependencies on others, none in dev", () => {
-        const expectedServicesEnabled = ["service-five", "service-four", "service-three", "service-two", "service-one"]
+        const expectedServicesEnabled = ["service-five", "service-four", "service-three", "service-two", "service-one"];
 
         beforeEach(async () => {
             jest.resetAllMocks();
 
             // @ts-expect-error
-            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook
+            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook;
 
             snapshot = {
                 modules: ["module-three"],
                 services: [],
                 servicesWithLiveUpdate: [],
                 excludedFiles: []
-            }
+            };
         });
 
         it("generates docker compose file", async () => {
@@ -179,47 +178,47 @@ describe("Hook: generate-runnable-docker-compose", () => {
             await generateRunnableDockerComposeHook({
                 config: testConfig,
                 context: jest.fn()
-            })
+            });
 
-            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1)
+            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1);
 
             expectDockerComposeCalledForServices(
                 expectedServicesEnabled
-            )
-        })
-    })
+            );
+        });
+    });
 
     describe("enabled service and module no dependencies, no live update", () => {
-        const expectedServicesEnabled = ["service-eight", "service-nine"]
+        const expectedServicesEnabled = ["service-eight", "service-nine"];
 
         beforeEach(async () => {
             jest.resetAllMocks();
 
             // @ts-expect-error
-            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook
+            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook;
 
             snapshot = {
                 modules: ["module-six"],
                 services: ["service-eight"],
                 servicesWithLiveUpdate: [],
                 excludedFiles: []
-            }
+            };
         });
 
-        it("only has service-eight and service-nine", async () =>{
+        it("only has service-eight and service-nine", async () => {
             // @ts-expect-error
             await generateRunnableDockerComposeHook({
                 config: testConfig,
                 context: jest.fn()
-            })
+            });
 
-            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1)
+            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1);
 
             expectDockerComposeCalledForServices(
                 expectedServicesEnabled
-            )
-        })
-    })
+            );
+        });
+    });
 
     describe("services in development mode", () => {
 
@@ -227,14 +226,14 @@ describe("Hook: generate-runnable-docker-compose", () => {
             jest.resetAllMocks();
 
             // @ts-expect-error
-            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook
+            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook;
 
             snapshot = {
                 modules: [],
                 services: ["service-one", "service-two", "service-three"],
                 servicesWithLiveUpdate: ["service-two", "service-three"],
                 excludedFiles: []
-            }
+            };
         });
 
         it("generates docker compose file", async () => {
@@ -242,16 +241,16 @@ describe("Hook: generate-runnable-docker-compose", () => {
             await generateRunnableDockerComposeHook({
                 config: testConfig,
                 context: jest.fn()
-            })
+            });
 
-            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1)
+            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1);
 
             expectDockerComposeCalledForServices(
                 ["service-one", "service-two", "service-three"],
                 ["service-two", "service-three"]
-            )
-        })
-    })
+            );
+        });
+    });
 
     describe("excluded service", () => {
 
@@ -259,14 +258,14 @@ describe("Hook: generate-runnable-docker-compose", () => {
             jest.resetAllMocks();
 
             // @ts-expect-error
-            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook
+            generateRunnableDockerComposeHook = (await import("../../src/hooks/generate-runnable-docker-compose")).hook;
 
             snapshot = {
                 modules: [],
                 services: ["service-five"],
                 servicesWithLiveUpdate: [],
                 excludedFiles: ["service-two"]
-            }
+            };
         });
 
         it("generates docker compose file", async () => {
@@ -274,15 +273,15 @@ describe("Hook: generate-runnable-docker-compose", () => {
             await generateRunnableDockerComposeHook({
                 config: testConfig,
                 context: jest.fn()
-            })
+            });
 
-            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1)
+            expect(generateDockerComposeFileMock).toHaveBeenCalledTimes(1);
 
             expectDockerComposeCalledForServices(
                 ["service-five", "service-one", "service-two", "service-three"],
                 [],
                 ["service-two"]
-            )
-        })
-    })
-})
+            );
+        });
+    });
+});

@@ -29,7 +29,7 @@ package: clean build version
 test-unit: test
 
 .PHONY = test
-test: install
+test: install lint
 	@npm run coverage
 
 .PHONY: security-check
