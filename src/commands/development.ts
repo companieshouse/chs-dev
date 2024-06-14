@@ -29,76 +29,74 @@ export default class Development extends Command {
 
     private stateManager: StateManager;
 
-    constructor(argv: string[], config: Config) {
+    constructor (argv: string[], config: Config) {
         super(argv, config);
         this.inventory = new Inventory(process.cwd(), config.configDir);
         this.stateManager = new StateManager(process.cwd());
     }
 
-    async run(): Promise<void> {
+    async run (): Promise<void> {
         const { args } = await this.parse(Development);
         const services: string[] = args.services ? args.services.split(",") : [];
+        let runHook: boolean = false;
         switch (args.command) {
-            case "services":
-                this.printAvailableServices();
-                break;
-            case "enable":
-                if (services.length === 0) {
-                    this.error("Service not supplied");
+        case "services":
+            this.printAvailableServices();
+            break;
+        case "enable":
+            if (services.length === 0) {
+                this.error("Service not supplied");
 
-                    return;
+                return;
+            }
+
+            runHook = await services.map(async service => {
+                if (this.validateService(service)) {
+                    this.enableService(service);
+                    await this.config.runHook("generate-development-docker-compose", { serviceName: service });
+
+                    await this.cloneServiceRepository(service);
+
+                    return true;
                 }
 
-                const servicesEnabled = await services.map(async service => {
-                    if (this.validateService(service)) {
-                        this.enableService(service);
-                        await this.config.runHook("generate-development-docker-compose", { serviceName: service });
+                return false;
+            }).reduce(async (prev, next) => await prev || await next);
 
-                        await this.cloneServiceRepository(service);
+            break;
+        case "disable":
+            if (services.length === 0) {
+                this.error("Service not supplied");
 
-                        return true
-                    }
+                return;
+            }
 
-                    return false
-                }).reduce(async (prev, next) => await prev || await next);
+            runHook = services.map(service => {
+                if (this.validateService(service)) {
+                    this.disableService(service);
 
-                if (servicesEnabled) {
-                    await this.config.runHook("generate-runnable-docker-compose", {});
-                }
-                break;
-            case "disable":
-                if (services.length === 0) {
-                    this.error("Service not supplied");
-
-                    return;
+                    return true;
                 }
 
-                const servicesDisabled = services.map(service => {
-                    if (this.validateService(service)) {
-                        this.disableService(service);
+                return false;
+            }).reduce((prev, next) => prev || next);
 
-                        return true;
-                    }
-
-                    return false
-                }).reduce((prev, next) => prev || next);
-
-                if (servicesDisabled) {
-                    await this.config.runHook("generate-runnable-docker-compose", {});
-                }
-                break;
+            break;
+        }
+        if (runHook) {
+            await this.config.runHook("generate-runnable-docker-compose", {});
         }
     }
 
-    private printAvailableServices(): void {
+    private printAvailableServices (): void {
         this.log("Available services:");
         for (const service of this.inventory.services.filter(item => item.repository !== null && item.repository !== undefined)) {
             this.log(` - ${service.name} (${service.description})`);
         }
     }
 
-    private validateService(serviceName: string): boolean {
-        if (serviceName == "" || serviceName === null || serviceName === undefined) {
+    private validateService (serviceName: string): boolean {
+        if (serviceName === "" || serviceName === null || serviceName === undefined) {
             this.error("Service must be provided");
             return false;
         }
@@ -116,17 +114,17 @@ export default class Development extends Command {
         return true;
     }
 
-    private enableService(serviceName: string) {
+    private enableService (serviceName: string) {
         this.stateManager.includeServiceInLiveUpdate(serviceName);
         this.log(`Service "${serviceName}" is enabled`);
     }
 
-    private disableService(serviceName: string) {
+    private disableService (serviceName: string) {
         this.stateManager.excludeServiceFromLiveUpdate(serviceName);
         this.log(`Service "${serviceName}" is disabled`);
     }
 
-    private async cloneServiceRepository(serviceName: string): Promise<void> {
+    private async cloneServiceRepository (serviceName: string): Promise<void> {
         const service = this.inventory.services.find(item => item.name === serviceName) as Service;
 
         const localPath = join(process.cwd(), "repositories", service.name);

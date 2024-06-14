@@ -83,7 +83,7 @@
   "repository": "companieshouse/chs-dev",
   "scripts": {
     "build": "tsc --build --clean && tsc -b",
-    "lint": "eslint 'src/*.ts' 'src/**/*.ts test/**/*.ts'",
+    "lint": "eslint 'src/*.ts' 'src/**/*.ts' test/**/*.ts",
     "lint:fix": "eslint 'src/*.ts' 'src/**/*.ts' test/**/*.ts --fix",
     "postpack": "rm -f oclif.manifest.json && rm -rf tmp",
     "posttest": "eslint . --ext .ts --config .eslintrc",
