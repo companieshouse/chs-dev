@@ -31,6 +31,7 @@ OPTIONS
 -S - when set does not create symlink to binary
 -s <path-to-symlink-loc> - Sets the path to the place to output the symlink to (Defaults to ~/.companies_house_config/bin)
 -v <version> - installs a specific version (Defaults to latest)
+-W - suppresses the warning about the chs-dev not being on the path
 -h print this message and exit
 
 ARGUMENTS
@@ -182,7 +183,7 @@ download_cli_tarball() {
 # If Symlink directory is not found on path then output instructions on how to
 # add to path
 add_chs_dev_cli_to_path() {
-  if printf -- '%s' "${PATH}" | grep -qv -- "${SYMLINK_DIRECTORY}"; then
+  if printf -- '%s' "${PATH}" | grep -qv -- "${SYMLINK_DIRECTORY}" && [ -z "${SUPPRESS_NOT_ON_PATH_WARN}" ]; then
     log WARN "Does not look like chs-dev will be on your path"
     cat <<EOF
 If you haven't installed via dev-env-setup you will need to modify your shell
@@ -374,7 +375,7 @@ DEFAULT_SYMLINK_DIRECTORY="${HOME}"/.companies_house_config/bin
 DEFAULT_COMMAND=install
 
 # Parse options
-while getopts 'd:l:s:v:Sfh' opt; do
+while getopts 'd:l:s:v:SfhW' opt; do
   case "${opt}" in
   d) INSTALLATION_DIRECTORY="${OPTARG}" ;;
   l) LOGGING_LEVEL="${OPTARG}" ;;
@@ -382,6 +383,7 @@ while getopts 'd:l:s:v:Sfh' opt; do
   v) VERSION="${OPTARG}" ;;
   S) NO_SYMLINK=1 ;;
   f) FORCE=1 ;;
+  W) SUPPRESS_NOT_ON_PATH_WARN=1 ;;
   h)
     usage
     exit 0
