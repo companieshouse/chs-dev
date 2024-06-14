@@ -131,7 +131,7 @@ export default class Development extends Command {
 
         const localPath = join(process.cwd(), "repositories", service.name);
         if (!existsSync(localPath)) {
-            cli.action.start(`Cloning ${service.repository!.branch || "default"} branch of ${service.repository!.url} repository to ${relative(this.config.root, localPath)} directory`);
+            cli.action.start(`Cloning ${service.repository!.branch || "default"} branch of ${service.repository!.url} repository to ${relative(process.cwd(), localPath)} directory`);
             // @ts-ignore
             const git = simpleGit();
 
