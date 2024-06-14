@@ -88,7 +88,6 @@
     "postpack": "rm -f oclif.manifest.json && rm -rf tmp",
     "posttest": "eslint . --ext .ts --config .eslintrc",
     "prepack": "rm -rf lib && tsc -b && oclif manifest && oclif readme",
-    "version": "oclif readme && git add README.md",
     "pack": "oclif pack tarballs --targets 'linux-x64,darwin-arm64,darwin-x64' --parallel --no-xz",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles",
     "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --forceExit --passWithNoTests --detectOpenHandles"
