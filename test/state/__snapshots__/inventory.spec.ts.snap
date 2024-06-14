@@ -1,0 +1,146 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Inventory services returns services with all dependencies 1`] = `
+[
+  {
+    "builder": "",
+    "dependsOn": [],
+    "description": "primary database storing Companies House data",
+    "metadata": {
+      "healthcheck": "test $$(echo "rs.initiate({_id:'tilt-rs',members:[{_id:0,host:\\"mongo:27017\\"}]}).ok || rs.status().ok" | mongo --port 27017 --quiet) -eq 1",
+      "ingressRoute": null,
+      "languageMajorVersion": null,
+      "repoContext": null,
+    },
+    "module": "infrastructure",
+    "name": "mongo",
+    "repository": null,
+    "source": "inventory/services/infrastructure/mongo.docker-compose.yaml",
+  },
+  {
+    "builder": "java",
+    "dependsOn": [
+      "mongo",
+    ],
+    "description": null,
+    "metadata": {
+      "healthcheck": "curl http://localhost:8080",
+      "ingressRoute": "traefik.http.routers.service-one.rule=PathPrefix(\`/service-one/*\`)",
+      "languageMajorVersion": null,
+      "repoContext": null,
+    },
+    "module": "module-one",
+    "name": "service-one",
+    "repository": {
+      "branch": null,
+      "url": "git@github.com:companieshouse/service-one.git",
+    },
+    "source": "inventory/services/modules/module-one/service-one.docker-compose.yaml",
+  },
+  {
+    "builder": "node",
+    "dependsOn": [
+      "mongo",
+      "service-one",
+    ],
+    "description": null,
+    "metadata": {
+      "healthcheck": null,
+      "ingressRoute": null,
+      "languageMajorVersion": "18",
+      "repoContext": null,
+    },
+    "module": "module-one",
+    "name": "service-two",
+    "repository": {
+      "branch": null,
+      "url": "git@github.com:companieshouse/service-one.git",
+    },
+    "source": "inventory/services/modules/module-one/service-two.docker-compose.yaml",
+  },
+  {
+    "builder": "java",
+    "dependsOn": [
+      "mongo",
+      "service-three",
+    ],
+    "description": null,
+    "metadata": {
+      "healthcheck": null,
+      "ingressRoute": null,
+      "languageMajorVersion": "17",
+      "repoContext": null,
+    },
+    "module": "module-two",
+    "name": "service-four",
+    "repository": {
+      "branch": null,
+      "url": "git@github.com:companieshouse/service-one.git",
+    },
+    "source": "inventory/services/modules/module-two/service-four.docker-compose.yaml",
+  },
+  {
+    "builder": "",
+    "dependsOn": [
+      "mongo",
+      "service-two",
+    ],
+    "description": null,
+    "metadata": {
+      "healthcheck": null,
+      "ingressRoute": null,
+      "languageMajorVersion": null,
+      "repoContext": "chs-dev/",
+    },
+    "module": "module-two",
+    "name": "service-seven",
+    "repository": {
+      "branch": "feature/my-branch",
+      "url": "git@github.com:companieshouse/service-one.git",
+    },
+    "source": "inventory/services/modules/module-two/service-seven.docker-compose.yaml",
+  },
+  {
+    "builder": "repository",
+    "dependsOn": [
+      "mongo",
+      "service-one",
+    ],
+    "description": null,
+    "metadata": {
+      "healthcheck": null,
+      "ingressRoute": null,
+      "languageMajorVersion": null,
+      "repoContext": null,
+    },
+    "module": "module-two",
+    "name": "service-six",
+    "repository": {
+      "branch": null,
+      "url": "git@github.com:companieshouse/service-one.git",
+    },
+    "source": "inventory/services/modules/module-two/service-six.docker-compose.yaml",
+  },
+  {
+    "builder": "java",
+    "dependsOn": [
+      "mongo",
+      "service-two",
+    ],
+    "description": null,
+    "metadata": {
+      "healthcheck": null,
+      "ingressRoute": null,
+      "languageMajorVersion": null,
+      "repoContext": null,
+    },
+    "module": "module-two",
+    "name": "service-three",
+    "repository": {
+      "branch": null,
+      "url": "git@github.com:companieshouse/service-one.git",
+    },
+    "source": "inventory/services/modules/module-two/service-three.docker-compose.yaml",
+  },
+]
+`;

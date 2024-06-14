@@ -45,6 +45,7 @@ describe("DockerComposeFileGenerator", () => {
                     metadata: {
                         ingressRoute: "Path('One')"
                     },
+                    repository: null,
                     liveUpdate: false
                 },
                 {
@@ -56,6 +57,7 @@ describe("DockerComposeFileGenerator", () => {
                     metadata: {
                         ingressRoute: 'Path("two")'
                     },
+                    repository: null,
                     liveUpdate: false
                 },
                 {
@@ -65,6 +67,7 @@ describe("DockerComposeFileGenerator", () => {
                     dependsOn: [],
                     builder: 'repository',
                     metadata: {},
+                    repository: null,
                     liveUpdate: true
                 },
                 {
@@ -77,6 +80,7 @@ describe("DockerComposeFileGenerator", () => {
                         ingressRoute: 'Path("four")',
                         healthcheck: "ping me"
                     },
+                    repository: null,
                     liveUpdate: true
                 },
                 {
@@ -88,6 +92,7 @@ describe("DockerComposeFileGenerator", () => {
                     metadata: {
                         languageMajorVersion: '17',
                     },
+                    repository: null,
                     liveUpdate: false
                 },
                 {
@@ -100,6 +105,7 @@ describe("DockerComposeFileGenerator", () => {
                         languageMajorVersion: '18',
                         ingressRoute: 'Path("six")'
                     },
+                    repository: null,
                     liveUpdate: false
                 },
                 {
@@ -112,6 +118,7 @@ describe("DockerComposeFileGenerator", () => {
                         repoContext: 'tilt/',
                         ingressRoute: 'Path("my-route")',
                     },
+                    repository: null,
                     liveUpdate: true
                 },
                 {
@@ -125,6 +132,7 @@ describe("DockerComposeFileGenerator", () => {
                         ingressRoute: 'Path("my-route")',
                         healthcheck: 'curl http://localhost'
                     },
+                    repository: null,
                     liveUpdate: true
                 },
             ];
@@ -208,6 +216,7 @@ describe("DockerComposeFileGenerator", () => {
                 name: 'service-one',
                 module: 'module-one',
                 source: serviceDockerComposeFile,
+                repository: null,
                 dependsOn: [],
                 builder: 'node',
                 metadata: {}
@@ -249,6 +258,7 @@ describe("DockerComposeFileGenerator", () => {
                 name: 'service-one',
                 module: 'module-one',
                 source: serviceDockerComposeFile,
+                repository: null,
                 dependsOn: [],
                 builder: 'node',
                 metadata: {
@@ -291,6 +301,7 @@ describe("DockerComposeFileGenerator", () => {
                 name: 'service-one',
                 module: 'module-one',
                 source: serviceDockerComposeFile,
+                repository: null,
                 dependsOn: [],
                 builder: 'java',
                 metadata: {}
@@ -332,6 +343,7 @@ describe("DockerComposeFileGenerator", () => {
                 name: 'service-one',
                 module: 'module-one',
                 source: serviceDockerComposeFile,
+                repository: null,
                 dependsOn: [],
                 builder: 'java',
                 metadata: {

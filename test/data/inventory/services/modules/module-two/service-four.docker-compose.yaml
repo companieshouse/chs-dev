@@ -1,0 +1,11 @@
+services:
+  service-four:
+    labels:
+      - chs.repository.url=git@github.com:companieshouse/service-one.git
+      - chs.local.builder=java
+      - chs.local.builder.languageVersion=17
+    depends_on:
+      mongo:
+        condition: service_healthy
+      service-three:
+        condition: service_started

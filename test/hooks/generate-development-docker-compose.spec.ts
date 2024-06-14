@@ -46,6 +46,7 @@ describe("Hook: generate-development-docker-compose", () => {
             name: "service",
             module: "module",
             source: "./services/modules/module/service.docker-compose.yaml",
+            repository: null,
             dependsOn: [],
             builder: "",
             metadata: {}
