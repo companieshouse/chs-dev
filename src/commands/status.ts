@@ -4,7 +4,7 @@ import { Inventory, Service } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
 import { collect, deduplicate } from "../helpers/array-reducers.js";
 import { DockerCompose } from "../run/docker-compose.js";
-import { join } from 'path';
+import { join } from "path";
 
 export default class Status extends Command {
     static description = "print status of an environment";

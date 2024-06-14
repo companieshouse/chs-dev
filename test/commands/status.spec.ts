@@ -1,10 +1,10 @@
-import { jest, expect } from "@jest/globals"
-import { Module, Service } from "../../src/state/inventory"
-import { State } from "../../src/state/state-manager"
-import Status from  '../../src/commands/status'
-import { Config } from "@oclif/core"
+import { jest, expect } from "@jest/globals";
+import { Module, Service } from "../../src/state/inventory";
+import { State } from "../../src/state/state-manager";
+import Status from "../../src/commands/status";
+import { Config } from "@oclif/core";
 
-let services: Service[] = [
+const services: Service[] = [
     {
         name: "service-one",
         module: "module-two",
@@ -52,13 +52,13 @@ let services: Service[] = [
         metadata: {},
         repository: null
     }
-]
-let modules: Module[] = [{
-    name: 'module-one'
+];
+const modules: Module[] = [{
+    name: "module-one"
 }, {
     name: "module-two"
-}]
-let snapshot: State = {
+}];
+const snapshot: State = {
     modules: [
         "module-one"
     ],
@@ -72,7 +72,7 @@ let snapshot: State = {
     excludedFiles: [
         "service-three"
     ]
-}
+};
 
 const getServiceStatusesMock = jest.fn();
 
@@ -82,72 +82,71 @@ jest.mock("../../src/state/inventory", () => {
             return {
                 services,
                 modules
-            }
+            };
         }
-    }
+    };
 });
 
-jest.mock('../../src/state/state-manager', () => {
+jest.mock("../../src/state/state-manager", () => {
     return {
-        StateManager: function() {
-            return {snapshot}
+        StateManager: function () {
+            return { snapshot };
         }
-    }
-})
+    };
+});
 
-jest.mock('../../src/run/docker-compose', () => {
+jest.mock("../../src/run/docker-compose", () => {
     return {
         DockerCompose: function () {
             return {
                 getServiceStatuses: getServiceStatusesMock
-            }
+            };
         }
-    }
-})
-
+    };
+});
 
 describe("Status command", () => {
     let status: Status;
     let testConfig: Config;
     let logMock;
     let runHookMock;
-    
+
     beforeEach(() => {
         jest.resetAllMocks();
 
-        const cwdSpy = jest.spyOn(process, "cwd")
-        cwdSpy.mockReturnValue("/users/user/docker-chs/")
+        const cwdSpy = jest.spyOn(process, "cwd");
+        cwdSpy.mockReturnValue("/users/user/docker-chs/");
 
         runHookMock = jest.fn();
-        logMock = jest.fn()
+        logMock = jest.fn();
 
         // @ts-expect-error
         testConfig = { root: "./", configDir: "./config", runHook: runHookMock };
 
-        status = new Status([], testConfig)
+        status = new Status([], testConfig);
         status.log = logMock;
-    })
+    });
 
     it("should log without docker compose statuses", async () => {
         await status.run();
 
-        expect(logMock).toHaveBeenCalledTimes(12)
+        expect(logMock).toHaveBeenCalledTimes(12);
 
-        expect(logMock.mock.calls).toMatchSnapshot()
+        expect(logMock.mock.calls).toMatchSnapshot();
     });
 
     it("should log with their docker compose statuses", async () => {
         getServiceStatusesMock.mockReturnValue({
-            ["service-one"]: "running",
-            ["service-two"]: "running",
-            ["service-five"]: "stopped",
-            ["service-four"]: "stopped"
-        })
+            "service-one": "running",
+            "service-two": "running",
+            "service-five": "stopped",
+            "service-four": "stopped"
+        });
 
         await status.run();
 
-        expect(logMock).toHaveBeenCalledTimes(12)
+        expect(logMock).toHaveBeenCalledTimes(12);
 
-        expect(logMock.mock.calls).toMatchSnapshot()
+        expect(logMock.mock.calls).toMatchSnapshot();
     });
 });
