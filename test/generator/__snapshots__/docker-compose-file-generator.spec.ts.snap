@@ -1,0 +1,206 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose correctly for latest java service 1`] = `
+{
+  "services": {
+    "service-one": {
+      "build": {
+        "args": {
+          "REPO_PATH": "./repositories/service-one",
+        },
+        "context": "./",
+        "dockerfile": "./local/builders/java/Dockerfile",
+      },
+      "depends_on": [],
+      "develop": {
+        "watch": [
+          {
+            "action": "rebuild",
+            "path": ".touch",
+          },
+        ],
+      },
+      "image": "my-great-image:latest",
+      "labels": [
+        "label-one=true",
+        "chs.local.builder=java",
+      ],
+    },
+  },
+}
+`;
+
+exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose correctly for latest node service 1`] = `
+{
+  "services": {
+    "service-one": {
+      "build": {
+        "args": {
+          "REPO_PATH": "./repositories/service-one",
+        },
+        "context": "./",
+        "dockerfile": "./local/builders/node/Dockerfile",
+      },
+      "depends_on": [],
+      "develop": {
+        "watch": [
+          {
+            "action": "rebuild",
+            "path": ".touch",
+          },
+        ],
+      },
+      "image": "my-great-image:latest",
+      "labels": [
+        "label-one=true",
+        "chs.local.builder=node",
+      ],
+    },
+  },
+}
+`;
+
+exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose correctly java at specific major service 1`] = `
+{
+  "services": {
+    "service-one": {
+      "build": {
+        "args": {
+          "LANGUAGE_MAJOR_VERSION": "17",
+          "REPO_PATH": "./repositories/service-one",
+        },
+        "context": "./",
+        "dockerfile": "./local/builders/java/Dockerfile",
+      },
+      "depends_on": [],
+      "develop": {
+        "watch": [
+          {
+            "action": "rebuild",
+            "path": ".touch",
+          },
+        ],
+      },
+      "image": "my-great-image:latest",
+      "labels": [
+        "label-one=true",
+        "chs.local.builder=java",
+        "chs.local.builder.languageVersion=17",
+      ],
+    },
+  },
+}
+`;
+
+exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose correctly node at specific major service 1`] = `
+{
+  "services": {
+    "service-one": {
+      "build": {
+        "args": {
+          "LANGUAGE_MAJOR_VERSION": "18",
+          "REPO_PATH": "./repositories/service-one",
+        },
+        "context": "./",
+        "dockerfile": "./local/builders/node/Dockerfile",
+      },
+      "depends_on": [],
+      "develop": {
+        "watch": [
+          {
+            "action": "rebuild",
+            "path": ".touch",
+          },
+        ],
+      },
+      "image": "my-great-image:latest",
+      "labels": [
+        "label-one=true",
+        "chs.local.builder=node",
+        "chs.local.builder.languageVersion=18",
+      ],
+    },
+  },
+}
+`;
+
+exports[`DockerComposeFileGenerator generateDockerComposeFile correctly excludes services 1`] = `
+{
+  "include": [
+    "./services/modules/module-one/service-one.docker-compose.yaml",
+    "./services/modules/module-one/service-two.docker-compose.yaml",
+    "./local/service-three/docker-compose.yaml",
+    "./local/service-four/docker-compose.yaml",
+    "./local/service-eight/docker-compose.yaml",
+  ],
+  "services": {
+    "ingress-proxy": {
+      "depends_on": {
+        "service-eight": {
+          "condition": "service_healthy",
+          "restart": true,
+        },
+        "service-four": {
+          "condition": "service_healthy",
+          "restart": true,
+        },
+        "service-one": {
+          "condition": "service_started",
+          "restart": true,
+        },
+        "service-two": {
+          "condition": "service_started",
+          "restart": true,
+        },
+      },
+      "image": "nginx:latest",
+    },
+  },
+}
+`;
+
+exports[`DockerComposeFileGenerator generateDockerComposeFile correctly generates docker compose file, no exclusions 1`] = `
+{
+  "include": [
+    "./services/modules/module-one/service-one.docker-compose.yaml",
+    "./services/modules/module-one/service-two.docker-compose.yaml",
+    "./local/service-three/docker-compose.yaml",
+    "./local/service-four/docker-compose.yaml",
+    "./services/modules/module-one/service-five.docker-compose.yaml",
+    "./services/modules/module-one/service-six.docker-compose.yaml",
+    "./local/service-seven/docker-compose.yaml",
+    "./local/service-eight/docker-compose.yaml",
+  ],
+  "services": {
+    "ingress-proxy": {
+      "depends_on": {
+        "service-eight": {
+          "condition": "service_healthy",
+          "restart": true,
+        },
+        "service-four": {
+          "condition": "service_healthy",
+          "restart": true,
+        },
+        "service-one": {
+          "condition": "service_started",
+          "restart": true,
+        },
+        "service-seven": {
+          "condition": "service_started",
+          "restart": true,
+        },
+        "service-six": {
+          "condition": "service_started",
+          "restart": true,
+        },
+        "service-two": {
+          "condition": "service_started",
+          "restart": true,
+        },
+      },
+      "image": "nginx:latest",
+    },
+  },
+}
+`;
