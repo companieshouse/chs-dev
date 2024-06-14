@@ -18,8 +18,8 @@ export default class Reload extends Command {
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
-        this.inventory = new Inventory(join(config.root, ".."), config.configDir);
-        this.dependencyCache = new DependencyCache(join(config.root, ".."));
+        this.inventory = new Inventory(process.cwd(), config.configDir);
+        this.dependencyCache = new DependencyCache(process.cwd());
     }
 
     async run (): Promise<any> {
