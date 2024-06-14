@@ -43,14 +43,16 @@ export default class Modules extends Command {
             this.printAvailableModules();
             break;
         case "enable":
-            this.validateModule(args.module);
-            this.enableModule(args.module as string);
-            await this.config.runHook("generate-runnable-docker-compose", {});
+            if (this.validateModule(args.module)) {
+                this.enableModule(args.module as string);
+                await this.config.runHook("generate-runnable-docker-compose", {});
+            }
             break;
         case "disable":
-            this.validateModule(args.module);
-            this.disableModule(args.module as string);
-            await this.config.runHook("generate-runnable-docker-compose", {});
+            if (this.validateModule(args.module)) {
+                this.disableModule(args.module as string);
+                await this.config.runHook("generate-runnable-docker-compose", {});
+            }
             break;
         }
     }
@@ -62,13 +64,16 @@ export default class Modules extends Command {
         }
     }
 
-    private validateModule (moduleName?: string): void {
+    private validateModule (moduleName?: string): boolean {
         if (moduleName === null || moduleName === undefined) {
             this.error("Module must be provided");
+            return false;
         }
         if (!this.inventory.modules.map(module => module.name).includes(moduleName)) {
             this.error(`Module "${moduleName}" is not defined in inventory`);
+            return false;
         }
+        return true;
     }
 
     private enableModule (moduleName: string): void {
