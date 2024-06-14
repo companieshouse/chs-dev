@@ -37,7 +37,7 @@ const services: Service[] = [
         source: "",
         dependsOn: [],
         builder: "",
-        repository: undefined,
+        repository: null,
         metadata: {}
     },
     {
@@ -46,7 +46,6 @@ const services: Service[] = [
         source: "",
         dependsOn: [],
         builder: "",
-        // @ts-expect-error
         repository: null,
         metadata: {}
     }

@@ -16,7 +16,8 @@ const services: Service[] = [{
     source: "",
     dependsOn: [],
     builder: "",
-    metadata: {}
+    metadata: {},
+    repository: null
 }];
 
 jest.mock("../../src/state/state-manager", () => {

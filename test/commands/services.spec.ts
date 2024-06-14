@@ -14,14 +14,16 @@ const services: Service[] = [{
     source: "",
     dependsOn: [],
     builder: "",
-    metadata: {}
+    metadata: {},
+    repository: null
 }, {
     name: "service-two",
     module: "module-one",
     source: "",
     dependsOn: [],
     builder: "",
-    metadata: {}
+    metadata: {},
+    repository: null
 }];
 
 const modules: Module[] = [{

@@ -15,7 +15,8 @@ const services: Service[] = [{
     source: "",
     dependsOn: [],
     builder: "",
-    metadata: {}
+    metadata: {},
+    repository: null
 }];
 
 const modules: Module[] = [{

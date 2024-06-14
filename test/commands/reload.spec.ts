@@ -17,14 +17,16 @@ const services: Service[] = [{
     source: "",
     dependsOn: [],
     builder: "",
-    metadata: {}
+    metadata: {},
+    repository: null
 }, {
     name: "service-two",
     module: "module-two",
     source: "",
     dependsOn: [],
     builder: "",
-    metadata: {}
+    metadata: {},
+    repository: null
 }];
 
 jest.mock("../../src/state/inventory", () => {

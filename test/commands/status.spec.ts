@@ -13,7 +13,8 @@ let services: Service[] = [
             "service-five"
         ],
         builder: "",
-        metadata: {}
+        metadata: {},
+        repository: null
     },
     {
         name: "service-two",
@@ -21,7 +22,8 @@ let services: Service[] = [
         source: "",
         dependsOn: [],
         builder: "",
-        metadata: {}
+        metadata: {},
+        repository: null
     },
     {
         name: "service-three",
@@ -29,7 +31,8 @@ let services: Service[] = [
         source: "",
         dependsOn: [],
         builder: "",
-        metadata: {}
+        metadata: {},
+        repository: null
     },
     {
         name: "service-four",
@@ -37,7 +40,8 @@ let services: Service[] = [
         source: "",
         dependsOn: [],
         builder: "",
-        metadata: {}
+        metadata: {},
+        repository: null
     },
     {
         name: "service-five",
@@ -45,7 +49,8 @@ let services: Service[] = [
         source: "",
         dependsOn: [],
         builder: "",
-        metadata: {}
+        metadata: {},
+        repository: null
     }
 ]
 let modules: Module[] = [{
