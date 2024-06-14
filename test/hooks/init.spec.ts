@@ -21,12 +21,12 @@ describe("init hook", () => {
 
     const version = "1.1.1";
     const differentVersionTestCases = [
-        ["1.1.2", `\n📣 There is a newer version (1.1.2) available (current version: ${version})\n`],
-        ["1.2.0", `\n📣 There is a newer minor version (1.2.0) available (current version: ${version})\n`],
-        ["1.2.1", `\n📣 There is a newer minor version (1.2.1) available (current version: ${version})\n`],
-        ["2.0.0", `\n📣 There is a newer major version (2.0.0) available (current version: ${version})\n`],
-        ["2.0.1", `\n📣 There is a newer major version (2.0.1) available (current version: ${version})\n`],
-        ["2.1.0", `\n📣 There is a newer major version (2.1.0) available (current version: ${version})\n`]
+        ["1.1.2", `📣 There is a newer version (1.1.2) available (current version: ${version})`],
+        ["1.2.0", `📣 There is a newer minor version (1.2.0) available (current version: ${version})`],
+        ["1.2.1", `📣 There is a newer minor version (1.2.1) available (current version: ${version})`],
+        ["2.0.0", `📣 There is a newer major version (2.0.0) available (current version: ${version})`],
+        ["2.0.1", `📣 There is a newer major version (2.0.1) available (current version: ${version})`],
+        ["2.1.0", `📣 There is a newer major version (2.1.0) available (current version: ${version})`]
     ];
 
     const pjson = {
@@ -120,7 +120,9 @@ describe("init hook", () => {
                     context: jest.fn()
                 });
 
-                expect(consoleLogSpy).toHaveBeenCalledWith(expectedMessage);
+                const completeExpectedMessage = `${"=".repeat(80)}\n\n${expectedMessage}\n\n${"=".repeat(80)}`;
+
+                expect(consoleLogSpy).toHaveBeenCalledWith(completeExpectedMessage);
             });
         }
     });

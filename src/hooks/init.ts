@@ -71,15 +71,10 @@ const logVersionDifference = (latestVersionSemver: SemVer | null, versionSemver:
         versionDifference = " minor";
     }
 
-    console.log(
-        "=".repeat(80)
-    );
+    const sepLine = "=".repeat(80);
+    const versionOutOfDateMessage = `📣 There is a newer${versionDifference} version (${latestVersionSemver?.raw}) available (current version: ${versionSemver?.raw})`;
 
     console.log(
-        `\n📣 There is a newer${versionDifference} version (${latestVersionSemver?.raw}) available (current version: ${versionSemver?.raw})\n`
-    );
-
-    console.log(
-        "=".repeat(80)
+        `${sepLine}\n\n${versionOutOfDateMessage}\n\n${sepLine}`
     );
 };
