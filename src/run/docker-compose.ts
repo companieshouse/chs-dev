@@ -98,7 +98,7 @@ export class DockerCompose {
             // Spawn docker compose process
 
             const sshPrivateKey = this.sshPrivateKey();
-            let spawnArgs: {
+            const spawnArgs: {
                 cwd: string,
                 signal?: AbortSignal,
                 env?: Record<string, string>
@@ -108,12 +108,9 @@ export class DockerCompose {
             };
 
             if (sshPrivateKey) {
-                spawnArgs = {
-                    ...spawnArgs,
-                    env: {
-                        ...(process.env),
-                        SSH_PRIVATE_KEY: sshPrivateKey
-                    }
+                spawnArgs.env = {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey
                 };
             }
 
