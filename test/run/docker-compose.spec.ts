@@ -10,9 +10,13 @@ describe("DockerCompose", () => {
     const spawnMock = jest.spyOn(childProcess, "spawn");
     const existsSyncMock = jest.spyOn(fs, "existsSync");
     const mkdirSyncMock = jest.spyOn(fs, "mkdirSync");
+    const readFileSyncMock = jest.spyOn(fs, "readFileSync");
 
     const mockPatternMatchingHandle = jest.fn();
     const mockWatchLogHandle = jest.fn();
+
+    const sshPrivateKey = "ssh-rsa blagr94@testuer";
+    const sshPrivateKeyFile = "~/.ssh/id_rsa";
 
     jest.mock("../../src/run/logs/PatternMatchingConsoleLogHandler", () => {
         return function () {
@@ -177,6 +181,15 @@ describe("DockerCompose", () => {
                 // @ts-expect-error
                 once: mockOnce
             });
+
+            process.env = {
+                ...(process.env),
+                CHS_DEV_GITHUB_SSH_PRIVATE_KEY: sshPrivateKeyFile
+            };
+
+            readFileSyncMock.mockReturnValue(
+                Buffer.from(sshPrivateKey, "utf8")
+            );
         });
 
         it("executes docker compose down", async () => {
@@ -194,8 +207,26 @@ describe("DockerCompose", () => {
                 "down",
                 "--remove-orphans"
             ], {
-                cwd: dockerCompose.path
+                cwd: dockerCompose.path,
+                env: {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey
+                }
             });
+        });
+
+        it("errors when CHS_DEV_GITHUB_SSH_PRIVATE_KEY not set", async () => {
+            process.env = {
+                ...(Object.entries(process.env).filter(([key, _]) => key !== "CHS_DEV_GITHUB_SSH_PRIVATE_KEY")
+                    .reduce((prev, next) => ({
+                        ...prev,
+                        [next[0]]: next[1]
+                    })), {})
+            };
+
+            await expect(dockerCompose.down()).rejects.toBeInstanceOf(Error);
+
+            expect(readFileSyncMock).not.toHaveBeenCalled();
         });
 
         it("resolves when code is 130", async () => {
@@ -269,6 +300,15 @@ describe("DockerCompose", () => {
                 // @ts-expect-error
                 once: mockOnce
             });
+
+            process.env = {
+                ...(process.env),
+                CHS_DEV_GITHUB_SSH_PRIVATE_KEY: sshPrivateKeyFile
+            };
+
+            readFileSyncMock.mockReturnValue(
+                Buffer.from(sshPrivateKey, "utf8")
+            );
         });
 
         it("executes docker compose down", async () => {
@@ -287,7 +327,12 @@ describe("DockerCompose", () => {
                 "-d",
                 "--remove-orphans"
             ], {
-                cwd: dockerCompose.path
+                cwd: dockerCompose.path,
+                env: {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey
+                },
+                signal: undefined
             });
         });
 
@@ -363,6 +408,15 @@ describe("DockerCompose", () => {
                 // @ts-expect-error
                 once: mockOnce
             });
+
+            process.env = {
+                ...(process.env),
+                CHS_DEV_GITHUB_SSH_PRIVATE_KEY: sshPrivateKeyFile
+            };
+
+            readFileSyncMock.mockReturnValue(
+                Buffer.from(sshPrivateKey, "utf8")
+            );
         });
 
         it("runs docker compose watch", async () => {
@@ -379,7 +433,11 @@ describe("DockerCompose", () => {
                 "compose",
                 "watch"
             ], {
-                cwd: dockerCompose.path
+                cwd: dockerCompose.path,
+                env: {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey
+                }
             });
         });
 

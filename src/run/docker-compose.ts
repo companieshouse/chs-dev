@@ -1,5 +1,5 @@
 import { execSync, spawn } from "child_process";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { LogHandler } from "./logs/logs-handler.js";
 import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
@@ -104,6 +104,10 @@ export class DockerCompose {
                 ],
                 {
                     cwd: this.path,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: this.sshPrivateKey()
+                    },
                     // @ts-ignore
                     signal
                 }
@@ -126,5 +130,13 @@ export class DockerCompose {
                 reject(err);
             });
         });
+    }
+
+    private sshPrivateKey (): string {
+        if (!("CHS_DEV_GITHUB_SSH_PRIVATE_KEY" in process.env)) {
+            throw new Error("Required environment variable: CHS_DEV_GITHUB_SSH_PRIVATE_KEY unset");
+        }
+
+        return readFileSync(process.env.CHS_DEV_GITHUB_SSH_PRIVATE_KEY as string).toString("utf8");
     }
 }
