@@ -1,5 +1,5 @@
 import { execSync, spawn } from "child_process";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { LogHandler } from "./logs/logs-handler.js";
 import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
@@ -96,17 +96,31 @@ export class DockerCompose {
     private runDockerCompose (composeArgs: string[], listener: (chunk: any) => void, signal?: AbortSignal): Promise<void> {
         return new Promise((resolve, reject) => {
             // Spawn docker compose process
+
+            const sshPrivateKey = this.sshPrivateKey();
+            const spawnArgs: {
+                cwd: string,
+                signal?: AbortSignal,
+                env?: Record<string, string>
+            } = {
+                cwd: this.path,
+                signal
+            };
+
+            if (sshPrivateKey) {
+                spawnArgs.env = {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey
+                };
+            }
+
             const dockerComposeProcess = spawn(
                 "docker",
                 [
                     "compose",
                     ...composeArgs
                 ],
-                {
-                    cwd: this.path,
-                    // @ts-ignore
-                    signal
-                }
+                spawnArgs
             );
 
             // Handle log statements to stdout and stderr
@@ -126,5 +140,13 @@ export class DockerCompose {
                 reject(err);
             });
         });
+    }
+
+    private sshPrivateKey (): string | undefined {
+        if (!("CHS_DEV_GITHUB_SSH_PRIVATE_KEY" in process.env)) {
+            return undefined;
+        }
+
+        return readFileSync(process.env.CHS_DEV_GITHUB_SSH_PRIVATE_KEY as string).toString("utf8");
     }
 }
