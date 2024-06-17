@@ -104,7 +104,6 @@ export class DockerCompose {
                 env?: Record<string, string>
             } = {
                 cwd: this.path,
-                // @ts-ignore
                 signal
             };
 
