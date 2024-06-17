@@ -96,21 +96,35 @@ export class DockerCompose {
     private runDockerCompose (composeArgs: string[], listener: (chunk: any) => void, signal?: AbortSignal): Promise<void> {
         return new Promise((resolve, reject) => {
             // Spawn docker compose process
+
+            const sshPrivateKey = this.sshPrivateKey();
+            let spawnArgs: {
+                cwd: string,
+                signal?: AbortSignal,
+                env?: Record<string, string>
+            } = {
+                cwd: this.path,
+                // @ts-ignore
+                signal
+            };
+
+            if (sshPrivateKey) {
+                spawnArgs = {
+                    ...spawnArgs,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey
+                    }
+                };
+            }
+
             const dockerComposeProcess = spawn(
                 "docker",
                 [
                     "compose",
                     ...composeArgs
                 ],
-                {
-                    cwd: this.path,
-                    env: {
-                        ...(process.env),
-                        SSH_PRIVATE_KEY: this.sshPrivateKey()
-                    },
-                    // @ts-ignore
-                    signal
-                }
+                spawnArgs
             );
 
             // Handle log statements to stdout and stderr
@@ -132,9 +146,9 @@ export class DockerCompose {
         });
     }
 
-    private sshPrivateKey (): string {
+    private sshPrivateKey (): string | undefined {
         if (!("CHS_DEV_GITHUB_SSH_PRIVATE_KEY" in process.env)) {
-            throw new Error("Required environment variable: CHS_DEV_GITHUB_SSH_PRIVATE_KEY unset");
+            return undefined;
         }
 
         return readFileSync(process.env.CHS_DEV_GITHUB_SSH_PRIVATE_KEY as string).toString("utf8");

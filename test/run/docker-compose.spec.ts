@@ -215,7 +215,7 @@ describe("DockerCompose", () => {
             });
         });
 
-        it("errors when CHS_DEV_GITHUB_SSH_PRIVATE_KEY not set", async () => {
+        it("SSH_PRIVATE_KEY not set when CHS_DEV_GITHUB_SSH_PRIVATE_KEY not set", async () => {
             process.env = {
                 ...(Object.entries(process.env).filter(([key, _]) => key !== "CHS_DEV_GITHUB_SSH_PRIVATE_KEY")
                     .reduce((prev, next) => ({
@@ -224,7 +224,22 @@ describe("DockerCompose", () => {
                     })), {})
             };
 
-            await expect(dockerCompose.down()).rejects.toBeInstanceOf(Error);
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(0);
+                }
+            });
+
+            await dockerCompose.down();
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "down",
+                "--remove-orphans"
+            ], {
+                cwd: dockerCompose.path
+            });
 
             expect(readFileSyncMock).not.toHaveBeenCalled();
         });
