@@ -5,7 +5,6 @@ import { join } from "path";
 
 export class SynchronizeChsDevVersion {
 
-    // eslint-disable-next-line no-useless-constructor
     async run (force: boolean, version: string): Promise<void> {
         const tempDir = mkdtempSync("synchronize-chs-dev");
 
