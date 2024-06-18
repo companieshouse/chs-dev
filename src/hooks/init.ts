@@ -1,6 +1,6 @@
 import { Hook } from "@oclif/config";
 
-import { SemVer, gt, parse } from "semver";
+import { diff } from "semver";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { getLatestReleaseVersion } from "../helpers/latest-release.js";
 import { join } from "path";
@@ -54,25 +54,27 @@ const checkCurrentVersionOfCliIsLatest = async (options) => {
     const latestVersion = await getLatestReleaseVersion();
     const currentVersion = options.config.version;
 
-    if (gt(latestVersion, currentVersion)) {
-        const latestVersionSemver = parse(latestVersion);
-        const versionSemver = parse(currentVersion);
+    const semverDifference = diff(latestVersion, currentVersion);
 
-        logVersionDifference(latestVersionSemver, versionSemver);
+    if (semverDifference !== null) {
+        logVersionDifference(latestVersion, currentVersion, semverDifference);
     }
 };
 
-const logVersionDifference = (latestVersionSemver: SemVer | null, versionSemver: SemVer | null) => {
-    let versionDifference = "";
-
-    if (latestVersionSemver?.major !== versionSemver?.major) {
-        versionDifference = " major";
-    } else if (latestVersionSemver?.minor !== versionSemver?.minor) {
-        versionDifference = " minor";
-    }
+const logVersionDifference = (latestVersion: string, currentVersion: string, semverDifference: string) => {
+    const versionDifference: string = semverDifference === "major" || semverDifference === "minor"
+        ? ` ${semverDifference}`
+        : "";
 
     const sepLine = "=".repeat(80);
-    const versionOutOfDateMessage = `📣 There is a newer${versionDifference} version (${latestVersionSemver?.raw}) available (current version: ${versionSemver?.raw})`;
+    const versionOutOfDateMessage = `📣 There is a newer${versionDifference} version (${latestVersion}) available (current version: ${currentVersion})
+
+Run:
+
+\tchs-dev sync
+
+to update to latest version
+`;
 
     console.log(
         `${sepLine}\n\n${versionOutOfDateMessage}\n\n${sepLine}`

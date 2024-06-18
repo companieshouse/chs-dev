@@ -1,0 +1,115 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`init hook first run through displays correct message when there is newer version: 1.1.2 1`] = `
+[
+  [
+    "================================================================================
+
+📣 There is a newer version (1.1.2) available (current version: 1.1.1)
+
+Run:
+
+	chs-dev sync
+
+to update to latest version
+
+
+================================================================================",
+  ],
+]
+`;
+
+exports[`init hook first run through displays correct message when there is newer version: 1.2.0 1`] = `
+[
+  [
+    "================================================================================
+
+📣 There is a newer minor version (1.2.0) available (current version: 1.1.1)
+
+Run:
+
+	chs-dev sync
+
+to update to latest version
+
+
+================================================================================",
+  ],
+]
+`;
+
+exports[`init hook first run through displays correct message when there is newer version: 1.2.1 1`] = `
+[
+  [
+    "================================================================================
+
+📣 There is a newer minor version (1.2.1) available (current version: 1.1.1)
+
+Run:
+
+	chs-dev sync
+
+to update to latest version
+
+
+================================================================================",
+  ],
+]
+`;
+
+exports[`init hook first run through displays correct message when there is newer version: 2.0.0 1`] = `
+[
+  [
+    "================================================================================
+
+📣 There is a newer major version (2.0.0) available (current version: 1.1.1)
+
+Run:
+
+	chs-dev sync
+
+to update to latest version
+
+
+================================================================================",
+  ],
+]
+`;
+
+exports[`init hook first run through displays correct message when there is newer version: 2.0.1 1`] = `
+[
+  [
+    "================================================================================
+
+📣 There is a newer major version (2.0.1) available (current version: 1.1.1)
+
+Run:
+
+	chs-dev sync
+
+to update to latest version
+
+
+================================================================================",
+  ],
+]
+`;
+
+exports[`init hook first run through displays correct message when there is newer version: 2.1.0 1`] = `
+[
+  [
+    "================================================================================
+
+📣 There is a newer major version (2.1.0) available (current version: 1.1.1)
+
+Run:
+
+	chs-dev sync
+
+to update to latest version
+
+
+================================================================================",
+  ],
+]
+`;
