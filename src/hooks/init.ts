@@ -64,10 +64,8 @@ const checkCurrentVersionOfCliIsLatest = async (options) => {
 const logVersionDifference = (latestVersion: string, currentVersion: string, semverDifference: string) => {
     let versionDifference: string = "";
 
-    if (semverDifference === "major") {
-        versionDifference = " major";
-    } else if (semverDifference === "minor") {
-        versionDifference = " minor";
+    if (semverDifference === "major" || semverDifference === "minor") {
+        versionDifference = ` ${semverDifference}`;
     }
 
     const sepLine = "=".repeat(80);
