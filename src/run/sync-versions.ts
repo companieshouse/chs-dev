@@ -79,12 +79,6 @@ export class SynchronizeChsDevVersion {
         let args: string[] = [];
         const versionSet = this.isVersionSet(version);
 
-        if (force || versionSet) {
-            args = [
-                "--"
-            ];
-        }
-
         if (force) {
             args.push("-f");
         }

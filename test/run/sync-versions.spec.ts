@@ -111,9 +111,9 @@ describe("SynchronizeChsDevVersion", () => {
         });
 
         const flagTestCases: [boolean, string, string[]][] = [
-            [true, "latest", ["--", "-f"]],
-            [false, "0.1.1", ["--", "-v", "0.1.1"]],
-            [true, "0.1.21", ["--", "-f", "-v", "0.1.21"]]
+            [true, "latest", ["-f"]],
+            [false, "0.1.1", ["-v", "0.1.1"]],
+            [true, "0.1.21", ["-f", "-v", "0.1.21"]]
         ];
 
         for (const [force, version, expectedArgs] of flagTestCases) {
