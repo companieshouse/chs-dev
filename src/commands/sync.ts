@@ -1,7 +1,8 @@
 import { Command, Flags } from "@oclif/core";
 import { SynchronizeChsDevVersion } from "../run/sync-versions.js";
+import { getLatestReleaseVersion } from "../helpers/latest-release.js";
 
-export default class Sync extends Command {
+export class Sync extends Command {
     static description = "Synchronises the local version to the version specifed";
 
     static flags = {
@@ -21,9 +22,23 @@ export default class Sync extends Command {
     async run (): Promise<any> {
         const { flags } = await this.parse(Sync);
 
-        const synchronization = new SynchronizeChsDevVersion();
+        let comparisonVersion = flags.version;
 
-        await synchronization.run(flags.force, flags.version);
+        if (comparisonVersion === "latest") {
+            comparisonVersion = await getLatestReleaseVersion();
+        }
+
+        if (comparisonVersion !== this.config.version) {
+            const synchronization = new SynchronizeChsDevVersion();
+
+            await synchronization.run(flags.force, flags.version);
+
+            this.log(`Synchronisation complete. Version ${comparisonVersion} installed.`);
+        } else {
+            this.log(`Synchronisation complete. Version: ${comparisonVersion} already installed`);
+        }
     }
 
 }
+
+export default Sync;

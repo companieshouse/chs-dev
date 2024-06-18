@@ -1,8 +1,8 @@
-import { expect, jest } from "@jest/globals";
-import Sync from "../../src/commands/sync";
+import { beforeAll, expect, jest } from "@jest/globals";
 import { Config } from "@oclif/core";
 
 const runSynchronisationMock = jest.fn();
+const getLatestReleaseVersionMock = jest.fn();
 
 jest.mock("../../src/run/sync-versions", function () {
     return {
@@ -14,21 +14,37 @@ jest.mock("../../src/run/sync-versions", function () {
     };
 });
 
+jest.mock("../../src/helpers/latest-release", () => {
+    return {
+        getLatestReleaseVersion: getLatestReleaseVersionMock
+    };
+});
+
 describe("Sync command", () => {
 
     let testConfig: Config;
     const parseMock = jest.fn();
-    let sync: Sync;
+
+    let Sync;
+    let sync;
+
+    beforeAll(async () => {
+        ({ Sync } = (await import("../../src/commands/sync")));
+    });
 
     beforeEach(() => {
         jest.resetAllMocks();
 
         // @ts-expect-error
-        testConfig = {};
+        testConfig = {
+            version: "0.1.13"
+        };
         sync = new Sync([], testConfig);
 
-        // @ts-expect-error
         sync.parse = parseMock;
+
+        // @ts-expect-error
+        getLatestReleaseVersionMock.mockResolvedValue("0.1.14");
     });
 
     it("runs synchronisation with default values when no flags supplied", async () => {
@@ -58,6 +74,55 @@ describe("Sync command", () => {
         await sync.run();
 
         expect(runSynchronisationMock).toHaveBeenCalledWith(true, "0.1.2");
+    });
 
+    it("checks latest version when latest version specified", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            flags: {
+                version: "latest",
+                force: false
+            }
+        });
+
+        await sync.run();
+
+        expect(getLatestReleaseVersionMock).toHaveBeenCalledTimes(1);
+
+    });
+
+    it("does not check latest version when another version specified", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            flags: {
+                version: "1.0.9",
+                force: false
+            }
+        });
+
+        await sync.run();
+
+        expect(getLatestReleaseVersionMock).not.toHaveBeenCalled();
+    });
+
+    it("Does not synchronise versions when already latest version", async () => {
+        const logSpy = jest.spyOn(sync, "log");
+
+        // @ts-expect-error
+        getLatestReleaseVersionMock.mockResolvedValue("0.1.13");
+
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            flags: {
+                version: "latest",
+                force: false
+            }
+        });
+
+        await sync.run();
+
+        expect(runSynchronisationMock).not.toHaveBeenCalled();
+
+        expect(logSpy).toHaveBeenCalledWith("Synchronisation complete. Version: 0.1.13 already installed");
     });
 });
