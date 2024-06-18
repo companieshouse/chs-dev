@@ -44,17 +44,16 @@ export class SynchronizeChsDevVersion {
             bashProcess.stdout.on("data", async (data) => {
                 const stdoutData: string = data.toString("utf8");
 
-                console.log(stdoutData);
+                console.log(stdoutData.trim());
             });
 
             bashProcess.stderr.on("data", async (data) => {
                 const stdoutData: string = data.toString("utf8");
 
-                console.error(stdoutData);
+                console.error(stdoutData.trim());
             });
 
             bashProcess.once("close", (code) => {
-                process.stdin.destroy();
                 if (code === 0) {
                     resolve();
                 } else {
@@ -63,9 +62,6 @@ export class SynchronizeChsDevVersion {
             });
 
             bashProcess.once("exit", (code) => {
-                process.stdin.destroy();
-                console.log("exited");
-
                 if (code === 0) {
                     resolve();
                 } else {
