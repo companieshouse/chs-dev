@@ -120,9 +120,7 @@ describe("init hook", () => {
                     context: jest.fn()
                 });
 
-                const completeExpectedMessage = `${"=".repeat(80)}\n\n${expectedMessage}\n\n${"=".repeat(80)}`;
-
-                expect(consoleLogSpy).toHaveBeenCalledWith(completeExpectedMessage);
+                expect(consoleLogSpy.mock.calls).toMatchSnapshot();
             });
         }
     });
