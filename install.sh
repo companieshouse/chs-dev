@@ -23,6 +23,7 @@ Installs the chs-dev CLI tool.
 OPTIONS
 -------
 
+-B - builds and installs the local directory
 -d <directory> - local directory to install CLI to (Defaults to ~/.chs-dev)
 -f - forces the installation - will overwrite existing installation if it
     exists. Without the flag, user will have to confirm reinstallation
@@ -305,6 +306,12 @@ install() {
     fi
   fi
 
+  if [ -n "${THIS_DIR}" ]; then
+    if ! make clean package; then
+      panic 'Could not build local package'
+    fi
+  fi
+
   # Download the most recent releases and validate the version
   if ! download_releases; then
     panic "Cannot download latest releases."
@@ -321,19 +328,35 @@ install() {
 
   determine_chipset
 
-  # captured in variable so no way of doing ! cmd
-  # shellcheck disable=SC2181
-  if ! determine_download_url; then
-    panic "Could not find download for release specified."
-  fi
+  if [ -z "${THIS_DIR}" ]; then
+    # captured in variable so no way of doing ! cmd
+    # shellcheck disable=SC2181
+    if ! determine_download_url; then
+      panic "Could not find download for release specified."
+    fi
 
-  # Download tarball
-  DOWNLOAD_URL="$(cat "${temp_d}"/download_url)"
+    # Download tarball
+    DOWNLOAD_URL="$(cat "${temp_d}"/download_url)"
 
-  log INFO 'Downloading CLI tarball. Will take a few moments...'
+    log INFO 'Downloading CLI tarball. Will take a few moments...'
 
-  if ! download_cli_tarball; then
-    panic "Could not download release tarball."
+    if ! download_cli_tarball; then
+      panic "Could not download release tarball."
+    fi
+  else
+    log 'DEBUG' 'Looking for tar to install in built artefacts'
+    for tar_ball in dist/*.tar.gz; do
+      log 'DEBUG' "tar_ball=${tar_ball}"
+      if printf -- '%s' "${tar_ball}" | grep -Eq "${OS}-${CHIPSET}\.tar\.gz$"; then
+        log 'DEBUG' "using tar_ball=${tar_ball}"
+        downloaded_cli_tar_file="${tar_ball}"
+        break
+      fi
+    done
+
+    if [ -z "${downloaded_cli_tar_file}" ]; then
+      panic "CLI not built as expected"
+    fi
   fi
 
   # Install tarball
@@ -375,12 +398,13 @@ DEFAULT_SYMLINK_DIRECTORY="${HOME}"/.companies_house_config/bin
 DEFAULT_COMMAND=install
 
 # Parse options
-while getopts 'd:l:s:v:SfhW' opt; do
+while getopts 'd:l:s:v:BSfhW' opt; do
   case "${opt}" in
   d) INSTALLATION_DIRECTORY="${OPTARG}" ;;
   l) LOGGING_LEVEL="${OPTARG}" ;;
   s) SYMLINK_DIRECTORY="${OPTARG}" ;;
   v) VERSION="${OPTARG}" ;;
+  B) THIS_DIR=1 ;;
   S) NO_SYMLINK=1 ;;
   f) FORCE=1 ;;
   W) SUPPRESS_NOT_ON_PATH_WARN=1 ;;

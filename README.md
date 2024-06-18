@@ -49,6 +49,7 @@ reinstallation) of the chs-dev CLI. It can be use as follows
 
 #### Options
 
+* `-B` - installs current directory to local user profile (for testing)
 * `-d <directory>` - specifies the installation directory (*Defaults to*
   *`${HOME}/.chs-dev`*)
 * `-f` - forces the command and does not prompt user for input
