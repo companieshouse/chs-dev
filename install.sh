@@ -350,8 +350,13 @@ install() {
       if printf -- '%s' "${tar_ball}" | grep -Eq "${OS}-${CHIPSET}\.tar\.gz$"; then
         log 'DEBUG' "using tar_ball=${tar_ball}"
         downloaded_cli_tar_file="${tar_ball}"
+        break
       fi
     done
+
+    if [ -z "${downloaded_cli_tar_file}" ]; then
+      panic "CLI not built as expected"
+    fi
   fi
 
   # Install tarball
