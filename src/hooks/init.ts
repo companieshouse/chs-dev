@@ -62,11 +62,9 @@ const checkCurrentVersionOfCliIsLatest = async (options) => {
 };
 
 const logVersionDifference = (latestVersion: string, currentVersion: string, semverDifference: string) => {
-    let versionDifference: string = "";
-
-    if (semverDifference === "major" || semverDifference === "minor") {
-        versionDifference = ` ${semverDifference}`;
-    }
+    const versionDifference: string = semverDifference === "major" || semverDifference === "minor"
+        ? ` ${semverDifference}`
+        : "";
 
     const sepLine = "=".repeat(80);
     const versionOutOfDateMessage = `📣 There is a newer${versionDifference} version (${latestVersion}) available (current version: ${currentVersion})
