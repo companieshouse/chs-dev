@@ -70,7 +70,7 @@ export class Inventory {
 
     constructor (private path: string, confDir: string) {
         this.path = path;
-        this.inventoryCacheFile = join(confDir, "inventory.yaml");
+        this.inventoryCacheFile = join(confDir, `${basename(path)}.inventory.yaml`);
 
         if (!existsSync(confDir)) {
             mkdirSync(confDir, {

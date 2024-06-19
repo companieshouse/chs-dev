@@ -1,8 +1,8 @@
 import { expect, jest } from "@jest/globals";
 import { copySync } from "fs-extra";
-import { join } from "path";
+import { basename, join } from "path";
 import fs from "fs";
-import { Inventory, Service } from "../../src/state/inventory";
+import { Inventory } from "../../src/state/inventory";
 import { parse, stringify } from "yaml";
 
 describe("Inventory", () => {
@@ -15,7 +15,7 @@ describe("Inventory", () => {
         tempDir = fs.mkdtempSync("inventory");
         inventoryDir = join(tempDir, "inventory");
         confDir = join(tempDir, "conf");
-        inventoryConfFile = join(confDir, "inventory.yaml");
+        inventoryConfFile = join(confDir, `${basename(inventoryDir)}.inventory.yaml`);
 
         copySync(
             join(
