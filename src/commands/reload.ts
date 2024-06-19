@@ -18,7 +18,7 @@ export default class Reload extends Command {
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
-        this.inventory = new Inventory(process.cwd(), config.configDir);
+        this.inventory = new Inventory(process.cwd(), config.cacheDir);
         this.dependencyCache = new DependencyCache(process.cwd());
     }
 

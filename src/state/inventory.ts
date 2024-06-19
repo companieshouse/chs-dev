@@ -68,12 +68,12 @@ export class Inventory {
     readonly inventoryCacheFile: string;
     private __serviceFiles: string[] | undefined;
 
-    constructor (private path: string, confDir: string) {
+    constructor (private path: string, cacheDir: string) {
         this.path = path;
-        this.inventoryCacheFile = join(confDir, `${basename(path)}.inventory.yaml`);
+        this.inventoryCacheFile = join(cacheDir, `${basename(path)}.inventory.yaml`);
 
-        if (!existsSync(confDir)) {
-            mkdirSync(confDir, {
+        if (!existsSync(cacheDir)) {
+            mkdirSync(cacheDir, {
                 recursive: true
             });
         }

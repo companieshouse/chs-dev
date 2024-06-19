@@ -70,7 +70,7 @@ describe("reload spec", () => {
         jest.resetAllMocks();
         tempDir = mkdtempSync("reload-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), runHook: runHookMock };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
 
         reload = new Reload([], testConfig);
 

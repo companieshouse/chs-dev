@@ -82,7 +82,7 @@ describe("Up command", () => {
         runHookMock = jest.fn();
 
         // @ts-expect-error
-        testConfig = { root: "./", configDir: "./config", runHook: runHookMock };
+        testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", runHook: runHookMock };
 
         up = new Up([], testConfig);
 

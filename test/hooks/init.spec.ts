@@ -44,7 +44,7 @@ describe("init hook", () => {
         dataDir = join(tempDir, "data");
 
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), dataDir, version, pjson };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), dataDir, version, pjson };
 
         initHook = (await import("../../src/hooks/init")).hook;
     });

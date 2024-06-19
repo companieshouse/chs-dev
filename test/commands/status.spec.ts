@@ -121,7 +121,7 @@ describe("Status command", () => {
         logMock = jest.fn();
 
         // @ts-expect-error
-        testConfig = { root: "./", configDir: "./config", runHook: runHookMock };
+        testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", runHook: runHookMock };
 
         status = new Status([], testConfig);
         status.log = logMock;

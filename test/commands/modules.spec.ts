@@ -65,7 +65,7 @@ describe("modules command", () => {
         jest.resetAllMocks();
         tempDir = mkdtempSync("modules-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), runHook: runHookMock };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
 
         modules = new Modules([], testConfig);
 

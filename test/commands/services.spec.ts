@@ -72,7 +72,7 @@ describe("services command", () => {
         jest.resetAllMocks();
         tempDir = mkdtempSync("services-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), runHook: runHookMock };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
 
         services = new Services([], testConfig);
 
