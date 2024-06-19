@@ -1,7 +1,5 @@
 import { Hook } from "@oclif/config";
 
-import { join } from "path";
-
 import { Inventory, Service } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
 import { DockerComposeFileGenerator } from "../generator/docker-compose-file-generator.js";
@@ -9,7 +7,7 @@ import { TiltfileGenerator } from "../generator/tiltfile-generator.js";
 
 export const hook: Hook<"generate-runnable-docker-compose"> = async function (options) {
     const path = process.cwd();
-    const inventory = new Inventory(path, options.config.configDir);
+    const inventory = new Inventory(path, options.config.cacheDir);
     const stateManager = new StateManager(path);
     const dockerComposeFileGenerator = new DockerComposeFileGenerator(path);
     const tiltfileGenerator = new TiltfileGenerator(path);
