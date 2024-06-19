@@ -46,10 +46,8 @@ interface InventoryCache {
   modules: Module[]
 }
 
-const hasDependencies = (serviceDefinition: any) => {
-    const dependsOn = "depends_on" in serviceDefinition
-        ? serviceDefinition.depends_on
-        : [];
+const hasDependencies = (serviceDefinition: Partial<Service>) => {
+    const dependsOn = serviceDefinition.dependsOn || [];
 
     let outcome = false;
 
@@ -122,7 +120,7 @@ export class Inventory {
     }
 
     private loadServices (): Service[] {
-        const partialServices = this.serviceFiles
+        const partialServices: Partial<Service>[] = this.serviceFiles
             .flatMap(filePath => {
                 return {
                     module: basename(dirname(filePath)),
@@ -183,18 +181,18 @@ export class Inventory {
             return dependencyNames
                 .flatMap((dependentServiceName: string) => {
                     const dependentService = partialServices
-                        .filter((service: Service) => hasDependencies(service))
-                        .find((service: Service) => service.name === dependentServiceName);
+                        .filter((service: Partial<Service>) => hasDependencies(service))
+                        .find((service: Partial<Service>) => service.name === dependentServiceName);
 
                     if (dependentService) {
                         return [
                             dependentServiceName,
                             // @ts-ignore
                             ...exploreDependencies(dependentService.dependsOn)
-                        ].reduce(deduplicate, []);
+                        ];
                     }
                     return [dependentServiceName];
-                });
+                }).reduce(deduplicate, []);
         };
 
         return partialServices
