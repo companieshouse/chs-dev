@@ -57,7 +57,7 @@ describe("Exclusions command", () => {
         jest.resetAllMocks();
         tempDir = mkdtempSync("exclusions-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), runHook: runHookMock };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
 
         exclusions = new Exclusions([], testConfig);
 

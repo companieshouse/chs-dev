@@ -21,7 +21,7 @@ export default class Status extends Command {
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
-        this.inventory = new Inventory(process.cwd(), config.configDir);
+        this.inventory = new Inventory(process.cwd(), config.cacheDir);
         this.stateManager = new StateManager(process.cwd());
         this.dockerCompose = new DockerCompose(process.cwd(), {
             log: (msg: string) => this.log(msg)

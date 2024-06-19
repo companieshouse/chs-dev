@@ -30,7 +30,7 @@ describe("Down command", () => {
         jest.resetAllMocks();
         tempDir = mkdtempSync("down-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), runHook: runHookMock };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
 
         downCommand = new Down([], testConfig);
 

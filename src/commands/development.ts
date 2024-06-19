@@ -31,7 +31,7 @@ export default class Development extends Command {
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
-        this.inventory = new Inventory(process.cwd(), config.configDir);
+        this.inventory = new Inventory(process.cwd(), config.cacheDir);
         this.stateManager = new StateManager(process.cwd());
     }
 

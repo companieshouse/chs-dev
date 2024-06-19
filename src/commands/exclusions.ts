@@ -30,7 +30,7 @@ export default class Exclusions extends Command {
     constructor (argv: string[], config: Config) {
         super(argv, config);
         this.stateManager = new StateManager(process.cwd());
-        this.inventory = new Inventory(process.cwd(), config.configDir);
+        this.inventory = new Inventory(process.cwd(), config.cacheDir);
     }
 
     async run (): Promise<void> {
