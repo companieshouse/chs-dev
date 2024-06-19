@@ -2,5 +2,9 @@
 export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  resolver: 'ts-jest-resolver'
+  resolver: 'ts-jest-resolver',
+  collectCoverageFrom: [
+    "./src/**/*.ts"
+  ],
+  verbose: true
 };

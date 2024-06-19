@@ -39,4 +39,4 @@ security-check:
 
 .PHONY: sonar
 sonar:
-	@echo "Sonarqube not configured"
+	npm run sonarqube
