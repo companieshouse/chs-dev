@@ -8,7 +8,7 @@ import { DockerComposeFileGenerator } from "../generator/docker-compose-file-gen
 import { TiltfileGenerator } from "../generator/tiltfile-generator.js";
 
 export const hook: Hook<"generate-runnable-docker-compose"> = async function (options) {
-    const path = join(options.config.root, "..");
+    const path = process.cwd();
     const inventory = new Inventory(path, options.config.configDir);
     const stateManager = new StateManager(path);
     const dockerComposeFileGenerator = new DockerComposeFileGenerator(path);
