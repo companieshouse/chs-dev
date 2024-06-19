@@ -76,20 +76,13 @@ export class SynchronizeChsDevVersion {
     }
 
     private installationArgs (force: boolean, version: string): string[] {
-        let args: string[] = [];
-        const versionSet = this.isVersionSet(version);
-
-        if (force || versionSet) {
-            args = [
-                "--"
-            ];
-        }
+        const args: string[] = [];
 
         if (force) {
             args.push("-f");
         }
 
-        if (versionSet) {
+        if (this.isVersionSet(version)) {
             args.push("-v");
             args.push(version);
         }
