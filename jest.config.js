@@ -6,5 +6,6 @@ export default {
   collectCoverageFrom: [
     "./src/**/*.ts"
   ],
-  verbose: true
+  verbose: true,
+  ci: true
 };
