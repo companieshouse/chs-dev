@@ -5,7 +5,7 @@ import { DependencyCache } from "../run/dependency-cache.js";
 import { DevelopmentMode } from "../run/development-mode.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import { StateManager } from "../state/state-manager.js";
-import { join } from "path";
+import loadConfig from "../helpers/config-loader.js";
 
 export default class Up extends Command {
 
@@ -23,7 +23,7 @@ export default class Up extends Command {
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.dockerCompose = new DockerCompose(process.cwd(), {
+        this.dockerCompose = new DockerCompose(loadConfig(), {
             log: (msg: string) => this.log(msg)
         });
 

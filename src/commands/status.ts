@@ -4,7 +4,7 @@ import { Inventory, Service } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
 import { collect, deduplicate } from "../helpers/array-reducers.js";
 import { DockerCompose } from "../run/docker-compose.js";
-import { join } from "path";
+import loadConfig from "../helpers/config-loader.js";
 
 export default class Status extends Command {
     static description = "print status of an environment";
@@ -23,7 +23,7 @@ export default class Status extends Command {
         super(argv, config);
         this.inventory = new Inventory(process.cwd(), config.cacheDir);
         this.stateManager = new StateManager(process.cwd());
-        this.dockerCompose = new DockerCompose(process.cwd(), {
+        this.dockerCompose = new DockerCompose(loadConfig(), {
             log: (msg: string) => this.log(msg)
         });
     }
