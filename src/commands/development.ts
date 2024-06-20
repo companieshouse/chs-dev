@@ -5,7 +5,8 @@ import { join, relative } from "path";
 import { cli } from "cli-ux";
 import simpleGit from "simple-git";
 
-import { Inventory, Service } from "../state/inventory.js";
+import { Inventory } from "../state/inventory.js";
+import { Service } from "../model/Service.js";
 import { StateManager } from "../state/state-manager.js";
 
 export default class Development extends Command {

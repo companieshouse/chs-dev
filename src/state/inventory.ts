@@ -6,32 +6,17 @@ import glob from "glob";
 
 import { collect, deduplicate } from "../helpers/array-reducers.js";
 import { createHash } from "crypto";
+import { Service } from "../model/Service.js";
+import { Module } from "../model/Module.js";
 
-export interface DependencySpecification {
-  condition: "service_started" | "service_healthy" | "service_complete";
-  restart?: boolean;
-  required?: boolean;
+interface DependencySpecification {
+    condition: "service_started" | "service_healthy" | "service_complete";
+    restart?: boolean;
+    required?: boolean;
 }
 
 interface DependencySpecificationMap {
   [dependency_name: string]: DependencySpecification;
-}
-
-export interface Module {
-  name: string;
-}
-
-type OrNull<T> = T | null
-
-export interface Service {
-  name: string;
-  module: string;
-  description?: OrNull<string>;
-  source: string;
-  dependsOn: string[];
-  repository: OrNull<{ url: string; branch?: string | null }>;
-  builder: string;
-  metadata: Record<string, OrNull<string> | undefined>
 }
 
 interface ServiceDefinition {

@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
-import { Module, Service } from "../../src/state/inventory";
 // @ts-expect-error it does exist
 import { mkdtempSync, rmSync } from "fs";
 import { join } from "path";
 import { Config } from "@oclif/core";
 import Services from "../../src/commands/services";
+import { Service } from "../../src/model/Service";
+import { Module } from "../../src/model/Module";
 
 let snapshot;
 

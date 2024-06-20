@@ -3,7 +3,7 @@ import { afterAll, beforeAll, expect } from "@jest/globals";
 // @ts-expect-error does exist despite ts warning
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { DockerComposeFileGenerator } from "../../src/generator/docker-compose-file-generator";
-import { Service } from "../../src/state/inventory";
+import { Service } from "../../src/model/Service";
 import { join } from "path";
 import { parse, stringify } from "yaml";
 

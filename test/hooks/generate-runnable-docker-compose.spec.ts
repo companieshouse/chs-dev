@@ -1,6 +1,5 @@
 import { beforeAll, expect, jest } from "@jest/globals";
-import { Service } from "../../src/state/inventory";
-import { State } from "../../src/state/state-manager";
+import { Service } from "../../src/model/Service";
 import { join } from "path";
 import { readFileSync } from "fs";
 import { Hook } from "@oclif/core";

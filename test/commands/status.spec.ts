@@ -1,8 +1,9 @@
 import { jest, expect } from "@jest/globals";
-import { Module, Service } from "../../src/state/inventory";
-import { State } from "../../src/state/state-manager";
 import Status from "../../src/commands/status";
 import { Config } from "@oclif/core";
+import { Service } from "../../src/model/Service";
+import { Module } from "../../src/model/Module";
+import { State } from "../../src/model/State";
 
 const services: Service[] = [
     {

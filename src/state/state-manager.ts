@@ -1,15 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import yaml from "yaml";
+import { State } from "../model/State.js";
 
 const fileName = ".chs-dev.yaml";
-
-export interface State {
-  modules: string[];
-  services: string[];
-  servicesWithLiveUpdate: string[];
-  excludedFiles: string[];
-}
 
 export class StateManager {
     constructor (private path: string) {

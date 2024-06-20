@@ -1,7 +1,7 @@
 import { expect, jest } from "@jest/globals";
-import { State } from "../../src/state/state-manager";
 import Up from "../../src/commands/up";
 import { Config } from "@oclif/core";
+import { State } from "../../src/model/State";
 
 const startDevelopmentModeMock = jest.fn();
 const dockerComposeUpMock = jest.fn();
