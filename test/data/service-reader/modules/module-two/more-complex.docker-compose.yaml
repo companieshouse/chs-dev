@@ -1,0 +1,23 @@
+services:
+  more-complex:
+    labels:
+      - chs.description=more complex service
+      - chs.repository.url=git@github.com/companieshouse/repo2.git
+      - chs.repository.branch=develop
+      - chs.local.builder=java
+      - chs.local.builder.languageVersion=17
+      - traefik.http.routers.more-complex.rule=Host(`api.local`) && (PathPrefix(`/complex`))
+    image: some-service-api
+    ports:
+      - 12345
+    healthcheck:
+      test: "curl http://localhost/healtcheck"
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    environment:
+      - ENV_ONE=foo
+    depends_on:
+      simple-service:
+        condition: service_started

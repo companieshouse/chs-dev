@@ -1,0 +1,12 @@
+services:
+  atypical-service:
+    labels:
+      - chs.description=atypical service
+      - chs.repository.url=git@github.com/companieshouse/repo3.git
+      - chs.local.builder=repository
+      - chs.local.repoContext=chsDev/
+    image: some-service-api
+    ports:
+      - 12345
+    environment:
+      - ENV_ONE=foo

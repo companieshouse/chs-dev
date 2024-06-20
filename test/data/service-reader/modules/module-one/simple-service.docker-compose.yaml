@@ -1,0 +1,12 @@
+services:
+  simple-service:
+    labels:
+      - chs.description=simple service
+      - chs.repository.url=git@github.com/companieshouse/repo.git
+    image: some-service-api
+    ports:
+      - 12345
+    environment:
+      - ENV_ONE=foo
+    depends_on:
+      - mongo
