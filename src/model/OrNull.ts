@@ -3,4 +3,4 @@
  */
 export type OrNull<T> = T | null;
 
-export default OrNull
+export default OrNull;
