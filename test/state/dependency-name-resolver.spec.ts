@@ -76,4 +76,46 @@ describe("DependencyNameResolver", () => {
         expect(result).toContainEqual("service-six");
         expect(result).toContainEqual("service-seven");
     });
+
+    it("can handle circular dependencies", () => {
+        const circularDependencies = [{
+            name: "service-one",
+            dependsOn: ["service-two"]
+        }, {
+            name: "service-two",
+            dependsOn: ["service-one"]
+        }, {
+            name: "service-three",
+            dependsOn: ["service-four"]
+        }, {
+            name: "service-four",
+            dependsOn: ["service-seven"]
+        }, {
+            name: "service-seven",
+            dependsOn: ["service-one", "service-three"]
+        }, {
+            name: "service-five",
+            dependsOn: ["service-six", "service-eight"]
+        }, {
+            name: "service-six",
+            dependsOn: ["service-five"]
+        }, {
+            name: "service-eight",
+            dependsOn: []
+        }];
+
+        const secondDependencyNameResolver = new DependencyNameResolver(circularDependencies);
+
+        const directDependencies = ["service-two", "service-three", "service-five"];
+
+        const result = secondDependencyNameResolver.fullDependencyListIncludingTransitive(directDependencies);
+
+        const expected = circularDependencies.map(service => service.name);
+
+        expect(result).toHaveLength(expected.length);
+
+        for (const expectedService of expected) {
+            expect(result).toContain(expectedService);
+        }
+    });
 });

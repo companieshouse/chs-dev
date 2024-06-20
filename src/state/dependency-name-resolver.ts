@@ -21,22 +21,45 @@ export class DependencyNameResolver {
      * @returns complete list of dependencies given direct dependencies
      */
     fullDependencyListIncludingTransitive (directDependencies: string[]): string[] {
-        return directDependencies
-            .flatMap(directDependency => [
-                directDependency,
-                ...this.transitiveDependencies(directDependency)
-            ]).reduce(deduplicate, []);
-    }
+        const dependencyList: string[] = [];
 
-    private transitiveDependencies (dependencyName: string): string[] {
-        const dependentService = this.allServices.find(service => service.name === dependencyName);
+        // Iterate through direct dependencies
+        for (const directDependency of directDependencies) {
+            // If already visited dependency continue
+            if (dependencyList.includes(directDependency)) {
+                continue;
+            }
 
-        if (!dependentService) {
-            return [];
+            // Add dependency to list and list its own dependencies
+            dependencyList.push(directDependency);
+
+            let transitiveDependencies = this.loadFurtherDependencies(directDependency);
+            let exhaustedBranch: boolean = false;
+
+            // Iterate through the branch visiting each transitive dependency
+            while (!exhaustedBranch) {
+                const branchServices: string[] = [];
+
+                for (const transitiveDependency of transitiveDependencies) {
+                    if (!dependencyList.includes(transitiveDependency)) {
+                        dependencyList.push(transitiveDependency);
+                        branchServices.push(transitiveDependency);
+                    }
+                }
+
+                transitiveDependencies = branchServices.flatMap(service => this.loadFurtherDependencies(service))
+                    .filter(leaf => !dependencyList.includes(leaf));
+
+                if (transitiveDependencies.length === 0) {
+                    exhaustedBranch = true;
+                }
+            }
         }
 
-        return (dependentService.dependsOn as string[])
-            // recursively traverse the dependency tree
-            .flatMap(dependency => [dependency, ...this.transitiveDependencies(dependency)]);
+        return dependencyList;
+    }
+
+    private loadFurtherDependencies (dependencyName: string): string[] {
+        return this.allServices.find(service => service.name === dependencyName)?.dependsOn || [];
     }
 }
