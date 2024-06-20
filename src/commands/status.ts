@@ -1,6 +1,7 @@
 import { Command, Config } from "@oclif/core";
 
-import { Inventory, Service } from "../state/inventory.js";
+import { Inventory } from "../state/inventory.js";
+import { Service } from "../model/Service.js";
 import { StateManager } from "../state/state-manager.js";
 import { collect, deduplicate } from "../helpers/array-reducers.js";
 import { DockerCompose } from "../run/docker-compose.js";

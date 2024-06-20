@@ -1,6 +1,6 @@
 import { expect, jest } from "@jest/globals";
 import { Hook } from "@oclif/core";
-import { Service } from "../../src/state/inventory";
+import { Service } from "../../src/model/Service";
 
 describe("Hook: generate-development-docker-compose", () => {
     const generateDevelopmentServiceDockerComposeFileMock =

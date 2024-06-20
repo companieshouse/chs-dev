@@ -1,6 +1,6 @@
 import { join } from "path";
 import { AbstractFileGenerator } from "./file-generator.js";
-import { Service } from "../state/inventory.js";
+import { Service } from "../model/Service.js";
 import yaml from "yaml";
 import { EOL } from "os";
 import { readFileSync, existsSync, mkdirSync } from "fs";
