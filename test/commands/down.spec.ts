@@ -16,6 +16,13 @@ jest.mock("../../src/run/docker-compose", () => {
     };
 });
 
+jest.mock("../../src/helpers/config-loader", function () {
+    return jest.fn().mockImplementation(() => ({
+        env: {},
+        projectPath: "."
+    }));
+});
+
 describe("Down command", () => {
     let tempDir;
     let testConfig: Config;

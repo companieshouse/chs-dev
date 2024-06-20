@@ -4,6 +4,7 @@ import childProcess from "child_process";
 import fs, { mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import Config from "../../src/model/Config";
 
 describe("DockerCompose", () => {
     const execSyncMock = jest.spyOn(childProcess, "execSync");
@@ -16,7 +17,14 @@ describe("DockerCompose", () => {
     const mockWatchLogHandle = jest.fn();
 
     const sshPrivateKey = "ssh-rsa blagr94@testuer";
-    const sshPrivateKeyFile = "~/.ssh/id_rsa";
+
+    const config: Config = {
+        env: {
+            SSH_PRIVATE_KEY: sshPrivateKey,
+            ANOTHER_VALUE: "another-value"
+        },
+        projectPath: "./"
+    };
 
     jest.mock("../../src/run/logs/PatternMatchingConsoleLogHandler", () => {
         return function () {
@@ -41,7 +49,7 @@ describe("DockerCompose", () => {
     };
 
     let tmpDir: string;
-    let DockerCompose: new (arg0: string, arg1: { log: (msg: string) => void; }) => any;
+    let DockerCompose: new (arg0: Config, arg1: { log: (msg: string) => void; }) => any;
 
     const testDateTime = new Date(2024, 1, 1, 0, 0, 0);
 
@@ -70,10 +78,10 @@ describe("DockerCompose", () => {
             existsSyncMock.mockReturnValue(true);
 
             // eslint-disable-next-line no-new
-            new DockerCompose(tmpDir, logger);
+            new DockerCompose(config, logger);
 
             expect(existsSyncMock).toHaveBeenCalledTimes(1);
-            expect(existsSyncMock).toHaveBeenCalledWith(join(tmpDir, "local/.logs"));
+            expect(existsSyncMock).toHaveBeenCalledWith("local/.logs");
             expect(mkdirSyncMock).not.toHaveBeenCalled();
         });
 
@@ -81,12 +89,12 @@ describe("DockerCompose", () => {
             existsSyncMock.mockReturnValue(false);
 
             // eslint-disable-next-line no-new
-            new DockerCompose(tmpDir, logger);
+            new DockerCompose(config, logger);
 
             expect(existsSyncMock).toHaveBeenCalledTimes(1);
             expect(mkdirSyncMock).toHaveBeenCalledTimes(1);
             expect(mkdirSyncMock).toHaveBeenCalledWith(
-                join(tmpDir, "local/.logs"),
+                "local/.logs",
                 {
                     recursive: true
                 }
@@ -96,9 +104,9 @@ describe("DockerCompose", () => {
         it("sets its log file correctly", () => {
             existsSyncMock.mockReturnValue(true);
 
-            const dockerCompose = new DockerCompose(tmpDir, logger);
+            const dockerCompose = new DockerCompose(config, logger);
 
-            expect(dockerCompose.logFile).toBe(join(tmpDir, "local/.logs/compose.out.1706745600.txt"));
+            expect(dockerCompose.logFile).toBe("local/.logs/compose.out.1706745600.txt");
         });
     });
 
@@ -106,7 +114,7 @@ describe("DockerCompose", () => {
         let dockerCompose;
         beforeEach(() => {
             jest.resetAllMocks();
-            dockerCompose = new DockerCompose(tmpDir, logger);
+            dockerCompose = new DockerCompose(config, logger);
         });
 
         it("returns undefined when docker-compose.yaml file does not exist", () => {
@@ -133,7 +141,7 @@ describe("DockerCompose", () => {
 
             expect(execSyncMock).toHaveBeenCalledWith(
                 "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"",
-                { cwd: dockerCompose.path }
+                { cwd: config.projectPath }
             );
         });
 
@@ -171,7 +179,7 @@ describe("DockerCompose", () => {
 
         beforeEach(() => {
             jest.resetAllMocks();
-            dockerCompose = new DockerCompose(tmpDir, logger);
+            dockerCompose = new DockerCompose(config, logger);
 
             spawnMock.mockReturnValue({
                 // @ts-expect-error
@@ -182,14 +190,7 @@ describe("DockerCompose", () => {
                 once: mockOnce
             });
 
-            process.env = {
-                ...(process.env),
-                CHS_DEV_GITHUB_SSH_PRIVATE_KEY: sshPrivateKeyFile
-            };
-
-            readFileSyncMock.mockReturnValue(
-                Buffer.from(sshPrivateKey, "utf8")
-            );
+            existsSyncMock.mockReturnValue(true);
         });
 
         it("executes docker compose down", async () => {
@@ -207,15 +208,16 @@ describe("DockerCompose", () => {
                 "down",
                 "--remove-orphans"
             ], {
-                cwd: dockerCompose.path,
+                cwd: config.projectPath,
                 env: {
                     ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey
+                    SSH_PRIVATE_KEY: sshPrivateKey,
+                    ANOTHER_VALUE: "another-value"
                 }
             });
         });
 
-        it("SSH_PRIVATE_KEY not set when CHS_DEV_GITHUB_SSH_PRIVATE_KEY not set", async () => {
+        it("env not set in config then no environment vars set", async () => {
             process.env = {
                 ...(Object.entries(process.env).filter(([key, _]) => key !== "CHS_DEV_GITHUB_SSH_PRIVATE_KEY")
                     .reduce((prev, next) => ({
@@ -231,17 +233,22 @@ describe("DockerCompose", () => {
                 }
             });
 
-            await dockerCompose.down();
+            const configMinusEnv = {
+                projectPath: "./",
+                env: {}
+            };
+
+            const dockerComposeMinusEnv = new DockerCompose(configMinusEnv, logger);
+
+            await dockerComposeMinusEnv.down();
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
                 "down",
                 "--remove-orphans"
             ], {
-                cwd: dockerCompose.path
+                cwd: "./"
             });
-
-            expect(readFileSyncMock).not.toHaveBeenCalled();
         });
 
         it("resolves when code is 130", async () => {
@@ -305,7 +312,7 @@ describe("DockerCompose", () => {
 
         beforeEach(() => {
             jest.resetAllMocks();
-            dockerCompose = new DockerCompose(tmpDir, logger);
+            dockerCompose = new DockerCompose(config, logger);
 
             spawnMock.mockReturnValue({
                 // @ts-expect-error
@@ -316,14 +323,7 @@ describe("DockerCompose", () => {
                 once: mockOnce
             });
 
-            process.env = {
-                ...(process.env),
-                CHS_DEV_GITHUB_SSH_PRIVATE_KEY: sshPrivateKeyFile
-            };
-
-            readFileSyncMock.mockReturnValue(
-                Buffer.from(sshPrivateKey, "utf8")
-            );
+            existsSyncMock.mockReturnValue(true);
         });
 
         it("executes docker compose down", async () => {
@@ -342,10 +342,11 @@ describe("DockerCompose", () => {
                 "-d",
                 "--remove-orphans"
             ], {
-                cwd: dockerCompose.path,
+                cwd: config.projectPath,
                 env: {
                     ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey
+                    SSH_PRIVATE_KEY: sshPrivateKey,
+                    ANOTHER_VALUE: "another-value"
                 },
                 signal: undefined
             });
@@ -413,7 +414,7 @@ describe("DockerCompose", () => {
 
         beforeEach(() => {
             jest.resetAllMocks();
-            dockerCompose = new DockerCompose(tmpDir, logger);
+            dockerCompose = new DockerCompose(config, logger);
 
             spawnMock.mockReturnValue({
                 // @ts-expect-error
@@ -424,14 +425,6 @@ describe("DockerCompose", () => {
                 once: mockOnce
             });
 
-            process.env = {
-                ...(process.env),
-                CHS_DEV_GITHUB_SSH_PRIVATE_KEY: sshPrivateKeyFile
-            };
-
-            readFileSyncMock.mockReturnValue(
-                Buffer.from(sshPrivateKey, "utf8")
-            );
         });
 
         it("runs docker compose watch", async () => {
@@ -448,10 +441,11 @@ describe("DockerCompose", () => {
                 "compose",
                 "watch"
             ], {
-                cwd: dockerCompose.path,
+                cwd: config.projectPath,
                 env: {
                     ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey
+                    SSH_PRIVATE_KEY: sshPrivateKey,
+                    ANOTHER_VALUE: "another-value"
                 }
             });
         });

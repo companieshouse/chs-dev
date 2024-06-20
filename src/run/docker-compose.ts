@@ -4,6 +4,8 @@ import { join } from "path";
 import { LogHandler } from "./logs/logs-handler.js";
 import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
+import { parse } from "yaml";
+import Config from "../model/Config.js";
 
 interface Logger {
     log: (msg: string) => void;
@@ -19,8 +21,8 @@ export class DockerCompose {
 
     readonly logFile: string;
 
-    constructor (readonly path: string, readonly logger: Logger) {
-        const logsDir = join(this.path, "local/.logs");
+    constructor (readonly config: Config, readonly logger: Logger) {
+        const logsDir = join(this.config.projectPath, "local/.logs");
         if (!existsSync(logsDir)) {
             mkdirSync(
                 logsDir,
@@ -42,7 +44,7 @@ export class DockerCompose {
     }
 
     getServiceStatuses (): Record<string, string> | undefined {
-        if (!existsSync(join(this.path, "docker-compose.yaml"))) {
+        if (!existsSync(join(this.config.projectPath, "docker-compose.yaml"))) {
             return undefined;
         }
 
@@ -50,7 +52,7 @@ export class DockerCompose {
         // each service on an individual line
         const dockerComposePsOutput = execSync(
             "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"",
-            { cwd: this.path }
+            { cwd: this.config.projectPath }
         ).toString("utf-8");
 
         // Parse the compose output and load into a Record i.e. service name to
@@ -96,21 +98,21 @@ export class DockerCompose {
     private runDockerCompose (composeArgs: string[], listener: (chunk: any) => void, signal?: AbortSignal): Promise<void> {
         return new Promise((resolve, reject) => {
             // Spawn docker compose process
-
-            const sshPrivateKey = this.sshPrivateKey();
+            const dockerComposeEnv = this.config.env;
             const spawnArgs: {
                 cwd: string,
                 signal?: AbortSignal,
                 env?: Record<string, string>
             } = {
-                cwd: this.path,
+                cwd: this.config.projectPath,
                 signal
             };
 
-            if (sshPrivateKey) {
+            if (dockerComposeEnv && Object.keys(dockerComposeEnv).length > 0) {
+                // @ts-expect-error
                 spawnArgs.env = {
                     ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey
+                    ...(dockerComposeEnv)
                 };
             }
 
@@ -142,11 +144,4 @@ export class DockerCompose {
         });
     }
 
-    private sshPrivateKey (): string | undefined {
-        if (!("CHS_DEV_GITHUB_SSH_PRIVATE_KEY" in process.env)) {
-            return undefined;
-        }
-
-        return readFileSync(process.env.CHS_DEV_GITHUB_SSH_PRIVATE_KEY as string).toString("utf8");
-    }
 }

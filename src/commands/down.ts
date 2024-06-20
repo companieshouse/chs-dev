@@ -3,6 +3,7 @@ import { IConfig } from "@oclif/config";
 import { join } from "path";
 
 import { DockerCompose } from "../run/docker-compose.js";
+import loadConfig from "../helpers/config-loader.js";
 
 export default class Down extends Command {
 
@@ -17,7 +18,7 @@ export default class Down extends Command {
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.dockerCompose = new DockerCompose(process.cwd(), {
+        this.dockerCompose = new DockerCompose(loadConfig(), {
             log: (msg: string) => this.log(msg)
         });
     }
