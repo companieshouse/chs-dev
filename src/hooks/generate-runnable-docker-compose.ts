@@ -5,6 +5,7 @@ import { Service } from "../model/Service.js";
 import { StateManager } from "../state/state-manager.js";
 import { DockerComposeFileGenerator } from "../generator/docker-compose-file-generator.js";
 import { TiltfileGenerator } from "../generator/tiltfile-generator.js";
+import { ServiceLoader } from "../run/service-loader.js";
 
 export const hook: Hook<"generate-runnable-docker-compose"> = async function (options) {
     const path = process.cwd();
@@ -15,46 +16,9 @@ export const hook: Hook<"generate-runnable-docker-compose"> = async function (op
 
     const state = stateManager.snapshot;
 
-    const allServices = inventory.services;
+    const serviceLoader = new ServiceLoader(inventory);
 
-    // Converts a list of service names to a list of services
-    const dependentServices = (dependencyNames: string[]) => dependencyNames.map(dependency => allServices
-        .find(potentialService => potentialService.name === dependency)).filter(dependency => typeof dependency !== "undefined");
-
-    // Loads a list of services which are enabled
-    const enabledServices = allServices
-        .filter(service => state.modules.includes(service.module) || state.services.includes(service.name))
-        .flatMap(service => {
-            return [
-                service,
-                ...dependentServices(service.dependsOn)
-            ]
-                .filter(dependency => typeof dependency !== "undefined");
-        })
-        .reduce((services: Service[], current: Service | undefined) => {
-            if (typeof current === "undefined") {
-                return services;
-            }
-
-            // Deduplicate list only adding new services to the resulting list
-            const existsAlready = services.some(
-                service => service.name === current.name
-            );
-
-            if (!existsAlready) {
-                services.push(current);
-            }
-
-            return services;
-        }, [])
-        .map(
-            service => (
-                {
-                    ...service,
-                    liveUpdate: state.servicesWithLiveUpdate.includes(service.name)
-                }
-            )
-        );
+    const enabledServices = serviceLoader.loadServices(state);
 
     const excludedFiles = state.excludedFiles || [];
 
