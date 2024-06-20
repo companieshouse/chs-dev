@@ -47,9 +47,16 @@ export class DependencyNameResolver {
                     }
                 }
 
-                transitiveDependencies = branchServices.flatMap(service => this.loadFurtherDependencies(service))
+                // load transitive dependencies as any dependencies of the
+                // services just appended to the dependencyList (if any)
+                transitiveDependencies = branchServices
+                    .flatMap(service => this.loadFurtherDependencies(service))
+                    // important that we ignore any transitive dependencies
+                    // already visited
                     .filter(leaf => !dependencyList.includes(leaf));
 
+                // If there are no more transitive dependencies to add then
+                // have exhausted branch, therefore break and process next direct dependency
                 if (transitiveDependencies.length === 0) {
                     exhaustedBranch = true;
                 }
