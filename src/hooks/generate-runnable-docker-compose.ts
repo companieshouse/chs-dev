@@ -1,7 +1,6 @@
 import { Hook } from "@oclif/config";
 
 import { Inventory } from "../state/inventory.js";
-import { Service } from "../model/Service.js";
 import { StateManager } from "../state/state-manager.js";
 import { DockerComposeFileGenerator } from "../generator/docker-compose-file-generator.js";
 import { TiltfileGenerator } from "../generator/tiltfile-generator.js";

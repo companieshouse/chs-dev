@@ -7,6 +7,9 @@ type LoadedService = Service & {
   liveUpdate: boolean;
 }
 
+/**
+ * Class to load services from inventory and state
+ */
 export class ServiceLoader {
 
     private readonly inventory: Inventory;
@@ -15,16 +18,29 @@ export class ServiceLoader {
         this.inventory = inventory;
     }
 
+    /**
+     * Loads the exhaustive list of services to run based upon inventory and
+     * state
+     * @param state of the environment
+     * @returns list of loaded services to be run
+     */
     loadServices (state: State): LoadedService[] {
+        /**
+         * Appends the field liveUpdate to service to make a LoadedService
+         * @param service missing liveUpdate
+         * @returns LoadedService including liveUpdate and attributes of Service
+         */
         const withLiveUpdate = (service: Service) => ({
             ...service,
             liveUpdate: state.servicesWithLiveUpdate.includes(service.name)
         });
 
+        // Collect all services specifed by the state to include
         const loadedServices = this.inventory.services
             .filter(service => state.services.includes(service.name) || state.modules.includes(service.module))
             .map(withLiveUpdate);
 
+        // Collect all dependent services ensuring there are no duplicates
         const fullDependencyList = loadedServices
             .flatMap(service => service.dependsOn)
             .reduce(deduplicate, [])
