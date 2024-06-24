@@ -1,51 +1,20 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
-import { basename, dirname, join } from "path";
+import { basename, join } from "path";
 
 import yaml from "yaml";
 import glob from "glob";
 
-import { collect, deduplicate } from "../helpers/array-reducers.js";
 import { createHash } from "crypto";
 import { Service } from "../model/Service.js";
 import { Module } from "../model/Module.js";
-
-interface DependencySpecification {
-    condition: "service_started" | "service_healthy" | "service_complete";
-    restart?: boolean;
-    required?: boolean;
-}
-
-interface DependencySpecificationMap {
-  [dependency_name: string]: DependencySpecification;
-}
-
-interface ServiceDefinition {
-  labels: string[];
-  depends_on?: string[] | DependencySpecificationMap;
-  healthcheck?: Record<string, any>;
-}
+import { readServices } from "./service-reader.js";
+import { DependencyNameResolver } from "./dependency-name-resolver.js";
 
 interface InventoryCache {
   hash: string;
   services: Service[];
   modules: Module[]
 }
-
-const hasDependencies = (serviceDefinition: Partial<Service>) => {
-    const dependsOn = serviceDefinition.dependsOn || [];
-
-    let outcome = false;
-
-    if (Array.isArray(dependsOn) && dependsOn.length > 0) {
-        outcome = true;
-    }
-
-    if (dependsOn && !Array.isArray(dependsOn) && Object.keys(dependsOn).length > 0) {
-        outcome = true;
-    }
-
-    return outcome;
-};
 
 export class Inventory {
     readonly inventoryCacheFile: string;
@@ -105,90 +74,14 @@ export class Inventory {
     }
 
     private loadServices (): Service[] {
-        const partialServices: Partial<Service>[] = this.serviceFiles
-            .flatMap(filePath => {
-                return {
-                    module: basename(dirname(filePath)),
-                    services: yaml.parse(readFileSync(filePath).toString()).services as { [serviceName: string]: ServiceDefinition },
-                    source: filePath
-                };
-            })
-            .reduce(collect((item: {
-      module: string,
-      services: {[serviceName: string]: ServiceDefinition},
-      source: string
-    }) => {
-                return Object.entries(item.services)
-                    .map(([serviceName, serviceDefinition]: [string, ServiceDefinition]) => {
-                        function findLabel (labels: string[], prefix: string): string | undefined {
-                            const value = labels.find(label => label.startsWith(prefix));
-                            if (value) {
-                                return value.substring(value.indexOf("=") + 1);
-                            }
-                            return undefined;
-                        }
+        const partialServices: Partial<Service>[] = this.serviceFiles.flatMap(readServices);
 
-                        const repository = findLabel(serviceDefinition.labels, "chs.repository.url");
+        const dependencyNameResolver = new DependencyNameResolver(partialServices);
 
-                        return {
-                            name: serviceName,
-                            module: item.module,
-                            description: findLabel(serviceDefinition.labels, "chs.description"),
-                            // eslint-disable-next-line no-negated-condition
-                            repository: repository && repository !== null
-                                ? {
-                                    url: findLabel(serviceDefinition.labels, "chs.repository.url") as string,
-                                    branch: findLabel(serviceDefinition.labels, "chs.repository.branch")
-                                }
-                                : undefined,
-                            source: item.source,
-                            dependsOn: serviceDefinition.depends_on,
-                            builder: findLabel(serviceDefinition.labels, "chs.local.builder") || "",
-                            metadata: {
-                                repoContext: findLabel(serviceDefinition.labels, "chs.local.repoContext"),
-                                ingressRoute: serviceDefinition.labels.find(label => label.startsWith("traefik.http.routers.")),
-                                healthcheck: serviceDefinition.healthcheck?.test,
-                                languageMajorVersion: findLabel(serviceDefinition.labels, "chs.local.builder.languageVersion")
-                            }
-                        } as Service;
-                    });
-            }), []);
-
-        const exploreDependencies = (dependencies: string[] | DependencySpecificationMap | undefined): string[] => {
-            if (typeof dependencies === "undefined") {
-                return [];
-            }
-
-            const dependencyNames: string[] = Array.isArray(dependencies)
-                ? dependencies
-                : Object.keys(dependencies);
-
-            return dependencyNames
-                .flatMap((dependentServiceName: string) => {
-                    const dependentService = partialServices
-                        .filter((service: Partial<Service>) => hasDependencies(service))
-                        .find((service: Partial<Service>) => service.name === dependentServiceName);
-
-                    if (dependentService) {
-                        return [
-                            dependentServiceName,
-                            // @ts-ignore
-                            ...exploreDependencies(dependentService.dependsOn)
-                        ];
-                    }
-                    return [dependentServiceName];
-                }).reduce(deduplicate, []);
-        };
-
-        return partialServices
-            .flatMap(
-                (partialService: Partial<Service>) => {
-                    return {
-                        ...partialService,
-                        dependsOn: exploreDependencies(partialService.dependsOn)
-                    } as Service;
-                }
-            );
+        return partialServices.map(service => ({
+            ...service,
+            dependsOn: dependencyNameResolver.fullDependencyListIncludingTransitive(service.dependsOn as string[])
+        } as Service));
     }
 
     private hashServiceFiles () {

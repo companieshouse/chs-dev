@@ -4,7 +4,6 @@ import { join } from "path";
 import { LogHandler } from "./logs/logs-handler.js";
 import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
-import { parse } from "yaml";
 import Config from "../model/Config.js";
 
 interface Logger {

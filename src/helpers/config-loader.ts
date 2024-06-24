@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { parse } from "yaml";
+import yaml from "yaml";
 import Config from "../model/Config.js";
 
 const fileVarRegExp = /^file:\/\/(.+)$/;
@@ -23,7 +23,7 @@ export const load: () => Config = () => {
     } else {
         const rawConfiguration = readFileSync(join(confFile)).toString("utf8");
 
-        const configuration = parse(rawConfiguration);
+        const configuration = yaml.parse(rawConfiguration);
 
         return {
             env: parseEnv(configuration.env) || {},

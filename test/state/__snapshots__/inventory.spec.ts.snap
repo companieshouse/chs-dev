@@ -25,7 +25,7 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     "description": null,
     "metadata": {
       "healthcheck": "curl http://localhost:8080",
-      "ingressRoute": "traefik.http.routers.service-one.rule=PathPrefix(\`/service-one/*\`)",
+      "ingressRoute": "PathPrefix(\`/service-one/*\`)",
       "languageMajorVersion": null,
       "repoContext": null,
     },
