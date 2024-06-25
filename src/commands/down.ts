@@ -4,6 +4,7 @@ import { cli } from "cli-ux";
 import { DockerCompose } from "../run/docker-compose.js";
 import loadConfig from "../helpers/config-loader.js";
 import { basename } from "path";
+import { Config as ChsDevConfig } from "../model/Config.js";
 
 export default class Down extends Command {
 
@@ -14,17 +15,20 @@ export default class Down extends Command {
     ];
 
     private readonly dockerCompose: DockerCompose;
+    private readonly chsDevConfig: ChsDevConfig;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.dockerCompose = new DockerCompose(loadConfig(), {
+        this.chsDevConfig = loadConfig();
+
+        this.dockerCompose = new DockerCompose(this.chsDevConfig, {
             log: (msg: string) => this.log(msg)
         });
     }
 
     async run (): Promise<any> {
-        cli.action.start(`Stopping chs-dev environment: ${basename(process.cwd())}`);
+        cli.action.start(`Stopping chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
 
         await this.dockerCompose.down();
 
