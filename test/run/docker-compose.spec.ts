@@ -501,4 +501,152 @@ describe("DockerCompose", () => {
             expect(mockWatchLogHandle).toHaveBeenCalledWith("stderr data");
         });
     });
+
+    describe("logs", () => {
+
+        let dockerCompose;
+        const mockStdout = jest.fn();
+
+        const mockSterr = jest.fn();
+        const mockOnce = jest.fn();
+
+        beforeEach(() => {
+            jest.resetAllMocks();
+            dockerCompose = new DockerCompose(config, logger);
+
+            spawnMock.mockReturnValue({
+                // @ts-expect-error
+                stdout: { on: mockStdout },
+                // @ts-expect-error
+                stderr: { on: mockSterr },
+                // @ts-expect-error
+                once: mockOnce
+            });
+
+        });
+
+        it("runs docker compose logs without service when not supplied", async () => {
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(0);
+                }
+            });
+
+            await dockerCompose.logs({});
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "logs"
+            ], {
+                cwd: config.projectPath,
+                env: {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey,
+                    ANOTHER_VALUE: "another-value"
+                }
+            });
+        });
+
+        it("runs docker compose logs with service when supplied", async () => {
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(0);
+                }
+            });
+
+            await dockerCompose.logs({ serviceName: "service-one" });
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "logs",
+                "--",
+                "service-one"
+            ], {
+                cwd: config.projectPath,
+                env: {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey,
+                    ANOTHER_VALUE: "another-value"
+                }
+            });
+        });
+
+        it("resolves when code is 130", async () => {
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(130);
+                }
+            });
+
+            await expect(dockerCompose.logs({})).resolves.toBeUndefined();
+        });
+
+        it("rejects when code is not 0 or 130", async () => {
+
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(1);
+                }
+            });
+
+            await expect(dockerCompose.logs({})).rejects.toBeInstanceOf(Error);
+        });
+
+        it("tails for specified limit", async () => {
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(0);
+                }
+            });
+
+            await dockerCompose.logs({ serviceName: "service-one", tail: "10" });
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "logs",
+                "--tail",
+                "10",
+                "--",
+                "service-one"
+            ], {
+                cwd: config.projectPath,
+                env: {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey,
+                    ANOTHER_VALUE: "another-value"
+                }
+            });
+        });
+
+        it("follows", async () => {
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(0);
+                }
+            });
+
+            await dockerCompose.logs({ serviceName: "service-one", follow: true });
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "logs",
+                "--follow",
+                "--",
+                "service-one"
+            ], {
+                cwd: config.projectPath,
+                env: {
+                    ...(process.env),
+                    SSH_PRIVATE_KEY: sshPrivateKey,
+                    ANOTHER_VALUE: "another-value"
+                }
+            });
+        });
+    });
 });

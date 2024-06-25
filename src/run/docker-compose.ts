@@ -5,6 +5,7 @@ import { LogHandler } from "./logs/logs-handler.js";
 import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
 import Config from "../model/Config.js";
+import { LogEverythingLogHandler } from "./logs/LogEverythingLogHandler.js";
 
 interface Logger {
     log: (msg: string) => void;
@@ -15,6 +16,13 @@ const CONTAINER_STOPPED_STATUS_PATTERN =
 
 const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
     /Container\s([\dA-Za-z-]*)\s*(Started|Healthy|Stopped)/;
+
+type LogsArgs = {
+    serviceName: string | undefined,
+    tail: string | undefined,
+    follow: boolean | undefined,
+    signal: AbortSignal | undefined
+}
 
 export class DockerCompose {
 
@@ -76,6 +84,16 @@ export class DockerCompose {
         new DockerComposeWatchLogHandler(this.logFile, this.logger),
         signal
         );
+    }
+
+    logs ({ serviceName, signal, tail, follow }: LogsArgs): Promise<void> {
+        return this.dockerComposeAction([
+            "logs",
+            ...(tail && tail !== "all" ? ["--tail", tail] : []),
+            ...(follow && follow === true ? ["--follow"] : []),
+            ...(serviceName ? ["--", serviceName] : [])
+        ], new LogEverythingLogHandler(this.logger),
+        signal);
     }
 
     private dockerComposeAction (
