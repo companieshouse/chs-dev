@@ -24,11 +24,11 @@ export default class Down extends Command {
     }
 
     async run (): Promise<any> {
-        cli.action.start(`Stopping chs-dev environment: ${basename(process.cwd())}`)
+        cli.action.start(`Stopping chs-dev environment: ${basename(process.cwd())}`);
 
         await this.dockerCompose.down();
-        
-        cli.action.stop()
+
+        cli.action.stop();
     }
 
 }

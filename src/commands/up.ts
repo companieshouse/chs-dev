@@ -35,7 +35,7 @@ export default class Up extends Command {
     }
 
     async run (): Promise<any> {
-        cli.action.start(`Running chs-dev environment: ${basename(process.cwd())}`)
+        cli.action.start(`Running chs-dev environment: ${basename(process.cwd())}`);
         await this.dockerCompose.up();
 
         if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
