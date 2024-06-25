@@ -1,9 +1,9 @@
 import { Command, Config } from "@oclif/core";
-import { IConfig } from "@oclif/config";
-import { join } from "path";
+import { cli } from "cli-ux";
 
 import { DockerCompose } from "../run/docker-compose.js";
 import loadConfig from "../helpers/config-loader.js";
+import { basename } from "path";
 
 export default class Down extends Command {
 
@@ -24,7 +24,11 @@ export default class Down extends Command {
     }
 
     async run (): Promise<any> {
-        return await this.dockerCompose.down();
+        cli.action.start(`Stopping chs-dev environment: ${basename(process.cwd())}`)
+
+        await this.dockerCompose.down();
+        
+        cli.action.stop()
     }
 
 }
