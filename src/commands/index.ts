@@ -1,6 +1,7 @@
 import Development from "./development.js";
 import Down from "./down.js";
 import Exclusions from "./exclusions.js";
+import Logs from "./logs.js";
 import Modules from "./modules.js";
 import Reload from "./reload.js";
 import Services from "./services.js";
@@ -17,7 +18,8 @@ export const commands = {
     services: Services,
     status: Status,
     up: Up,
-    sync: Sync
+    sync: Sync,
+    logs: Logs
 };
 
 export default commands;
