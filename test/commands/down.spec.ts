@@ -17,10 +17,10 @@ jest.mock("../../src/run/docker-compose", () => {
 });
 
 jest.mock("../../src/helpers/config-loader", function () {
-    return jest.fn().mockImplementation(() => ({
+    return () => ({
         env: {},
-        projectPath: "."
-    }));
+        projectPath: "./docker-env"
+    });
 });
 
 describe("Down command", () => {

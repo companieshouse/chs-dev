@@ -1,11 +1,14 @@
 import confirm from "@inquirer/confirm";
 import { Command, Config } from "@oclif/core";
+import { cli } from "cli-ux";
 
 import { DependencyCache } from "../run/dependency-cache.js";
 import { DevelopmentMode } from "../run/development-mode.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import { StateManager } from "../state/state-manager.js";
 import loadConfig from "../helpers/config-loader.js";
+import { basename } from "path";
+import { Config as ChsDevConfig } from "../model/Config.js";
 
 export default class Up extends Command {
 
@@ -19,11 +22,13 @@ export default class Up extends Command {
     private readonly developmentMode: DevelopmentMode;
     private readonly dockerCompose: DockerCompose;
     private readonly stateManager: StateManager;
+    private readonly chsDevConfig: ChsDevConfig;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.dockerCompose = new DockerCompose(loadConfig(), {
+        this.chsDevConfig = loadConfig();
+        this.dockerCompose = new DockerCompose(this.chsDevConfig, {
             log: (msg: string) => this.log(msg)
         });
 
@@ -33,6 +38,7 @@ export default class Up extends Command {
     }
 
     async run (): Promise<any> {
+        cli.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         await this.dockerCompose.up();
 
         if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
@@ -42,6 +48,7 @@ export default class Up extends Command {
                 message: prompt
             }));
         }
+        cli.action.stop();
     }
 
 }
