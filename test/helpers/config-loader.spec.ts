@@ -27,7 +27,7 @@ describe("load", () => {
     it("returns empty configuration when no configuration file exists", () => {
         existsSyncMock.mockReturnValue(false);
 
-        expect(load()).toEqual({ env: {}, projectPath: pwd });
+        expect(load()).toEqual({ projectName: "docker-chs", env: {}, projectPath: pwd, authenticatedRepositories: [] });
     });
 
     it("returns configuration file with environment when file exists with environment", () => {
@@ -47,7 +47,10 @@ describe("load", () => {
                 ENV_VAR_FOUR: "file://./file-two.csv",
                 ENV_VAR_FIVE: "file:///users/user/file-two",
                 ENV_VAR_SIX: "file://~/.file-not-found"
-            }
+            },
+            authed_repositories: [
+                "123456789.dkr.eu-west-2.amazonaws.com"
+            ]
         };
         readFileSyncMock.mockImplementation((path, _) => {
             if (path === join(pwd, "chs-dev/config.yaml")) {
@@ -58,6 +61,7 @@ describe("load", () => {
         });
 
         expect(load()).toEqual({
+            projectName: "docker-chs",
             env: {
                 ENV_VAR_ONE: "some_value",
                 ENV_VAR_TWO: "some_other_value",
@@ -66,7 +70,35 @@ describe("load", () => {
                 ENV_VAR_FIVE: "foo=bar",
                 ENV_VAR_SIX: "file://~/.file-not-found"
             },
-            projectPath: pwd
+            projectPath: pwd,
+            authenticatedRepositories: [
+                "123456789.dkr.eu-west-2.amazonaws.com"
+            ],
+            performEcrLoginHoursThreshold: 8
+        });
+    });
+
+    it("returns defined login threshold", () => {
+        existsSyncMock.mockReturnValue(true);
+
+        const configuration = {
+            env: {},
+            authed_repositories: [
+                "123456789.dkr.eu-west-2.amazonaws.com"
+            ],
+            ecr_login_threshold_hours: 7
+        };
+
+        readFileSyncMock.mockReturnValue(
+            Buffer.from(yaml.stringify(configuration), "utf8")
+        );
+
+        expect(load()).toEqual({
+            env: {},
+            projectPath: pwd,
+            projectName: "docker-chs",
+            authenticatedRepositories: ["123456789.dkr.eu-west-2.amazonaws.com"],
+            performEcrLoginHoursThreshold: 7
         });
     });
 });

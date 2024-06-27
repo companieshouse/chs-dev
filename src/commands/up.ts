@@ -38,6 +38,16 @@ export default class Up extends Command {
     }
 
     async run (): Promise<any> {
+        try {
+            await this.config.runHook("ensure-ecr-logged-in", {});
+        } catch (error) {
+            return this.error(error as Error, {
+                suggestions: [
+                    "Login to ECR manually and try again"
+                ]
+            });
+        }
+
         cli.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         await this.dockerCompose.up();
 
