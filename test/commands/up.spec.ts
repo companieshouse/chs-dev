@@ -133,4 +133,18 @@ describe("Up command", () => {
         });
 
     });
+
+    it("should run the ensure ecr is logged in hook", async () => {
+        await up.run();
+
+        expect(runHookMock).toHaveBeenCalledWith("ensure-ecr-logged-in", {});
+    });
+
+    it("should not run up if ecr was not logged in successfully", async () => {
+        runHookMock.mockRejectedValue(new Error("error"));
+
+        await expect(up.run()).rejects.toEqual(expect.anything());
+
+        expect(dockerComposeUpMock).not.toHaveBeenCalled();
+    });
 });

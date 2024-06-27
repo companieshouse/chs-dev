@@ -23,7 +23,9 @@ describe("DockerCompose", () => {
             SSH_PRIVATE_KEY: sshPrivateKey,
             ANOTHER_VALUE: "another-value"
         },
-        projectPath: "./"
+        projectPath: "./",
+        authenticatedRepositories: [],
+        projectName: "project"
     };
 
     jest.mock("../../src/run/logs/PatternMatchingConsoleLogHandler", () => {
@@ -235,7 +237,9 @@ describe("DockerCompose", () => {
 
             const configMinusEnv = {
                 projectPath: "./",
-                env: {}
+                projectName: "project",
+                env: {},
+                authenticatedRepositories: []
             };
 
             const dockerComposeMinusEnv = new DockerCompose(configMinusEnv, logger);

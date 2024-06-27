@@ -23,7 +23,9 @@ describe("ComposeLogViewer", () => {
 
         composeLogViewer = new ComposeLogViewer({
             env: {},
-            projectPath: "."
+            projectPath: ".",
+            authenticatedRepositories: [],
+            projectName: "docker-chs"
         }, loggerMock);
 
         spawnStreamMock = new EventEmitter();

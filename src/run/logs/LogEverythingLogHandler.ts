@@ -18,3 +18,5 @@ export class LogEverythingLogHandler implements LogHandler {
         }
     }
 }
+
+export default LogEverythingLogHandler;

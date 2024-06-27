@@ -5,6 +5,11 @@
 export type Config = {
 
     /**
+     * name to refer to the project/environment
+     */
+    readonly projectName: string;
+
+    /**
      * path to the project repository
      */
     readonly projectPath: string;
@@ -15,6 +20,18 @@ export type Config = {
      * its place.
      */
     readonly env: Record<string, string>;
+
+    /**
+     * collection of Docker repositories in use by the project which require
+     * authentication.
+     */
+    readonly authenticatedRepositories: string[];
+
+    /**
+     * when supplied defines the threshold for number of hours after which to
+     * attempt ecr login
+     */
+    readonly performEcrLoginHoursThreshold?: number;
 }
 
 export default Config;
