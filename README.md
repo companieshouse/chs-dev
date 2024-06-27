@@ -396,10 +396,16 @@ USAGE
 
 FLAGS
   -f, --force            Forces all changes without prompting the user.
-  -v, --version=<value>  [default: latest] Specifies the version to sync to
+  -v, --version=<value>  Specifies the version/version range to sync to. When a range is specified it will select the
+                         most recent that satisfies the range
 
 DESCRIPTION
   Synchronises the local version to the version specifed
+
+  Calls the GitHub API to resolve the version depending on whether the version specified
+  will depend on the number of calls to the GitHub API, the CLI may require the environment
+  variable 'GITHUB_PAT' set with a PAT capable of calling GitHub. GitHub rate limiting
+  will prevent >60 unauthenticated requests an hour.
 ```
 
 ## `chs-dev up`
@@ -442,6 +448,9 @@ within the current working directory.
   regardless of when it was previously run
 * `CHS_DEV_FORCE_ECR_CHECK` - when set will always run ECR login before running
   up
+* `GITHUB_PAT` - when supplied will use the PAT value to authenticate with
+  Github to reduce the likelihood of encountering rate limits when interacting
+  with GitHub's API.
 
 ### Service configuration
 

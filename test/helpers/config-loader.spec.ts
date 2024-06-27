@@ -101,4 +101,26 @@ describe("load", () => {
             performEcrLoginHoursThreshold: 7
         });
     });
+
+    it("returns configuration with versionSpecification when defined in project", () => {
+        existsSyncMock.mockReturnValue(true);
+
+        const configuration = {
+            env: {},
+            authed_repositories: [],
+            version: ">1.0 <2.0"
+        };
+
+        readFileSyncMock.mockReturnValue(
+            Buffer.from(yaml.stringify(configuration), "utf8")
+        );
+
+        expect(load()).toEqual({
+            env: {},
+            projectPath: pwd,
+            projectName: "docker-chs",
+            authenticatedRepositories: [],
+            versionSpecification: ">1.0 <2.0"
+        });
+    });
 });
