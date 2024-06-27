@@ -2,7 +2,7 @@ import { join } from "path";
 import Config from "../model/Config.js";
 import glob from "glob";
 import { LogEverythingLogHandler } from "./logs/LogEverythingLogHandler.js";
-import { spawn } from "child_process";
+import { spawn } from "../helpers/spawn-promise.js";
 
 export class ComposeLogViewer {
 
@@ -41,21 +41,21 @@ export class ComposeLogViewer {
             command = "cat";
         }
 
-        return new Promise((resolve, reject) => {
-            const spawnedProcess = spawn(
+        try {
+            await spawn(
                 command,
-                [...options, "--", logFile]
-            );
-
-            spawnedProcess.stdout.on("data", (chunk) => stoutLogHandler.handle(chunk));
-            spawnedProcess.stderr.on("data", (chunk) => stderrLogHandler.handle(chunk));
-            spawnedProcess.once("exit", (code) => {
-                if (code === 0) {
-                    return resolve();
+                [...options, "--", logFile],
+                {
+                    logHandler: stoutLogHandler,
+                    stderrLogHandler
                 }
-                return reject(new Error(`Process exited with exit code: ${code}`));
-            });
-            spawnedProcess.once("error", (err) => reject(err));
-        });
+            );
+        } catch (codeOrError) {
+            if (codeOrError instanceof Error) {
+                throw codeOrError;
+            } else {
+                throw new Error(`Process exited with exit code: ${codeOrError}`);
+            }
+        }
     }
 }

@@ -8,13 +8,14 @@ import Config from "../../src/model/Config";
 
 describe("DockerCompose", () => {
     const execSyncMock = jest.spyOn(childProcess, "execSync");
-    const spawnMock = jest.spyOn(childProcess, "spawn");
+    const spawnMock = jest.fn();
     const existsSyncMock = jest.spyOn(fs, "existsSync");
     const mkdirSyncMock = jest.spyOn(fs, "mkdirSync");
     const readFileSyncMock = jest.spyOn(fs, "readFileSync");
 
     const mockPatternMatchingHandle = jest.fn();
     const mockWatchLogHandle = jest.fn();
+    const mockLogEverythingLogHandle = jest.fn();
 
     const sshPrivateKey = "ssh-rsa blagr94@testuer";
 
@@ -41,6 +42,20 @@ describe("DockerCompose", () => {
             return {
                 handle: mockWatchLogHandle
             };
+        };
+    });
+
+    jest.mock("../../src/run/logs/LogEverythingLogHandler", () => {
+        return function () {
+            return {
+                handle: mockLogEverythingLogHandle
+            };
+        };
+    });
+
+    jest.mock("../../src/helpers/spawn-promise", () => {
+        return {
+            spawn: spawnMock
         };
     });
 
@@ -183,14 +198,7 @@ describe("DockerCompose", () => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
 
-            spawnMock.mockReturnValue({
-                // @ts-expect-error
-                stdout: { on: mockStdout },
-                // @ts-expect-error
-                stderr: { on: mockSterr },
-                // @ts-expect-error
-                once: mockOnce
-            });
+            spawnMock.mockResolvedValue(undefined as never);
 
             existsSyncMock.mockReturnValue(true);
         });
@@ -205,18 +213,25 @@ describe("DockerCompose", () => {
 
             await dockerCompose.down();
 
-            expect(spawnMock).toHaveBeenCalledWith("docker", [
-                "compose",
-                "down",
-                "--remove-orphans"
-            ], {
-                cwd: config.projectPath,
-                env: {
-                    ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey,
-                    ANOTHER_VALUE: "another-value"
-                }
-            });
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockPatternMatchingHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value"
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
+
+            expect(spawnMock).toHaveBeenCalledWith("docker",
+                [
+                    "compose",
+                    "down",
+                    "--remove-orphans"
+                ], expectedSpawnOptions);
         });
 
         it("env not set in config then no environment vars set", async () => {
@@ -246,165 +261,68 @@ describe("DockerCompose", () => {
 
             await dockerComposeMinusEnv.down();
 
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockPatternMatchingHandle },
+                acceptableExitCodes: [0, 130],
+                spawnOptions: {
+                    cwd: "./"
+                }
+            };
+
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
                 "down",
                 "--remove-orphans"
-            ], {
-                cwd: "./"
-            });
-        });
-
-        it("resolves when code is 130", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(130);
-                }
-            });
-
-            await expect(dockerCompose.down()).resolves.toBeUndefined();
+            ], expectedSpawnOptions);
         });
 
         it("rejects when code is not 0 or 130", async () => {
-
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(1);
-                }
-            });
+            spawnMock.mockRejectedValue(1 as never);
 
             await expect(dockerCompose.down()).rejects.toBeInstanceOf(Error);
-        });
-
-        it("attaches pattern listener to stdout and stderr", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(0);
-                }
-            });
-
-            mockStdout.mockImplementation((event, listener) => {
-                if (event === "data") {
-                    // @ts-expect-error
-                    listener("stdout data");
-                }
-            });
-
-            mockSterr.mockImplementation((event, listener) => {
-                if (event === "data") {
-                    // @ts-expect-error
-                    listener("stderr data");
-                }
-            });
-
-            await dockerCompose.down();
-
-            expect(mockPatternMatchingHandle).toHaveBeenCalledWith("stdout data");
-            expect(mockPatternMatchingHandle).toHaveBeenCalledWith("stderr data");
         });
     });
 
     describe("up", () => {
         let dockerCompose;
-        const mockStdout = jest.fn();
-
-        const mockSterr = jest.fn();
-        const mockOnce = jest.fn();
 
         beforeEach(() => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
 
-            spawnMock.mockReturnValue({
-                // @ts-expect-error
-                stdout: { on: mockStdout },
-                // @ts-expect-error
-                stderr: { on: mockSterr },
-                // @ts-expect-error
-                once: mockOnce
-            });
+            spawnMock.mockResolvedValue(undefined as never);
 
             existsSyncMock.mockReturnValue(true);
         });
 
         it("executes docker compose down", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(0);
-                }
-            });
-
             await dockerCompose.up();
+
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockPatternMatchingHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value"
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
                 "up",
                 "-d",
                 "--remove-orphans"
-            ], {
-                cwd: config.projectPath,
-                env: {
-                    ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey,
-                    ANOTHER_VALUE: "another-value"
-                },
-                signal: undefined
-            });
-        });
-
-        it("resolves when code is 130", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(130);
-                }
-            });
-
-            await expect(dockerCompose.up()).resolves.toBeUndefined();
+            ], expectedSpawnOptions);
         });
 
         it("rejects when code is not 0 or 130", async () => {
-
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(1);
-                }
-            });
+            spawnMock.mockRejectedValue(1 as never);
 
             await expect(dockerCompose.up()).rejects.toBeInstanceOf(Error);
-        });
-
-        it("attaches pattern listener to stdout and stderr", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(0);
-                }
-            });
-
-            mockStdout.mockImplementation((event, listener) => {
-                if (event === "data") {
-                    // @ts-expect-error
-                    listener("stdout data");
-                }
-            });
-
-            mockSterr.mockImplementation((event, listener) => {
-                if (event === "data") {
-                    // @ts-expect-error
-                    listener("stderr data");
-                }
-            });
-
-            await dockerCompose.up();
-
-            expect(mockPatternMatchingHandle).toHaveBeenCalledWith("stdout data");
-            expect(mockPatternMatchingHandle).toHaveBeenCalledWith("stderr data");
         });
     });
 
@@ -420,89 +338,37 @@ describe("DockerCompose", () => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
 
-            spawnMock.mockReturnValue({
-                // @ts-expect-error
-                stdout: { on: mockStdout },
-                // @ts-expect-error
-                stderr: { on: mockSterr },
-                // @ts-expect-error
-                once: mockOnce
-            });
+            spawnMock.mockResolvedValue(undefined as never);
 
         });
 
         it("runs docker compose watch", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(0);
-                }
-            });
 
             await dockerCompose.watch();
+
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockWatchLogHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value"
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
                 "watch"
-            ], {
-                cwd: config.projectPath,
-                env: {
-                    ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey,
-                    ANOTHER_VALUE: "another-value"
-                }
-            });
-        });
-
-        it("resolves when code is 130", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(130);
-                }
-            });
-
-            await expect(dockerCompose.watch()).resolves.toBeUndefined();
+            ], expectedSpawnOptions);
         });
 
         it("rejects when code is not 0 or 130", async () => {
-
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(1);
-                }
-            });
+            spawnMock.mockRejectedValue(1 as never);
 
             await expect(dockerCompose.watch()).rejects.toBeInstanceOf(Error);
-        });
-
-        it("attaches pattern listener to stdout and stderr", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(0);
-                }
-            });
-
-            mockStdout.mockImplementation((event, listener) => {
-                if (event === "data") {
-                    // @ts-expect-error
-                    listener("stdout data");
-                }
-            });
-
-            mockSterr.mockImplementation((event, listener) => {
-                if (event === "data") {
-                    // @ts-expect-error
-                    listener("stderr data");
-                }
-            });
-
-            await dockerCompose.watch();
-
-            expect(mockWatchLogHandle).toHaveBeenCalledWith("stdout data");
-            expect(mockWatchLogHandle).toHaveBeenCalledWith("stderr data");
         });
     });
 
@@ -518,38 +384,30 @@ describe("DockerCompose", () => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
 
-            spawnMock.mockReturnValue({
-                // @ts-expect-error
-                stdout: { on: mockStdout },
-                // @ts-expect-error
-                stderr: { on: mockSterr },
-                // @ts-expect-error
-                once: mockOnce
-            });
+            spawnMock.mockResolvedValue(undefined as never);
 
         });
 
         it("runs docker compose logs without service when not supplied", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(0);
-                }
-            });
-
             await dockerCompose.logs({});
+
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockLogEverythingLogHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value"
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
                 "logs"
-            ], {
-                cwd: config.projectPath,
-                env: {
-                    ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey,
-                    ANOTHER_VALUE: "another-value"
-                }
-            });
+            ], expectedSpawnOptions);
         });
 
         it("runs docker compose logs with service when supplied", async () => {
@@ -562,40 +420,28 @@ describe("DockerCompose", () => {
 
             await dockerCompose.logs({ serviceName: "service-one" });
 
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockLogEverythingLogHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value"
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
+
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
                 "logs",
                 "--",
                 "service-one"
-            ], {
-                cwd: config.projectPath,
-                env: {
-                    ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey,
-                    ANOTHER_VALUE: "another-value"
-                }
-            });
+            ], expectedSpawnOptions);
         });
-
-        it("resolves when code is 130", async () => {
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(130);
-                }
-            });
-
-            await expect(dockerCompose.logs({})).resolves.toBeUndefined();
-        });
-
         it("rejects when code is not 0 or 130", async () => {
-
-            mockOnce.mockImplementation((type, listener) => {
-                if (type === "exit") {
-                    // @ts-expect-error
-                    listener(1);
-                }
-            });
+            spawnMock.mockRejectedValue(1 as never);
 
             await expect(dockerCompose.logs({})).rejects.toBeInstanceOf(Error);
         });
@@ -617,14 +463,7 @@ describe("DockerCompose", () => {
                 "10",
                 "--",
                 "service-one"
-            ], {
-                cwd: config.projectPath,
-                env: {
-                    ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey,
-                    ANOTHER_VALUE: "another-value"
-                }
-            });
+            ], expect.anything());
         });
 
         it("follows", async () => {
@@ -643,14 +482,7 @@ describe("DockerCompose", () => {
                 "--follow",
                 "--",
                 "service-one"
-            ], {
-                cwd: config.projectPath,
-                env: {
-                    ...(process.env),
-                    SSH_PRIVATE_KEY: sshPrivateKey,
-                    ANOTHER_VALUE: "another-value"
-                }
-            });
+            ], expect.anything());
         });
     });
 });
