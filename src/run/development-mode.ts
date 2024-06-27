@@ -1,5 +1,6 @@
 import { existsSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
+import { cli } from "cli-ux";
 
 import { DockerCompose } from "./docker-compose.js";
 
@@ -41,11 +42,15 @@ export class DevelopmentMode {
     protected sigintHandler (controller: AbortController, prompter?: Prompter): Promise<void> {
         this.releaseLock();
 
+        cli.action.stop();
+
         const stopEnvironment = prompter
             ? prompter("Do you want to stop running your local docker environment?")
             : Promise.resolve(true);
 
         return stopEnvironment.then((stop) => {
+
+            cli.action.start("Stopping chs-dev environment");
             if (stop) {
                 return this.dockerCompose.down();
             }

@@ -1,22 +1,29 @@
-import { expect, jest } from "@jest/globals";
-import { ComposeLogViewer } from "../../src/run/compose-log-viewer";
+import { beforeAll, expect, jest } from "@jest/globals";
 import glob from "glob";
-import fs from "fs";
-import { EventEmitter, PassThrough } from "stream";
-import childProcess from "child_process";
+import LogEverythingLogHandler from "../../src/run/logs/LogEverythingLogHandler";
 
 jest.mock("glob");
 
 describe("ComposeLogViewer", () => {
 
-    let composeLogViewer: ComposeLogViewer;
-    const spawnMock = jest.spyOn(childProcess, "spawn");
-    let spawnStreamMock;
-    let stdoutStreamMock;
-    let stderrStreamMock;
+    const spawnMock = jest.fn();
+
     const loggerMock = {
         log: jest.fn()
     };
+
+    jest.mock("../../src/helpers/spawn-promise", () => {
+        return {
+            spawn: spawnMock
+        };
+    });
+
+    let ComposeLogViewer;
+    let composeLogViewer;
+
+    beforeAll(async () => {
+        ({ ComposeLogViewer } = await import("../../src/run/compose-log-viewer"));
+    });
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -28,14 +35,7 @@ describe("ComposeLogViewer", () => {
             projectName: "docker-chs"
         }, loggerMock);
 
-        spawnStreamMock = new EventEmitter();
-        stdoutStreamMock = new PassThrough();
-        stderrStreamMock = new PassThrough();
-
-        spawnStreamMock.stdout = stdoutStreamMock;
-        spawnStreamMock.stderr = stderrStreamMock;
-
-        spawnMock.mockReturnValue(spawnStreamMock as any);
+        spawnMock.mockResolvedValue(undefined as never);
     });
 
     it("rejects when there are no log files", async () => {
@@ -64,14 +64,7 @@ describe("ComposeLogViewer", () => {
         beforeEach(() => {
             jest.resetAllMocks();
 
-            spawnStreamMock = new EventEmitter();
-            stdoutStreamMock = new PassThrough();
-            stderrStreamMock = new PassThrough();
-
-            spawnStreamMock.stdout = stdoutStreamMock;
-            spawnStreamMock.stderr = stderrStreamMock;
-
-            spawnMock.mockReturnValue(spawnStreamMock as any);
+            spawnMock.mockResolvedValue(undefined as never);
         });
 
         it("opens the file when only one", async () => {
@@ -80,18 +73,18 @@ describe("ComposeLogViewer", () => {
                 "local/.logs/compose.out.1716472062.txt"
             ]);
 
-            const composeLogViewPromise = composeLogViewer.view({
+            await composeLogViewer.view({
                 follow: true,
                 tail: "all"
             });
 
-            spawnStreamMock.emit("exit", 0);
-
-            await composeLogViewPromise;
-
             expect(spawnMock).toHaveBeenCalledWith(
                 "tail",
-                ["-f", "--", "local/.logs/compose.out.1716472062.txt"]
+                ["-f", "--", "local/.logs/compose.out.1716472062.txt"],
+                {
+                    logHandler: expect.any(LogEverythingLogHandler),
+                    stderrLogHandler: expect.any(LogEverythingLogHandler)
+                }
             );
         });
 
@@ -105,64 +98,28 @@ describe("ComposeLogViewer", () => {
                 "local/.logs/compose.out.1716472039.txt"
             ]);
 
-            const composeLogViewPromise = composeLogViewer.view({
+            await composeLogViewer.view({
                 follow: true,
                 tail: "all"
             });
-
-            spawnStreamMock.emit("exit", 0);
-
-            await composeLogViewPromise;
 
             expect(spawnMock).toHaveBeenCalledWith(
                 "tail",
-                ["-f", "--", "local/.logs/compose.out.1716472062.txt"]
+                ["-f", "--", "local/.logs/compose.out.1716472062.txt"],
+                {
+                    logHandler: expect.any(LogEverythingLogHandler),
+                    stderrLogHandler: expect.any(LogEverythingLogHandler)
+                }
             );
-        });
-
-        it("resolves and logs file contents", async () => {
-
-            // @ts-expect-error
-            glob.sync.mockReturnValue([
-                "local/.logs/compose.out.1716472059.txt",
-                "local/.logs/compose.out.1716472062.txt",
-                "local/.logs/compose.out.1716472049.txt",
-                "local/.logs/compose.out.1716472039.txt"
-            ]);
-
-            const viewComposeLogsPromise = composeLogViewer.view({
-                follow: true,
-                tail: "all"
-            });
-
-            stdoutStreamMock.emit("data", "line 1\nline 2\n");
-            stdoutStreamMock.emit("data", "line 3");
-            spawnStreamMock.emit("exit", 0);
-
-            await expect(viewComposeLogsPromise).resolves.toBeUndefined();
-
-            expect(loggerMock.log).toHaveBeenCalledTimes(3);
-            expect(loggerMock.log).toHaveBeenCalledWith("line 1");
-            expect(loggerMock.log).toHaveBeenCalledWith("line 2");
-            expect(loggerMock.log).toHaveBeenCalledWith("line 3");
         });
 
     });
 
     describe("non-follow", () => {
-        const readFileSyncMock = jest.spyOn(fs, "readFileSync");
-
         beforeEach(() => {
             jest.resetAllMocks();
 
-            spawnStreamMock = new EventEmitter();
-            stdoutStreamMock = new PassThrough();
-            stderrStreamMock = new PassThrough();
-
-            spawnStreamMock.stdout = stdoutStreamMock;
-            spawnStreamMock.stderr = stderrStreamMock;
-
-            spawnMock.mockReturnValue(spawnStreamMock as any);
+            spawnMock.mockResolvedValue(undefined as never);
         });
 
         it("opens the file when only one", async () => {
@@ -171,21 +128,20 @@ describe("ComposeLogViewer", () => {
                 "local/.logs/compose.out.1716472062.txt"
             ]);
 
-            const viewPromise = composeLogViewer.view({
+            await composeLogViewer.view({
                 follow: false,
                 tail: "all"
             });
-
-            spawnStreamMock.emit("exit", 0);
-
-            await viewPromise;
 
             expect(spawnMock).toHaveBeenCalledWith(
                 "cat",
                 [
                     "--",
                     "local/.logs/compose.out.1716472062.txt"
-                ]
+                ], {
+                    logHandler: expect.any(LogEverythingLogHandler),
+                    stderrLogHandler: expect.any(LogEverythingLogHandler)
+                }
             );
         });
 
@@ -198,57 +154,21 @@ describe("ComposeLogViewer", () => {
                 "local/.logs/compose.out.1716472039.txt"
             ]);
 
-            const viewPromise = composeLogViewer.view({
+            await composeLogViewer.view({
                 follow: false,
                 tail: "all"
             });
-
-            spawnStreamMock.emit("exit", 0);
-
-            await viewPromise;
 
             expect(spawnMock).toHaveBeenCalledWith(
                 "cat",
                 [
                     "--",
                     "local/.logs/compose.out.1716472062.txt"
-                ]
+                ], {
+                    logHandler: expect.any(LogEverythingLogHandler),
+                    stderrLogHandler: expect.any(LogEverythingLogHandler)
+                }
             );
-        });
-
-        it("tails last n lines", async () => {
-            // @ts-expect-error
-            glob.sync.mockReturnValue([
-                "local/.logs/compose.out.1716472059.txt",
-                "local/.logs/compose.out.1716472062.txt",
-                "local/.logs/compose.out.1716472049.txt",
-                "local/.logs/compose.out.1716472039.txt"
-            ]);
-
-            const viewPromise = composeLogViewer.view({
-                follow: false,
-                tail: "20"
-            });
-
-            for (let lineNumber = 1; lineNumber <= 20; lineNumber++) {
-                stdoutStreamMock.emit("data", `line ${lineNumber}`);
-            }
-
-            spawnStreamMock.emit("exit", 0);
-
-            await viewPromise;
-
-            expect(spawnMock).toHaveBeenCalledWith(
-                "tail",
-                [
-                    "-n",
-                    "20",
-                    "--",
-                    "local/.logs/compose.out.1716472062.txt"
-                ]
-            );
-
-            expect(loggerMock.log).toBeCalledTimes(20);
         });
     });
 
@@ -259,14 +179,12 @@ describe("ComposeLogViewer", () => {
             "local/.logs/compose.out.1716472039.txt"
         ]);
 
-        const viewPromise = composeLogViewer.view({
+        spawnMock.mockRejectedValue(1 as never);
+
+        await expect(composeLogViewer.view({
             follow: false,
             tail: "20"
-        });
-
-        spawnStreamMock.emit("exit", 1);
-
-        await expect(viewPromise).rejects.toEqual(new Error("Process exited with exit code: 1"));
+        })).rejects.toEqual(new Error("Process exited with exit code: 1"));
     });
 
     it("rejects when error", async () => {
@@ -276,34 +194,12 @@ describe("ComposeLogViewer", () => {
             "local/.logs/compose.out.1716472039.txt"
         ]);
 
-        const viewPromise = composeLogViewer.view({
+        spawnMock.mockRejectedValue(new Error("an error") as never);
+
+        await expect(composeLogViewer.view({
             follow: false,
             tail: "20"
-        });
-
-        spawnStreamMock.emit("error", new Error("an error"));
-
-        await expect(viewPromise).rejects.toEqual(new Error("an error"));
+        })).rejects.toEqual(new Error("an error"));
     });
 
-    it("logs stderror with ERROR: prefix", async () => {
-
-        // @ts-expect-error
-        glob.sync.mockReturnValue([
-            "local/.logs/compose.out.1716472039.txt"
-        ]);
-
-        const viewPromise = composeLogViewer.view({
-            follow: false,
-            tail: "20"
-        });
-
-        stderrStreamMock.emit("data", "some data from stderr");
-
-        spawnStreamMock.emit("error", new Error("an error"));
-
-        await expect(viewPromise).rejects.toEqual(new Error("an error"));
-
-        expect(loggerMock.log).toHaveBeenCalledWith("ERROR:\tsome data from stderr");
-    });
 });

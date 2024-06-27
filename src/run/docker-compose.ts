@@ -1,11 +1,12 @@
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
 import { existsSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { LogHandler } from "./logs/logs-handler.js";
 import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
 import Config from "../model/Config.js";
-import { LogEverythingLogHandler } from "./logs/LogEverythingLogHandler.js";
+import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
+import { spawn } from "../helpers/spawn-promise.js";
 
 interface Logger {
     log: (msg: string) => void;
@@ -44,7 +45,7 @@ export class DockerCompose {
     }
 
     down (signal?: AbortSignal): Promise<void> {
-        return this.dockerComposeAction(["down", "--remove-orphans"],
+        return this.runDockerCompose(["down", "--remove-orphans"],
             this.createStatusMatchLogHandler(CONTAINER_STOPPED_STATUS_PATTERN),
             signal
         );
@@ -71,14 +72,14 @@ export class DockerCompose {
     }
 
     up (signal?: AbortSignal): Promise<void> {
-        return this.dockerComposeAction(["up", "-d", "--remove-orphans"],
+        return this.runDockerCompose(["up", "-d", "--remove-orphans"],
             this.createStatusMatchLogHandler(CONTAINER_STARTED_HEALTHY_STATUS_PATTERN),
             signal
         );
     }
 
     watch (signal?: AbortSignal): Promise<void> {
-        return this.dockerComposeAction([
+        return this.runDockerCompose([
             "watch"
         ],
         new DockerComposeWatchLogHandler(this.logFile, this.logger),
@@ -87,7 +88,7 @@ export class DockerCompose {
     }
 
     logs ({ serviceName, signal, tail, follow }: LogsArgs): Promise<void> {
-        return this.dockerComposeAction([
+        return this.runDockerCompose([
             "logs",
             ...(tail && tail !== "all" ? ["--tail", tail] : []),
             ...(follow && follow === true ? ["--follow"] : []),
@@ -96,69 +97,48 @@ export class DockerCompose {
         signal);
     }
 
-    private dockerComposeAction (
-        composeArgs: string[],
-        logHandler: LogHandler,
-        signal?: AbortSignal
-    ): Promise<void> {
-        const dataHandler = (data: string) => logHandler.handle(data);
-
-        return this.runDockerCompose(composeArgs, dataHandler, signal);
-    }
-
     private createStatusMatchLogHandler (pattern: RegExp) {
         return new PatternMatchingConsoleLogHandler(
             pattern, this.logFile, this.logger
         );
     }
 
-    private runDockerCompose (composeArgs: string[], listener: (chunk: any) => void, signal?: AbortSignal): Promise<void> {
-        return new Promise((resolve, reject) => {
-            // Spawn docker compose process
-            const dockerComposeEnv = this.config.env;
-            const spawnArgs: {
-                cwd: string,
-                signal?: AbortSignal,
-                env?: Record<string, string>
-            } = {
-                cwd: this.config.projectPath,
-                signal
+    private async runDockerCompose (composeArgs: string[], logHandler: LogHandler, signal?: AbortSignal): Promise<void> {
+        // Spawn docker compose process
+        const dockerComposeEnv = this.config.env;
+        const spawnOptions: {
+            cwd: string,
+            signal?: AbortSignal,
+            env?: Record<string, string>
+        } = {
+            cwd: this.config.projectPath,
+            signal
+        };
+
+        if (dockerComposeEnv && Object.keys(dockerComposeEnv).length > 0) {
+            // @ts-expect-error
+            spawnOptions.env = {
+                ...(process.env),
+                ...(dockerComposeEnv)
             };
+        }
 
-            if (dockerComposeEnv && Object.keys(dockerComposeEnv).length > 0) {
-                // @ts-expect-error
-                spawnArgs.env = {
-                    ...(process.env),
-                    ...(dockerComposeEnv)
-                };
-            }
-
-            const dockerComposeProcess = spawn(
+        try {
+            await spawn(
                 "docker",
                 [
                     "compose",
                     ...composeArgs
                 ],
-                spawnArgs
-            );
-
-            // Handle log statements to stdout and stderr
-            dockerComposeProcess.stdout.on("data", listener);
-            dockerComposeProcess.stderr.on("data", listener);
-
-            // Handle exits and errors by resolving/rejecting the promise accordingly
-            dockerComposeProcess.once("exit", (code: number, signal: string) => {
-                if (code === 0 || code === 130) {
-                    resolve();
-                } else {
-                    reject(new Error(`Docker compose up exited with code: ${code}`));
+                {
+                    logHandler,
+                    spawnOptions,
+                    acceptableExitCodes: [0, 130]
                 }
-            });
-
-            dockerComposeProcess.once("error", (err: Error) => {
-                reject(err);
-            });
-        });
+            );
+        } catch (error) {
+            throw new Error(`Docker compose failed with status code: ${error}`);
+        }
     }
 
 }

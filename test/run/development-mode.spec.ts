@@ -1,9 +1,19 @@
 import { DockerCompose } from "../../src/run/docker-compose";
-import { expect, jest } from "@jest/globals";
+import { beforeAll, expect, jest } from "@jest/globals";
 import fs from "fs";
-import { DevelopmentMode } from "../../src/run/development-mode";
+
+const action = {
+    stop: jest.fn(),
+    start: jest.fn()
+};
 
 describe("DevelopmentMode", () => {
+
+    jest.mock("cli-ux", () => {
+        return { cli: { action } };
+    });
+
+    let DevelopmentMode;
 
     const writeFileSyncSpy = jest.spyOn(fs, "writeFileSync");
     const existsSyncMock = jest.spyOn(fs, "existsSync");
@@ -26,10 +36,16 @@ describe("DevelopmentMode", () => {
 
     let developmentMode;
 
+    beforeAll(async () => {
+        ({ DevelopmentMode } = await import("../../src/run/development-mode"));
+    });
     beforeEach(async () => {
         jest.resetAllMocks();
 
         developmentMode = new DevelopmentMode(dockerComposeMock, "/home/user/project");
+
+        // @ts-expect-error
+        dockerComposeMock.down.mockResolvedValue(undefined as never);
     });
 
     it("rejects when lock already exists", async () => {
@@ -51,6 +67,8 @@ describe("DevelopmentMode", () => {
 
         beforeEach(() => {
             jest.resetAllMocks();
+            // @ts-expect-error
+            dockerComposeMock.down.mockResolvedValue(undefined as never);
         });
 
         it("does not stop environment when prompt is no", async () => {
@@ -93,6 +111,17 @@ describe("DevelopmentMode", () => {
             await developmentMode.sigintHandler(controllerMock, prompterMock);
 
             expect(controllerMock.abort).toHaveBeenCalledTimes(1);
+        });
+
+        it("restarts spinner", async () => {
+            unlinkSyncMock.mockImplementation((_) => {});
+            // @ts-expect-error
+            prompterMock.mockResolvedValue(true);
+
+            await developmentMode.sigintHandler(controllerMock, prompterMock);
+
+            expect(action.stop).toHaveBeenCalled();
+            expect(action.start).toHaveBeenCalled();
         });
 
     });
