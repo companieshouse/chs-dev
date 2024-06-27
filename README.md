@@ -387,6 +387,17 @@ within the current working directory.
   running the Docker Compose services. Values prepended with `file://` will be
   assumed to be files (unless the file does not exist) and will be replaced
   with the contents of the file.
+* `authed_repositories` - `List<string>` - Lists ECR repositories which require
+  authentication
+* `ecr_login_threshold_hours` - `number` - Number of hours between attempting
+  to login to ECR repos.
+
+#### Environment variables
+
+* `CHS_DEV_CHECK_VERSION` - when set will check the version is correct
+  regardless of when it was previously run
+* `CHS_DEV_FORCE_ECR_CHECK` - when set will always run ECR login before running
+  up
 
 ### Service configuration
 
