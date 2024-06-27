@@ -1,12 +1,31 @@
-import { spawn } from "child_process";
 // @ts-expect-error
 import { rmSync, mkdtempSync, writeFileSync } from "fs";
 import { join } from "path";
+import { getLatestReleaseSatisfying } from "../helpers/latest-release.js";
+import { spawn } from "../helpers/spawn-promise.js";
+import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
+
+const versionSpecificationPattern = /[<>=!]{1,2}\d+\.\d+\.\d+|.+ .*/;
 
 export class SynchronizeChsDevVersion {
 
-    async run (force: boolean, version: string): Promise<void> {
+    async run (force: boolean, versionSpecification: string): Promise<string> {
         const tempDir = mkdtempSync("synchronize-chs-dev");
+
+        let version: string;
+
+        // If been supplied a version range/specification find a version which satisfies the specification
+        if (versionSpecificationPattern.test(versionSpecification)) {
+            const latestRelease = await getLatestReleaseSatisfying(versionSpecification);
+
+            if (latestRelease) {
+                version = latestRelease;
+            } else {
+                throw new Error(`Could not find a version of chs-dev that satisfies: ${versionSpecification}`);
+            }
+        } else {
+            version = versionSpecification;
+        }
 
         try {
             await this.runInstall(tempDir, force, version);
@@ -18,6 +37,8 @@ export class SynchronizeChsDevVersion {
                 }
             );
         }
+
+        return version;
     }
 
     private async runInstall (tempDir: string, force: boolean, version: string): Promise<void> {
@@ -31,48 +52,16 @@ export class SynchronizeChsDevVersion {
             installScript,
             await fetchInstallScriptResponse.text()
         );
-        return new Promise((resolve, reject) => {
 
-            const bashProcess = spawn(
-                "bash",
-                [
-                    installScript,
-                    ...(this.installationArgs(force, version))
-                ]
-            );
-
-            bashProcess.stdout.on("data", async (data) => {
-                const stdoutData: string = data.toString("utf8");
-
-                console.log(stdoutData.trim());
-            });
-
-            bashProcess.stderr.on("data", async (data) => {
-                const stdoutData: string = data.toString("utf8");
-
-                console.error(stdoutData.trim());
-            });
-
-            bashProcess.once("close", (code) => {
-                if (code === 0) {
-                    resolve();
-                } else {
-                    reject(code);
-                }
-            });
-
-            bashProcess.once("exit", (code) => {
-                if (code === 0) {
-                    resolve();
-                } else {
-                    reject(code);
-                }
-            });
-
-            bashProcess.once("error", (error) => {
-                reject(error);
-            });
-        });
+        return spawn(
+            "bash",
+            [
+                installScript,
+                ...(this.installationArgs(force, version))
+            ], {
+                logHandler: new LogEverythingLogHandler({ log: console.log })
+            }
+        );
     }
 
     private installationArgs (force: boolean, version: string): string[] {
