@@ -13,7 +13,6 @@ export type Config = {
      * path to the project repository
      */
     readonly projectPath: string;
-
     /**
      * additional environment variables for running the environment. Values can
      * contain 'file://' prefixes will try to read file in and set as value in
@@ -32,6 +31,12 @@ export type Config = {
      * attempt ecr login
      */
     readonly performEcrLoginHoursThreshold?: number;
+
+    /**
+     * specifies the supported version of the CLI by the project
+     */
+    readonly versionSpecification?: string;
+
 }
 
 export default Config;

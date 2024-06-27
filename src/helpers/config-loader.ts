@@ -6,6 +6,8 @@ import Config from "../model/Config.js";
 const fileVarRegExp = /^file:\/\/(.+)$/;
 const DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD = 8;
 
+// TODO: update with version specification
+
 /**
  * Loads the configuration from the project root. When project does not contain
  * configuration then returns an empty configuration object.

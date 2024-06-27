@@ -352,10 +352,16 @@ USAGE
 
 FLAGS
   -f, --force            Forces all changes without prompting the user.
-  -v, --version=<value>  [default: latest] Specifies the version to sync to
+  -v, --version=<value>  Specifies the version/version range to sync to. When a range specified it will select the most
+                         recent that satisfies the range
 
 DESCRIPTION
   Synchronises the local version to the version specifed
+
+  Calls the GitHub API to resolve the version depending on whether the version specified
+  will depend on the number of calls to the GitHub API, the CLI may require the environment
+  variable 'GITHUB_PAT' set with a PAT capable of calling GitHub. GitHub rate limiting
+  will prevent >60 unauthenticated requests an hour
 ```
 
 ## `chs-dev up`
