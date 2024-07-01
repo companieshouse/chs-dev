@@ -71,8 +71,10 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             // When builder should be the repository setup the build instructions to
             // point to the repository
             const repositoryContext = service.metadata.repoContext || "";
+            const dockerfile = service.metadata.dockerfile ? { dockerfile: service.metadata.dockerfile } : {};
 
             dockerComposeConfig.services[service.name].build = {
+                ...dockerfile,
                 context: join(this.path, "repositories", service.name, repositoryContext)
             };
         } else {

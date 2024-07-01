@@ -7,6 +7,7 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     "dependsOn": [],
     "description": "primary database storing Companies House data",
     "metadata": {
+      "dockerfile": null,
       "healthcheck": "test $$(echo "rs.initiate({_id:'tilt-rs',members:[{_id:0,host:\\"mongo:27017\\"}]}).ok || rs.status().ok" | mongo --port 27017 --quiet) -eq 1",
       "ingressRoute": null,
       "languageMajorVersion": null,
@@ -24,6 +25,7 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     ],
     "description": null,
     "metadata": {
+      "dockerfile": null,
       "healthcheck": "curl http://localhost:8080",
       "ingressRoute": "PathPrefix(\`/service-one/*\`)",
       "languageMajorVersion": null,
@@ -45,6 +47,7 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     ],
     "description": null,
     "metadata": {
+      "dockerfile": null,
       "healthcheck": null,
       "ingressRoute": null,
       "languageMajorVersion": "18",
@@ -68,6 +71,7 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     ],
     "description": null,
     "metadata": {
+      "dockerfile": null,
       "healthcheck": null,
       "ingressRoute": null,
       "languageMajorVersion": "17",
@@ -90,6 +94,7 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     ],
     "description": null,
     "metadata": {
+      "dockerfile": null,
       "healthcheck": null,
       "ingressRoute": null,
       "languageMajorVersion": null,
@@ -111,6 +116,7 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     ],
     "description": null,
     "metadata": {
+      "dockerfile": null,
       "healthcheck": null,
       "ingressRoute": null,
       "languageMajorVersion": null,
@@ -133,6 +139,7 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     ],
     "description": null,
     "metadata": {
+      "dockerfile": null,
       "healthcheck": null,
       "ingressRoute": null,
       "languageMajorVersion": null,

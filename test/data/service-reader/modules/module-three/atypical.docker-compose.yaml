@@ -5,6 +5,7 @@ services:
       - chs.repository.url=git@github.com/companieshouse/repo3.git
       - chs.local.builder=repository
       - chs.local.repoContext=chsDev/
+      - chs.local.dockerfile=chs.Dockerfile
     image: some-service-api
     ports:
       - 12345
