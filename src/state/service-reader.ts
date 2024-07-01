@@ -45,7 +45,8 @@ const readService: (module: string, source: string, serviceName: string, service
         repoContext: findLabel(service.labels, "chs.local.repoContext"),
         ingressRoute: findLabel(service.labels, "traefik.http.routers."),
         healthcheck: service.healthcheck?.test,
-        languageMajorVersion: findLabel(service.labels, "chs.local.builder.languageVersion")
+        languageMajorVersion: findLabel(service.labels, "chs.local.builder.languageVersion"),
+        dockerfile: findLabel(service.labels, "chs.local.dockerfile")
     }
 });
 

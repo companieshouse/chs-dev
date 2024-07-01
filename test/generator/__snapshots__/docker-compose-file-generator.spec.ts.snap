@@ -124,6 +124,86 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
 }
 `;
 
+exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose for repository - with builder and dockerfile labels 1`] = `
+{
+  "services": {
+    "service-one": {
+      "build": {
+        "context": ".//repositories/service-one",
+        "dockerfile": "chs.Dockerfile",
+      },
+      "depends_on": [],
+      "develop": {
+        "watch": [
+          {
+            "action": "rebuild",
+            "path": ".touch",
+          },
+        ],
+      },
+      "image": "my-great-image:latest",
+      "labels": [
+        "label-one=true",
+        "chs.local.builder=repository",
+        "chs.local.dockerfile=chs.Dockerfile",
+      ],
+    },
+  },
+}
+`;
+
+exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose for repository - with builder and repoContext labels 1`] = `
+{
+  "services": {
+    "service-one": {
+      "build": {
+        "context": ".//repositories/service-one/chs-dev",
+      },
+      "depends_on": [],
+      "develop": {
+        "watch": [
+          {
+            "action": "rebuild",
+            "path": ".touch",
+          },
+        ],
+      },
+      "image": "my-great-image:latest",
+      "labels": [
+        "label-one=true",
+        "chs.local.builder=repository",
+        "chs.local.repoContext=chs-dev/",
+      ],
+    },
+  },
+}
+`;
+
+exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose for repository - with no builder label 1`] = `
+{
+  "services": {
+    "service-one": {
+      "build": {
+        "context": ".//repositories/service-one",
+      },
+      "depends_on": [],
+      "develop": {
+        "watch": [
+          {
+            "action": "rebuild",
+            "path": ".touch",
+          },
+        ],
+      },
+      "image": "my-great-image:latest",
+      "labels": [
+        "label-one=true",
+      ],
+    },
+  },
+}
+`;
+
 exports[`DockerComposeFileGenerator generateDockerComposeFile correctly excludes services 1`] = `
 {
   "include": [
