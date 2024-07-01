@@ -6,8 +6,6 @@ import Config from "../model/Config.js";
 const fileVarRegExp = /^file:\/\/(.+)$/;
 const DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD = 8;
 
-// TODO: update with version specification
-
 /**
  * Loads the configuration from the project root. When project does not contain
  * configuration then returns an empty configuration object.
@@ -22,8 +20,6 @@ export const load: () => Config = () => {
     if (!existsSync(confFile)) {
         config = {
             env: {},
-            projectPath,
-            projectName: basename(projectPath),
             authenticatedRepositories: []
         };
 
@@ -34,10 +30,9 @@ export const load: () => Config = () => {
 
         config = {
             env: parseEnv(projectConfiguration.env) || {},
-            projectPath,
-            projectName: basename(projectPath),
             authenticatedRepositories: projectConfiguration.authed_repositories || [],
-            performEcrLoginHoursThreshold: projectConfiguration.authed_repositories && projectConfiguration.ecr_login_threshold_hours ? projectConfiguration.ecr_login_threshold_hours : undefined
+            performEcrLoginHoursThreshold: projectConfiguration.authed_repositories && projectConfiguration.ecr_login_threshold_hours ? projectConfiguration.ecr_login_threshold_hours : undefined,
+            versionSpecification: projectConfiguration.version
         };
     }
 
@@ -48,7 +43,11 @@ export const load: () => Config = () => {
         };
     }
 
-    return config as Config;
+    return {
+        ...config,
+        projectPath,
+        projectName: basename(projectPath)
+    } as Config;
 };
 
 const parseEnv = (env: Record<string, string> | undefined) => {
