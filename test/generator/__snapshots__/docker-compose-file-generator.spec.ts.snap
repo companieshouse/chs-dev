@@ -20,6 +20,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
           },
         ],
       },
+      "env_file": null,
       "image": "my-great-image:latest",
       "labels": [
         "label-one=true",
@@ -50,6 +51,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
           },
         ],
       },
+      "env_file": null,
       "image": "my-great-image:latest",
       "labels": [
         "label-one=true",
@@ -81,6 +83,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
           },
         ],
       },
+      "env_file": null,
       "image": "my-great-image:latest",
       "labels": [
         "label-one=true",
@@ -113,6 +116,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
           },
         ],
       },
+      "env_file": null,
       "image": "my-great-image:latest",
       "labels": [
         "label-one=true",
@@ -141,6 +145,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
           },
         ],
       },
+      "env_file": null,
       "image": "my-great-image:latest",
       "labels": [
         "label-one=true",
@@ -168,6 +173,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
           },
         ],
       },
+      "env_file": null,
       "image": "my-great-image:latest",
       "labels": [
         "label-one=true",
@@ -195,6 +201,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
           },
         ],
       },
+      "env_file": null,
       "image": "my-great-image:latest",
       "labels": [
         "label-one=true",
