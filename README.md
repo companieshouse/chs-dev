@@ -426,6 +426,8 @@ are referenced by chs-dev for the given purposes:
 * `chs.local.repoContext` - when not specifying a builder or builder is
   `repository`, specify specific part of the repository to use as the build
   context for the Docker build
+* `chs.local.dockerfile` - specify the Dockerfile within the repository to use
+  for development mode
 
 #### Dependencies
 
