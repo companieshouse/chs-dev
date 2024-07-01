@@ -41,6 +41,7 @@
     "mocha": "^10.3.0",
     "nyc": "^14.1.1",
     "oclif": "^4.11.3",
+    "sonarqube-scanner": "^4.0.1",
     "ts-jest": "^29.1.4",
     "ts-jest-resolver": "^2.0.1",
     "ts-loader": "^9.5.1",
@@ -91,7 +92,10 @@
     "prepack": "rm -rf lib && tsc -b && oclif manifest && oclif readme",
     "pack": "oclif pack tarballs --targets 'linux-x64,darwin-arm64,darwin-x64' --parallel --no-xz",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles",
-    "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --forceExit --passWithNoTests --detectOpenHandles"
+    "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --forceExit --passWithNoTests --detectOpenHandles",
+    "sonarqube-base-branch": "sonar-scanner",
+    "sonarqube-pull-request": "sonar-scanner -D sonar.pullrequest.base=main",
+    "sonarqube": "branch=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD); if [[ $branch == \"HEAD\" ]]; then echo $branch && npm run sonarqube-base-branch; else echo $branch && npm run sonarqube-pull-request; fi;"
   },
   "types": "lib/index.d.ts",
   "type": "module",
