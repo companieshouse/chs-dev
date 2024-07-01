@@ -488,5 +488,99 @@ describe("DockerComposeFileGenerator", () => {
 
             expect(generatedDockerCompose).toMatchSnapshot();
         });
+
+        it("handles env file pointing to services directory when it is a string", () => {
+            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
+
+            initialServiceDefinition.services["service-one"].labels = [
+                ...(initialServiceDefinition.services["service-one"].labels),
+                "chs.local.builder=java",
+                "chs.local.builder.languageVersion=17"
+            ];
+
+            initialServiceDefinition.services["service-one"].env_file = "services/modules/module-one/service-one.env";
+
+            writeFileSync(
+                serviceDockerComposeFile,
+                stringify(initialServiceDefinition),
+                {
+                    flag: "w"
+                }
+            );
+
+            const service: Service = {
+                name: "service-one",
+                module: "module-one",
+                source: serviceDockerComposeFile,
+                repository: null,
+                dependsOn: [],
+                builder: "java",
+                metadata: {
+                    languageMajorVersion: "17"
+                }
+            };
+
+            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service);
+
+            const generatedDockerComposeFile = join(tempDir, "local/service-one/docker-compose.yaml");
+
+            expect(existsSync(generatedDockerComposeFile)).toBe(true);
+
+            const generatedDockerCompose = parse(readFileSync(generatedDockerComposeFile).toString("utf8"));
+
+            expect(generatedDockerCompose.services["service-one"].env_file).toBe(
+                "../../services/modules/module-one/service-one.env"
+            );
+        });
+
+        it("handles env file pointing to services directory when it is an array", () => {
+            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
+
+            initialServiceDefinition.services["service-one"].labels = [
+                ...(initialServiceDefinition.services["service-one"].labels),
+                "chs.local.builder=java",
+                "chs.local.builder.languageVersion=17"
+            ];
+
+            initialServiceDefinition.services["service-one"].env_file = [
+                "services/modules/module-one/service-one.env",
+                "services/modules/module-one/service-one.env2",
+                "services/modules/module-one/service-one.env3"
+            ];
+
+            writeFileSync(
+                serviceDockerComposeFile,
+                stringify(initialServiceDefinition),
+                {
+                    flag: "w"
+                }
+            );
+
+            const service: Service = {
+                name: "service-one",
+                module: "module-one",
+                source: serviceDockerComposeFile,
+                repository: null,
+                dependsOn: [],
+                builder: "java",
+                metadata: {
+                    languageMajorVersion: "17"
+                }
+            };
+
+            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service);
+
+            const generatedDockerComposeFile = join(tempDir, "local/service-one/docker-compose.yaml");
+
+            expect(existsSync(generatedDockerComposeFile)).toBe(true);
+
+            const generatedDockerCompose = parse(readFileSync(generatedDockerComposeFile).toString("utf8"));
+
+            expect(generatedDockerCompose.services["service-one"].env_file).toEqual([
+                "../../services/modules/module-one/service-one.env",
+                "../../services/modules/module-one/service-one.env2",
+                "../../services/modules/module-one/service-one.env3"
+            ]);
+        });
     });
 });
