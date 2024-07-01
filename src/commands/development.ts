@@ -51,18 +51,17 @@ export default class Development extends Command {
                 return;
             }
 
-            runHook = await services.map(async service => {
+            for (const service of services) {
                 if (this.validateService(service)) {
                     this.enableService(service);
+
                     await this.config.runHook("generate-development-docker-compose", { serviceName: service });
 
                     await this.cloneServiceRepository(service);
 
-                    return true;
+                    runHook = true;
                 }
-
-                return false;
-            }).reduce(async (prev, next) => await prev || await next);
+            }
 
             break;
         case "disable":
