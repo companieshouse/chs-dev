@@ -66,6 +66,8 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             }]
         };
 
+        dockerComposeConfig.services[service.name].env_file = this.formatEnvFileForDevelopmentMode(dockerComposeConfig.services[service.name].env_file);
+
         // Sets up the output docker compose file with the build information
         if (service.builder === "repository" || service.builder === "") {
             // When builder should be the repository setup the build instructions to
@@ -103,6 +105,18 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             EOL,
             touchFile
         );
+    }
+
+    private formatEnvFileForDevelopmentMode (envFile: string | string[] | undefined): any {
+        if (typeof envFile === "string") {
+            return join("../..", envFile);
+        }
+
+        if (Array.isArray(envFile)) {
+            return envFile.map(envFileValue => this.formatEnvFileForDevelopmentMode(envFileValue));
+        }
+
+        return envFile;
     }
 
     private listIngressDependencies (services: ServiceWithLiveUpdate[]): Record<string, {condition: string, restart: boolean}> {
