@@ -1,4 +1,4 @@
-import { join } from "path";
+import { basename, dirname, join, relative } from "path";
 import { AbstractFileGenerator } from "./file-generator.js";
 import { Service } from "../model/Service.js";
 import yaml from "yaml";
@@ -66,7 +66,12 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             }]
         };
 
-        dockerComposeConfig.services[service.name].env_file = this.formatEnvFileForDevelopmentMode(dockerComposeConfig.services[service.name].env_file);
+        dockerComposeConfig.services[service.name].env_file =
+            this.formatEnvFileForDevelopmentMode(
+                service.source,
+                service.name,
+                dockerComposeConfig
+            );
 
         // Sets up the output docker compose file with the build information
         if (service.builder === "repository" || service.builder === "") {
@@ -107,16 +112,24 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         );
     }
 
-    private formatEnvFileForDevelopmentMode (envFile: string | string[] | undefined): any {
+    private formatEnvFileForDevelopmentMode (source: string, serviceName: string, dockerComposeConfig: Record<string, any>): any {
+        const envFile = dockerComposeConfig.services[serviceName].env_file;
+
         if (typeof envFile === "string") {
-            return join("../..", envFile);
+            return this.formatEnvFileValue(source, serviceName, envFile);
         }
 
         if (Array.isArray(envFile)) {
-            return envFile.map(envFileValue => this.formatEnvFileForDevelopmentMode(envFileValue));
+            return envFile.map(envFileValue => this.formatEnvFileValue(source, serviceName, envFileValue));
         }
 
         return envFile;
+    }
+
+    private formatEnvFileValue (source: string, serviceName: string, envFileValue: string) {
+        const relativePathToSource = relative(join(this.path, "local", serviceName), source);
+
+        return join(dirname(relativePathToSource), envFileValue);
     }
 
     private listIngressDependencies (services: ServiceWithLiveUpdate[]): Record<string, {condition: string, restart: boolean}> {

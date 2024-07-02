@@ -9,12 +9,15 @@ import { parse, stringify } from "yaml";
 
 describe("DockerComposeFileGenerator", () => {
     let tempDir: string;
+    let moduleDir: string;
     let dockerComposeFileGenerator: DockerComposeFileGenerator;
 
     beforeAll(() => {
         tempDir = mkdtempSync("docker-compose-file-gen");
+        moduleDir = join(tempDir, "services/modules/module-one");
 
         mkdirSync(join(tempDir, "local"));
+        mkdirSync(moduleDir, { recursive: true });
     });
 
     afterAll(() => {
@@ -180,7 +183,7 @@ describe("DockerComposeFileGenerator", () => {
         let serviceDockerComposeFile: string;
 
         beforeEach(() => {
-            serviceDockerComposeFile = join(tempDir, "service.docker-compose.yaml");
+            serviceDockerComposeFile = join(moduleDir, "service.docker-compose.yaml");
 
             copyFileSync(
                 join(process.cwd(), "test/data/docker-compose-file-generator/service.docker-compose.yaml"),
@@ -498,7 +501,7 @@ describe("DockerComposeFileGenerator", () => {
                 "chs.local.builder.languageVersion=17"
             ];
 
-            initialServiceDefinition.services["service-one"].env_file = "services/modules/module-one/service-one.env";
+            initialServiceDefinition.services["service-one"].env_file = "service-one.env";
 
             writeFileSync(
                 serviceDockerComposeFile,
@@ -543,9 +546,9 @@ describe("DockerComposeFileGenerator", () => {
             ];
 
             initialServiceDefinition.services["service-one"].env_file = [
-                "services/modules/module-one/service-one.env",
-                "services/modules/module-one/service-one.env2",
-                "services/modules/module-one/service-one.env3"
+                "service-one.env",
+                "service-one.env2",
+                "../module-two/service-one.env3"
             ];
 
             writeFileSync(
@@ -579,7 +582,7 @@ describe("DockerComposeFileGenerator", () => {
             expect(generatedDockerCompose.services["service-one"].env_file).toEqual([
                 "../../services/modules/module-one/service-one.env",
                 "../../services/modules/module-one/service-one.env2",
-                "../../services/modules/module-one/service-one.env3"
+                "../../services/modules/module-two/service-one.env3"
             ]);
         });
     });
