@@ -4,6 +4,9 @@ import configLoader from "../helpers/config-loader.js";
 import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 
 export default class Logs extends Command {
+    static aliases: string[] = ["service-logs", "compose-logs"];
+    static deprecateAliases = true;
+
     static args = {
         serviceName: Args.string({
             required: false,
