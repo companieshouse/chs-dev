@@ -4,6 +4,14 @@ import configLoader from "../helpers/config-loader.js";
 import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 
 export default class Logs extends Command {
+    static aliases: string[] = ["service-logs", "compose-logs"];
+
+    /**
+     * Show deprecation message when aliases are used and prompt the user to
+     * use correct command
+     */
+    static deprecateAliases = true;
+
     static args = {
         serviceName: Args.string({
             required: false,

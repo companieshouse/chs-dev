@@ -152,6 +152,7 @@ USAGE
 
 <!-- commands -->
 * [`chs-dev autocomplete [SHELL]`](#chs-dev-autocomplete-shell)
+* [`chs-dev compose-logs [SERVICENAME]`](#chs-dev-compose-logs-servicename)
 * [`chs-dev development COMMAND [SERVICES]`](#chs-dev-development-command-services)
 * [`chs-dev down`](#chs-dev-down)
 * [`chs-dev exclusions COMMAND [EXCLUSIONS]`](#chs-dev-exclusions-command-exclusions)
@@ -159,6 +160,7 @@ USAGE
 * [`chs-dev logs [SERVICENAME]`](#chs-dev-logs-servicename)
 * [`chs-dev modules COMMAND [MODULE]`](#chs-dev-modules-command-module)
 * [`chs-dev reload SERVICE`](#chs-dev-reload-service)
+* [`chs-dev service-logs [SERVICENAME]`](#chs-dev-service-logs-servicename)
 * [`chs-dev services COMMAND [SERVICES]`](#chs-dev-services-command-services)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
@@ -192,6 +194,25 @@ EXAMPLES
 ```
 
 _See code: [@oclif/plugin-autocomplete](https://github.com/oclif/plugin-autocomplete/blob/v0.2.1/src/commands/autocomplete/index.ts)_
+
+## `chs-dev compose-logs [SERVICENAME]`
+
+```
+USAGE
+  $ chs-dev compose-logs [SERVICENAME] [-C] [-f] [-n <value>]
+
+ARGUMENTS
+  SERVICENAME  specify the service name of the logs to follow, when not specified follows aggregated logs
+
+FLAGS
+  -C, --compose       View the compose logs rather than service logs
+  -f, --follow        Follow the logs
+  -n, --tail=<value>  [default: all] Number of lines from the end of the logs
+
+ALIASES
+  $ chs-dev service-logs
+  $ chs-dev compose-logs
+```
 
 ## `chs-dev development COMMAND [SERVICES]`
 
@@ -277,6 +298,10 @@ FLAGS
   -C, --compose       View the compose logs rather than service logs
   -f, --follow        Follow the logs
   -n, --tail=<value>  [default: all] Number of lines from the end of the logs
+
+ALIASES
+  $ chs-dev service-logs
+  $ chs-dev compose-logs
 ```
 
 ## `chs-dev modules COMMAND [MODULE]`
@@ -306,6 +331,25 @@ USAGE
 
 ARGUMENTS
   SERVICE  Name of the service
+```
+
+## `chs-dev service-logs [SERVICENAME]`
+
+```
+USAGE
+  $ chs-dev service-logs [SERVICENAME] [-C] [-f] [-n <value>]
+
+ARGUMENTS
+  SERVICENAME  specify the service name of the logs to follow, when not specified follows aggregated logs
+
+FLAGS
+  -C, --compose       View the compose logs rather than service logs
+  -f, --follow        Follow the logs
+  -n, --tail=<value>  [default: all] Number of lines from the end of the logs
+
+ALIASES
+  $ chs-dev service-logs
+  $ chs-dev compose-logs
 ```
 
 ## `chs-dev services COMMAND [SERVICES]`
