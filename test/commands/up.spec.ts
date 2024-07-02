@@ -8,6 +8,7 @@ const startDevelopmentModeMock = jest.fn();
 const dockerComposeUpMock = jest.fn();
 const dependencyCacheUpdateMock = jest.fn();
 const composeLogViewerViewMock = jest.fn();
+const permanentRepositoriesEnsureAllExistAndAreUpToDateMock = jest.fn();
 
 const NO_SERVICES_IN_DEV_MODE = {
     modules: [],
@@ -112,6 +113,16 @@ jest.mock("../../src/run/compose-log-viewer", () => {
     };
 });
 
+jest.mock("../../src/state/permanent-repositories", () => {
+    return {
+        PermanentRepositories: function () {
+            return {
+                ensureAllExistAndAreUpToDate: permanentRepositoriesEnsureAllExistAndAreUpToDateMock
+            };
+        }
+    };
+});
+
 describe("Up command", () => {
     let up: Up;
     let testConfig: Config;
@@ -136,6 +147,12 @@ describe("Up command", () => {
         jest.resetAllMocks();
 
         setUpCommand(NO_SERVICES_IN_DEV_MODE);
+    });
+
+    it("should ensure all permanent repos are present", async () => {
+        await up.run();
+
+        expect(permanentRepositoriesEnsureAllExistAndAreUpToDateMock).toHaveBeenCalled();
     });
 
     it("should call up", async () => {

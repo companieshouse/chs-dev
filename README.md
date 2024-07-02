@@ -140,7 +140,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/0.1.0 darwin-arm64 node-v20.10.0
+chs-dev/1.1.0 darwin-arm64 node-v20.10.0
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -650,6 +650,10 @@ are referenced by chs-dev for the given purposes:
 * `chs.local.entrypoint` - specifies the entrypoint script for a given service
   typically for a node application which does not have a
   `ecs-image-buid/docker_start.sh` file
+* `chs.local.repositoryRequired` - marks the service as requiring the
+  repository locally in order to be run. This is useful where there may not be
+  a remote repository to use for the service. The service can define its own
+  build configuration referencing its repository/Dockerfile.
 
 #### Dependencies
 

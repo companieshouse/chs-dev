@@ -10,6 +10,7 @@ import loadConfig from "../helpers/config-loader.js";
 import { basename } from "path";
 import { Config as ChsDevConfig } from "../model/Config.js";
 import { ComposeLogViewer } from "../run/compose-log-viewer.js";
+import { PermanentRepositories } from "../state/permanent-repositories.js";
 import { Inventory } from "../state/inventory.js";
 
 export default class Up extends Command {
@@ -27,6 +28,7 @@ export default class Up extends Command {
     private readonly chsDevConfig: ChsDevConfig;
     private readonly composeLogViewer: ComposeLogViewer;
     private readonly inventory: Inventory;
+    private readonly permanentRepositories: PermanentRepositories;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
@@ -44,6 +46,7 @@ export default class Up extends Command {
         this.developmentMode = new DevelopmentMode(this.dockerCompose, process.cwd());
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
+        this.permanentRepositories = new PermanentRepositories(this.chsDevConfig, this.inventory);
     }
 
     async run (): Promise<any> {
@@ -56,6 +59,10 @@ export default class Up extends Command {
                 ]
             });
         }
+
+        cli.action.start("Ensuring all permanent repos are up to date");
+        await this.permanentRepositories.ensureAllExistAndAreUpToDate();
+        cli.action.stop();
 
         cli.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         try {
