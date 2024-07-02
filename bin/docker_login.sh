@@ -34,13 +34,37 @@ command -v l_aws >/dev/null 2>&1 || function l_aws() {
 
 repository_urls=("$@")
 
-profile_mapping_file="$(mktemp)"
-trap 'rm "${profile_mapping_file}"' EXIT
+# Create companies house config directory should it not exist
+companies_house_configuration_directory="${HOME}"/.chs-dev/var
 
-aws configure list-profiles --output text |
+if [[ ! -d "${companies_house_configuration_directory}" ]]; then
+  mkdir -p "${companies_house_configuration_directory}"
+fi
+
+profile_mapping_file="${companies_house_configuration_directory}"/aws_account_profile_mapping
+
+aws_profiles="$(aws configure list-profiles --output text)"
+
+if [[ -f "${profile_mapping_file}" ]]; then
+  # Load profiles and check that each has an entry in the profile mapping
+  # if not trigger the recreation of the profile mapping file
+
+  if ! xargs -I % grep -q % "${profile_mapping_file}" <<<"${aws_profiles}"; then
+    printf -- 'Profile mapping missing profiles, will recreate...\n'
+    recreate_profile_mapping=true
+  fi
+fi
+
+if [[ ! -f "${profile_mapping_file}" || -n "${recreate_profile_mapping}" ]]; then
+  # Remove the old mapping file
+  [[ -f "${profile_mapping_file}" ]] && rm "${profile_mapping_file}"
+
+  # Iteratively process profile retrieving its account details and output to
+  # mapping  file
   while read -r profile; do
     sso_account_id="$(aws configure get sso_account_id --profile "${profile}")"
 
+    # Handle SSO profiles and login if necessary
     if [[ -n "${sso_account_id}" ]]; then
       while : ""; do
         account_id="$(aws sts get-caller-identity --query Account --output text --profile "${profile}")"
@@ -54,6 +78,7 @@ aws configure list-profiles --output text |
         fi
       done
     else
+      # otherwise assume the user has configured AWS access for profile with access keys
       account_id="$(aws sts get-caller-identity --query Account --output text --profile "${profile}")"
 
       if [[ -n "${account_id}" ]]; then
@@ -64,8 +89,12 @@ aws configure list-profiles --output text |
       fi
 
     fi
-  done
+  done <<<"${aws_profiles}"
+fi
 
+# Iterate over each ECR repo and try to login to ECR
+# When there is not an exact account/region match uses the correct profile
+# configured for same account but for another region.
 for required_repo in "${repository_urls[@]}"; do
   if [[ "${required_repo}" =~ ${ecr_repo_pattern} ]]; then
     required_account="${BASH_REMATCH[1]}"
