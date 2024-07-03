@@ -5,13 +5,22 @@ import State from "../../src/model/State";
 import { deduplicate } from "../../src/helpers/array-reducers";
 import { Inventory } from "../../src/state/inventory";
 import { ServiceLoader } from "../../src/run/service-loader";
-import { tree } from "@oclif/core/lib/cli-ux";
 
 const serviceOne = {
     name: "service-one",
     module: "module-one",
     source: "./module-one/service-one.docker-compose.yaml",
     dependsOn: [],
+    repository: null,
+    builder: "",
+    metadata: {}
+};
+
+const serviceTwoTilt = {
+    name: "service-two",
+    module: "module-one",
+    source: "./module-one/tilt/service-two.docker-compose.yaml",
+    dependsOn: ["service-one"],
     repository: null,
     builder: "",
     metadata: {}
@@ -137,8 +146,19 @@ const serviceTen = {
     metadata: {}
 };
 
+const serviceTenTilt = {
+    name: "service-ten",
+    module: "module-four",
+    source: "./module-four/tilt/service-ten.docker-compose.yaml",
+    dependsOn: [],
+    repository: null,
+    builder: "",
+    metadata: {}
+};
+
 const services: Service[] = [
     serviceOne,
+    serviceTwoTilt,
     serviceTwo,
     serviceThree,
     serviceFour,
@@ -147,7 +167,8 @@ const services: Service[] = [
     serviceSeven,
     serviceEight,
     serviceNine,
-    serviceTen
+    serviceTen,
+    serviceTenTilt
 ];
 
 const modules: Module[] = services.map(service => service.module)

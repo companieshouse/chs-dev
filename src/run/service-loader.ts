@@ -38,6 +38,8 @@ export class ServiceLoader {
         // Collect all services specifed by the state to include
         const loadedServices = this.inventory.services
             .filter(service => state.services.includes(service.name) || state.modules.includes(service.module))
+            // TODO: Remove after dual running period - RAND-397
+            .filter(service => !this.serviceIsDeprecated(service))
             .map(withLiveUpdate);
 
         // Collect all dependent services ensuring there are no duplicates
@@ -55,7 +57,12 @@ export class ServiceLoader {
     }
 
     private findService (serviceName: string): Service | undefined {
-        return this.inventory.services.find(service => service.name === serviceName);
+        return this.inventory.services.find(service => service.name === serviceName && !this.serviceIsDeprecated(service));
+    }
+
+    // TODO: Remove after dual running period - RAND-397
+    private serviceIsDeprecated (service: Service): boolean {
+        return service.source.includes("tilt");
     }
 
 }
