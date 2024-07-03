@@ -79,7 +79,11 @@
     "plugins": [
       "@oclif/plugin-help",
       "@oclif/plugin-autocomplete"
-    ]
+    ],
+    "topicSeparator": " ",
+    "topics": {
+      "development": { "description": "manages the services currently in development mode" }
+    }
   },
   "repository": "companieshouse/chs-dev",
   "scripts": {

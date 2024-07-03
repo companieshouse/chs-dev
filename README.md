@@ -153,7 +153,9 @@ USAGE
 <!-- commands -->
 * [`chs-dev autocomplete [SHELL]`](#chs-dev-autocomplete-shell)
 * [`chs-dev compose-logs [SERVICENAME]`](#chs-dev-compose-logs-servicename)
-* [`chs-dev development COMMAND [SERVICES]`](#chs-dev-development-command-services)
+* [`chs-dev development disable SERVICES`](#chs-dev-development-disable-services)
+* [`chs-dev development enable SERVICES`](#chs-dev-development-enable-services)
+* [`chs-dev development services`](#chs-dev-development-services)
 * [`chs-dev down`](#chs-dev-down)
 * [`chs-dev exclusions COMMAND [EXCLUSIONS]`](#chs-dev-exclusions-command-exclusions)
 * [`chs-dev help [COMMAND]`](#chs-dev-help-command)
@@ -214,23 +216,46 @@ ALIASES
   $ chs-dev compose-logs
 ```
 
-## `chs-dev development COMMAND [SERVICES]`
+## `chs-dev development disable SERVICES`
 
-list available services and enable / disable service
+Removes a service from development mode
 
 ```
 USAGE
-  $ chs-dev development COMMAND [SERVICES]
+  $ chs-dev development disable SERVICES...
+
+ARGUMENTS
+  SERVICES...  list of services to undefined in development mode
 
 DESCRIPTION
-  list available services and enable / disable service
+  Removes a service from development mode
+```
 
-EXAMPLES
+## `chs-dev development enable SERVICES`
+
+Adds a service to development mode
+
+```
+USAGE
+  $ chs-dev development enable SERVICES...
+
+ARGUMENTS
+  SERVICES...  list of services to undefined in development mode
+
+DESCRIPTION
+  Adds a service to development mode
+```
+
+## `chs-dev development services`
+
+Lists all services which are available to enable in development mode
+
+```
+USAGE
   $ chs-dev development services
 
-  $ chs-dev development enable [MODULE]
-
-  $ chs-dev development disable [MODULE]
+DESCRIPTION
+  Lists all services which are available to enable in development mode
 ```
 
 ## `chs-dev down`
