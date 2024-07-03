@@ -1,11 +1,23 @@
 import { Hook } from "@oclif/config";
 
-import { diff } from "semver";
+import { diff, satisfies } from "semver";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { getLatestReleaseVersion } from "../helpers/latest-release.js";
 import { join } from "path";
+import { load } from "../helpers/config-loader.js";
+import Config from "../model/Config.js";
 
 export const hook: Hook<"init"> = async function (options) {
+
+    const projectConfig = load();
+
+    if (!isEnvVarSet("CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING") &&
+        !isSuitableVersionForProject(options.config.version, projectConfig)) {
+
+        logUnsuitableVersion(options.config.version, projectConfig.versionSpecification as string);
+
+        return;
+    }
 
     const runTimeFile = join(options.config.dataDir, "last-version-run-time");
     const executionTime = Date.now();
@@ -13,7 +25,7 @@ export const hook: Hook<"init"> = async function (options) {
 
     const dataDirectoryExists = existsSync(options.config.dataDir);
 
-    const checkVersion: boolean = "CHS_DEV_CHECK_VERSION" in process.env || !(
+    const checkVersion: boolean = isEnvVarSet("CHS_DEV_CHECK_VERSION") || !(
         dataDirectoryExists && existsSync(runTimeFile) && hasBeenRunRecently(executionTime, runThresholdDays, runTimeFile)
     );
 
@@ -30,6 +42,10 @@ export const hook: Hook<"init"> = async function (options) {
         );
     }
 
+};
+
+const isSuitableVersionForProject = (version: string, projectConfig: Config) => {
+    return !projectConfig.versionSpecification || satisfies(version, projectConfig.versionSpecification);
 };
 
 const hasBeenRunRecently: (executionTime: number, dayThreshold: string, runTimeFile: string) => boolean = (executionTime: number, dayThreshold: string, runTimeFile: string) => {
@@ -78,5 +94,23 @@ to update to latest version
 
     console.log(
         `${sepLine}\n\n${versionOutOfDateMessage}\n\n${sepLine}`
+    );
+};
+
+const isEnvVarSet = (envVarName: string) => envVarName in process.env;
+
+const logUnsuitableVersion = (actualVersion: string, requiredVersionSpecification: string) => {
+    const sepLine = "-".repeat(80);
+    console.log(
+        `WARNING: this version: ${actualVersion} does not meet the project requirements: ${requiredVersionSpecification}
+
+Run:
+
+\tchs-dev sync
+
+to update chs-dev to a suitable version
+${sepLine}
+
+`
     );
 };
