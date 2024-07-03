@@ -476,6 +476,8 @@ within the current working directory.
 * `GITHUB_PAT` - when supplied will use the PAT value to authenticate with
   Github to reduce the likelihood of encountering rate limits when interacting
   with GitHub's API.
+* `CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING` - when set does not show any
+  warnings relating to version not being suitable for project.
 
 ### Service configuration
 
