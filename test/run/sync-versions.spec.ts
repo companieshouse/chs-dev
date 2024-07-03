@@ -3,14 +3,19 @@ import childProcess from "child_process";
 import fs from "fs";
 import { SynchronizeChsDevVersion } from "../../src/run/sync-versions";
 import { join } from "path";
+import { getLatestReleaseSatisfying } from "../../src/helpers/latest-release";
+import { spawn } from "../../src/helpers/spawn-promise";
+import LogEverythingLogHandler from "../../src/run/logs/LogEverythingLogHandler";
 
 const fetchMock = jest.fn();
+
+jest.mock("../../src/helpers/latest-release");
+jest.mock("../../src/helpers/spawn-promise");
 
 // @ts-expect-error
 global.fetch = fetchMock;
 
 describe("SynchronizeChsDevVersion", () => {
-    const spawnMock = jest.spyOn(childProcess, "spawn");
     const tempDirPath = "/tmp/temp-dir/";
     const mktempdSyncSpy = jest.spyOn(fs, "mkdtempSync");
     const writeFileSyncSpy = jest.spyOn(fs, "writeFileSync");
@@ -27,15 +32,6 @@ describe("SynchronizeChsDevVersion", () => {
 
         beforeEach(() => {
             jest.resetAllMocks();
-
-            spawnMock.mockReturnValue({
-                // @ts-expect-error
-                stdout: { on: mockStdout },
-                // @ts-expect-error
-                stderr: { on: mockSterr },
-                // @ts-expect-error
-                once: mockOnce
-            });
 
             mktempdSyncSpy.mockReturnValue(tempDirPath);
             // @ts-expect-error
@@ -71,10 +67,8 @@ describe("SynchronizeChsDevVersion", () => {
         });
 
         it("removes temporary directory when installation fails", async () => {
-            mockOnce.mockImplementation((action, listener) => {
-                // @ts-expect-error
-                listener(1);
-            });
+            // @ts-expect-error
+            spawn.mockRejectedValue(1);
 
             await expect(syncVersions.run(false, "latest")).rejects.toBeDefined();
 
@@ -102,11 +96,13 @@ describe("SynchronizeChsDevVersion", () => {
         it("runs bash script without flags when force and version not specified", async () => {
             await syncVersions.run(false, "latest");
 
-            expect(spawnMock).toHaveBeenCalledWith(
+            expect(spawn).toHaveBeenCalledWith(
                 "bash",
                 [
                     join(tempDirPath, "install.sh")
-                ]
+                ], {
+                    logHandler: expect.any(LogEverythingLogHandler)
+                }
             );
         });
 
@@ -120,42 +116,100 @@ describe("SynchronizeChsDevVersion", () => {
             it(`runs bash script with correct flags force=${force} version=${version}`, async () => {
                 await syncVersions.run(force, version);
 
-                expect(spawnMock).toHaveBeenCalledWith(
+                expect(spawn).toHaveBeenCalledWith(
                     "bash",
                     [
                         join(tempDirPath, "install.sh"),
                         ...expectedArgs
-                    ]
+                    ], {
+                        logHandler: expect.any(LogEverythingLogHandler)
+                    }
                 );
             });
         }
 
-        it("logs data received from stdout", async () => {
-            const consoleLogSpy = jest.spyOn(console, "log");
+        for (const [_, version, __] of flagTestCases) {
+            it(`does not call getLatestReleaseSatisfying when version ${version} is not range`, async () => {
+                await syncVersions.run(false, version);
 
-            mockStdout.mockImplementation((_, listener) => {
-                // @ts-expect-error
-                listener("Some data");
+                expect(getLatestReleaseSatisfying).not.toHaveBeenCalled();
             });
+        }
 
-            await syncVersions.run(false, "latest");
-
-            expect(consoleLogSpy).toHaveBeenCalledWith("Some data");
-
+        it("resolves to version installed", async () => {
+            await expect(syncVersions.run(false, "1.0.0")).resolves.toBe("1.0.0");
         });
 
-        it("logs data received from stderr", async () => {
-            const consoleErrSpy = jest.spyOn(console, "error");
+        describe("sync with range", () => {
 
-            mockSterr.mockImplementation((_, listener) => {
+            const rangeTestCases = [
+                [">1.0.0 <2.0.0"],
+                [">1.0.0"],
+                [">1.10.1000"],
+                [">1.10.1000 <=1.239.9"],
+                ["1.10.1000 <=1.239.9"],
+                ["!1.10.1000 <=1.239.9"]
+            ];
+
+            beforeEach(() => {
+                jest.resetAllMocks();
+
+                mktempdSyncSpy.mockReturnValue(tempDirPath);
                 // @ts-expect-error
-                listener("Some data");
+                rmSyncSpy.mockReturnValue(undefined);
+                writeFileSyncSpy.mockImplementation((fl, dat, _) => {});
+
+                // @ts-expect-error
+                fetchMock.mockResolvedValue({
+                    text: () => Promise.resolve(installationScript)
+                });
+
+                mockOnce.mockImplementation((event, listener) => {
+                    // @ts-expect-error
+                    listener(0);
+                });
+                syncVersions = new SynchronizeChsDevVersion();
+
+                // @ts-expect-error
+                getLatestReleaseSatisfying.mockResolvedValue("1.1.9");
             });
 
-            await syncVersions.run(false, "latest");
+            for (const [versionRange] of rangeTestCases) {
+                it(`finds version when supplied a range (${versionRange})`, async () => {
+                    await syncVersions.run(false, versionRange);
 
-            expect(consoleErrSpy).toHaveBeenCalledWith("Some data");
+                    expect(getLatestReleaseSatisfying).toHaveBeenCalledWith(versionRange);
+                });
+            }
 
+            it("installs satisfactory version when found", async () => {
+                await syncVersions.run(false, ">1.0.0");
+
+                expect(spawn).toHaveBeenCalledWith(
+                    "bash",
+                    [
+                        join(tempDirPath, "install.sh"),
+                        "-v",
+                        "1.1.9"
+                    ], {
+                        logHandler: expect.any(LogEverythingLogHandler)
+                    }
+                );
+            });
+
+            it("rejects when there is not a satisfactory version", async () => {
+                // @ts-expect-error
+                getLatestReleaseSatisfying.mockResolvedValue(undefined);
+
+                await expect(syncVersions.run(false, ">1.0.0")).rejects.toEqual(
+                    new Error("Could not find a version of chs-dev that satisfies: >1.0.0")
+                );
+
+            });
+
+            it("resolves to version installed", async () => {
+                await expect(syncVersions.run(false, ">1.0.0")).resolves.toBe("1.1.9");
+            });
         });
     });
 });
