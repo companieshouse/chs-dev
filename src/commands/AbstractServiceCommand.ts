@@ -1,23 +1,21 @@
 import { Args, Command, Config } from "@oclif/core";
-import { Inventory } from "../../state/inventory.js";
-import { StateManager } from "../../state/state-manager.js";
-import { serviceValidator } from "../../helpers/service-validator.js";
-import Service from "../../model/Service.js";
+import { Inventory } from "../state/inventory.js";
+import { StateManager } from "../state/state-manager.js";
+import { serviceValidator } from "../helpers/service-validator.js";
+import Service from "../model/Service.js";
 
 /**
  * A base class for all service specific commands within the Development
  * topic allowing common service behaviours
  */
-export default abstract class AbstractDevelopmentServiceCommand extends Command {
+export default abstract class AbstractServiceCommand extends Command {
     // Set strict = false to allow rest args for listing services
     static strict = false;
-
-    protected static action: string;
 
     static args = {
         services: Args.string({
             name: "services",
-            description: `list of services to ${AbstractDevelopmentServiceCommand.action} in development mode`,
+            description: `list of services`,
             required: true
 
         })
@@ -41,10 +39,10 @@ export default abstract class AbstractDevelopmentServiceCommand extends Command 
      * an implementation of how to handle a valid service
      * @param serviceName - name of the service being interacted with
      */
-    protected abstract handleValidService(serviceName: string): Promise<boolean>;
+    protected abstract handleValidService(serviceName: string): Promise<void>;
 
     async run (): Promise<any> {
-        const { argv } = await this.parse(AbstractDevelopmentServiceCommand);
+        const { argv } = await this.parse(AbstractServiceCommand);
 
         // Check that a service has been provided otherwise exit
         if (argv.length === 0) {
@@ -58,7 +56,9 @@ export default abstract class AbstractDevelopmentServiceCommand extends Command 
         // Validate each service before handling the valid services
         for (const serviceName of argv as string[]) {
             if (this.serviceNameValidator(serviceName) && this.serviceHasRepositoryDefined(serviceName)) {
-                runHook = await this.handleValidService(serviceName);
+                await this.handleValidService(serviceName);
+
+                runHook = true;
             }
         }
 
