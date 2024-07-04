@@ -71,8 +71,9 @@ describe("development services", () => {
     const cwdSpy = jest.spyOn(process, "cwd");
 
     let developmentServices: Services;
-    const parseMock = jest.fn();
-    const logMock = jest.fn();
+    let parseMock;
+    let logMock;
+    let logJsonMock;
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -86,21 +87,26 @@ describe("development services", () => {
         );
 
         // @ts-expect-error
-        developmentServices.parse = parseMock;
+        parseMock = jest.spyOn(developmentServices, "parse");
 
-        developmentServices.log = logMock;
+        logMock = jest.spyOn(developmentServices, "log");
+
+        // @ts-expect-error
+        logJsonMock = jest.spyOn(developmentServices, "logJson");
     });
 
     it("prints services when services called", async () => {
-        // @ts-expect-error
-        parseMock.mockResolvedValue({});
+        parseMock.mockResolvedValue({
+            flags: {
+                json: false
+            }
+        });
 
         await developmentServices.run();
 
-        expect(developmentServices.log).toHaveBeenCalledTimes(3);
+        expect(logMock).toHaveBeenCalledTimes(3);
 
-        // @ts-expect-error
-        const logCalls = developmentServices.log.mock.calls;
+        const logCalls = logMock.mock.calls;
 
         const expectedCalls = [
             "Available services:",
@@ -115,6 +121,27 @@ describe("development services", () => {
 
             expect(actual).toEqual([expected]);
         }
+
+        expect(logJsonMock).not.toHaveBeenCalled();
+    });
+
+    it("outputs services as json when json flag set", async () => {
+        parseMock.mockResolvedValue({
+            flags: {
+                json: true
+            }
+        });
+
+        await developmentServices.run();
+
+        expect(logJsonMock).toHaveBeenCalledWith({
+            services: [
+                "service-one",
+                "service-two"
+            ]
+        });
+
+        expect(logMock).not.toHaveBeenCalled();
     });
 
 });

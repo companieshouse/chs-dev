@@ -260,7 +260,10 @@ Lists all services which are available to enable in development mode
 
 ```
 USAGE
-  $ chs-dev development services
+  $ chs-dev development services [-j]
+
+FLAGS
+  -j, --json  output as json
 
 DESCRIPTION
   Lists all services which are available to enable in development mode
@@ -413,7 +416,10 @@ Lists the available modules
 
 ```
 USAGE
-  $ chs-dev modules available
+  $ chs-dev modules available [-j]
+
+FLAGS
+  -j, --json  output as json
 
 DESCRIPTION
   Lists the available modules
@@ -484,7 +490,10 @@ Lists all the available services
 
 ```
 USAGE
-  $ chs-dev services available
+  $ chs-dev services available [-j]
+
+FLAGS
+  -j, --json  output as json
 
 DESCRIPTION
   Lists all the available services
@@ -526,7 +535,10 @@ print status of an environment
 
 ```
 USAGE
-  $ chs-dev status
+  $ chs-dev status [-j]
+
+FLAGS
+  -j, --json  output as json
 
 DESCRIPTION
   print status of an environment

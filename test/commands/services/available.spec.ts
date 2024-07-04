@@ -15,8 +15,10 @@ jest.mock("../../../src/state/inventory", () => {
 
 describe("services available", () => {
     const cwdSpy = jest.spyOn(process, "cwd");
-    const logMock = jest.fn();
 
+    let logMock;
+    let logJsonMock;
+    let parseMock;
     let servicesAvailable;
 
     beforeEach(() => {
@@ -30,10 +32,18 @@ describe("services available", () => {
             } as Config
         );
 
-        servicesAvailable.log = logMock;
+        logMock = jest.spyOn(servicesAvailable, "log");
+        logJsonMock = jest.spyOn(servicesAvailable, "logJson");
+        parseMock = jest.spyOn(servicesAvailable, "parse");
     });
 
     it("prints out available services", async () => {
+        parseMock.mockResolvedValue({
+            flags: {
+                json: false
+            }
+        });
+
         await servicesAvailable.run();
 
         expect(logMock).toHaveBeenCalledTimes(services.length + 1);
@@ -42,5 +52,23 @@ describe("services available", () => {
         for (const service of services) {
             expect(logMock).toHaveBeenCalledWith(` - ${service.name}`);
         }
+
+        expect(logJsonMock).not.toHaveBeenCalled();
+    });
+
+    it("outputs services as JSON when json flag set", async () => {
+        parseMock.mockResolvedValue({
+            flags: {
+                json: true
+            }
+        });
+
+        await servicesAvailable.run();
+
+        expect(logJsonMock).toHaveBeenCalledWith({
+            services: services.map(({ name }) => name).sort()
+        });
+
+        expect(logMock).not.toHaveBeenCalled();
     });
 });

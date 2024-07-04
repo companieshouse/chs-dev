@@ -1,9 +1,20 @@
-import { Command, Config } from "@oclif/core";
+import { Command, Config, Flags } from "@oclif/core";
 import { Inventory } from "../../state/inventory.js";
 
 export default class Available extends Command {
 
     static description = "Lists all the available services";
+
+    static flags = {
+        json: Flags.boolean({
+            name: "json",
+            char: "j",
+            aliases: ["json"],
+            default: false,
+            allowNo: false,
+            description: "output as json"
+        })
+    };
 
     private readonly inventory: Inventory;
 
@@ -14,15 +25,25 @@ export default class Available extends Command {
     }
 
     async run (): Promise<any> {
-        this.log("Available services:");
         const services: string[] = [];
         for (const service of this.inventory.services) {
             services.push(service.name);
         }
-        services.sort((a, b) => a.localeCompare(b));
-        services.forEach((service) => {
-            this.log(` - ${service}`);
-        });
+        const serviceNames = services.sort((a, b) => a.localeCompare(b));
+
+        const { flags } = await this.parse(Available);
+
+        if (flags.json) {
+            this.logJson({
+                services: serviceNames
+            });
+        } else {
+            this.log("Available services:");
+
+            services.forEach((service) => {
+                this.log(` - ${service}`);
+            });
+        }
     }
 
 }
