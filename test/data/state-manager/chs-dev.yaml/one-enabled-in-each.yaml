@@ -4,5 +4,5 @@ services:
   - service-one
 servicesWithLiveUpdate:
   - service-one
-excludedFiles:
+excludedServices:
   - service-one

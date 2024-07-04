@@ -22,7 +22,7 @@ export interface State {
     /**
      * list of service names which are removed from the deployed environment
      */
-    excludedFiles: string[];
+    excludedServices: string[];
 }
 
 export default State;

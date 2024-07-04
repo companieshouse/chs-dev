@@ -157,8 +157,12 @@ USAGE
 * [`chs-dev development enable SERVICES`](#chs-dev-development-enable-services)
 * [`chs-dev development services`](#chs-dev-development-services)
 * [`chs-dev down`](#chs-dev-down)
-* [`chs-dev exclusions COMMAND [EXCLUSIONS]`](#chs-dev-exclusions-command-exclusions)
+* [`chs-dev exclude SERVICE`](#chs-dev-exclude-service)
+* [`chs-dev exclusions add SERVICE`](#chs-dev-exclusions-add-service)
+* [`chs-dev exclusions list`](#chs-dev-exclusions-list)
+* [`chs-dev exclusions remove SERVICE`](#chs-dev-exclusions-remove-service)
 * [`chs-dev help [COMMAND]`](#chs-dev-help-command)
+* [`chs-dev include SERVICE`](#chs-dev-include-service)
 * [`chs-dev logs [SERVICENAME]`](#chs-dev-logs-servicename)
 * [`chs-dev modules available`](#chs-dev-modules-available)
 * [`chs-dev modules disable MODULES`](#chs-dev-modules-disable-modules)
@@ -277,21 +281,73 @@ EXAMPLES
   $ chs-dev down
 ```
 
-## `chs-dev exclusions COMMAND [EXCLUSIONS]`
+## `chs-dev exclude SERVICE`
 
-list available services and enable / disable service
+Adds a new service to the exclusions list
 
 ```
 USAGE
-  $ chs-dev exclusions COMMAND [EXCLUSIONS]
+  $ chs-dev exclude SERVICE...
+
+ARGUMENTS
+  SERVICE...  name of service being excluded from the docker environment
 
 DESCRIPTION
-  list available services and enable / disable service
+  Adds a new service to the exclusions list
 
-EXAMPLES
-  $ chs-dev exclusions exclude [EXCLUSION]
+ALIASES
+  $ chs-dev exclude
+```
 
-  $ chs-dev exclusions include [EXCLUSION]
+## `chs-dev exclusions add SERVICE`
+
+Adds a new service to the exclusions list
+
+```
+USAGE
+  $ chs-dev exclusions add SERVICE...
+
+ARGUMENTS
+  SERVICE...  name of service being excluded from the docker environment
+
+DESCRIPTION
+  Adds a new service to the exclusions list
+
+ALIASES
+  $ chs-dev exclude
+```
+
+## `chs-dev exclusions list`
+
+lists the current list of services which have been excluded
+
+```
+USAGE
+  $ chs-dev exclusions list [-j]
+
+FLAGS
+  -j, --json  Output to log as json
+
+DESCRIPTION
+  lists the current list of services which have been excluded
+```
+
+## `chs-dev exclusions remove SERVICE`
+
+Removes an exclusion for a service.
+
+```
+USAGE
+  $ chs-dev exclusions remove SERVICE...
+
+ARGUMENTS
+  SERVICE...  name of service being reincluded in the docker environment
+
+DESCRIPTION
+  Removes an exclusion for a service.
+
+ALIASES
+  $ chs-dev include
 ```
 
 ## `chs-dev help [COMMAND]`
@@ -313,6 +369,24 @@ DESCRIPTION
 ```
 
 _See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.3.1/src/commands/help.ts)_
+
+## `chs-dev include SERVICE`
+
+Removes an exclusion for a service.
+
+```
+USAGE
+  $ chs-dev include SERVICE...
+
+ARGUMENTS
+  SERVICE...  name of service being reincluded in the docker environment
+
+DESCRIPTION
+  Removes an exclusion for a service.
+
+ALIASES
+  $ chs-dev include
+```
 
 ## `chs-dev logs [SERVICENAME]`
 

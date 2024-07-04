@@ -111,7 +111,7 @@ describe("Hook: generate-runnable-docker-compose", () => {
                     "service-four"
                 ],
                 servicesWithLiveUpdate: [],
-                excludedFiles: []
+                excludedServices: []
             };
         });
 
@@ -168,7 +168,7 @@ describe("Hook: generate-runnable-docker-compose", () => {
                 modules: ["module-three"],
                 services: [],
                 servicesWithLiveUpdate: [],
-                excludedFiles: []
+                excludedServices: []
             };
         });
 
@@ -200,7 +200,7 @@ describe("Hook: generate-runnable-docker-compose", () => {
                 modules: ["module-six"],
                 services: ["service-eight"],
                 servicesWithLiveUpdate: [],
-                excludedFiles: []
+                excludedServices: []
             };
         });
 
@@ -231,7 +231,7 @@ describe("Hook: generate-runnable-docker-compose", () => {
                 modules: [],
                 services: ["service-one", "service-two", "service-three"],
                 servicesWithLiveUpdate: ["service-two", "service-three"],
-                excludedFiles: []
+                excludedServices: []
             };
         });
 
@@ -263,7 +263,7 @@ describe("Hook: generate-runnable-docker-compose", () => {
                 modules: [],
                 services: ["service-five"],
                 servicesWithLiveUpdate: [],
-                excludedFiles: ["service-two"]
+                excludedServices: ["service-two"]
             };
         });
 
