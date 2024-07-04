@@ -1,5 +1,41 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Status command should log json correctly 1`] = `
+[
+  {
+    "modules": [
+      "module-one",
+    ],
+    "services": [
+      {
+        "composeStatus": "stopped",
+        "liveUpdate": false,
+        "name": "service-five",
+        "transient": true,
+      },
+      {
+        "composeStatus": "stopped",
+        "liveUpdate": false,
+        "name": "service-four",
+        "transient": true,
+      },
+      {
+        "composeStatus": "running",
+        "liveUpdate": false,
+        "name": "service-one",
+        "transient": false,
+      },
+      {
+        "composeStatus": "running",
+        "liveUpdate": true,
+        "name": "service-two",
+        "transient": false,
+      },
+    ],
+  },
+]
+`;
+
 exports[`Status command should log with their docker compose statuses 1`] = `
 [
   [
