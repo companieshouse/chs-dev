@@ -83,7 +83,8 @@
     "topicSeparator": " ",
     "topics": {
       "development": { "description": "manages the services currently in development mode" },
-      "modules": { "description": "manages the addition and removal of modules (collections of common services)" }
+      "modules": { "description": "manages the addition and removal of modules (collections of common services)" },
+      "services": { "description": "manages the addition and removal of services" }
     }
   },
   "repository": "companieshouse/chs-dev",
