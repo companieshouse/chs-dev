@@ -160,7 +160,9 @@ USAGE
 * [`chs-dev exclusions COMMAND [EXCLUSIONS]`](#chs-dev-exclusions-command-exclusions)
 * [`chs-dev help [COMMAND]`](#chs-dev-help-command)
 * [`chs-dev logs [SERVICENAME]`](#chs-dev-logs-servicename)
-* [`chs-dev modules COMMAND [MODULE]`](#chs-dev-modules-command-module)
+* [`chs-dev modules available`](#chs-dev-modules-available)
+* [`chs-dev modules disable MODULES`](#chs-dev-modules-disable-modules)
+* [`chs-dev modules enable MODULES`](#chs-dev-modules-enable-modules)
 * [`chs-dev reload SERVICE`](#chs-dev-reload-service)
 * [`chs-dev service-logs [SERVICENAME]`](#chs-dev-service-logs-servicename)
 * [`chs-dev services available`](#chs-dev-services-available)
@@ -227,7 +229,7 @@ USAGE
   $ chs-dev development disable SERVICES...
 
 ARGUMENTS
-  SERVICES...  list of services
+  SERVICES...  names of services to be removed to development mode
 
 DESCRIPTION
   Removes a service from development mode
@@ -242,7 +244,7 @@ USAGE
   $ chs-dev development enable SERVICES...
 
 ARGUMENTS
-  SERVICES...  list of services
+  SERVICES...  names of services to be added to development mode
 
 DESCRIPTION
   Adds a service to development mode
@@ -331,23 +333,46 @@ ALIASES
   $ chs-dev compose-logs
 ```
 
-## `chs-dev modules COMMAND [MODULE]`
+## `chs-dev modules available`
 
-list available modules and enable / disable module
+Lists the available modules
 
 ```
 USAGE
-  $ chs-dev modules COMMAND [MODULE]
-
-DESCRIPTION
-  list available modules and enable / disable module
-
-EXAMPLES
   $ chs-dev modules available
 
-  $ chs-dev modules enable [MODULE]
+DESCRIPTION
+  Lists the available modules
+```
 
-  $ chs-dev modules disable [MODULE]
+## `chs-dev modules disable MODULES`
+
+Removes the services within the supplied modules from the state and any unnecessary dependencies
+
+```
+USAGE
+  $ chs-dev modules disable MODULES...
+
+ARGUMENTS
+  MODULES...  list of module names
+
+DESCRIPTION
+  Removes the services within the supplied modules from the state and any unnecessary dependencies
+```
+
+## `chs-dev modules enable MODULES`
+
+Enables the services within the supplied modules
+
+```
+USAGE
+  $ chs-dev modules enable MODULES...
+
+ARGUMENTS
+  MODULES...  list of module names
+
+DESCRIPTION
+  Enables the services within the supplied modules
 ```
 
 ## `chs-dev reload SERVICE`
@@ -400,7 +425,7 @@ USAGE
   $ chs-dev services disable SERVICES...
 
 ARGUMENTS
-  SERVICES...  list of services
+  SERVICES...  names of services to be removed to docker environment
 
 DESCRIPTION
   Removes the supplied services and any unnecessary dependencies from the Docker environment
@@ -415,7 +440,7 @@ USAGE
   $ chs-dev services enable SERVICES...
 
 ARGUMENTS
-  SERVICES...  list of services
+  SERVICES...  names of services to be added to development mode
 
 DESCRIPTION
   Enables the services and any dependencies for use within the Docker environment

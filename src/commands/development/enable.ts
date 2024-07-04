@@ -3,12 +3,29 @@ import { existsSync } from "fs";
 import { cli } from "cli-ux";
 import { Service } from "../../model/Service.js";
 import simpleGit from "simple-git";
-import AbstractServiceCommand from "../AbstractServiceCommand.js";
+import AbstractStateModificationCommand from "../AbstractStateModificationCommand.js";
+import { Args, Config } from "@oclif/core";
+import { serviceValidator } from "../../helpers/validator.js";
 
-export default class Enable extends AbstractServiceCommand {
+export default class Enable extends AbstractStateModificationCommand {
     static description: string = "Adds a service to development mode";
 
-    protected async handleValidService (serviceName: string): Promise<void> {
+    static args = {
+        services: Args.string({
+            name: "services",
+            required: true,
+            description: "names of services to be added to development mode"
+        })
+    };
+
+    constructor (argv: string[], config: Config) {
+        super(argv, config, "service");
+
+        this.argumentValidationPredicate = serviceValidator(this.inventory, this.error, true);
+        this.validArgumentHandler = this.handleValidService;
+    }
+
+    private async handleValidService (serviceName: string): Promise<void> {
         this.enableService(serviceName);
 
         await this.config.runHook("generate-development-docker-compose", { serviceName });

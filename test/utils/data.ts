@@ -135,4 +135,14 @@ export const services = [
     }
 ];
 
-export const modules = services.map(({ module }) => ({ name: module }));
+const deduplicate = (modules, next) => {
+    const found = modules.find(module => module.name === next.name);
+
+    if (!found) {
+        modules.push(next);
+    }
+
+    return modules;
+};
+
+export const modules = services.map(({ module }) => ({ name: module })).reduce(deduplicate, []);
