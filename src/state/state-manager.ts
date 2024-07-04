@@ -19,7 +19,7 @@ export class StateManager {
             modules: [],
             services: [],
             servicesWithLiveUpdate: [],
-            excludedFiles: []
+            excludedServices: []
         };
     }
 
@@ -55,29 +55,29 @@ export class StateManager {
         }
     }
 
-    async includeFile (file: string): Promise<void> {
+    async addExclusionForService (service: string): Promise<void> {
         let snapshot: State = this.snapshot;
 
-        if (!snapshot.excludedFiles) {
-            this.dumpState({ ...snapshot, excludedFiles: [] });
+        if (!snapshot.excludedServices) {
+            this.dumpState({ ...snapshot, excludedServices: [] });
             snapshot = this.snapshot;
         }
 
-        if (!snapshot.excludedFiles.includes(file)) {
-            this.dumpState({ ...snapshot, excludedFiles: [...snapshot.excludedFiles, file] });
+        if (!snapshot.excludedServices.includes(service)) {
+            this.dumpState({ ...snapshot, excludedServices: [...snapshot.excludedServices, service] });
         }
     }
 
-    excludeFile (tiltfile: string): void {
+    removeExclusionForService (service: string): void {
         let snapshot: State = this.snapshot;
 
-        if (!snapshot.excludedFiles) {
-            this.dumpState({ ...snapshot, excludedFiles: [] });
+        if (!snapshot.excludedServices) {
+            this.dumpState({ ...snapshot, excludedServices: [] });
             snapshot = this.snapshot;
         }
 
-        if (snapshot.excludedFiles.includes(tiltfile)) {
-            this.dumpState({ ...snapshot, excludedFiles: snapshot.excludedFiles.filter(candidate => candidate !== tiltfile) });
+        if (snapshot.excludedServices.includes(service)) {
+            this.dumpState({ ...snapshot, excludedServices: snapshot.excludedServices.filter(candidate => candidate !== service) });
         }
     }
 

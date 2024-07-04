@@ -13,7 +13,7 @@ const NO_SERVICES_IN_DEV_MODE = {
         "service-one"
     ],
     servicesWithLiveUpdate: [],
-    excludedFiles: []
+    excludedServices: []
 };
 
 const SERVICES_IN_DEV_MODE = {
@@ -24,7 +24,7 @@ const SERVICES_IN_DEV_MODE = {
     servicesWithLiveUpdate: [
         "service-one"
     ],
-    excludedFiles: []
+    excludedServices: []
 };
 
 let snapshot: State = NO_SERVICES_IN_DEV_MODE;

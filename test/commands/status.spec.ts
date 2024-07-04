@@ -70,7 +70,7 @@ const snapshot: State = {
     servicesWithLiveUpdate: [
         "service-two"
     ],
-    excludedFiles: [
+    excludedServices: [
         "service-three"
     ]
 };

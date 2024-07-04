@@ -47,7 +47,7 @@ describe("StateManager", () => {
             modules: [],
             services: [],
             servicesWithLiveUpdate: [],
-            excludedFiles: []
+            excludedServices: []
         });
     });
 
@@ -100,21 +100,21 @@ describe("StateManager", () => {
     });
 
     it("includes file", () => {
-        stateManager.includeFile("service-one");
+        stateManager.addExclusionForService("service-one");
 
-        expect(stateManager.snapshot.excludedFiles).toContain("service-one");
+        expect(stateManager.snapshot.excludedServices).toContain("service-one");
 
-        expect(readSnapshotFile().excludedFiles).toContain("service-one");
+        expect(readSnapshotFile().excludedServices).toContain("service-one");
     });
 
     it("excludes file", () => {
         setStateFile("one-enabled-in-each.yaml");
 
-        expect(stateManager.snapshot.excludedFiles).toContain("service-one");
+        expect(stateManager.snapshot.excludedServices).toContain("service-one");
 
-        stateManager.excludeFile("service-one");
+        stateManager.removeExclusionForService("service-one");
 
-        expect(stateManager.snapshot.excludedFiles).not.toContain("service-one");
+        expect(stateManager.snapshot.excludedServices).not.toContain("service-one");
     });
 
     it("adds to live update", () => {
@@ -165,16 +165,16 @@ describe("StateManager", () => {
     it("handles old statefile without excluded files entry when including file", () => {
         setStateFile("no-excluded-files-entry.yaml");
 
-        stateManager.includeFile("service-one");
+        stateManager.addExclusionForService("service-one");
 
-        expect(stateManager.snapshot.excludedFiles).toContain("service-one");
+        expect(stateManager.snapshot.excludedServices).toContain("service-one");
     });
 
     it("handles old statefile without excluded files entry when excluding file", () => {
         setStateFile("no-excluded-files-entry.yaml");
 
-        stateManager.excludeFile("service-one");
+        stateManager.removeExclusionForService("service-one");
 
-        expect(stateManager.snapshot.excludedFiles.length).toBe(0);
+        expect(stateManager.snapshot.excludedServices.length).toBe(0);
     });
 });

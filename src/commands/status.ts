@@ -56,7 +56,7 @@ export default class Status extends Command {
         }
 
         this.log("\nManually deactivated services:");
-        for (const file of state.excludedFiles || []) {
+        for (const file of state.excludedServices || []) {
             this.log(` - ${file}`);
         }
     }
