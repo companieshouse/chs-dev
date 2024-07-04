@@ -1,0 +1,116 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`readServices loads a more complicated 1`] = `
+[
+  {
+    "builder": "java",
+    "dependsOn": [
+      "simple-service",
+    ],
+    "description": "more complex service",
+    "metadata": {
+      "dockerfile": undefined,
+      "healthcheck": "curl http://localhost/healtcheck",
+      "ingressRoute": "Host(\`api.local\`) && (PathPrefix(\`/complex\`))",
+      "languageMajorVersion": "17",
+      "repoContext": undefined,
+    },
+    "module": "module-two",
+    "name": "more-complex",
+    "repository": {
+      "branch": "develop",
+      "url": "git@github.com/companieshouse/repo2.git",
+    },
+    "source": "./test/data/service-reader/modules/module-two/more-complex.docker-compose.yaml",
+  },
+]
+`;
+
+exports[`readServices loads a simple service 1`] = `
+[
+  {
+    "builder": "",
+    "dependsOn": [
+      "mongo",
+    ],
+    "description": "simple service",
+    "metadata": {
+      "dockerfile": undefined,
+      "healthcheck": undefined,
+      "ingressRoute": undefined,
+      "languageMajorVersion": undefined,
+      "repoContext": undefined,
+    },
+    "module": "module-one",
+    "name": "simple-service",
+    "repository": {
+      "branch": undefined,
+      "url": "git@github.com/companieshouse/repo.git",
+    },
+    "source": "./test/data/service-reader/modules/module-one/simple-service.docker-compose.yaml",
+  },
+]
+`;
+
+exports[`readServices loads an infrastructure service 1`] = `
+[
+  {
+    "builder": "",
+    "dependsOn": [],
+    "description": "primary database storing data",
+    "metadata": {
+      "dockerfile": undefined,
+      "healthcheck": "test $$(echo "rs.initiate({_id:'rs',members:[{_id:0,host:\\"mongo:27017\\"}]}).ok || rs.status().ok" | mongo --port 27017 --quiet) -eq 1",
+      "ingressRoute": undefined,
+      "languageMajorVersion": undefined,
+      "repoContext": undefined,
+    },
+    "module": "infrastructure",
+    "name": "mongo",
+    "repository": null,
+    "source": "./test/data/service-reader/infrastructure/mongo.docker-compose.yaml",
+  },
+  {
+    "builder": "",
+    "dependsOn": [
+      "mongo",
+    ],
+    "description": undefined,
+    "metadata": {
+      "dockerfile": undefined,
+      "healthcheck": undefined,
+      "ingressRoute": undefined,
+      "languageMajorVersion": undefined,
+      "repoContext": undefined,
+    },
+    "module": "infrastructure",
+    "name": "execute-mongo-scripts",
+    "repository": null,
+    "source": "./test/data/service-reader/infrastructure/mongo.docker-compose.yaml",
+  },
+]
+`;
+
+exports[`readServices loads atypical with repoContext 1`] = `
+[
+  {
+    "builder": "repository",
+    "dependsOn": [],
+    "description": "atypical service",
+    "metadata": {
+      "dockerfile": "chs.Dockerfile",
+      "healthcheck": undefined,
+      "ingressRoute": undefined,
+      "languageMajorVersion": undefined,
+      "repoContext": "chsDev/",
+    },
+    "module": "module-three",
+    "name": "atypical-service",
+    "repository": {
+      "branch": undefined,
+      "url": "git@github.com/companieshouse/repo3.git",
+    },
+    "source": "./test/data/service-reader/modules/module-three/atypical.docker-compose.yaml",
+  },
+]
+`;

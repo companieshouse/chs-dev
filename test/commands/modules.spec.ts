@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
-import { Module, Service, Inventory } from "../../src/state/inventory";
-import { StateManager } from "../../src/state/state-manager";
+import { Service } from "../../src/model/Service";
+import { Module } from "../../src/model/Module";
 // @ts-expect-error it does exist
 import { mkdtempSync, rmSync } from "fs";
 import { join } from "path";
@@ -65,7 +65,7 @@ describe("modules command", () => {
         jest.resetAllMocks();
         tempDir = mkdtempSync("modules-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), runHook: runHookMock };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
 
         modules = new Modules([], testConfig);
 

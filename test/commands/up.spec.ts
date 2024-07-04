@@ -1,7 +1,7 @@
 import { expect, jest } from "@jest/globals";
-import { State } from "../../src/state/state-manager";
 import Up from "../../src/commands/up";
 import { Config } from "@oclif/core";
+import { State } from "../../src/model/State";
 
 const startDevelopmentModeMock = jest.fn();
 const dockerComposeUpMock = jest.fn();
@@ -82,7 +82,7 @@ describe("Up command", () => {
         runHookMock = jest.fn();
 
         // @ts-expect-error
-        testConfig = { root: "./", configDir: "./config", runHook: runHookMock };
+        testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", runHook: runHookMock };
 
         up = new Up([], testConfig);
 
@@ -132,5 +132,19 @@ describe("Up command", () => {
             expect(dependencyCacheUpdateMock).toHaveBeenCalled();
         });
 
+    });
+
+    it("should run the ensure ecr is logged in hook", async () => {
+        await up.run();
+
+        expect(runHookMock).toHaveBeenCalledWith("ensure-ecr-logged-in", {});
+    });
+
+    it("should not run up if ecr was not logged in successfully", async () => {
+        runHookMock.mockRejectedValue(new Error("error"));
+
+        await expect(up.run()).rejects.toEqual(expect.anything());
+
+        expect(dockerComposeUpMock).not.toHaveBeenCalled();
     });
 });

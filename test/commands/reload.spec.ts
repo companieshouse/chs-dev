@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
-import { Service } from "../../src/state/inventory";
+import { Service } from "../../src/model/Service";
 // @ts-expect-error it does exist
 import { mkdtempSync, rmSync } from "fs";
 import { join } from "path";
@@ -70,7 +70,7 @@ describe("reload spec", () => {
         jest.resetAllMocks();
         tempDir = mkdtempSync("reload-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), runHook: runHookMock };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
 
         reload = new Reload([], testConfig);
 

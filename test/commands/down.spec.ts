@@ -16,6 +16,13 @@ jest.mock("../../src/run/docker-compose", () => {
     };
 });
 
+jest.mock("../../src/helpers/config-loader", function () {
+    return () => ({
+        env: {},
+        projectPath: "./docker-env"
+    });
+});
+
 describe("Down command", () => {
     let tempDir;
     let testConfig: Config;
@@ -30,7 +37,7 @@ describe("Down command", () => {
         jest.resetAllMocks();
         tempDir = mkdtempSync("down-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), runHook: runHookMock };
+        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
 
         downCommand = new Down([], testConfig);
 

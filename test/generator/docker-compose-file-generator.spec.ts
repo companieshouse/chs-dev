@@ -3,18 +3,21 @@ import { afterAll, beforeAll, expect } from "@jest/globals";
 // @ts-expect-error does exist despite ts warning
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { DockerComposeFileGenerator } from "../../src/generator/docker-compose-file-generator";
-import { Service } from "../../src/state/inventory";
+import { Service } from "../../src/model/Service";
 import { join } from "path";
 import { parse, stringify } from "yaml";
 
 describe("DockerComposeFileGenerator", () => {
     let tempDir: string;
+    let moduleDir: string;
     let dockerComposeFileGenerator: DockerComposeFileGenerator;
 
     beforeAll(() => {
         tempDir = mkdtempSync("docker-compose-file-gen");
+        moduleDir = join(tempDir, "services/modules/module-one");
 
         mkdirSync(join(tempDir, "local"));
+        mkdirSync(moduleDir, { recursive: true });
     });
 
     afterAll(() => {
@@ -180,7 +183,7 @@ describe("DockerComposeFileGenerator", () => {
         let serviceDockerComposeFile: string;
 
         beforeEach(() => {
-            serviceDockerComposeFile = join(tempDir, "service.docker-compose.yaml");
+            serviceDockerComposeFile = join(moduleDir, "service.docker-compose.yaml");
 
             copyFileSync(
                 join(process.cwd(), "test/data/docker-compose-file-generator/service.docker-compose.yaml"),
@@ -364,6 +367,223 @@ describe("DockerComposeFileGenerator", () => {
             generatedDockerCompose.services["service-one"].build.args.REPO_PATH = generatedDockerCompose.services["service-one"].build.args.REPO_PATH.replace(tempDir, ".");
 
             expect(generatedDockerCompose).toMatchSnapshot();
+        });
+
+        it("creates development docker compose for repository - with no builder label", () => {
+            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
+
+            initialServiceDefinition.services["service-one"].labels = [
+                ...(initialServiceDefinition.services["service-one"].labels)
+            ];
+
+            writeFileSync(
+                serviceDockerComposeFile,
+                stringify(initialServiceDefinition),
+                {
+                    flag: "w"
+                }
+            );
+
+            const service: Service = {
+                name: "service-one",
+                module: "module-one",
+                source: serviceDockerComposeFile,
+                repository: null,
+                dependsOn: [],
+                builder: "",
+                metadata: {
+                }
+            };
+
+            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service);
+
+            const generatedDockerComposeFile = join(tempDir, "local/service-one/docker-compose.yaml");
+
+            expect(existsSync(generatedDockerComposeFile)).toBe(true);
+
+            const generatedDockerCompose = parse(readFileSync(generatedDockerComposeFile).toString("utf8"));
+
+            generatedDockerCompose.services["service-one"].build.context = generatedDockerCompose.services["service-one"].build.context.replace(tempDir, "./");
+
+            expect(generatedDockerCompose).toMatchSnapshot();
+        });
+
+        it("creates development docker compose for repository - with builder and repoContext labels", () => {
+            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
+
+            initialServiceDefinition.services["service-one"].labels = [
+                ...(initialServiceDefinition.services["service-one"].labels),
+                "chs.local.builder=repository",
+                "chs.local.repoContext=chs-dev/"
+            ];
+
+            writeFileSync(
+                serviceDockerComposeFile,
+                stringify(initialServiceDefinition),
+                {
+                    flag: "w"
+                }
+            );
+
+            const service: Service = {
+                name: "service-one",
+                module: "module-one",
+                source: serviceDockerComposeFile,
+                repository: null,
+                dependsOn: [],
+                builder: "repository",
+                metadata: {
+                    repoContext: "chs-dev"
+                }
+            };
+
+            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service);
+
+            const generatedDockerComposeFile = join(tempDir, "local/service-one/docker-compose.yaml");
+
+            expect(existsSync(generatedDockerComposeFile)).toBe(true);
+
+            const generatedDockerCompose = parse(readFileSync(generatedDockerComposeFile).toString("utf8"));
+
+            generatedDockerCompose.services["service-one"].build.context = generatedDockerCompose.services["service-one"].build.context.replace(tempDir, "./");
+
+            expect(generatedDockerCompose).toMatchSnapshot();
+        });
+
+        it("creates development docker compose for repository - with builder and dockerfile labels", () => {
+            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
+
+            initialServiceDefinition.services["service-one"].labels = [
+                ...(initialServiceDefinition.services["service-one"].labels),
+                "chs.local.builder=repository",
+                "chs.local.dockerfile=chs.Dockerfile"
+            ];
+
+            writeFileSync(
+                serviceDockerComposeFile,
+                stringify(initialServiceDefinition),
+                {
+                    flag: "w"
+                }
+            );
+
+            const service: Service = {
+                name: "service-one",
+                module: "module-one",
+                source: serviceDockerComposeFile,
+                repository: null,
+                dependsOn: [],
+                builder: "repository",
+                metadata: {
+                    dockerfile: "chs.Dockerfile"
+                }
+            };
+
+            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service);
+
+            const generatedDockerComposeFile = join(tempDir, "local/service-one/docker-compose.yaml");
+
+            expect(existsSync(generatedDockerComposeFile)).toBe(true);
+
+            const generatedDockerCompose = parse(readFileSync(generatedDockerComposeFile).toString("utf8"));
+
+            generatedDockerCompose.services["service-one"].build.context = generatedDockerCompose.services["service-one"].build.context.replace(tempDir, "./");
+
+            expect(generatedDockerCompose).toMatchSnapshot();
+        });
+
+        it("handles env file pointing to services directory when it is a string", () => {
+            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
+
+            initialServiceDefinition.services["service-one"].labels = [
+                ...(initialServiceDefinition.services["service-one"].labels),
+                "chs.local.builder=java",
+                "chs.local.builder.languageVersion=17"
+            ];
+
+            initialServiceDefinition.services["service-one"].env_file = "service-one.env";
+
+            writeFileSync(
+                serviceDockerComposeFile,
+                stringify(initialServiceDefinition),
+                {
+                    flag: "w"
+                }
+            );
+
+            const service: Service = {
+                name: "service-one",
+                module: "module-one",
+                source: serviceDockerComposeFile,
+                repository: null,
+                dependsOn: [],
+                builder: "java",
+                metadata: {
+                    languageMajorVersion: "17"
+                }
+            };
+
+            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service);
+
+            const generatedDockerComposeFile = join(tempDir, "local/service-one/docker-compose.yaml");
+
+            expect(existsSync(generatedDockerComposeFile)).toBe(true);
+
+            const generatedDockerCompose = parse(readFileSync(generatedDockerComposeFile).toString("utf8"));
+
+            expect(generatedDockerCompose.services["service-one"].env_file).toBe(
+                "../../services/modules/module-one/service-one.env"
+            );
+        });
+
+        it("handles env file pointing to services directory when it is an array", () => {
+            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
+
+            initialServiceDefinition.services["service-one"].labels = [
+                ...(initialServiceDefinition.services["service-one"].labels),
+                "chs.local.builder=java",
+                "chs.local.builder.languageVersion=17"
+            ];
+
+            initialServiceDefinition.services["service-one"].env_file = [
+                "service-one.env",
+                "service-one.env2",
+                "../module-two/service-one.env3"
+            ];
+
+            writeFileSync(
+                serviceDockerComposeFile,
+                stringify(initialServiceDefinition),
+                {
+                    flag: "w"
+                }
+            );
+
+            const service: Service = {
+                name: "service-one",
+                module: "module-one",
+                source: serviceDockerComposeFile,
+                repository: null,
+                dependsOn: [],
+                builder: "java",
+                metadata: {
+                    languageMajorVersion: "17"
+                }
+            };
+
+            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service);
+
+            const generatedDockerComposeFile = join(tempDir, "local/service-one/docker-compose.yaml");
+
+            expect(existsSync(generatedDockerComposeFile)).toBe(true);
+
+            const generatedDockerCompose = parse(readFileSync(generatedDockerComposeFile).toString("utf8"));
+
+            expect(generatedDockerCompose.services["service-one"].env_file).toEqual([
+                "../../services/modules/module-one/service-one.env",
+                "../../services/modules/module-one/service-one.env2",
+                "../../services/modules/module-two/service-one.env3"
+            ]);
         });
     });
 });

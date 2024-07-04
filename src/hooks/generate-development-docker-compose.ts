@@ -7,7 +7,7 @@ import { IConfig } from "@oclif/config";
 // @ts-ignore
 export const hook: Hook<"generate-development-docker-compose"> = async function ({ serviceName, config }: { serviceName: string; config: IConfig }) {
     const path = process.cwd();
-    const inventory = new Inventory(path, config.configDir);
+    const inventory = new Inventory(path, config.cacheDir);
     const dockerComposeFileGenerator = new DockerComposeFileGenerator(path);
     const service = inventory.services.find(service => service.name === serviceName);
 
