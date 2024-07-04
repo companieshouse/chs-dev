@@ -3,21 +3,17 @@ import { existsSync } from "fs";
 import { cli } from "cli-ux";
 import { Service } from "../../model/Service.js";
 import simpleGit from "simple-git";
-import AbstractDevelopmentServiceCommand from "./AbstractDevelopmentServiceCommand.js";
+import AbstractServiceCommand from "../AbstractServiceCommand.js";
 
-export default class Enable extends AbstractDevelopmentServiceCommand {
+export default class Enable extends AbstractServiceCommand {
     static description: string = "Adds a service to development mode";
 
-    protected static action: string = "enable";
-
-    protected async handleValidService (serviceName: string): Promise<boolean> {
+    protected async handleValidService (serviceName: string): Promise<void> {
         this.enableService(serviceName);
 
         await this.config.runHook("generate-development-docker-compose", { serviceName });
 
         await this.cloneServiceRepository(serviceName);
-
-        return true;
     }
 
     private enableService (serviceName: string) {

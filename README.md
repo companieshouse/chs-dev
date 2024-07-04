@@ -163,7 +163,9 @@ USAGE
 * [`chs-dev modules COMMAND [MODULE]`](#chs-dev-modules-command-module)
 * [`chs-dev reload SERVICE`](#chs-dev-reload-service)
 * [`chs-dev service-logs [SERVICENAME]`](#chs-dev-service-logs-servicename)
-* [`chs-dev services COMMAND [SERVICES]`](#chs-dev-services-command-services)
+* [`chs-dev services available`](#chs-dev-services-available)
+* [`chs-dev services disable SERVICES`](#chs-dev-services-disable-services)
+* [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
 * [`chs-dev up`](#chs-dev-up)
@@ -225,7 +227,7 @@ USAGE
   $ chs-dev development disable SERVICES...
 
 ARGUMENTS
-  SERVICES...  list of services to undefined in development mode
+  SERVICES...  list of services
 
 DESCRIPTION
   Removes a service from development mode
@@ -240,7 +242,7 @@ USAGE
   $ chs-dev development enable SERVICES...
 
 ARGUMENTS
-  SERVICES...  list of services to undefined in development mode
+  SERVICES...  list of services
 
 DESCRIPTION
   Adds a service to development mode
@@ -377,23 +379,46 @@ ALIASES
   $ chs-dev compose-logs
 ```
 
-## `chs-dev services COMMAND [SERVICES]`
+## `chs-dev services available`
 
-list available services and enable / disable service
+Lists all the available services
 
 ```
 USAGE
-  $ chs-dev services COMMAND [SERVICES]
-
-DESCRIPTION
-  list available services and enable / disable service
-
-EXAMPLES
   $ chs-dev services available
 
-  $ chs-dev services enable [SERVICE]
+DESCRIPTION
+  Lists all the available services
+```
 
-  $ chs-dev services disable [SERVICE]
+## `chs-dev services disable SERVICES`
+
+Removes the supplied services and any unnecessary dependencies from the Docker environment
+
+```
+USAGE
+  $ chs-dev services disable SERVICES...
+
+ARGUMENTS
+  SERVICES...  list of services
+
+DESCRIPTION
+  Removes the supplied services and any unnecessary dependencies from the Docker environment
+```
+
+## `chs-dev services enable SERVICES`
+
+Enables the services and any dependencies for use within the Docker environment
+
+```
+USAGE
+  $ chs-dev services enable SERVICES...
+
+ARGUMENTS
+  SERVICES...  list of services
+
+DESCRIPTION
+  Enables the services and any dependencies for use within the Docker environment
 ```
 
 ## `chs-dev status`
