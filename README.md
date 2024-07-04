@@ -533,6 +533,12 @@ are referenced by chs-dev for the given purposes:
   context for the Docker build
 * `chs.local.dockerfile` - specify the Dockerfile within the repository to use
   for development mode
+* `chs.local.builder.outputDir` - specifies the value for `OUTDIR` on the
+  builder build arg. Typically for node applications which do not build to
+  standard output directory of `dist`.
+* `chs.local.entrypoint` - specifies the entrypoint script for a given service
+  typically for a node application which does not have a
+  `ecs-image-buid/docker_start.sh` file
 
 #### Dependencies
 

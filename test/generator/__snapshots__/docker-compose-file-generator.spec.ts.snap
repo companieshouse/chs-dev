@@ -124,6 +124,42 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
 }
 `;
 
+exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose correctly node with optional build args 1`] = `
+{
+  "services": {
+    "service-one": {
+      "build": {
+        "args": {
+          "ENTRYPOINT": "docker_start.sh",
+          "LANGUAGE_MAJOR_VERSION": "18",
+          "OUTDIR": "out/",
+          "REPO_PATH": "./repositories/service-one",
+        },
+        "context": "./",
+        "dockerfile": "./local/builders/node/Dockerfile",
+      },
+      "depends_on": [],
+      "develop": {
+        "watch": [
+          {
+            "action": "rebuild",
+            "path": ".touch",
+          },
+        ],
+      },
+      "image": "my-great-image:latest",
+      "labels": [
+        "label-one=true",
+        "chs.local.builder=node",
+        "chs.local.builder.languageVersion=18",
+        "chs.local.entrypoint=docker_start.sh",
+        "chs.local.builder.outputDir=out/",
+      ],
+    },
+  },
+}
+`;
+
 exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile creates development docker compose for repository - with builder and dockerfile labels 1`] = `
 {
   "services": {
@@ -211,6 +247,7 @@ exports[`DockerComposeFileGenerator generateDockerComposeFile correctly excludes
     "./services/modules/module-one/service-two.docker-compose.yaml",
     "./local/service-three/docker-compose.yaml",
     "./local/service-four/docker-compose.yaml",
+    "./services/modules/module-one/service-nine.docker-compose.yaml",
     "./local/service-eight/docker-compose.yaml",
   ],
   "services": {
@@ -222,6 +259,10 @@ exports[`DockerComposeFileGenerator generateDockerComposeFile correctly excludes
         },
         "service-four": {
           "condition": "service_healthy",
+          "restart": true,
+        },
+        "service-nine": {
+          "condition": "service_started",
           "restart": true,
         },
         "service-one": {
@@ -248,6 +289,7 @@ exports[`DockerComposeFileGenerator generateDockerComposeFile correctly generate
     "./local/service-four/docker-compose.yaml",
     "./services/modules/module-one/service-five.docker-compose.yaml",
     "./services/modules/module-one/service-six.docker-compose.yaml",
+    "./services/modules/module-one/service-nine.docker-compose.yaml",
     "./local/service-seven/docker-compose.yaml",
     "./local/service-eight/docker-compose.yaml",
   ],
@@ -260,6 +302,10 @@ exports[`DockerComposeFileGenerator generateDockerComposeFile correctly generate
         },
         "service-four": {
           "condition": "service_healthy",
+          "restart": true,
+        },
+        "service-nine": {
+          "condition": "service_started",
           "restart": true,
         },
         "service-one": {
