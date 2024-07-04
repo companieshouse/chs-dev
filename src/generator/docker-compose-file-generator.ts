@@ -66,12 +66,14 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             }]
         };
 
-        dockerComposeConfig.services[service.name].env_file =
-            this.formatEnvFileForDevelopmentMode(
-                service.source,
-                service.name,
-                dockerComposeConfig
-            );
+        if (dockerComposeConfig.services[service.name].env_file) {
+            dockerComposeConfig.services[service.name].env_file =
+                this.formatEnvFileForDevelopmentMode(
+                    service.source,
+                    service.name,
+                    dockerComposeConfig
+                );
+        }
 
         // Sets up the output docker compose file with the build information
         if (service.builder === "repository" || service.builder === "") {
