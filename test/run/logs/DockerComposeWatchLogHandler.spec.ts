@@ -27,10 +27,23 @@ describe("DockerComposeWatchLogHandler", () => {
     beforeEach(async () => {
     });
 
-    it("logs messages when ready", () => {
+    it("logs messages when ready (previous docker compose version)", () => {
         const logMessage = [
             "Watch configuration for service \"overseas-application\"",
             "- Action rebuild for path \"/do\""
+        ].join("\n");
+
+        dockerComposeWatchLogHandler.handle(logMessage);
+
+        expect(mockLogger.log).toHaveBeenCalledWith(
+            "Running services in development mode - watching for changes."
+        );
+        expect(mockLogger.log).toHaveBeenCalledTimes(3);
+    });
+
+    it("logs messages when ready", () => {
+        const logMessage = [
+            "Watch enabled"
         ].join("\n");
 
         dockerComposeWatchLogHandler.handle(logMessage);
@@ -108,11 +121,26 @@ describe("DockerComposeWatchLogHandler", () => {
         expect(mockLogger.log).toHaveBeenCalledWith("Reloading service: my-awesome-service");
     });
 
-    it("notifies console when service has been reloaded", () => {
+    it("notifies console when service has been reloaded (previous docker compose version)", () => {
         const logLines = [
             "Rebuilding service \"my-awesome-service\"",
             "Another inconsequential log entry",
             "Container my-awesome-service Started"
+        ];
+        const logMessage = logLines.join("\n");
+
+        dockerComposeWatchLogHandler.handle(logMessage);
+
+        expect(mockLogger.log).toHaveBeenCalledWith(
+            "Service: my-awesome-service reloaded"
+        );
+    });
+
+    it("notifies console when service has been reloaded", () => {
+        const logLines = [
+            "Rebuilding service \"my-awesome-service\"",
+            "Another inconsequential log entry",
+            "service \"my-awesome-service\" successfully built"
         ];
         const logMessage = logLines.join("\n");
 
