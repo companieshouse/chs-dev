@@ -6,7 +6,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
     "service-one": {
       "build": {
         "args": {
-          "REPO_PATH": "./repositories/service-one",
+          "REPO_PATH": "repositories/service-one",
         },
         "context": "./",
         "dockerfile": "./local/builders/java/Dockerfile",
@@ -36,7 +36,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
     "service-one": {
       "build": {
         "args": {
-          "REPO_PATH": "./repositories/service-one",
+          "REPO_PATH": "repositories/service-one",
         },
         "context": "./",
         "dockerfile": "./local/builders/node/Dockerfile",
@@ -67,7 +67,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
       "build": {
         "args": {
           "LANGUAGE_MAJOR_VERSION": "17",
-          "REPO_PATH": "./repositories/service-one",
+          "REPO_PATH": "repositories/service-one",
         },
         "context": "./",
         "dockerfile": "./local/builders/java/Dockerfile",
@@ -99,7 +99,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
       "build": {
         "args": {
           "LANGUAGE_MAJOR_VERSION": "18",
-          "REPO_PATH": "./repositories/service-one",
+          "REPO_PATH": "repositories/service-one",
         },
         "context": "./",
         "dockerfile": "./local/builders/node/Dockerfile",
@@ -133,7 +133,7 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
           "ENTRYPOINT": "docker_start.sh",
           "LANGUAGE_MAJOR_VERSION": "18",
           "OUTDIR": "out/",
-          "REPO_PATH": "./repositories/service-one",
+          "REPO_PATH": "repositories/service-one",
         },
         "context": "./",
         "dockerfile": "./local/builders/node/Dockerfile",
@@ -243,11 +243,11 @@ exports[`DockerComposeFileGenerator generateDevelopmentServiceDockerComposeFile 
 exports[`DockerComposeFileGenerator generateDockerComposeFile correctly excludes services 1`] = `
 {
   "include": [
-    "./services/modules/module-one/service-one.docker-compose.yaml",
-    "./services/modules/module-one/service-two.docker-compose.yaml",
+    "services/modules/module-one/service-one.docker-compose.yaml",
+    "services/modules/module-one/service-two.docker-compose.yaml",
     "./local/service-three/docker-compose.yaml",
     "./local/service-four/docker-compose.yaml",
-    "./services/modules/module-one/service-nine.docker-compose.yaml",
+    "services/modules/module-one/service-nine.docker-compose.yaml",
     "./local/service-eight/docker-compose.yaml",
   ],
   "services": {
@@ -283,13 +283,13 @@ exports[`DockerComposeFileGenerator generateDockerComposeFile correctly excludes
 exports[`DockerComposeFileGenerator generateDockerComposeFile correctly generates docker compose file, no exclusions 1`] = `
 {
   "include": [
-    "./services/modules/module-one/service-one.docker-compose.yaml",
-    "./services/modules/module-one/service-two.docker-compose.yaml",
+    "services/modules/module-one/service-one.docker-compose.yaml",
+    "services/modules/module-one/service-two.docker-compose.yaml",
     "./local/service-three/docker-compose.yaml",
     "./local/service-four/docker-compose.yaml",
-    "./services/modules/module-one/service-five.docker-compose.yaml",
-    "./services/modules/module-one/service-six.docker-compose.yaml",
-    "./services/modules/module-one/service-nine.docker-compose.yaml",
+    "services/modules/module-one/service-five.docker-compose.yaml",
+    "services/modules/module-one/service-six.docker-compose.yaml",
+    "services/modules/module-one/service-nine.docker-compose.yaml",
     "./local/service-seven/docker-compose.yaml",
     "./local/service-eight/docker-compose.yaml",
   ],

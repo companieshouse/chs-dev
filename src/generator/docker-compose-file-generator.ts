@@ -95,7 +95,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
                     ...this.optionalBuildArg("LANGUAGE_MAJOR_VERSION", service.metadata.languageMajorVersion),
                     ...this.optionalBuildArg("ENTRYPOINT", service.metadata.entrypoint),
                     ...this.optionalBuildArg("OUTDIR", service.metadata.buildOutputDir),
-                    REPO_PATH: join(this.path, "repositories", service.name)
+                    REPO_PATH: relative(this.path, join(this.path, "repositories", service.name))
                 }
             };
         }
