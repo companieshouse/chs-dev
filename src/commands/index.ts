@@ -16,6 +16,7 @@ import ServiceDisable from "./services/disable.js";
 import ModulesAvailable from "./modules/available.js";
 import ModulesEnable from "./modules/enable.js";
 import ModulesDisable from "./modules/disable.js";
+import TestTaskLoop from "./test-taskloop.js";
 
 export const commands = {
     down: Down,
@@ -35,7 +36,8 @@ export const commands = {
     "services:disable": ServiceDisable,
     "modules:available": ModulesAvailable,
     "modules:enable": ModulesEnable,
-    "modules:disable": ModulesDisable
+    "modules:disable": ModulesDisable,
+    "test-task-loop": TestTaskLoop
 };
 
 export default commands;
