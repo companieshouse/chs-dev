@@ -6,6 +6,7 @@ import { State } from "../../src/model/State";
 const startDevelopmentModeMock = jest.fn();
 const dockerComposeUpMock = jest.fn();
 const dependencyCacheUpdateMock = jest.fn();
+const composeLogViewerViewMock = jest.fn();
 
 const NO_SERVICES_IN_DEV_MODE = {
     modules: [],
@@ -67,6 +68,16 @@ jest.mock("../../src/run/development-mode", () => {
     };
 });
 
+jest.mock("../../src/run/compose-log-viewer", () => {
+    return {
+        ComposeLogViewer: function () {
+            return {
+                view: composeLogViewerViewMock
+            };
+        }
+    };
+});
+
 describe("Up command", () => {
     let up: Up;
     let testConfig: Config;
@@ -107,6 +118,17 @@ describe("Up command", () => {
         expect(dependencyCacheUpdateMock).not.toHaveBeenCalled();
     });
 
+    it("should display a couple of lines of output if it fails", async () => {
+        dockerComposeUpMock.mockRejectedValue(new Error("error") as never);
+
+        await expect(up.run()).rejects.toEqual(expect.any(Error));
+
+        expect(composeLogViewerViewMock).toHaveBeenCalledWith({
+            tail: "5",
+            follow: false
+        });
+    });
+
     describe("services in development mode", () => {
         beforeEach(() => {
             jest.resetAllMocks();
@@ -130,6 +152,17 @@ describe("Up command", () => {
             await up.run();
 
             expect(dependencyCacheUpdateMock).toHaveBeenCalled();
+        });
+
+        it("should display a couple of lines of output if it fails", async () => {
+            startDevelopmentModeMock.mockRejectedValue(new Error("error") as never);
+
+            await expect(up.run()).rejects.toEqual(expect.any(Error));
+
+            expect(composeLogViewerViewMock).toHaveBeenCalledWith({
+                tail: "5",
+                follow: false
+            });
         });
 
     });
