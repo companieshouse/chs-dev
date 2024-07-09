@@ -164,6 +164,20 @@ describe("Status command", () => {
         expect(logMock.mock.calls).toMatchSnapshot();
     });
 
+    it("should log with their docker compose statuses correctly when not running", async () => {
+        getServiceStatusesMock.mockReturnValue({
+            "service-one": "running",
+            "service-two": "running",
+            "service-five": "stopped"
+        });
+
+        await status.run();
+
+        expect(logMock).toHaveBeenCalledTimes(12);
+
+        expect(logMock.mock.calls).toMatchSnapshot();
+    });
+
     it("should log json correctly", async () => {
         parseMock.mockResolvedValue({
             flags: {

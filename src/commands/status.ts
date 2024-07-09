@@ -45,7 +45,7 @@ export default class Status extends Command {
         const state = this.stateManager.snapshot;
         const dockerComposeState = this.dockerCompose.getServiceStatuses();
 
-        const serviceState = (serviceName: string) => dockerComposeState ? `(${dockerComposeState[serviceName]})` || "(Not running)" : "";
+        const serviceState = (serviceName: string) => dockerComposeState ? `(${dockerComposeState[serviceName] || "Not running"})` : "";
         const { flags } = await this.parse(Status);
 
         const enabledServiceNames = this.inventory.services
