@@ -9,6 +9,7 @@ import { StateManager } from "../state/state-manager.js";
 import loadConfig from "../helpers/config-loader.js";
 import { basename } from "path";
 import { Config as ChsDevConfig } from "../model/Config.js";
+import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 
 export default class Up extends Command {
 
@@ -23,18 +24,23 @@ export default class Up extends Command {
     private readonly dockerCompose: DockerCompose;
     private readonly stateManager: StateManager;
     private readonly chsDevConfig: ChsDevConfig;
+    private readonly composeLogViewer: ComposeLogViewer;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
         this.chsDevConfig = loadConfig();
-        this.dockerCompose = new DockerCompose(this.chsDevConfig, {
+
+        const logger = {
             log: (msg: string) => this.log(msg)
-        });
+        };
+
+        this.dockerCompose = new DockerCompose(this.chsDevConfig, logger);
 
         this.stateManager = new StateManager(process.cwd());
         this.dependencyCache = new DependencyCache(process.cwd());
         this.developmentMode = new DevelopmentMode(this.dockerCompose, process.cwd());
+        this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
     }
 
     async run (): Promise<any> {
@@ -49,14 +55,26 @@ export default class Up extends Command {
         }
 
         cli.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
-        await this.dockerCompose.up();
+        try {
+            await this.dockerCompose.up();
 
-        if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
-            this.dependencyCache.update();
+            if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
+                this.dependencyCache.update();
 
-            await this.developmentMode.start((prompt) => confirm({
-                message: prompt
-            }));
+                await this.developmentMode.start((prompt) => confirm({
+                    message: prompt
+                }));
+            }
+        } catch (error) {
+            this.log(`\n${"-".repeat(80)}`);
+            this.log("Recent Docker Compose Logs:");
+
+            await this.composeLogViewer.view({
+                tail: "5",
+                follow: false
+            });
+
+            this.error(error as Error);
         }
         cli.action.stop();
     }
