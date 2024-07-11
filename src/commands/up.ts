@@ -59,6 +59,8 @@ export default class Up extends Command {
             await this.dockerCompose.up();
 
             if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
+                this.log("Waiting for Development Mode to be ready (this can take a moment or two)...");
+
                 this.dependencyCache.update();
 
                 await this.developmentMode.start((prompt) => confirm({
