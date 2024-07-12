@@ -70,7 +70,7 @@ const snapshot: State = {
     servicesWithLiveUpdate: [
         "service-two"
     ],
-    excludedFiles: [
+    excludedServices: [
         "service-three"
     ]
 };
@@ -110,7 +110,9 @@ describe("Status command", () => {
     let status: Status;
     let testConfig: Config;
     let logMock;
+    let logJsonMock;
     let runHookMock;
+    let parseMock;
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -119,13 +121,23 @@ describe("Status command", () => {
         cwdSpy.mockReturnValue("/users/user/docker-chs/");
 
         runHookMock = jest.fn();
-        logMock = jest.fn();
 
         // @ts-expect-error
         testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", runHook: runHookMock };
 
         status = new Status([], testConfig);
-        status.log = logMock;
+        logMock = jest.spyOn(status, "log");
+        // @ts-expect-error
+        logJsonMock = jest.spyOn(status, "logJson");
+
+        // @ts-expect-error
+        parseMock = jest.spyOn(status, "parse");
+
+        parseMock.mockResolvedValue({
+            flags: {
+                json: false
+            }
+        });
     });
 
     it("should log without docker compose statuses", async () => {
@@ -134,6 +146,7 @@ describe("Status command", () => {
         expect(logMock).toHaveBeenCalledTimes(12);
 
         expect(logMock.mock.calls).toMatchSnapshot();
+        expect(logJsonMock).not.toHaveBeenCalled();
     });
 
     it("should log with their docker compose statuses", async () => {
@@ -149,5 +162,40 @@ describe("Status command", () => {
         expect(logMock).toHaveBeenCalledTimes(12);
 
         expect(logMock.mock.calls).toMatchSnapshot();
+    });
+
+    it("should log with their docker compose statuses correctly when not running", async () => {
+        getServiceStatusesMock.mockReturnValue({
+            "service-one": "running",
+            "service-two": "running",
+            "service-five": "stopped"
+        });
+
+        await status.run();
+
+        expect(logMock).toHaveBeenCalledTimes(12);
+
+        expect(logMock.mock.calls).toMatchSnapshot();
+    });
+
+    it("should log json correctly", async () => {
+        parseMock.mockResolvedValue({
+            flags: {
+                json: true
+            }
+        });
+        getServiceStatusesMock.mockReturnValue({
+            "service-one": "running",
+            "service-two": "running",
+            "service-five": "stopped",
+            "service-four": "stopped"
+        });
+
+        await status.run();
+
+        expect(logJsonMock).toHaveBeenCalledTimes(1);
+        expect(logJsonMock.mock.calls[0]).toMatchSnapshot();
+
+        expect(logMock).not.toHaveBeenCalled();
     });
 });

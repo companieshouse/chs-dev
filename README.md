@@ -157,13 +157,21 @@ USAGE
 * [`chs-dev development enable SERVICES`](#chs-dev-development-enable-services)
 * [`chs-dev development services`](#chs-dev-development-services)
 * [`chs-dev down`](#chs-dev-down)
-* [`chs-dev exclusions COMMAND [EXCLUSIONS]`](#chs-dev-exclusions-command-exclusions)
+* [`chs-dev exclude SERVICE`](#chs-dev-exclude-service)
+* [`chs-dev exclusions add SERVICE`](#chs-dev-exclusions-add-service)
+* [`chs-dev exclusions list`](#chs-dev-exclusions-list)
+* [`chs-dev exclusions remove SERVICE`](#chs-dev-exclusions-remove-service)
 * [`chs-dev help [COMMAND]`](#chs-dev-help-command)
+* [`chs-dev include SERVICE`](#chs-dev-include-service)
 * [`chs-dev logs [SERVICENAME]`](#chs-dev-logs-servicename)
-* [`chs-dev modules COMMAND [MODULE]`](#chs-dev-modules-command-module)
+* [`chs-dev modules available`](#chs-dev-modules-available)
+* [`chs-dev modules disable MODULES`](#chs-dev-modules-disable-modules)
+* [`chs-dev modules enable MODULES`](#chs-dev-modules-enable-modules)
 * [`chs-dev reload SERVICE`](#chs-dev-reload-service)
 * [`chs-dev service-logs [SERVICENAME]`](#chs-dev-service-logs-servicename)
-* [`chs-dev services COMMAND [SERVICES]`](#chs-dev-services-command-services)
+* [`chs-dev services available`](#chs-dev-services-available)
+* [`chs-dev services disable SERVICES`](#chs-dev-services-disable-services)
+* [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
 * [`chs-dev up`](#chs-dev-up)
@@ -225,7 +233,7 @@ USAGE
   $ chs-dev development disable SERVICES...
 
 ARGUMENTS
-  SERVICES...  list of services to undefined in development mode
+  SERVICES...  names of services to be removed to development mode
 
 DESCRIPTION
   Removes a service from development mode
@@ -240,7 +248,7 @@ USAGE
   $ chs-dev development enable SERVICES...
 
 ARGUMENTS
-  SERVICES...  list of services to undefined in development mode
+  SERVICES...  names of services to be added to development mode
 
 DESCRIPTION
   Adds a service to development mode
@@ -252,7 +260,10 @@ Lists all services which are available to enable in development mode
 
 ```
 USAGE
-  $ chs-dev development services
+  $ chs-dev development services [-j]
+
+FLAGS
+  -j, --json  output as json
 
 DESCRIPTION
   Lists all services which are available to enable in development mode
@@ -273,21 +284,73 @@ EXAMPLES
   $ chs-dev down
 ```
 
-## `chs-dev exclusions COMMAND [EXCLUSIONS]`
+## `chs-dev exclude SERVICE`
 
-list available services and enable / disable service
+Adds a new service to the exclusions list
 
 ```
 USAGE
-  $ chs-dev exclusions COMMAND [EXCLUSIONS]
+  $ chs-dev exclude SERVICE...
+
+ARGUMENTS
+  SERVICE...  name of service being excluded from the docker environment
 
 DESCRIPTION
-  list available services and enable / disable service
+  Adds a new service to the exclusions list
 
-EXAMPLES
-  $ chs-dev exclusions exclude [EXCLUSION]
+ALIASES
+  $ chs-dev exclude
+```
 
-  $ chs-dev exclusions include [EXCLUSION]
+## `chs-dev exclusions add SERVICE`
+
+Adds a new service to the exclusions list
+
+```
+USAGE
+  $ chs-dev exclusions add SERVICE...
+
+ARGUMENTS
+  SERVICE...  name of service being excluded from the docker environment
+
+DESCRIPTION
+  Adds a new service to the exclusions list
+
+ALIASES
+  $ chs-dev exclude
+```
+
+## `chs-dev exclusions list`
+
+lists the current list of services which have been excluded
+
+```
+USAGE
+  $ chs-dev exclusions list [-j]
+
+FLAGS
+  -j, --json  Output to log as json
+
+DESCRIPTION
+  lists the current list of services which have been excluded
+```
+
+## `chs-dev exclusions remove SERVICE`
+
+Removes an exclusion for a service.
+
+```
+USAGE
+  $ chs-dev exclusions remove SERVICE...
+
+ARGUMENTS
+  SERVICE...  name of service being reincluded in the docker environment
+
+DESCRIPTION
+  Removes an exclusion for a service.
+
+ALIASES
+  $ chs-dev include
 ```
 
 ## `chs-dev help [COMMAND]`
@@ -310,6 +373,24 @@ DESCRIPTION
 
 _See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.3.1/src/commands/help.ts)_
 
+## `chs-dev include SERVICE`
+
+Removes an exclusion for a service.
+
+```
+USAGE
+  $ chs-dev include SERVICE...
+
+ARGUMENTS
+  SERVICE...  name of service being reincluded in the docker environment
+
+DESCRIPTION
+  Removes an exclusion for a service.
+
+ALIASES
+  $ chs-dev include
+```
+
 ## `chs-dev logs [SERVICENAME]`
 
 ```
@@ -329,23 +410,49 @@ ALIASES
   $ chs-dev compose-logs
 ```
 
-## `chs-dev modules COMMAND [MODULE]`
+## `chs-dev modules available`
 
-list available modules and enable / disable module
+Lists the available modules
 
 ```
 USAGE
-  $ chs-dev modules COMMAND [MODULE]
+  $ chs-dev modules available [-j]
+
+FLAGS
+  -j, --json  output as json
 
 DESCRIPTION
-  list available modules and enable / disable module
+  Lists the available modules
+```
 
-EXAMPLES
-  $ chs-dev modules available
+## `chs-dev modules disable MODULES`
 
-  $ chs-dev modules enable [MODULE]
+Removes the services within the supplied modules from the state and any unnecessary dependencies
 
-  $ chs-dev modules disable [MODULE]
+```
+USAGE
+  $ chs-dev modules disable MODULES...
+
+ARGUMENTS
+  MODULES...  list of module names
+
+DESCRIPTION
+  Removes the services within the supplied modules from the state and any unnecessary dependencies
+```
+
+## `chs-dev modules enable MODULES`
+
+Enables the services within the supplied modules
+
+```
+USAGE
+  $ chs-dev modules enable MODULES...
+
+ARGUMENTS
+  MODULES...  list of module names
+
+DESCRIPTION
+  Enables the services within the supplied modules
 ```
 
 ## `chs-dev reload SERVICE`
@@ -377,23 +484,49 @@ ALIASES
   $ chs-dev compose-logs
 ```
 
-## `chs-dev services COMMAND [SERVICES]`
+## `chs-dev services available`
 
-list available services and enable / disable service
+Lists all the available services
 
 ```
 USAGE
-  $ chs-dev services COMMAND [SERVICES]
+  $ chs-dev services available [-j]
+
+FLAGS
+  -j, --json  output as json
 
 DESCRIPTION
-  list available services and enable / disable service
+  Lists all the available services
+```
 
-EXAMPLES
-  $ chs-dev services available
+## `chs-dev services disable SERVICES`
 
-  $ chs-dev services enable [SERVICE]
+Removes the supplied services and any unnecessary dependencies from the Docker environment
 
-  $ chs-dev services disable [SERVICE]
+```
+USAGE
+  $ chs-dev services disable SERVICES...
+
+ARGUMENTS
+  SERVICES...  names of services to be removed to docker environment
+
+DESCRIPTION
+  Removes the supplied services and any unnecessary dependencies from the Docker environment
+```
+
+## `chs-dev services enable SERVICES`
+
+Enables the services and any dependencies for use within the Docker environment
+
+```
+USAGE
+  $ chs-dev services enable SERVICES...
+
+ARGUMENTS
+  SERVICES...  names of services to be added to development mode
+
+DESCRIPTION
+  Enables the services and any dependencies for use within the Docker environment
 ```
 
 ## `chs-dev status`
@@ -402,7 +535,10 @@ print status of an environment
 
 ```
 USAGE
-  $ chs-dev status
+  $ chs-dev status [-j]
+
+FLAGS
+  -j, --json  output as json
 
 DESCRIPTION
   print status of an environment
@@ -508,6 +644,12 @@ are referenced by chs-dev for the given purposes:
   context for the Docker build
 * `chs.local.dockerfile` - specify the Dockerfile within the repository to use
   for development mode
+* `chs.local.builder.outputDir` - specifies the value for `OUTDIR` on the
+  builder build arg. Typically for node applications which do not build to
+  standard output directory of `dist`.
+* `chs.local.entrypoint` - specifies the entrypoint script for a given service
+  typically for a node application which does not have a
+  `ecs-image-buid/docker_start.sh` file
 
 #### Dependencies
 

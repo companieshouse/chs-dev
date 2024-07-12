@@ -92,8 +92,10 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
                 dockerfile: join(this.path, "local/builders", service.builder, "Dockerfile"),
                 context: this.path,
                 args: {
-                    ...(service.metadata.languageMajorVersion ? { LANGUAGE_MAJOR_VERSION: service.metadata.languageMajorVersion } : {}),
-                    REPO_PATH: join(this.path, "repositories", service.name)
+                    ...this.optionalBuildArg("LANGUAGE_MAJOR_VERSION", service.metadata.languageMajorVersion),
+                    ...this.optionalBuildArg("ENTRYPOINT", service.metadata.entrypoint),
+                    ...this.optionalBuildArg("OUTDIR", service.metadata.buildOutputDir),
+                    REPO_PATH: relative(this.path, join(this.path, "repositories", service.name))
                 }
             };
         }
@@ -112,6 +114,16 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             EOL,
             touchFile
         );
+    }
+
+    private optionalBuildArg (name: string, value: string | null | undefined) {
+        const buildArg: Record<string, string> = {};
+
+        if (value) {
+            buildArg[name] = value;
+        }
+
+        return buildArg;
     }
 
     private formatEnvFileForDevelopmentMode (source: string, serviceName: string, dockerComposeConfig: Record<string, any>): any {

@@ -19,12 +19,12 @@ export const hook: Hook<"generate-runnable-docker-compose"> = async function (op
 
     const enabledServices = serviceLoader.loadServices(state);
 
-    const excludedFiles = state.excludedFiles || [];
+    const { excludedServices } = state || [];
 
-    dockerComposeFileGenerator.generateDockerComposeFile(enabledServices, excludedFiles);
+    dockerComposeFileGenerator.generateDockerComposeFile(enabledServices, excludedServices);
 
     // TODO: Once dual running over remove
-    tiltfileGenerator.generate(enabledServices, excludedFiles);
+    tiltfileGenerator.generate(enabledServices, excludedServices);
 };
 
 export default hook;

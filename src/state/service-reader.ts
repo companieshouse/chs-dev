@@ -33,6 +33,15 @@ export const readServices: (filePath: string) => Partial<Service>[] = (filePath:
         .map(([serviceName, service]) => readService(module, source, serviceName, service));
 };
 
+const metadataLabelMapping = {
+    repoContext: "chs.local.repoContext",
+    ingressRoute: "traefik.http.routers.",
+    languageMajorVersion: "chs.local.builder.languageVersion",
+    dockerfile: "chs.local.dockerfile",
+    entrypoint: "chs.local.entrypoint",
+    buildOutputDir: "chs.local.builder.outputDir"
+};
+
 const readService: (module: string, source: string, serviceName: string, service: ServiceDefinition) => Partial<Service> = (module, source, serviceName, service) => ({
     name: serviceName,
     module,
@@ -42,11 +51,8 @@ const readService: (module: string, source: string, serviceName: string, service
     repository: parseRepository(service.labels),
     builder: findLabel(service.labels, "chs.local.builder") || "",
     metadata: {
-        repoContext: findLabel(service.labels, "chs.local.repoContext"),
-        ingressRoute: findLabel(service.labels, "traefik.http.routers."),
-        healthcheck: service.healthcheck?.test,
-        languageMajorVersion: findLabel(service.labels, "chs.local.builder.languageVersion"),
-        dockerfile: findLabel(service.labels, "chs.local.dockerfile")
+        ...readLabels(service.labels),
+        healthcheck: service.healthcheck?.test
     }
 });
 
@@ -60,6 +66,20 @@ const findLabel = (labels: string[] | undefined, prefix: string) => {
         return extractLabelValue(value);
     }
     return undefined;
+};
+
+const readLabels = (serviceLabels: string[]) => {
+    const metadata: Record<string, string> = {};
+
+    for (const [metadataKey, label] of Object.entries(metadataLabelMapping)) {
+        const labelValue = findLabel(serviceLabels, label);
+
+        if (labelValue) {
+            metadata[metadataKey] = labelValue;
+        }
+    }
+
+    return metadata;
 };
 
 const parseDependsOn: (dependencies?: string[] | DependencySpecificationMap) => string[] = (dependencies?: string[] | DependencySpecificationMap) =>

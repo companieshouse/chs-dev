@@ -171,7 +171,7 @@ describe("Inventory", () => {
 
             const initialService = initialState.find(service => service.name === "service-one");
 
-            expect(initialService?.metadata.languageMajorVersion).toEqual(null);
+            expect(initialService?.metadata.languageMajorVersion).toBeUndefined();
 
             const servicePath = join(inventoryDir, "services/modules/module-one/service-one.docker-compose.yaml");
 

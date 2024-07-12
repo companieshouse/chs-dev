@@ -23,6 +23,11 @@ const atypicalServiceFile = join(
     "test/data/service-reader/modules/module-three/atypical.docker-compose.yaml"
 );
 
+const anotherAtypicalServiceFile = join(
+    process.cwd(),
+    "test/data/service-reader/modules/module-three/another-atypical.docker-compose.yaml"
+);
+
 const normaliseLocations = (svcs: Partial<Service>[]) => {
     return svcs.map(svc => {
         svc.source = svc.source?.replace(process.cwd(), ".");
@@ -46,5 +51,9 @@ describe("readServices", () => {
 
     it("loads atypical with repoContext", () => {
         expect(normaliseLocations(readServices(atypicalServiceFile))).toMatchSnapshot();
+    });
+
+    it("loads atypical with entrypoint and outdir", () => {
+        expect(normaliseLocations(readServices(anotherAtypicalServiceFile))).toMatchSnapshot();
     });
 });

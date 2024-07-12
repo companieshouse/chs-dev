@@ -197,7 +197,7 @@ describe("ServiceLoader", () => {
             ],
             modules: [],
             servicesWithLiveUpdate: [],
-            excludedFiles: []
+            excludedServices: []
         };
 
         const result = serviceLoader.loadServices(state);
@@ -210,7 +210,7 @@ describe("ServiceLoader", () => {
             services: [],
             modules: ["module-three"],
             servicesWithLiveUpdate: [],
-            excludedFiles: []
+            excludedServices: []
         };
 
         const result = serviceLoader.loadServices(state);
@@ -223,7 +223,7 @@ describe("ServiceLoader", () => {
             services: ["service-four"],
             modules: ["module-four"],
             servicesWithLiveUpdate: [],
-            excludedFiles: []
+            excludedServices: []
         };
 
         const result = serviceLoader.loadServices(state);
@@ -236,7 +236,7 @@ describe("ServiceLoader", () => {
             services: ["service-four"],
             modules: ["module-four"],
             servicesWithLiveUpdate: ["service-four", "service-ten"],
-            excludedFiles: []
+            excludedServices: []
         };
 
         const result = serviceLoader.loadServices(state);

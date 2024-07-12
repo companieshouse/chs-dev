@@ -82,7 +82,10 @@
     ],
     "topicSeparator": " ",
     "topics": {
-      "development": { "description": "manages the services currently in development mode" }
+      "development": { "description": "manages the services currently in development mode" },
+      "exclusions": { "description": "manages the list of services being excluded from docker environment" },
+      "modules": { "description": "manages the addition and removal of modules (collections of common services)" },
+      "services": { "description": "manages the addition and removal of services" }
     }
   },
   "repository": "companieshouse/chs-dev",

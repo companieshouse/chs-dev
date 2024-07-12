@@ -4,7 +4,7 @@ import { afterAll, beforeAll, expect } from "@jest/globals";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { DockerComposeFileGenerator } from "../../src/generator/docker-compose-file-generator";
 import { Service } from "../../src/model/Service";
-import { join } from "path";
+import { join, resolve } from "path";
 import { parse, stringify } from "yaml";
 
 describe("DockerComposeFileGenerator", () => {
@@ -13,7 +13,7 @@ describe("DockerComposeFileGenerator", () => {
     let dockerComposeFileGenerator: DockerComposeFileGenerator;
 
     beforeAll(() => {
-        tempDir = mkdtempSync("docker-compose-file-gen");
+        tempDir = resolve(mkdtempSync("docker-compose-file-gen"));
         moduleDir = join(tempDir, "services/modules/module-one");
 
         mkdirSync(join(tempDir, "local"));
@@ -25,7 +25,7 @@ describe("DockerComposeFileGenerator", () => {
     });
 
     beforeEach(() => {
-        dockerComposeFileGenerator = new DockerComposeFileGenerator(tempDir);
+        dockerComposeFileGenerator = new DockerComposeFileGenerator(resolve(tempDir));
         mkdirSync(join(tempDir, "services/infrastructure/"), { recursive: true });
 
         copyFileSync(
@@ -42,7 +42,7 @@ describe("DockerComposeFileGenerator", () => {
             {
                 name: "service-one",
                 module: "module-one",
-                source: "./services/modules/module-one/service-one.docker-compose.yaml",
+                source: "services/modules/module-one/service-one.docker-compose.yaml",
                 dependsOn: [],
                 builder: "java",
                 metadata: {
@@ -54,7 +54,7 @@ describe("DockerComposeFileGenerator", () => {
             {
                 name: "service-two",
                 module: "module-one",
-                source: "./services/modules/module-one/service-two.docker-compose.yaml",
+                source: "services/modules/module-one/service-two.docker-compose.yaml",
                 dependsOn: [],
                 builder: "node",
                 metadata: {
@@ -66,7 +66,7 @@ describe("DockerComposeFileGenerator", () => {
             {
                 name: "service-three",
                 module: "module-two",
-                source: "./services/modules/module-two/service-three.docker-compose.yaml",
+                source: "services/modules/module-two/service-three.docker-compose.yaml",
                 dependsOn: [],
                 builder: "repository",
                 metadata: {},
@@ -76,7 +76,7 @@ describe("DockerComposeFileGenerator", () => {
             {
                 name: "service-four",
                 module: "module-three",
-                source: "./services/modules/module-three/service-four.docker-compose.yaml",
+                source: "services/modules/module-three/service-four.docker-compose.yaml",
                 dependsOn: [],
                 builder: "",
                 metadata: {
@@ -89,7 +89,7 @@ describe("DockerComposeFileGenerator", () => {
             {
                 name: "service-five",
                 module: "module-one",
-                source: "./services/modules/module-one/service-five.docker-compose.yaml",
+                source: "services/modules/module-one/service-five.docker-compose.yaml",
                 dependsOn: [],
                 builder: "java",
                 metadata: {
@@ -101,7 +101,7 @@ describe("DockerComposeFileGenerator", () => {
             {
                 name: "service-six",
                 module: "module-one",
-                source: "./services/modules/module-one/service-six.docker-compose.yaml",
+                source: "services/modules/module-one/service-six.docker-compose.yaml",
                 dependsOn: [],
                 builder: "node",
                 metadata: {
@@ -112,9 +112,24 @@ describe("DockerComposeFileGenerator", () => {
                 liveUpdate: false
             },
             {
+                name: "service-nine",
+                module: "module-one",
+                source: "services/modules/module-one/service-nine.docker-compose.yaml",
+                dependsOn: [],
+                builder: "node",
+                metadata: {
+                    languageMajorVersion: "18",
+                    ingressRoute: "Path(\"nine\")",
+                    entrypoint: "docker_start.sh",
+                    buildOutputDir: "out/"
+                },
+                repository: null,
+                liveUpdate: false
+            },
+            {
                 name: "service-seven",
                 module: "module-two",
-                source: "./services/modules/module-two/service-seven.docker-compose.yaml",
+                source: "services/modules/module-two/service-seven.docker-compose.yaml",
                 dependsOn: [],
                 builder: "repository",
                 metadata: {
@@ -127,7 +142,7 @@ describe("DockerComposeFileGenerator", () => {
             {
                 name: "service-eight",
                 module: "module-two",
-                source: "./services/modules/module-two/service-eight.docker-compose.yaml",
+                source: "services/modules/module-two/service-eight.docker-compose.yaml",
                 dependsOn: [],
                 builder: "repository",
                 metadata: {
@@ -266,6 +281,54 @@ describe("DockerComposeFileGenerator", () => {
                 builder: "node",
                 metadata: {
                     languageMajorVersion: "18"
+                }
+            };
+
+            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service);
+
+            const generatedDockerComposeFile = join(tempDir, "local/service-one/docker-compose.yaml");
+
+            expect(existsSync(generatedDockerComposeFile)).toBe(true);
+
+            const generatedDockerCompose = parse(readFileSync(generatedDockerComposeFile).toString("utf8"));
+
+            generatedDockerCompose.services["service-one"].build.context = generatedDockerCompose.services["service-one"].build.context.replace(tempDir, "./");
+            generatedDockerCompose.services["service-one"].build.dockerfile = generatedDockerCompose.services["service-one"].build.dockerfile.replace(tempDir, ".");
+            generatedDockerCompose.services["service-one"].build.args.REPO_PATH = generatedDockerCompose.services["service-one"].build.args.REPO_PATH.replace(tempDir, ".");
+
+            expect(generatedDockerCompose).toMatchSnapshot();
+        });
+
+        it("creates development docker compose correctly node with optional build args", () => {
+            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
+
+            initialServiceDefinition.services["service-one"].labels = [
+                ...(initialServiceDefinition.services["service-one"].labels),
+                "chs.local.builder=node",
+                "chs.local.builder.languageVersion=18",
+                "chs.local.entrypoint=docker_start.sh",
+                "chs.local.builder.outputDir=out/"
+            ];
+
+            writeFileSync(
+                serviceDockerComposeFile,
+                stringify(initialServiceDefinition),
+                {
+                    flag: "w"
+                }
+            );
+
+            const service: Service = {
+                name: "service-one",
+                module: "module-one",
+                source: serviceDockerComposeFile,
+                repository: null,
+                dependsOn: [],
+                builder: "node",
+                metadata: {
+                    languageMajorVersion: "18",
+                    buildOutputDir: "out/",
+                    entrypoint: "docker_start.sh"
                 }
             };
 

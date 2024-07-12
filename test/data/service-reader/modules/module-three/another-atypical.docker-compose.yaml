@@ -1,0 +1,16 @@
+services:
+  another-atypical:
+    labels:
+      - chs.description=simple service
+      - chs.repository.url=git@github.com/companieshouse/reapo.git
+      - chs.local.builder=node
+      - chs.local.builder.languageVersion=20
+      - chs.local.entrypoint=docker_start.sh
+      - chs.local.builder.outputDir=out/
+    image: some-service-api
+    ports:
+      - 12345
+    environment:
+      - ENV_ONE=foo
+    depends_on:
+      - mongo

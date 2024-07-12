@@ -9,11 +9,9 @@ exports[`readServices loads a more complicated 1`] = `
     ],
     "description": "more complex service",
     "metadata": {
-      "dockerfile": undefined,
       "healthcheck": "curl http://localhost/healtcheck",
       "ingressRoute": "Host(\`api.local\`) && (PathPrefix(\`/complex\`))",
       "languageMajorVersion": "17",
-      "repoContext": undefined,
     },
     "module": "module-two",
     "name": "more-complex",
@@ -35,11 +33,7 @@ exports[`readServices loads a simple service 1`] = `
     ],
     "description": "simple service",
     "metadata": {
-      "dockerfile": undefined,
       "healthcheck": undefined,
-      "ingressRoute": undefined,
-      "languageMajorVersion": undefined,
-      "repoContext": undefined,
     },
     "module": "module-one",
     "name": "simple-service",
@@ -59,11 +53,7 @@ exports[`readServices loads an infrastructure service 1`] = `
     "dependsOn": [],
     "description": "primary database storing data",
     "metadata": {
-      "dockerfile": undefined,
       "healthcheck": "test $$(echo "rs.initiate({_id:'rs',members:[{_id:0,host:\\"mongo:27017\\"}]}).ok || rs.status().ok" | mongo --port 27017 --quiet) -eq 1",
-      "ingressRoute": undefined,
-      "languageMajorVersion": undefined,
-      "repoContext": undefined,
     },
     "module": "infrastructure",
     "name": "mongo",
@@ -77,16 +67,37 @@ exports[`readServices loads an infrastructure service 1`] = `
     ],
     "description": undefined,
     "metadata": {
-      "dockerfile": undefined,
       "healthcheck": undefined,
-      "ingressRoute": undefined,
-      "languageMajorVersion": undefined,
-      "repoContext": undefined,
     },
     "module": "infrastructure",
     "name": "execute-mongo-scripts",
     "repository": null,
     "source": "./test/data/service-reader/infrastructure/mongo.docker-compose.yaml",
+  },
+]
+`;
+
+exports[`readServices loads atypical with entrypoint and outdir 1`] = `
+[
+  {
+    "builder": "node",
+    "dependsOn": [
+      "mongo",
+    ],
+    "description": "simple service",
+    "metadata": {
+      "buildOutputDir": "out/",
+      "entrypoint": "docker_start.sh",
+      "healthcheck": undefined,
+      "languageMajorVersion": "20",
+    },
+    "module": "module-three",
+    "name": "another-atypical",
+    "repository": {
+      "branch": undefined,
+      "url": "git@github.com/companieshouse/reapo.git",
+    },
+    "source": "./test/data/service-reader/modules/module-three/another-atypical.docker-compose.yaml",
   },
 ]
 `;
@@ -100,8 +111,6 @@ exports[`readServices loads atypical with repoContext 1`] = `
     "metadata": {
       "dockerfile": "chs.Dockerfile",
       "healthcheck": undefined,
-      "ingressRoute": undefined,
-      "languageMajorVersion": undefined,
       "repoContext": "chsDev/",
     },
     "module": "module-three",

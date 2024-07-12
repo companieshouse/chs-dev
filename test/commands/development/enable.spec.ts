@@ -165,9 +165,9 @@ describe("development enable", () => {
             // @ts-expect-error
             gitCloneMock.mockResolvedValue(undefined);
 
-            await expect(developmentEnable.run()).resolves.toBeUndefined();
-
-            expect(errorMock).toHaveBeenCalledWith(`Service "${serviceName}" does not have repository defined`);
+            await expect(developmentEnable.run()).rejects.toEqual(new Error(
+                `Service "${serviceName}" does not have repository defined`
+            ));
         });
     }
 
