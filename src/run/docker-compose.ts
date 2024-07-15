@@ -13,10 +13,10 @@ interface Logger {
 }
 
 const CONTAINER_STOPPED_STATUS_PATTERN =
-    /Container\s([\dA-Za-z-]*)\s*(Stopped|Removed)/;
+    /Container\s([\dA-Za-z-]+)\s*(Stopped|Removed)/;
 
 const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
-    /(?:Container\s)?([\dA-Za-z-]*)\s*(Started|Healthy|Stopped|Pulling|Pulled)/;
+    /(?:Container\s)?([\dA-Za-z-]+)\s*(Started|Healthy|Stopped|Pulling|Pulled)/;
 
 type LogsArgs = {
     serviceName: string | undefined,
