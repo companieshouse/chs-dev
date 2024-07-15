@@ -132,6 +132,17 @@ export const services = [
             url: "git@github.com/companieshouse/repo-eleven.git"
         },
         metadata: {}
+    },
+    {
+        name: "service-twelve",
+        module: "module-five",
+        source: "docker-project/services/modules/module-five/service-twelve.docker-compose.yaml",
+        dependsOn: [],
+        builder: "",
+        repository: {
+            url: "git@github.com/companieshouse/repo-eleven.git"
+        },
+        metadata: {}
     }
 ];
 
