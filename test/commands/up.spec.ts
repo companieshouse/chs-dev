@@ -2,6 +2,7 @@ import { expect, jest } from "@jest/globals";
 import Up from "../../src/commands/up";
 import { Config } from "@oclif/core";
 import { State } from "../../src/model/State";
+import { services, modules } from "../utils/data";
 
 const startDevelopmentModeMock = jest.fn();
 const dockerComposeUpMock = jest.fn();
@@ -28,12 +29,45 @@ const SERVICES_IN_DEV_MODE = {
     excludedServices: []
 };
 
-let snapshot: State = NO_SERVICES_IN_DEV_MODE;
+const UNRELATED_SERVICE_IN_DEV_MODE = {
+    modules: [
+    ],
+    services: [
+        "service-one"
+    ],
+    servicesWithLiveUpdate: [
+        "service-two"
+    ],
+    excludedServices: []
+};
+
+const MODULE_WITH_SERVICE_IN_DEV_MODE = {
+    modules: [
+        "module-five"
+    ],
+    services: [
+        "service-one"
+    ],
+    servicesWithLiveUpdate: [
+        "service-twelve"
+    ],
+    excludedServices: []
+};
+
+const stateManagerMock = jest.fn();
 
 jest.mock("../../src/state/state-manager", () => {
     return {
         StateManager: function () {
-            return { snapshot };
+            return stateManagerMock();
+        }
+    };
+});
+
+jest.mock("../../src/state/inventory", () => {
+    return {
+        Inventory: function () {
+            return { services, modules };
         }
     };
 });
@@ -84,9 +118,7 @@ describe("Up command", () => {
 
     let runHookMock;
 
-    beforeEach(() => {
-        jest.resetAllMocks();
-
+    const setUpCommand = (snapshot: State) => {
         const cwdSpy = jest.spyOn(process, "cwd");
         cwdSpy.mockReturnValue("/users/user/docker-chs/");
 
@@ -95,9 +127,15 @@ describe("Up command", () => {
         // @ts-expect-error
         testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", runHook: runHookMock };
 
-        up = new Up([], testConfig);
+        stateManagerMock.mockReturnValue({ snapshot });
 
-        snapshot = NO_SERVICES_IN_DEV_MODE;
+        up = new Up([], testConfig);
+    };
+
+    beforeEach(() => {
+        jest.resetAllMocks();
+
+        setUpCommand(NO_SERVICES_IN_DEV_MODE);
     });
 
     it("should call up", async () => {
@@ -133,13 +171,21 @@ describe("Up command", () => {
         beforeEach(() => {
             jest.resetAllMocks();
 
-            snapshot = SERVICES_IN_DEV_MODE;
+            setUpCommand(SERVICES_IN_DEV_MODE);
         });
 
         it("should call up", async () => {
             await up.run();
 
             expect(dockerComposeUpMock).toHaveBeenCalledTimes(1);
+        });
+
+        it("should handle service being in module", async () => {
+            setUpCommand(MODULE_WITH_SERVICE_IN_DEV_MODE);
+
+            await up.run();
+
+            expect(startDevelopmentModeMock).toHaveBeenCalledTimes(1);
         });
 
         it("should call developmentMode start", async () => {
@@ -163,6 +209,24 @@ describe("Up command", () => {
                 tail: "5",
                 follow: false
             });
+        });
+
+    });
+
+    describe("services in live update are not enabled", () => {
+
+        beforeEach(() => {
+            jest.resetAllMocks();
+
+            setUpCommand(UNRELATED_SERVICE_IN_DEV_MODE);
+        });
+
+        it("should not run development mode", async () => {
+            await up.run();
+
+            expect(startDevelopmentModeMock).not.toHaveBeenCalled();
+
+            expect(dependencyCacheUpdateMock).not.toHaveBeenCalled();
         });
 
     });

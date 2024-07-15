@@ -10,6 +10,7 @@ import loadConfig from "../helpers/config-loader.js";
 import { basename } from "path";
 import { Config as ChsDevConfig } from "../model/Config.js";
 import { ComposeLogViewer } from "../run/compose-log-viewer.js";
+import { Inventory } from "../state/inventory.js";
 
 export default class Up extends Command {
 
@@ -25,6 +26,7 @@ export default class Up extends Command {
     private readonly stateManager: StateManager;
     private readonly chsDevConfig: ChsDevConfig;
     private readonly composeLogViewer: ComposeLogViewer;
+    private readonly inventory: Inventory;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
@@ -41,6 +43,7 @@ export default class Up extends Command {
         this.dependencyCache = new DependencyCache(process.cwd());
         this.developmentMode = new DevelopmentMode(this.dockerCompose, process.cwd());
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
+        this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
     }
 
     async run (): Promise<any> {
@@ -58,7 +61,7 @@ export default class Up extends Command {
         try {
             await this.dockerCompose.up();
 
-            if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
+            if (this.hasServicesInDevelopmentMode()) {
                 this.log("Waiting for Development Mode to be ready (this can take a moment or two)...");
 
                 this.dependencyCache.update();
@@ -81,4 +84,26 @@ export default class Up extends Command {
         cli.action.stop();
     }
 
+    private hasServicesInDevelopmentMode (): boolean {
+        if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
+            return this.hasServiceEnabledInLiveUpdate() ||
+                this.hasServiceFromEnabledModuleInLiveUpdate();
+        }
+
+        return false;
+    }
+
+    private hasServiceFromEnabledModuleInLiveUpdate (): boolean {
+        return this.inventory.services.filter(service => this.stateManager.snapshot.modules.includes(service.module))
+            .some(service => this.stateManager.snapshot.servicesWithLiveUpdate.includes(service.name));
+    }
+
+    private hasServiceEnabledInLiveUpdate (): boolean {
+        return this.stateManager.snapshot.servicesWithLiveUpdate
+            .some(serviceWithLiveUpdate => {
+                const service = this.stateManager.snapshot.services.find(serviceName => serviceName === serviceWithLiveUpdate);
+
+                return typeof service !== "undefined";
+            });
+    }
 }
