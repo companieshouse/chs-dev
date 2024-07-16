@@ -81,15 +81,45 @@ describe("Logs command", () => {
                 compose: false,
                 follow: true,
                 tail: "2"
-            }
+            },
+            argv: [
+                "service-one"
+            ]
         });
 
         await logsCommand.run();
 
         expect(dockerComposeLogsMock).toHaveBeenCalledWith({
-            serviceName: "service-one",
+            serviceNames: ["service-one"],
             tail: "2",
             follow: true
+        });
+    });
+
+    it("follows service logs for multiple services when service names provided", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                serviceName: "service-one"
+            },
+            flags: {
+                compose: false,
+                follow: true,
+                tail: "2"
+            },
+            argv: [
+                "service-one",
+                "service-two"
+            ]
+        });
+
+        await logsCommand.run();
+
+        expect(dockerComposeLogsMock).toHaveBeenCalledWith({
+            serviceNames: ["service-one", "service-two"],
+            tail: "2",
+            follow: true,
+            signal: undefined
         });
     });
 

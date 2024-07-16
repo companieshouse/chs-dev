@@ -12,10 +12,13 @@ export default class Logs extends Command {
      */
     static deprecateAliases = true;
 
+    static strict = false;
+
     static args = {
         serviceName: Args.string({
+            name: "serviceNames",
             required: false,
-            description: "specify the service name of the logs to follow, when not specified follows aggregated logs"
+            description: "specify the service names of the logs to follow, when not specified follows aggregated logs"
         })
     };
 
@@ -58,7 +61,7 @@ export default class Logs extends Command {
     }
 
     async run (): Promise<any> {
-        const { args, flags } = await this.parse(Logs);
+        const { argv, flags } = await this.parse(Logs);
 
         if (flags.compose) {
             return await this.composeLogViewer.view({
@@ -68,7 +71,7 @@ export default class Logs extends Command {
         }
 
         const logsArgs = {
-            serviceName: args.serviceName,
+            serviceNames: argv as string[],
             tail: flags.tail,
             follow: flags.follow,
             signal: undefined

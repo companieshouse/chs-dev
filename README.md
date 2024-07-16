@@ -209,10 +209,10 @@ _See code: [@oclif/plugin-autocomplete](https://github.com/oclif/plugin-autocomp
 
 ```
 USAGE
-  $ chs-dev compose-logs [SERVICENAME] [-C] [-f] [-n <value>]
+  $ chs-dev compose-logs [SERVICENAME...] [-C] [-f] [-n <value>]
 
 ARGUMENTS
-  SERVICENAME  specify the service name of the logs to follow, when not specified follows aggregated logs
+  SERVICENAME...  specify the service names of the logs to follow, when not specified follows aggregated logs
 
 FLAGS
   -C, --compose       View the compose logs rather than service logs
@@ -395,10 +395,10 @@ ALIASES
 
 ```
 USAGE
-  $ chs-dev logs [SERVICENAME] [-C] [-f] [-n <value>]
+  $ chs-dev logs [SERVICENAME...] [-C] [-f] [-n <value>]
 
 ARGUMENTS
-  SERVICENAME  specify the service name of the logs to follow, when not specified follows aggregated logs
+  SERVICENAME...  specify the service names of the logs to follow, when not specified follows aggregated logs
 
 FLAGS
   -C, --compose       View the compose logs rather than service logs
@@ -469,10 +469,10 @@ ARGUMENTS
 
 ```
 USAGE
-  $ chs-dev service-logs [SERVICENAME] [-C] [-f] [-n <value>]
+  $ chs-dev service-logs [SERVICENAME...] [-C] [-f] [-n <value>]
 
 ARGUMENTS
-  SERVICENAME  specify the service name of the logs to follow, when not specified follows aggregated logs
+  SERVICENAME...  specify the service names of the logs to follow, when not specified follows aggregated logs
 
 FLAGS
   -C, --compose       View the compose logs rather than service logs
