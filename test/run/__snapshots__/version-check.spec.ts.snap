@@ -4,7 +4,7 @@ exports[`VersionCheck run first run through displays correct message when the in
 [
   [
     "WARNING: this version: 0.9.23 does not meet the project requirements: >=1.0.0 <2.0.0
-        
+
 Run:
 
 	chs-dev sync
@@ -23,7 +23,7 @@ exports[`VersionCheck run first run through displays correct message when there 
     "================================================================================
 
 📣 There is a newer version (1.1.2) available (current version: 1.1.1)
-    
+
 Run:
 
 	chs-dev sync
@@ -42,7 +42,7 @@ exports[`VersionCheck run first run through displays correct message when there 
     "================================================================================
 
 📣 There is a newer minor version (1.2.0) available (current version: 1.1.1)
-    
+
 Run:
 
 	chs-dev sync
@@ -61,7 +61,7 @@ exports[`VersionCheck run first run through displays correct message when there 
     "================================================================================
 
 📣 There is a newer minor version (1.2.1) available (current version: 1.1.1)
-    
+
 Run:
 
 	chs-dev sync
@@ -80,7 +80,7 @@ exports[`VersionCheck run first run through displays correct message when there 
     "================================================================================
 
 📣 There is a newer major version (2.0.0) available (current version: 1.1.1)
-    
+
 Run:
 
 	chs-dev sync
@@ -99,7 +99,7 @@ exports[`VersionCheck run first run through displays correct message when there 
     "================================================================================
 
 📣 There is a newer major version (2.0.1) available (current version: 1.1.1)
-    
+
 Run:
 
 	chs-dev sync
@@ -118,7 +118,7 @@ exports[`VersionCheck run first run through displays correct message when there 
     "================================================================================
 
 📣 There is a newer major version (2.1.0) available (current version: 1.1.1)
-    
+
 Run:
 
 	chs-dev sync
@@ -135,7 +135,7 @@ exports[`VersionCheck run subsequent run through displays correct message when t
 [
   [
     "WARNING: this version: 0.9.23 does not meet the project requirements: >=1.0.0 <2.0.0
-        
+
 Run:
 
 	chs-dev sync

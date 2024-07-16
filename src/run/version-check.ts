@@ -90,7 +90,7 @@ export class VersionCheck {
         const sepLine = "-".repeat(80);
         this.logger.warn(
             `WARNING: this version: ${actualVersion} does not meet the project requirements: ${requiredVersionSpecification}
-        
+
 Run:
 
 \tchs-dev sync
@@ -123,7 +123,7 @@ ${sepLine}
 
         const sepLine = "=".repeat(80);
         const versionOutOfDateMessage = `📣 There is a newer${versionDifference} version (${latestVersion}) available (current version: ${currentVersion})
-    
+
 Run:
 
 \tchs-dev sync
