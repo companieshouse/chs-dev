@@ -123,3 +123,26 @@ exports[`readServices loads atypical with repoContext 1`] = `
   },
 ]
 `;
+
+exports[`readServices loads service with repo required 1`] = `
+[
+  {
+    "builder": "",
+    "dependsOn": [],
+    "description": undefined,
+    "metadata": {
+      "dockerfile": "svc1.Dockerfile",
+      "healthcheck": undefined,
+      "ingressRoute": "Host(\`svc1.chl.local\`)",
+      "repositoryRequired": "true",
+    },
+    "module": "module-one",
+    "name": "repo-required",
+    "repository": {
+      "branch": undefined,
+      "url": "git@github.com:companieshouse/repo1.git",
+    },
+    "source": "./test/data/service-reader/modules/module-one/repository-required.docker-compose.yaml",
+  },
+]
+`;

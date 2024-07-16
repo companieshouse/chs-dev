@@ -1,0 +1,19 @@
+---
+# Any changes to this file also need to be made to the tilt/ version
+# for backwards compatibility
+version: "3.8"
+services:
+  repo-required:
+    labels:
+      - traefik.http.routers.ewf.rule=Host(`svc1.chl.local`)
+      - chs.repository.url=git@github.com:companieshouse/repo1.git
+      - chs.local.repositoryRequired=true
+      - chs.local.dockerfile=svc1.Dockerfile
+    image: ewf:latest
+    build:
+      context: ../../../repositories/repo-required
+      dockerfile: svc1.Dockerfile
+    expose:
+      - 8000
+    ports:
+      - "8000:8000"
