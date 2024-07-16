@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`init hook first run through displays correct message when the installed version not meeting project 1`] = `
+exports[`VersionCheck run first run through displays correct message when the installed version not meeting project 1`] = `
 [
   [
     "WARNING: this version: 0.9.23 does not meet the project requirements: >=1.0.0 <2.0.0
@@ -17,7 +17,7 @@ to update chs-dev to a suitable version
 ]
 `;
 
-exports[`init hook first run through displays correct message when there is newer version: 1.1.2 1`] = `
+exports[`VersionCheck run first run through displays correct message when there is newer version: 1.1.2 1`] = `
 [
   [
     "================================================================================
@@ -36,7 +36,7 @@ to update to latest version
 ]
 `;
 
-exports[`init hook first run through displays correct message when there is newer version: 1.2.0 1`] = `
+exports[`VersionCheck run first run through displays correct message when there is newer version: 1.2.0 1`] = `
 [
   [
     "================================================================================
@@ -55,7 +55,7 @@ to update to latest version
 ]
 `;
 
-exports[`init hook first run through displays correct message when there is newer version: 1.2.1 1`] = `
+exports[`VersionCheck run first run through displays correct message when there is newer version: 1.2.1 1`] = `
 [
   [
     "================================================================================
@@ -74,7 +74,7 @@ to update to latest version
 ]
 `;
 
-exports[`init hook first run through displays correct message when there is newer version: 2.0.0 1`] = `
+exports[`VersionCheck run first run through displays correct message when there is newer version: 2.0.0 1`] = `
 [
   [
     "================================================================================
@@ -93,7 +93,7 @@ to update to latest version
 ]
 `;
 
-exports[`init hook first run through displays correct message when there is newer version: 2.0.1 1`] = `
+exports[`VersionCheck run first run through displays correct message when there is newer version: 2.0.1 1`] = `
 [
   [
     "================================================================================
@@ -112,7 +112,7 @@ to update to latest version
 ]
 `;
 
-exports[`init hook first run through displays correct message when there is newer version: 2.1.0 1`] = `
+exports[`VersionCheck run first run through displays correct message when there is newer version: 2.1.0 1`] = `
 [
   [
     "================================================================================
@@ -131,7 +131,7 @@ to update to latest version
 ]
 `;
 
-exports[`init hook subsequent run through displays correct message when the installed version not meeting project 1`] = `
+exports[`VersionCheck run subsequent run through displays correct message when the installed version not meeting project 1`] = `
 [
   [
     "WARNING: this version: 0.9.23 does not meet the project requirements: >=1.0.0 <2.0.0

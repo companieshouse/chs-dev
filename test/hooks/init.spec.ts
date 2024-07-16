@@ -1,38 +1,32 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
 import { Hook, IConfig } from "@oclif/config";
 // @ts-expect-error
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
-import { join } from "path";
+import { rmSync } from "fs";
 import { getLatestReleaseVersion as getLatestReleaseVersionMock } from "../../src/helpers/latest-release";
-import { load as configLoadMock } from "../../src/helpers/config-loader";
-import Config from "../../src/model/Config";
+import { isOnVpn as isOnVpnMock } from "../../src/helpers/vpn-check";
 
 jest.mock("../../src/helpers/latest-release");
 jest.mock("../../src/helpers/config-loader");
+jest.mock("../../src/helpers/vpn-check");
+
+const versionCheckRunMock = jest.fn();
+
+jest.mock("../../src/run/version-check", () => {
+    return {
+        VersionCheck: {
+            create: () => ({
+                run: versionCheckRunMock
+            })
+        }
+    };
+});
 
 describe("init hook", () => {
 
-    let tempDir: string;
-    let dataDir: string;
     let testConfig: IConfig;
     let initHook: Hook<"init">;
 
     const version = "1.1.1";
-    const differentVersionTestCases = [
-        ["1.1.2", `📣 There is a newer version (1.1.2) available (current version: ${version})`],
-        ["1.2.0", `📣 There is a newer minor version (1.2.0) available (current version: ${version})`],
-        ["1.2.1", `📣 There is a newer minor version (1.2.1) available (current version: ${version})`],
-        ["2.0.0", `📣 There is a newer major version (2.0.0) available (current version: ${version})`],
-        ["2.0.1", `📣 There is a newer major version (2.0.1) available (current version: ${version})`],
-        ["2.1.0", `📣 There is a newer major version (2.1.0) available (current version: ${version})`]
-    ];
-    const projectConfig: Config = {
-        env: {},
-        projectPath: "./docker-project",
-        projectName: "docker-project",
-        authenticatedRepositories: [],
-        versionSpecification: ">=1.0.0 <2.0.0"
-    };
 
     const pjson = {
         "chs-dev": {
@@ -44,261 +38,95 @@ describe("init hook", () => {
 
     beforeAll(async () => {
 
-        tempDir = mkdtempSync("init-hook");
-
-        dataDir = join(tempDir, "data");
-
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), dataDir, version, pjson };
+        testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", dataDir: "./data", version, pjson };
 
         initHook = (await import("../../src/hooks/init")).hook;
     });
 
-    afterAll(() => {
-        rmSync(tempDir, { recursive: true, force: true });
+    beforeEach(() => {
+        jest.resetAllMocks();
     });
 
-    describe("first run through", () => {
-        beforeEach(() => {
-            jest.resetAllMocks();
+    it("runs version check", async () => {
+        const context: unknown = {
+            warn: jest.fn()
+        };
 
-            if (existsSync(dataDir)) {
-                rmSync(dataDir, { force: true, recursive: true });
-            }
-
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue(version);
-
-            // @ts-expect-error
-            configLoadMock.mockReturnValue(projectConfig);
-
-            delete process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING;
+        await initHook.bind(context as Hook.Context)({
+            config: testConfig,
+            id: "",
+            argv: []
         });
 
-        it("should make data dir when not already in existence", async () => {
-            expect(existsSync(dataDir)).toBe(false);
-
-            // @ts-expect-error
-            await initHook({
-                config: testConfig,
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
-
-            expect(existsSync(dataDir)).toBe(true);
-        });
-
-        it("fetches the latest version", async () => {
-            // @ts-expect-error
-            await initHook({
-                config: testConfig,
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
-
-            expect(getLatestReleaseVersionMock).toHaveBeenCalled();
-        });
-
-        it("fetches latest version when directory but not file exists", async () => {
-            mkdirSync(dataDir);
-
-            // @ts-expect-error
-            await initHook({
-                config: testConfig,
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
-
-            expect(getLatestReleaseVersionMock).toHaveBeenCalled();
-        });
-
-        for (const [newerVersion, expectedMessage] of differentVersionTestCases) {
-            it(`displays correct message when there is newer version: ${newerVersion}`, async () => {
-                // @ts-expect-error
-                getLatestReleaseVersionMock.mockResolvedValue(newerVersion);
-
-                const consoleLogSpy = jest.spyOn(console, "log");
-
-                // @ts-expect-error
-                await initHook({
-                    config: testConfig,
-                    id: "",
-                    argv: [],
-                    context: jest.fn()
-                });
-
-                expect(consoleLogSpy.mock.calls).toMatchSnapshot();
-            });
-        }
-
-        it("displays correct message when the installed version not meeting project", async () => {
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
-
-            const consoleLogSpy = jest.spyOn(console, "log");
-
-            // @ts-expect-error
-            await initHook({
-                config: {
-                    ...testConfig,
-                    version: "0.9.23"
-                },
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
-
-            expect(consoleLogSpy.mock.calls).toMatchSnapshot();
-        });
+        expect(versionCheckRunMock).toHaveBeenCalledWith(version);
     });
 
-    describe("subsequent run through", () => {
+    it("checks whether on VPN", async () => {
+        // @ts-expect-error
+        getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
 
-        const lastRunThrough = "2024-01-01T00:00:00.000Z";
+        process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING = "true";
 
-        let currentTime: Date;
+        const context: unknown = {
+            warn: jest.fn()
+        };
 
-        beforeEach(() => {
-            jest.resetAllMocks();
-
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue(version);
-
-            if (!existsSync(dataDir)) {
-                mkdirSync(dataDir);
-            }
-
-            writeFileSync(
-                join(dataDir, "last-version-run-time"),
-                lastRunThrough
-            );
-
-            const dateNowMock = jest.fn();
-            dateNowMock.mockImplementation(() => currentTime.getTime());
-
-            // @ts-expect-error
-            Date.now = dateNowMock;
-
-            // @ts-expect-error
-            configLoadMock.mockReturnValue(projectConfig);
-
-            delete process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING;
+        await initHook.bind(context as Hook.Context)({
+            config: testConfig,
+            id: "",
+            argv: []
         });
 
-        it("checks version when after time passed", async () => {
-            currentTime = new Date(2024, 0, 16, 0, 0, 0, 0);
+        expect(isOnVpnMock).toHaveBeenCalled();
+    });
 
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue(version);
+    it("logs statement when not on vpn", async () => {
+        // @ts-expect-error
+        isOnVpnMock.mockReturnValueOnce(false);
 
-            // @ts-expect-error
-            await initHook({
-                config: testConfig,
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
+        // @ts-expect-error
+        getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
 
-            expect(getLatestReleaseVersionMock).toHaveBeenCalled();
+        process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING = "true";
+
+        const context = {
+            warn: jest.fn()
+        };
+
+        await initHook.bind(context as unknown as Hook.Context)({
+            config: testConfig,
+            id: "",
+            argv: []
         });
 
-        it("writes out current time when has checked version", async () => {
-            currentTime = new Date(2024, 0, 16, 0, 0, 0, 0);
+        expect(context.warn).toHaveBeenCalledWith(
+            `Not on VPN. Some containers may not build properly.`
+        );
+    });
 
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue(version);
+    it("does not log statement when on vpn", async () => {
+        // @ts-expect-error
+        isOnVpnMock.mockReturnValue(true);
 
-            // @ts-expect-error
-            await initHook({
-                config: testConfig,
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
+        // @ts-expect-error
+        getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
 
-            expect(readFileSync(join(dataDir, "last-version-run-time")).toString("utf8")).toEqual("2024-01-16T00:00:00.000Z");
+        process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING = "true";
+
+        const context = {
+            warn: jest.fn()
+        };
+
+        await initHook.bind(context as unknown as Hook.Context)({
+            config: testConfig,
+            id: "",
+            argv: []
         });
 
-        it("does not check version when time passed not passed", async () => {
-            currentTime = new Date(2024, 0, 13, 0, 0, 0, 0);
-
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue(version);
-
-            // @ts-expect-error
-            await initHook({
-                config: testConfig,
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
-
-            expect(getLatestReleaseVersionMock).not.toHaveBeenCalled();
-        });
-
-        it("checks version when CHS_DEV_CHECK_VERSION is set", async () => {
-            process.env.CHS_DEV_CHECK_VERSION = "1";
-
-            currentTime = new Date(2024, 0, 13, 0, 0, 0, 0);
-
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue(version);
-
-            // @ts-expect-error
-            await initHook({
-                config: testConfig,
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
-
-            expect(getLatestReleaseVersionMock).toHaveBeenCalled();
-        });
-
-        it("displays correct message when the installed version not meeting project", async () => {
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
-
-            const consoleLogSpy = jest.spyOn(console, "log");
-
-            // @ts-expect-error
-            await initHook({
-                config: {
-                    ...testConfig,
-                    version: "0.9.23"
-                },
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
-
-            expect(consoleLogSpy.mock.calls).toMatchSnapshot();
-        });
-
-        it("does not display message when the installed version not meeting project and env var set", async () => {
-            // @ts-expect-error
-            getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
-
-            const consoleLogSpy = jest.spyOn(console, "log");
-
-            process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING = "true";
-
-            // @ts-expect-error
-            await initHook({
-                config: {
-                    ...testConfig,
-                    version: "0.9.23"
-                },
-                id: "",
-                argv: [],
-                context: jest.fn()
-            });
-
-            expect(consoleLogSpy).not.toHaveBeenCalled();
-        });
+        expect(context.warn).not.toHaveBeenCalledWith(
+            `WARNING - not on VPN. Some containers may not build properly.`
+        );
     });
 
 });
