@@ -410,7 +410,7 @@ describe("DockerCompose", () => {
             ], expectedSpawnOptions);
         });
 
-        it("runs docker compose logs with service when supplied", async () => {
+        it("runs docker compose logs with services when supplied", async () => {
             mockOnce.mockImplementation((type, listener) => {
                 if (type === "exit") {
                     // @ts-expect-error
@@ -418,7 +418,7 @@ describe("DockerCompose", () => {
                 }
             });
 
-            await dockerCompose.logs({ serviceName: "service-one" });
+            await dockerCompose.logs({ serviceNames: ["service-one", "service-two"] });
 
             const expectedSpawnOptions = {
                 logHandler: { handle: mockLogEverythingLogHandle },
@@ -437,7 +437,8 @@ describe("DockerCompose", () => {
                 "compose",
                 "logs",
                 "--",
-                "service-one"
+                "service-one",
+                "service-two"
             ], expectedSpawnOptions);
         });
         it("rejects when code is not 0 or 130", async () => {
@@ -454,7 +455,7 @@ describe("DockerCompose", () => {
                 }
             });
 
-            await dockerCompose.logs({ serviceName: "service-one", tail: "10" });
+            await dockerCompose.logs({ serviceNames: ["service-one"], tail: "10" });
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
@@ -474,7 +475,7 @@ describe("DockerCompose", () => {
                 }
             });
 
-            await dockerCompose.logs({ serviceName: "service-one", follow: true });
+            await dockerCompose.logs({ serviceNames: ["service-one"], follow: true });
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",

@@ -19,7 +19,7 @@ const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
     /(?:Container\s)?([\dA-Za-z-]+)\s*(Started|Healthy|Stopped|Pulling|Pulled)/;
 
 type LogsArgs = {
-    serviceName: string | undefined,
+    serviceNames: string[] | undefined,
     tail: string | undefined,
     follow: boolean | undefined,
     signal: AbortSignal | undefined
@@ -87,12 +87,12 @@ export class DockerCompose {
         );
     }
 
-    logs ({ serviceName, signal, tail, follow }: LogsArgs): Promise<void> {
+    logs ({ serviceNames, signal, tail, follow }: LogsArgs): Promise<void> {
         return this.runDockerCompose([
             "logs",
             ...(tail && tail !== "all" ? ["--tail", tail] : []),
             ...(follow && follow === true ? ["--follow"] : []),
-            ...(serviceName ? ["--", serviceName] : [])
+            ...(serviceNames && serviceNames.length > 0 ? ["--", ...serviceNames] : [])
         ], new LogEverythingLogHandler(this.logger),
         signal);
     }
