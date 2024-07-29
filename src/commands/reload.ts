@@ -6,6 +6,9 @@ import { DependencyCache } from "../run/dependency-cache.js";
 
 export default class Reload extends Command {
 
+    static description = "Rebuilds and restarts the supplied service running " +
+        "in development mode to load in any changes to source code";
+
     static args = {
         service: Args.string({
             required: true,
