@@ -334,23 +334,23 @@ ALIASES
 
 ## `chs-dev help [COMMAND]`
 
-display help for chs-dev
+Display help for chs-dev.
 
 ```
 USAGE
-  $ chs-dev help [COMMAND] [--all]
+  $ chs-dev help [COMMAND...] [-n]
 
 ARGUMENTS
-  COMMAND  command to show help for
+  COMMAND...  Command to show help for.
 
 FLAGS
-  --all  see all commands in CLI
+  -n, --nested-commands  Include all nested commands in the output.
 
 DESCRIPTION
-  display help for chs-dev
+  Display help for chs-dev.
 ```
 
-_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.3.1/src/commands/help.ts)_
+_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v6.2.7/src/commands/help.ts)_
 
 ## `chs-dev include SERVICE`
 
