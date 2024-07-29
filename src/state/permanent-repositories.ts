@@ -17,12 +17,22 @@ export class PermanentRepositories {
 
     /**
      * Ensures that repositories exist and are up to date for each of the
-     * services which require a copy of a local repository
+     * services which require a copy of a local repository. When no services
+     * have been enabled (i.e. docker compose spec file is missing) then it
+     * will error.
      * @returns Promise based on the outcome of the action
      */
     async ensureAllExistAndAreUpToDate (): Promise<void> {
 
-        const dockerComposeSpec = yaml.parse(readFileSync(join(this.config.projectPath, "docker-compose.yaml")).toString("utf8"));
+        const dockerComposeSpecFile = join(this.config.projectPath, "docker-compose.yaml");
+
+        if (!existsSync(dockerComposeSpecFile)) {
+            throw new Error(
+                "No services enabled - could not find docker compose spec file. Enable a service and try again"
+            );
+        }
+
+        const dockerComposeSpec = yaml.parse(readFileSync(dockerComposeSpecFile).toString("utf8"));
 
         for (const includedSpecFile of dockerComposeSpec.include) {
             const service = this.findServiceWithSource(includedSpecFile);

@@ -113,23 +113,30 @@ describe("PermanentRepositories", () => {
         readFileSyncMock.mockReturnValue(
             Buffer.from(dockerComposeConfigurationIncludingServices(serviceOne), "utf8")
         );
-
-        existsSyncMock.mockReturnValue(false);
     });
 
     it("reads in the docker compose spec", async () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
+
         await permanentRepositories.ensureAllExistAndAreUpToDate();
 
         expect(readFileSyncMock).toHaveBeenCalledWith(join(config.projectPath, "docker-compose.yaml"));
     });
 
     it("it checks whether permanent repository exists", async () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
+
         await permanentRepositories.ensureAllExistAndAreUpToDate();
 
         expect(existsSyncMock).toHaveBeenCalledWith(join(config.projectPath, "repositories", serviceOne.name));
     });
 
     it("clones repo when permanent repo has not be cloned", async () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
+
         await permanentRepositories.ensureAllExistAndAreUpToDate();
 
         expect(cloneRepoMock).toHaveBeenCalledWith({
@@ -139,6 +146,9 @@ describe("PermanentRepositories", () => {
     });
 
     it("clones repo with branch when permanent repo specifies branch", async () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
+
         readFileSyncMock.mockReturnValue(
             Buffer.from(dockerComposeConfigurationIncludingServices(serviceThree), "utf8")
         );
@@ -153,6 +163,9 @@ describe("PermanentRepositories", () => {
     });
 
     it("Does not update repo when does not need to as it is newly cloned", async () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
+
         await permanentRepositories.ensureAllExistAndAreUpToDate();
 
         expect(updateRepoMock).not.toHaveBeenCalled();
@@ -177,6 +190,8 @@ describe("PermanentRepositories", () => {
     });
 
     it("does not do anything when service is not a permananent repo", async () => {
+        existsSyncMock.mockReturnValue(true);
+
         readFileSyncMock.mockReturnValue(
             Buffer.from(dockerComposeConfigurationIncludingServices(serviceTwo), "utf8")
         );
@@ -186,13 +201,12 @@ describe("PermanentRepositories", () => {
         expect(cloneRepoMock).not.toHaveBeenCalled();
 
         expect(updateRepoMock).not.toHaveBeenCalled();
-
-        expect(existsSyncMock).not.toHaveBeenCalled();
     });
 
     it("can handle multiple services", async () => {
-        existsSyncMock.mockReturnValueOnce(false)
-            .mockReturnValue(true);
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValueOnce(true)
+            .mockReturnValue(false);
 
         readFileSyncMock.mockReturnValue(
             Buffer.from(dockerComposeConfigurationIncludingServices(
@@ -210,6 +224,8 @@ describe("PermanentRepositories", () => {
     });
 
     it("rejects if service does not have repository when repo required", async () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
 
         readFileSyncMock.mockReturnValue(
             Buffer.from(dockerComposeConfigurationIncludingServices(serviceFive), "utf8")
@@ -217,6 +233,14 @@ describe("PermanentRepositories", () => {
 
         await expect(permanentRepositories.ensureAllExistAndAreUpToDate()).rejects.toEqual(
             new Error("Service: " + serviceFive.name + " has not been configured with a repository")
+        );
+    });
+
+    it("rejects if docker-compose.yaml file does not exist", async () => {
+        existsSyncMock.mockReturnValue(false);
+
+        await expect(permanentRepositories.ensureAllExistAndAreUpToDate()).rejects.toEqual(
+            new Error("No services enabled - could not find docker compose spec file. Enable a service and try again")
         );
     });
 });
