@@ -16,6 +16,8 @@ import ServiceDisable from "./services/disable.js";
 import ModulesAvailable from "./modules/available.js";
 import ModulesEnable from "./modules/enable.js";
 import ModulesDisable from "./modules/disable.js";
+import ComposeLogs from "./deprecated/compose-logs.js";
+import ServiceLogs from "./deprecated/service-logs.js";
 
 export const commands = {
     down: Down,
@@ -24,6 +26,7 @@ export const commands = {
     up: Up,
     sync: Sync,
     logs: Logs,
+    "compose-logs": ComposeLogs,
     "exclusions:list": ExclusionsList,
     "exclusions:add": ExclusionsAdd,
     "exclusions:remove": ExclusionsRemove,
@@ -35,7 +38,8 @@ export const commands = {
     "services:disable": ServiceDisable,
     "modules:available": ModulesAvailable,
     "modules:enable": ModulesEnable,
-    "modules:disable": ModulesDisable
+    "modules:disable": ModulesDisable,
+    "service-logs": ServiceLogs
 };
 
 export default commands;
