@@ -207,6 +207,8 @@ _See code: [@oclif/plugin-autocomplete](https://github.com/oclif/plugin-autocomp
 
 ## `chs-dev compose-logs [SERVICENAME]`
 
+Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
+
 ```
 USAGE
   $ chs-dev compose-logs [SERVICENAME...] [-C] [-f] [-n <value>]
@@ -218,6 +220,9 @@ FLAGS
   -C, --compose       View the compose logs rather than service logs
   -f, --follow        Follow the logs
   -n, --tail=<value>  [default: all] Number of lines from the end of the logs
+
+DESCRIPTION
+  Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
 
 ALIASES
   $ chs-dev service-logs
@@ -393,6 +398,8 @@ ALIASES
 
 ## `chs-dev logs [SERVICENAME]`
 
+Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
+
 ```
 USAGE
   $ chs-dev logs [SERVICENAME...] [-C] [-f] [-n <value>]
@@ -404,6 +411,9 @@ FLAGS
   -C, --compose       View the compose logs rather than service logs
   -f, --follow        Follow the logs
   -n, --tail=<value>  [default: all] Number of lines from the end of the logs
+
+DESCRIPTION
+  Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
 
 ALIASES
   $ chs-dev service-logs
@@ -457,15 +467,22 @@ DESCRIPTION
 
 ## `chs-dev reload SERVICE`
 
+Rebuilds and restarts the supplied service running in development mode to load in any changes to source code
+
 ```
 USAGE
   $ chs-dev reload SERVICE
 
 ARGUMENTS
   SERVICE  Name of the service
+
+DESCRIPTION
+  Rebuilds and restarts the supplied service running in development mode to load in any changes to source code
 ```
 
 ## `chs-dev service-logs [SERVICENAME]`
+
+Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
 
 ```
 USAGE
@@ -478,6 +495,9 @@ FLAGS
   -C, --compose       View the compose logs rather than service logs
   -f, --follow        Follow the logs
   -n, --tail=<value>  [default: all] Number of lines from the end of the logs
+
+DESCRIPTION
+  Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
 
 ALIASES
   $ chs-dev service-logs
