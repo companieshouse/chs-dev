@@ -4,6 +4,8 @@ import configLoader from "../helpers/config-loader.js";
 import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 
 export default class Logs extends Command {
+    static description = "Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)";
+
     static aliases: string[] = ["service-logs", "compose-logs"];
 
     /**
