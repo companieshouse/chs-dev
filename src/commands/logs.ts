@@ -6,14 +6,6 @@ import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 export default class Logs extends Command {
     static description = "Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)";
 
-    static aliases: string[] = ["service-logs", "compose-logs"];
-
-    /**
-     * Show deprecation message when aliases are used and prompt the user to
-     * use correct command
-     */
-    static deprecateAliases = true;
-
     static strict = false;
 
     static args = {
@@ -46,6 +38,37 @@ export default class Logs extends Command {
             description: "Number of lines from the end of the logs"
         })
     };
+
+    static examples = [
+        {
+            description: "view all aggregated service logs",
+            command: "<%= config.bin %> <%= command.id %>"
+        },
+        {
+            description: "follow aggregated service logs",
+            command: "<%= config.bin %> <%= command.id %> -f"
+        },
+        {
+            description: "follow logs for service",
+            command: "<%= config.bin %> <%= command.id %> service-one service-two -f"
+        },
+        {
+            description: "load the last line in the aggregated service logs",
+            command: "<%= config.bin %> <%= command.id %> -n 1"
+        },
+        {
+            description: "view all compose logs",
+            command: "<%= config.bin %> <%= command.id %> -C"
+        },
+        {
+            description: "follow compose logs",
+            command: "<%= config.bin %> <%= command.id %> -C -f"
+        },
+        {
+            description: "load the last line in the compose logs",
+            command: "<%= config.bin %> <%= command.id %> -C -n 1"
+        }
+    ];
 
     private dockerCompose: DockerCompose;
     private composeLogViewer: ComposeLogViewer;

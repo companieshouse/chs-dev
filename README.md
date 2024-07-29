@@ -140,7 +140,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.1.0 darwin-arm64 node-v20.10.0
+chs-dev/1.2.0 darwin-arm64 node-v20.10.0
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -152,7 +152,6 @@ USAGE
 
 <!-- commands -->
 * [`chs-dev autocomplete [SHELL]`](#chs-dev-autocomplete-shell)
-* [`chs-dev compose-logs [SERVICENAME]`](#chs-dev-compose-logs-servicename)
 * [`chs-dev development disable SERVICES`](#chs-dev-development-disable-services)
 * [`chs-dev development enable SERVICES`](#chs-dev-development-enable-services)
 * [`chs-dev development services`](#chs-dev-development-services)
@@ -168,7 +167,6 @@ USAGE
 * [`chs-dev modules disable MODULES`](#chs-dev-modules-disable-modules)
 * [`chs-dev modules enable MODULES`](#chs-dev-modules-enable-modules)
 * [`chs-dev reload SERVICE`](#chs-dev-reload-service)
-* [`chs-dev service-logs [SERVICENAME]`](#chs-dev-service-logs-servicename)
 * [`chs-dev services available`](#chs-dev-services-available)
 * [`chs-dev services disable SERVICES`](#chs-dev-services-disable-services)
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
@@ -204,30 +202,6 @@ EXAMPLES
 ```
 
 _See code: [@oclif/plugin-autocomplete](https://github.com/oclif/plugin-autocomplete/blob/v0.2.1/src/commands/autocomplete/index.ts)_
-
-## `chs-dev compose-logs [SERVICENAME]`
-
-Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
-
-```
-USAGE
-  $ chs-dev compose-logs [SERVICENAME...] [-C] [-f] [-n <value>]
-
-ARGUMENTS
-  SERVICENAME...  specify the service names of the logs to follow, when not specified follows aggregated logs
-
-FLAGS
-  -C, --compose       View the compose logs rather than service logs
-  -f, --follow        Follow the logs
-  -n, --tail=<value>  [default: all] Number of lines from the end of the logs
-
-DESCRIPTION
-  Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
-
-ALIASES
-  $ chs-dev service-logs
-  $ chs-dev compose-logs
-```
 
 ## `chs-dev development disable SERVICES`
 
@@ -415,9 +389,34 @@ FLAGS
 DESCRIPTION
   Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
 
-ALIASES
-  $ chs-dev service-logs
-  $ chs-dev compose-logs
+EXAMPLES
+  view all aggregated service logs
+
+    $ chs-dev logs
+
+  follow aggregated service logs
+
+    $ chs-dev logs -f
+
+  follow logs for service
+
+    $ chs-dev logs service-one service-two -f
+
+  load the last line in the aggregated service logs
+
+    $ chs-dev logs -n 1
+
+  view all compose logs
+
+    $ chs-dev logs -C
+
+  follow compose logs
+
+    $ chs-dev logs -C -f
+
+  load the last line in the compose logs
+
+    $ chs-dev logs -C -n 1
 ```
 
 ## `chs-dev modules available`
@@ -478,30 +477,6 @@ ARGUMENTS
 
 DESCRIPTION
   Rebuilds and restarts the supplied service running in development mode to load in any changes to source code
-```
-
-## `chs-dev service-logs [SERVICENAME]`
-
-Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
-
-```
-USAGE
-  $ chs-dev service-logs [SERVICENAME...] [-C] [-f] [-n <value>]
-
-ARGUMENTS
-  SERVICENAME...  specify the service names of the logs to follow, when not specified follows aggregated logs
-
-FLAGS
-  -C, --compose       View the compose logs rather than service logs
-  -f, --follow        Follow the logs
-  -n, --tail=<value>  [default: all] Number of lines from the end of the logs
-
-DESCRIPTION
-  Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
-
-ALIASES
-  $ chs-dev service-logs
-  $ chs-dev compose-logs
 ```
 
 ## `chs-dev services available`
