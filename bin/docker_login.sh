@@ -110,12 +110,14 @@ for required_repo in "${repository_urls[@]}"; do
           docker login --username AWS --password-stdin "${required_repo}"
         break
       else
-        profile="$(grep -E "^${required_account}\s" | head -n1 | cut -d' ' -f3)"
+        profile="$(grep -E "^${required_account}\s" "${profile_mapping_file}" | head -n1 | cut -d' ' -f3)"
 
         if [[ -z "${profile}" ]]; then
           printf -- 'Could not find profile for '%s' you are going to have to configure one using "aws configure sso"\n' "${required_account}" >&2
 
           exit 1
+        else
+          break
         fi
       fi
     done
