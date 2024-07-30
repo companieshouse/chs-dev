@@ -12,7 +12,7 @@ const DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD = 8;
  * @returns Project Config
  */
 export const load: () => Config = () => {
-    const projectPath = process.cwd();
+    const projectPath = process.env.CHS_DEV_PROJECT || process.cwd();
     const confFile = join(projectPath, "chs-dev/config.yaml");
 
     let config: Partial<Config> = {};

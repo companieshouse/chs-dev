@@ -12,6 +12,10 @@ describe("load", () => {
 
     const pwd = "/users/user/docker-chs";
 
+    const originalProcessEnv = {
+        ...process.env
+    };
+
     const fileSystem = {
         "~/.file-one": "foo bar",
         "./file-two.csv": "foo,bar\nbar,foo\n",
@@ -22,6 +26,8 @@ describe("load", () => {
         jest.resetAllMocks();
 
         pwdMock.mockReturnValue(pwd);
+
+        process.env = originalProcessEnv;
     });
 
     it("returns empty configuration when no configuration file exists", () => {
@@ -122,5 +128,18 @@ describe("load", () => {
             authenticatedRepositories: [],
             versionSpecification: ">1.0 <2.0"
         });
+    });
+
+    it("can load project path from CHS_DEV_PROJECT environment var", () => {
+        const chsDevProjectPath = "/users/user/chs-docker-project";
+
+        process.env = {
+            ...process.env,
+            CHS_DEV_PROJECT: chsDevProjectPath
+        };
+
+        existsSyncMock.mockReturnValue(false);
+
+        expect(load()).toEqual({ projectName: "chs-docker-project", env: {}, projectPath: chsDevProjectPath, authenticatedRepositories: [] });
     });
 });

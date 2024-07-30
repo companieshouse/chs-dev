@@ -1,7 +1,5 @@
-import { afterAll, beforeAll, expect, jest } from "@jest/globals";
+import { beforeAll, expect, jest } from "@jest/globals";
 import { Service } from "../../src/model/Service";
-// @ts-expect-error it does exist
-import { mkdtempSync, rmSync } from "fs";
 import { join } from "path";
 import { Config } from "@oclif/core";
 import Reload from "../../src/commands/reload";
@@ -10,6 +8,8 @@ const ensureFileMock = jest.fn();
 const utimesMock = jest.fn();
 
 const updateDependencyCacheMock = jest.fn();
+
+const loadConfigMock = jest.fn();
 
 const services: Service[] = [{
     name: "service-one",
@@ -28,6 +28,12 @@ const services: Service[] = [{
     metadata: {},
     repository: null
 }];
+
+jest.mock("../../src/helpers/config-loader", () => {
+    return function () {
+        return loadConfigMock();
+    };
+});
 
 jest.mock("../../src/state/inventory", () => {
     return {
@@ -55,41 +61,38 @@ jest.mock("fs-extra", () => {
 });
 
 describe("reload spec", () => {
-    let tempDir;
     let testConfig: Config;
     let reload: Reload;
+
+    const projectDir = "./project";
     const runHookMock = jest.fn();
     const parseMock = jest.fn();
     const logMock = jest.fn();
     const errorMock = jest.fn();
-    const cwdSpy = jest.spyOn(process, "cwd");
 
     const testDateTime = new Date(2023, 1, 1, 0, 0, 0);
 
     beforeAll(() => {
         jest.resetAllMocks();
-        tempDir = mkdtempSync("reload-command");
         // @ts-expect-error
-        testConfig = { root: tempDir, configDir: join(tempDir, "config"), cacheDir: join(tempDir, "cache"), runHook: runHookMock };
-
-        reload = new Reload([], testConfig);
-
-        // @ts-expect-error
-        reload.parse = parseMock;
-        reload.log = logMock;
-        // @ts-expect-error
-        reload.error = errorMock;
-    });
-
-    afterAll(() => {
-        rmSync(tempDir, { recursive: true, force: true });
+        testConfig = { root: projectDir, configDir: join(projectDir, "config"), cacheDir: join(projectDir, "cache"), runHook: runHookMock };
     });
 
     beforeEach(() => {
         jest.resetAllMocks();
         // @ts-expect-error
         Date.now = () => testDateTime;
-        cwdSpy.mockReturnValue(tempDir);
+
+        loadConfigMock.mockReturnValue({
+            projectPath: projectDir
+        });
+
+        reload = new Reload([], testConfig);
+        // @ts-expect-error
+        reload.parse = parseMock;
+        reload.log = logMock;
+        // @ts-expect-error
+        reload.error = errorMock;
     });
 
     it("should not reload an invalid service", async () => {
@@ -136,8 +139,8 @@ describe("reload spec", () => {
 
         await reload.run();
 
-        expect(ensureFileMock).toHaveBeenCalledWith(join(tempDir, "local/service-one/.touch"));
-        expect(utimesMock).toHaveBeenCalledWith(join(tempDir, "local/service-one/.touch"), testDateTime, testDateTime);
+        expect(ensureFileMock).toHaveBeenCalledWith(join(projectDir, "local/service-one/.touch"));
+        expect(utimesMock).toHaveBeenCalledWith(join(projectDir, "local/service-one/.touch"), testDateTime, testDateTime);
     });
 
 });

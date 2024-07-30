@@ -6,7 +6,14 @@ import simpleGitMock from "simple-git";
 import { join } from "path";
 
 const includeServiceInLiveUpdateMock = jest.fn();
+const loadConfigMock = jest.fn();
 let snapshot;
+
+jest.mock("../../../src/helpers/config-loader", () => {
+    return function () {
+        return loadConfigMock();
+    };
+});
 
 jest.mock("../../../src/state/inventory", () => {
     return {
@@ -46,6 +53,10 @@ describe("development enable", () => {
     beforeEach(() => {
         jest.resetAllMocks();
 
+        loadConfigMock.mockReturnValue({
+            projectPath: projectDir
+        });
+
         developmentEnable = new Enable(
             // @ts-expect-error
             [], { cacheDir: "./caches", runHook: runHookMock } as Config
@@ -55,7 +66,6 @@ describe("development enable", () => {
         developmentEnable.parse = parseMock;
         // @ts-expect-error
         developmentEnable.error = errorMock;
-
         cwdSpy.mockReturnValue(projectDir);
 
         // @ts-expect-error

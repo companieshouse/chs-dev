@@ -1,11 +1,11 @@
 import { Command, Config, Flags } from "@oclif/core";
 import { Inventory } from "../../state/inventory.js";
+import ChsDevConfig from "../../model/Config.js";
+import loadConfig from "../../helpers/config-loader.js";
 
 export default class Services extends Command {
 
     static description = "Lists all services which are available to enable in development mode";
-
-    private readonly inventory: Inventory;
 
     static flags = {
         json: Flags.boolean({
@@ -18,10 +18,15 @@ export default class Services extends Command {
         })
     };
 
+    private readonly inventory: Inventory;
+    private readonly chsDevConfig: ChsDevConfig;
+
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.inventory = new Inventory(process.cwd(), config.cacheDir);
+        this.chsDevConfig = loadConfig();
+
+        this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
 
     }
 

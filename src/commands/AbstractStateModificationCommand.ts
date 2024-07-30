@@ -1,6 +1,8 @@
 import { Command, Config } from "@oclif/core";
 import { Inventory } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
+import ChsDevConfig from "../model/Config.js";
+import loadConfig from "../helpers/config-loader.js";
 
 type ArgumentValidationPredicate = (argument: string) => boolean;
 type ValidArgumentHandler = (argument: string) => Promise<void>;
@@ -19,12 +21,15 @@ export default abstract class AbstractStateModificationCommand extends Command {
 
     protected argumentValidationPredicate: ArgumentValidationPredicate = defaultValidationPredicate;
     protected validArgumentHandler: ValidArgumentHandler = defaultValidArgumentHandler;
+    protected chsDevConfig: ChsDevConfig;
 
     constructor (argv: string[], config: Config, stateModificationObjectType: "service" | "module") {
         super(argv, config);
 
-        this.inventory = new Inventory(process.cwd(), config.cacheDir);
-        this.stateManager = new StateManager(process.cwd());
+        this.chsDevConfig = loadConfig();
+
+        this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
+        this.stateManager = new StateManager(this.chsDevConfig.projectPath);
         this.stateModificationObjectType = stateModificationObjectType;
     }
 
