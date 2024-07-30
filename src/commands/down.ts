@@ -1,5 +1,4 @@
-import { Command, Config } from "@oclif/core";
-import { cli } from "cli-ux";
+import { Command, Config, ux } from "@oclif/core";
 
 import { DockerCompose } from "../run/docker-compose.js";
 import loadConfig from "../helpers/config-loader.js";
@@ -28,11 +27,11 @@ export default class Down extends Command {
     }
 
     async run (): Promise<any> {
-        cli.action.start(`Stopping chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
+        ux.action.start(`Stopping chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
 
         await this.dockerCompose.down();
 
-        cli.action.stop();
+        ux.action.stop();
     }
 
 }

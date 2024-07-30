@@ -9,8 +9,8 @@ const action = {
 
 describe("DevelopmentMode", () => {
 
-    jest.mock("cli-ux", () => {
-        return { cli: { action } };
+    jest.mock("@oclif/core", () => {
+        return { ux: { action } };
     });
 
     let DevelopmentMode;
