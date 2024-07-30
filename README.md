@@ -602,6 +602,8 @@ within the current working directory.
 
 #### Environment variables
 
+* `CHS_DEV_PROJECT` - specifies the directory containing the project files to
+  use to provision the environment
 * `CHS_DEV_CHECK_VERSION` - when set will check the version is correct
   regardless of when it was previously run
 * `CHS_DEV_FORCE_ECR_CHECK` - when set will always run ECR login before running
