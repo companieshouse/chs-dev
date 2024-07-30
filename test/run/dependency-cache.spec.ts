@@ -43,8 +43,36 @@ describe("DependencyCache", () => {
         cache.update();
 
         expect(execSyncMock).toHaveBeenCalledWith(
-            `rsync -au "\${HOME}"/.m2/repository/uk/ "/home/user/project"/local/.m2/uk/`
+            `rsync -au "\${HOME}"/.m2/repository/uk/ "/home/user/project/local/.m2/uk/"`
         );
     });
 
+    it("makes directory only if maven cache does not exist", () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
+
+        const cache = new DependencyCache("/home/user/project");
+
+        cache.update();
+
+        expect(mkdirSyncMock).toHaveBeenCalledWith("/home/user/project/local/.m2/uk/", {
+            recursive: true
+        });
+
+        expect(execSyncMock).not.toHaveBeenCalled();
+    });
+
+    it("does nothing if cache exists and no maven cache", () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValueOnce(false)
+            .mockReturnValue(true);
+
+        const cache = new DependencyCache("/home/user/project");
+
+        cache.update();
+
+        expect(mkdirSyncMock).not.toHaveBeenCalled();
+
+        expect(execSyncMock).not.toHaveBeenCalled();
+    });
 });
