@@ -1,10 +1,9 @@
 import { join, relative } from "path";
 import { existsSync } from "fs";
-import { cli } from "cli-ux";
+import { ux, Args, Config } from "@oclif/core";
 import { Service } from "../../model/Service.js";
 import simpleGit from "simple-git";
 import AbstractStateModificationCommand from "../AbstractStateModificationCommand.js";
-import { Args, Config } from "@oclif/core";
 import { serviceValidator } from "../../helpers/validator.js";
 
 export default class Enable extends AbstractStateModificationCommand {
@@ -43,12 +42,12 @@ export default class Enable extends AbstractStateModificationCommand {
 
         const localPath = join(process.cwd(), "repositories", service.name);
         if (!existsSync(localPath)) {
-            cli.action.start(`Cloning ${service.repository!.branch || "default"} branch of ${service.repository!.url} repository to ${relative(process.cwd(), localPath)} directory`);
+            ux.action.start(`Cloning ${service.repository!.branch || "default"} branch of ${service.repository!.url} repository to ${relative(process.cwd(), localPath)} directory`);
             // @ts-ignore
             const git = simpleGit();
 
             await git.clone(service.repository!.url, localPath, service.repository?.branch ? ["--branch", service.repository.branch] : []);
-            cli.action.stop("done");
+            ux.action.stop("done");
         }
     }
 

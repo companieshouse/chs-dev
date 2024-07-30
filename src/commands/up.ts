@@ -1,6 +1,5 @@
 import confirm from "@inquirer/confirm";
-import { Command, Config } from "@oclif/core";
-import { cli } from "cli-ux";
+import { Command, Config, ux } from "@oclif/core";
 
 import { DependencyCache } from "../run/dependency-cache.js";
 import { DevelopmentMode } from "../run/development-mode.js";
@@ -60,11 +59,11 @@ export default class Up extends Command {
             });
         }
 
-        cli.action.start("Ensuring all permanent repos are up to date");
+        ux.action.start("Ensuring all permanent repos are up to date");
         await this.permanentRepositories.ensureAllExistAndAreUpToDate();
-        cli.action.stop();
+        ux.action.stop();
 
-        cli.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
+        ux.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         try {
             await this.dockerCompose.up();
 
@@ -88,7 +87,7 @@ export default class Up extends Command {
 
             this.error(error as Error);
         }
-        cli.action.stop();
+        ux.action.stop();
     }
 
     private hasServicesInDevelopmentMode (): boolean {
