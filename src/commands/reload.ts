@@ -3,6 +3,8 @@ import { Inventory } from "../state/inventory.js";
 import { join } from "path";
 import fsExtra from "fs-extra";
 import { DependencyCache } from "../run/dependency-cache.js";
+import ChsDevConfig from "../model/Config.js";
+import loadConfig from "../helpers/config-loader.js";
 
 export default class Reload extends Command {
 
@@ -18,11 +20,15 @@ export default class Reload extends Command {
 
     private readonly inventory: Inventory;
     private readonly dependencyCache: DependencyCache;
+    private readonly chsDevConfig: ChsDevConfig;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
-        this.inventory = new Inventory(process.cwd(), config.cacheDir);
-        this.dependencyCache = new DependencyCache(process.cwd());
+
+        this.chsDevConfig = loadConfig();
+
+        this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
+        this.dependencyCache = new DependencyCache(this.chsDevConfig.projectPath);
     }
 
     async run (): Promise<any> {
@@ -31,7 +37,7 @@ export default class Reload extends Command {
         const serviceName: string = args.service;
 
         if (this.isServiceValid(serviceName)) {
-            const touchFile = join(process.cwd(), "local", serviceName, ".touch");
+            const touchFile = join(this.chsDevConfig.projectPath, "local", serviceName, ".touch");
 
             this.dependencyCache.update();
 

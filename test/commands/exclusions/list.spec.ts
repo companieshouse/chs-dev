@@ -2,6 +2,16 @@ import { expect, jest } from "@jest/globals";
 import { Config } from "@oclif/core";
 import List from "../../../src/commands/exclusions/list";
 
+const loadConfigMock = jest.fn();
+
+jest.mock("../../../src/helpers/config-loader", () => {
+    return function () {
+        return {
+            default: loadConfigMock
+        };
+    };
+});
+
 jest.mock("../../../src/state/state-manager", () => {
     return {
         StateManager: function () {
@@ -32,6 +42,9 @@ describe("exclusions list", () => {
             [], {} as Config
         );
 
+        loadConfigMock.mockReturnValue({
+            projectPath: "./project"
+        });
         logMock = jest.spyOn(exclusionsList, "log");
         logJsonMock = jest.spyOn(exclusionsList, "logJson");
         parseMock = jest.spyOn(exclusionsList, "parse");

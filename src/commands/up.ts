@@ -40,9 +40,9 @@ export default class Up extends Command {
 
         this.dockerCompose = new DockerCompose(this.chsDevConfig, logger);
 
-        this.stateManager = new StateManager(process.cwd());
-        this.dependencyCache = new DependencyCache(process.cwd());
-        this.developmentMode = new DevelopmentMode(this.dockerCompose, process.cwd());
+        this.stateManager = new StateManager(this.chsDevConfig.projectPath);
+        this.dependencyCache = new DependencyCache(this.chsDevConfig.projectPath);
+        this.developmentMode = new DevelopmentMode(this.dockerCompose, this.chsDevConfig.projectPath);
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.permanentRepositories = new PermanentRepositories(this.chsDevConfig, this.inventory);

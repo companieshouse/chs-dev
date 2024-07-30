@@ -7,6 +7,7 @@ import { collect, deduplicate } from "../helpers/array-reducers.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import loadConfig from "../helpers/config-loader.js";
 import State from "../model/State.js";
+import ChsDevConfig from "../model/Config.js";
 
 export default class Status extends Command {
     static description = "print status of an environment";
@@ -32,11 +33,14 @@ export default class Status extends Command {
 
     private dockerCompose: DockerCompose;
 
+    private chsDevConfig: ChsDevConfig;
+
     constructor (argv: string[], config: Config) {
         super(argv, config);
-        this.inventory = new Inventory(process.cwd(), config.cacheDir);
-        this.stateManager = new StateManager(process.cwd());
-        this.dockerCompose = new DockerCompose(loadConfig(), {
+        this.chsDevConfig = loadConfig();
+        this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
+        this.stateManager = new StateManager(this.chsDevConfig.projectPath);
+        this.dockerCompose = new DockerCompose(this.chsDevConfig, {
             log: (msg: string) => this.log(msg)
         });
     }

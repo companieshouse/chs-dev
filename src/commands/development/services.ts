@@ -1,5 +1,7 @@
 import { Command, Config, Flags } from "@oclif/core";
 import { Inventory } from "../../state/inventory.js";
+import ChsDevConfig from "../../model/Config.js";
+import loadConfig from "../../helpers/config-loader.js";
 
 export default class Services extends Command {
 
@@ -18,10 +20,14 @@ export default class Services extends Command {
         })
     };
 
+    private chsDevConfig: ChsDevConfig;
+
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.inventory = new Inventory(process.cwd(), config.cacheDir);
+        this.chsDevConfig = loadConfig();
+
+        this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
 
     }
 

@@ -40,9 +40,9 @@ export default class Enable extends AbstractStateModificationCommand {
     private async cloneServiceRepository (serviceName: string): Promise<void> {
         const service = this.inventory.services.find(item => item.name === serviceName) as Service;
 
-        const localPath = join(process.cwd(), "repositories", service.name);
+        const localPath = join(this.chsDevConfig.projectPath, "repositories", service.name);
         if (!existsSync(localPath)) {
-            ux.action.start(`Cloning ${service.repository!.branch || "default"} branch of ${service.repository!.url} repository to ${relative(process.cwd(), localPath)} directory`);
+            ux.action.start(`Cloning ${service.repository!.branch || "default"} branch of ${service.repository!.url} repository to ${relative(this.chsDevConfig.projectPath, localPath)} directory`);
             // @ts-ignore
             const git = simpleGit();
 

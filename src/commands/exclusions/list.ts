@@ -1,5 +1,7 @@
 import { Command, Config, Flags } from "@oclif/core";
 import { StateManager } from "../../state/state-manager.js";
+import ChsDevConfig from "../../model/Config.js";
+import loadConfig from "../../helpers/config-loader.js";
 
 export default class List extends Command {
 
@@ -17,11 +19,14 @@ export default class List extends Command {
     };
 
     private readonly stateManager: StateManager;
+    private readonly chsDevConfig: ChsDevConfig;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
 
-        this.stateManager = new StateManager(process.cwd());
+        this.chsDevConfig = loadConfig();
+
+        this.stateManager = new StateManager(this.chsDevConfig.projectPath);
     }
 
     async run (): Promise<any> {
