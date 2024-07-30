@@ -7,8 +7,6 @@ export default class Services extends Command {
 
     static description = "Lists all services which are available to enable in development mode";
 
-    private readonly inventory: Inventory;
-
     static flags = {
         json: Flags.boolean({
             name: "json",
@@ -20,7 +18,8 @@ export default class Services extends Command {
         })
     };
 
-    private chsDevConfig: ChsDevConfig;
+    private readonly inventory: Inventory;
+    private readonly chsDevConfig: ChsDevConfig;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
