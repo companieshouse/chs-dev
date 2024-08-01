@@ -1,3 +1,4 @@
+import { greenBright } from "ansis";
 import { AbstractLogHandler } from "./logs-handler.js";
 
 export class DockerComposeWatchLogHandler extends AbstractLogHandler {
@@ -61,7 +62,7 @@ export class DockerComposeWatchLogHandler extends AbstractLogHandler {
             if (this.servicesBeingReloaded.includes(rebuiltServiceName)) {
                 this.servicesBeingReloaded = this.servicesBeingReloaded.filter(name => name !== rebuiltServiceName);
 
-                this.logger.log(`Service: ${rebuiltServiceName} reloaded`);
+                this.logger.log(greenBright(`Service: ${rebuiltServiceName} reloaded`));
                 loggedUpdate = true;
             }
         }

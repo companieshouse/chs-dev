@@ -7,6 +7,7 @@ import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHa
 import Config from "../model/Config.js";
 import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
 import { spawn } from "../helpers/spawn-promise.js";
+import { runStatusColouriser, stopStatusColouriser } from "../helpers/colouriser.js";
 
 interface Logger {
     log: (msg: string) => void;
@@ -46,7 +47,7 @@ export class DockerCompose {
 
     down (signal?: AbortSignal): Promise<void> {
         return this.runDockerCompose(["down", "--remove-orphans"],
-            this.createStatusMatchLogHandler(CONTAINER_STOPPED_STATUS_PATTERN),
+            this.createStatusMatchLogHandler(CONTAINER_STOPPED_STATUS_PATTERN, stopStatusColouriser),
             signal
         );
     }
@@ -73,7 +74,7 @@ export class DockerCompose {
 
     up (signal?: AbortSignal): Promise<void> {
         return this.runDockerCompose(["up", "-d", "--remove-orphans"],
-            this.createStatusMatchLogHandler(CONTAINER_STARTED_HEALTHY_STATUS_PATTERN),
+            this.createStatusMatchLogHandler(CONTAINER_STARTED_HEALTHY_STATUS_PATTERN, runStatusColouriser),
             signal
         );
     }
@@ -97,9 +98,9 @@ export class DockerCompose {
         signal);
     }
 
-    private createStatusMatchLogHandler (pattern: RegExp) {
+    private createStatusMatchLogHandler (pattern: RegExp, colouriser?: (status: string) => string) {
         return new PatternMatchingConsoleLogHandler(
-            pattern, this.logFile, this.logger
+            pattern, this.logFile, this.logger, colouriser
         );
     }
 

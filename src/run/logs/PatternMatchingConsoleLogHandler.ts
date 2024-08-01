@@ -2,8 +2,11 @@ import { AbstractLogHandler, Logger } from "./logs-handler.js";
 
 export default class PatternMatchingConsoleLogHandler extends AbstractLogHandler {
 
-    constructor (private readonly pattern: RegExp, readonly logFile: string, readonly logger: Logger) {
+    private readonly colouriser: ((status: string) => string) | undefined;
+
+    constructor (private readonly pattern: RegExp, readonly logFile: string, readonly logger: Logger, colouriser?: (status: string) => string) {
         super(logFile, logger);
+        this.colouriser = colouriser;
     }
 
     protected logToConsole (logEntry: string[]): void {
@@ -15,7 +18,8 @@ export default class PatternMatchingConsoleLogHandler extends AbstractLogHandler
 
                 if (matches) {
                     const [_, serviceName, serviceStatus] = matches;
-                    logger.log(`Service ${serviceName} ${serviceStatus}`);
+                    const colourisedStatus = this.colouriser ? this.colouriser(serviceStatus) : serviceStatus;
+                    logger.log(`Service ${serviceName} ${colourisedStatus}`);
                 } else if (verbose) {
                     logger.log(logEntry);
                 }

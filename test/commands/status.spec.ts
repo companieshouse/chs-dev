@@ -1,71 +1,21 @@
 import { jest, expect } from "@jest/globals";
 import Status from "../../src/commands/status";
 import { Config } from "@oclif/core";
-import { Service } from "../../src/model/Service";
-import { Module } from "../../src/model/Module";
 import { State } from "../../src/model/State";
+import { services, modules } from "../utils/data";
 
-const services: Service[] = [
-    {
-        name: "service-one",
-        module: "module-two",
-        source: "",
-        dependsOn: [
-            "service-five"
-        ],
-        builder: "",
-        metadata: {},
-        repository: null
-    },
-    {
-        name: "service-two",
-        module: "module-one",
-        source: "",
-        dependsOn: [],
-        builder: "",
-        metadata: {},
-        repository: null
-    },
-    {
-        name: "service-three",
-        module: "module-two",
-        source: "",
-        dependsOn: [],
-        builder: "",
-        metadata: {},
-        repository: null
-    },
-    {
-        name: "service-four",
-        module: "module-one",
-        source: "",
-        dependsOn: [],
-        builder: "",
-        metadata: {},
-        repository: null
-    },
-    {
-        name: "service-five",
-        module: "module-three",
-        source: "",
-        dependsOn: [],
-        builder: "",
-        metadata: {},
-        repository: null
-    }
-];
-const modules: Module[] = [{
-    name: "module-one"
-}, {
-    name: "module-two"
-}];
 const snapshot: State = {
     modules: [
         "module-one"
     ],
     services: [
         "service-one",
-        "service-two"
+        "service-two",
+        "service-five",
+        "service-six",
+        "service-seven",
+        "service-eight",
+        "service-three"
     ],
     servicesWithLiveUpdate: [
         "service-two"
@@ -143,37 +93,23 @@ describe("Status command", () => {
     it("should log without docker compose statuses", async () => {
         await status.run();
 
-        expect(logMock).toHaveBeenCalledTimes(12);
-
         expect(logMock.mock.calls).toMatchSnapshot();
         expect(logJsonMock).not.toHaveBeenCalled();
     });
 
-    it("should log with their docker compose statuses", async () => {
+    it("should log with their docker compose statuses correctly", async () => {
         getServiceStatusesMock.mockReturnValue({
-            "service-one": "running",
-            "service-two": "running",
-            "service-five": "stopped",
-            "service-four": "stopped"
+            "service-one": "Up 3 seconds (unhealthy)",
+            "service-two": "Up 2 minutes (healthy)",
+            "service-four": "Up 1 minute (health: starting)",
+            "service-five": "Exited (0)",
+            "service-six": "Exited (137)",
+            "service-seven": "Up 33 minutes",
+            "service-three": "Up About an hour (healthy)",
+            "service-eight": "Up About an hour"
         });
 
         await status.run();
-
-        expect(logMock).toHaveBeenCalledTimes(12);
-
-        expect(logMock.mock.calls).toMatchSnapshot();
-    });
-
-    it("should log with their docker compose statuses correctly when not running", async () => {
-        getServiceStatusesMock.mockReturnValue({
-            "service-one": "running",
-            "service-two": "running",
-            "service-five": "stopped"
-        });
-
-        await status.run();
-
-        expect(logMock).toHaveBeenCalledTimes(12);
 
         expect(logMock.mock.calls).toMatchSnapshot();
     });
