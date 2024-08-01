@@ -23,7 +23,7 @@ export const isOnVpn = () => {
         }
 
     } catch (error) {
-        console.error(error);
+        console.error(`Error occurred when checking VPN Status: ${(error as Error).message}`);
     }
     return false;
 };
