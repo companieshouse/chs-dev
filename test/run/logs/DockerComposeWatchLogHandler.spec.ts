@@ -1,6 +1,7 @@
 import { expect, jest } from "@jest/globals";
 import fs from "fs";
 import DockerComposeWatchLogHandler from "../../../src/run/logs/DockerComposeWatchLogHandler";
+import { greenBright } from "ansis";
 
 describe("DockerComposeWatchLogHandler", () => {
     const mockWriteFileSync = jest.spyOn(fs, "writeFileSync");
@@ -132,7 +133,7 @@ describe("DockerComposeWatchLogHandler", () => {
         dockerComposeWatchLogHandler.handle(logMessage);
 
         expect(mockLogger.log).toHaveBeenCalledWith(
-            "Service: my-awesome-service reloaded"
+            greenBright("Service: my-awesome-service reloaded")
         );
     });
 
@@ -147,7 +148,7 @@ describe("DockerComposeWatchLogHandler", () => {
         dockerComposeWatchLogHandler.handle(logMessage);
 
         expect(mockLogger.log).toHaveBeenCalledWith(
-            "Service: my-awesome-service reloaded"
+            greenBright("Service: my-awesome-service reloaded")
         );
     });
 });

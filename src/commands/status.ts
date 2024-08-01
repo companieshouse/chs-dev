@@ -8,6 +8,7 @@ import { DockerCompose } from "../run/docker-compose.js";
 import loadConfig from "../helpers/config-loader.js";
 import State from "../model/State.js";
 import ChsDevConfig from "../model/Config.js";
+import { statusColouriser } from "../helpers/colouriser.js";
 
 export default class Status extends Command {
     static description = "print status of an environment";
@@ -49,7 +50,16 @@ export default class Status extends Command {
         const state = this.stateManager.snapshot;
         const dockerComposeState = this.dockerCompose.getServiceStatuses();
 
-        const serviceState = (serviceName: string) => dockerComposeState ? `(${dockerComposeState[serviceName] || "Not running"})` : "";
+        const serviceState = (serviceName: string, colourise: boolean) => {
+            const stateValue = dockerComposeState ? dockerComposeState[serviceName] || "Not running" : "";
+
+            if (colourise && dockerComposeState) {
+                return `(${statusColouriser(stateValue)})`;
+            }
+
+            return stateValue;
+
+        };
         const { flags } = await this.parse(Status);
 
         const enabledServiceNames = this.inventory.services
@@ -72,7 +82,7 @@ export default class Status extends Command {
     private constructJsonRepresentation (
         state: State,
         enabledServiceNames: string[],
-        serviceState: (serviceName: string) => string
+        serviceState: (serviceName: string, colourise: boolean) => string
     ) {
         return {
             modules: [
@@ -80,7 +90,7 @@ export default class Status extends Command {
             ],
             services: enabledServiceNames.map((serviceName: string) => ({
                 name: serviceName,
-                composeStatus: serviceState(serviceName).replaceAll(/[()]/g, ""),
+                composeStatus: serviceState(serviceName, false).replaceAll(/[()]/g, ""),
                 liveUpdate: state.servicesWithLiveUpdate.includes(serviceName),
                 transient: !state.services.includes(serviceName)
             }))
@@ -89,7 +99,7 @@ export default class Status extends Command {
 
     private humanReadableLog (
         state: State,
-        serviceState: (serviceName: string) => string,
+        serviceState: (serviceName: string, colourise: boolean) => string,
         enabledServiceNames: string[]
     ) {
         this.log("Manually activated modules:");
@@ -99,12 +109,12 @@ export default class Status extends Command {
 
         this.log("\nManually activated services:");
         for (const service of state.services) {
-            this.log(` - ${service} ${serviceState(service)}`);
+            this.log(` - ${service} ${serviceState(service, true)}`);
         }
 
         this.log("\nAutomatically activated services:");
         for (const serviceName of enabledServiceNames) {
-            this.log(` - ${serviceName} ${serviceState(serviceName)} ${state.servicesWithLiveUpdate.includes(serviceName) ? "[LIVE UPDATE]" : ""}`);
+            this.log(` - ${serviceName} ${serviceState(serviceName, true)} ${state.servicesWithLiveUpdate.includes(serviceName) ? "[LIVE UPDATE]" : ""}`);
         }
 
         this.log("\nManually deactivated services:");

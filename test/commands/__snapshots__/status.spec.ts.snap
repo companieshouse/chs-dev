@@ -8,10 +8,16 @@ exports[`Status command should log json correctly 1`] = `
     ],
     "services": [
       {
+        "composeStatus": "Not running",
+        "liveUpdate": false,
+        "name": "service-eight",
+        "transient": false,
+      },
+      {
         "composeStatus": "stopped",
         "liveUpdate": false,
         "name": "service-five",
-        "transient": true,
+        "transient": false,
       },
       {
         "composeStatus": "stopped",
@@ -26,6 +32,24 @@ exports[`Status command should log json correctly 1`] = `
         "transient": false,
       },
       {
+        "composeStatus": "Not running",
+        "liveUpdate": false,
+        "name": "service-seven",
+        "transient": false,
+      },
+      {
+        "composeStatus": "Not running",
+        "liveUpdate": false,
+        "name": "service-six",
+        "transient": false,
+      },
+      {
+        "composeStatus": "Not running",
+        "liveUpdate": false,
+        "name": "service-three",
+        "transient": false,
+      },
+      {
         "composeStatus": "running",
         "liveUpdate": true,
         "name": "service-two",
@@ -36,7 +60,7 @@ exports[`Status command should log json correctly 1`] = `
 ]
 `;
 
-exports[`Status command should log with their docker compose statuses 1`] = `
+exports[`Status command should log with their docker compose statuses correctly 1`] = `
 [
   [
     "Manually activated modules:",
@@ -49,70 +73,53 @@ exports[`Status command should log with their docker compose statuses 1`] = `
 Manually activated services:",
   ],
   [
-    " - service-one (running)",
+    " - service-one ([31m[1mUp 3 seconds (unhealthy)[22m[39m)",
   ],
   [
-    " - service-two (running)",
+    " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m)",
   ],
   [
-    "
-Automatically activated services:",
+    " - service-five ([33mExited (0)[39m)",
   ],
   [
-    " - service-five (stopped) ",
+    " - service-six ([31mExited (137)[39m)",
   ],
   [
-    " - service-four (stopped) ",
+    " - service-seven ([32mUp 33 minutes[39m)",
   ],
   [
-    " - service-one (running) ",
+    " - service-eight ([32mUp About an hour[39m)",
   ],
   [
-    " - service-two (running) [LIVE UPDATE]",
-  ],
-  [
-    "
-Manually deactivated services:",
-  ],
-  [
-    " - service-three",
-  ],
-]
-`;
-
-exports[`Status command should log with their docker compose statuses correctly when not running 1`] = `
-[
-  [
-    "Manually activated modules:",
-  ],
-  [
-    " - module-one",
-  ],
-  [
-    "
-Manually activated services:",
-  ],
-  [
-    " - service-one (running)",
-  ],
-  [
-    " - service-two (running)",
+    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m)",
   ],
   [
     "
 Automatically activated services:",
   ],
   [
-    " - service-five (stopped) ",
+    " - service-eight ([32mUp About an hour[39m) ",
   ],
   [
-    " - service-four (Not running) ",
+    " - service-five ([33mExited (0)[39m) ",
   ],
   [
-    " - service-one (running) ",
+    " - service-four ([36mUp 1 minute (health: starting)[39m) ",
   ],
   [
-    " - service-two (running) [LIVE UPDATE]",
+    " - service-one ([31m[1mUp 3 seconds (unhealthy)[22m[39m) ",
+  ],
+  [
+    " - service-seven ([32mUp 33 minutes[39m) ",
+  ],
+  [
+    " - service-six ([31mExited (137)[39m) ",
+  ],
+  [
+    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m) ",
+  ],
+  [
+    " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m) [LIVE UPDATE]",
   ],
   [
     "
@@ -143,8 +150,26 @@ Manually activated services:",
     " - service-two ",
   ],
   [
+    " - service-five ",
+  ],
+  [
+    " - service-six ",
+  ],
+  [
+    " - service-seven ",
+  ],
+  [
+    " - service-eight ",
+  ],
+  [
+    " - service-three ",
+  ],
+  [
     "
 Automatically activated services:",
+  ],
+  [
+    " - service-eight  ",
   ],
   [
     " - service-five  ",
@@ -154,6 +179,15 @@ Automatically activated services:",
   ],
   [
     " - service-one  ",
+  ],
+  [
+    " - service-seven  ",
+  ],
+  [
+    " - service-six  ",
+  ],
+  [
+    " - service-three  ",
   ],
   [
     " - service-two  [LIVE UPDATE]",

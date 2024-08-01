@@ -43,4 +43,33 @@ describe("PatternMatchingConsoleLogHandler", () => {
                 ["Service service-one Stopped"]]
         );
     });
+
+    it("colourises logs", () => {
+        const colouriseMock = jest.fn();
+
+        patternMatchingConsoleLogHandler = new PatternMatchingConsoleLogHandler(
+            // @ts-expect-error
+            pattern, "/tmp/log.txt", mockLogger, colouriseMock
+        );
+
+        const logLines = [
+            "Container service-one Started",
+            "Container service-one Healthy",
+            "Container service-one Removing",
+            "Container service-one Stopping",
+            "Container service-one Stopped",
+            "Container service-one Removed"
+        ];
+
+        patternMatchingConsoleLogHandler.handle(
+            logLines.join("\n")
+        );
+
+        expect(colouriseMock.mock.calls).toEqual([
+            ["Started"],
+            ["Healthy"],
+            ["Stopped"]
+        ]);
+
+    });
 });
