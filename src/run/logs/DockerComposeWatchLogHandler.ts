@@ -23,7 +23,7 @@ export class DockerComposeWatchLogHandler extends AbstractLogHandler {
                     "Trigger an update to a service by running:\n\n"
                 );
                 this.logger.log(
-                    "$ ./bin/chs-dev reload <service>\n\n"
+                    "$ chs-dev reload <service>\n\n"
                 );
                 return;
             }
