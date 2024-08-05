@@ -203,7 +203,7 @@ describe("DockerCompose", () => {
             existsSyncMock.mockReturnValue(true);
         });
 
-        it("executes docker compose down", async () => {
+        it("executes docker compose down without volumes when nothing supplied", async () => {
             mockOnce.mockImplementation((type, listener) => {
                 if (type === "exit") {
                     // @ts-expect-error
@@ -280,6 +280,37 @@ describe("DockerCompose", () => {
             spawnMock.mockRejectedValue(1 as never);
 
             await expect(dockerCompose.down()).rejects.toBeInstanceOf(Error);
+        });
+
+        it("removes volumes when removeVolumes true", async () => {
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(0);
+                }
+            });
+
+            await dockerCompose.down(true);
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockPatternMatchingHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value"
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
+
+            expect(spawnMock).toHaveBeenCalledWith("docker",
+                [
+                    "compose",
+                    "down",
+                    "--remove-orphans",
+                    "--volumes"
+                ], expectedSpawnOptions);
         });
     });
 

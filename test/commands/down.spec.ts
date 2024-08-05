@@ -56,9 +56,29 @@ describe("Down command", () => {
         cwdSpy.mockReturnValue(tempDir);
     });
 
-    it("takes down the environment", async () => {
+    it("takes down the environment leaving volumes", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            flags: {
+                removeVolumes: false
+            }
+        });
+
         await downCommand.run();
 
-        expect(dockerComposeDownMock).toHaveBeenCalledTimes(1);
+        expect(dockerComposeDownMock).toHaveBeenCalledWith(false);
+    });
+
+    it("takes down the environment and removes volumes", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            flags: {
+                removeVolumes: true
+            }
+        });
+
+        await downCommand.run();
+
+        expect(dockerComposeDownMock).toHaveBeenCalledWith(true);
     });
 });
