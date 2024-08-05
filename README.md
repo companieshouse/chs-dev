@@ -256,7 +256,10 @@ Takes down the docker-chs-development environment
 
 ```
 USAGE
-  $ chs-dev down
+  $ chs-dev down [-V]
+
+FLAGS
+  -V, --removeVolumes  Will remove all associated volumes
 
 DESCRIPTION
   Takes down the docker-chs-development environment

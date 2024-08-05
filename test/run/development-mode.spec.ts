@@ -89,7 +89,7 @@ describe("DevelopmentMode", () => {
 
             await developmentMode.sigintHandler(controllerMock, prompterMock);
 
-            expect(dockerComposeMock.down).toHaveBeenCalled();
+            expect(dockerComposeMock.down).toHaveBeenCalledWith(false);
         });
 
         it("releases lock", async () => {

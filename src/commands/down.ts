@@ -1,4 +1,4 @@
-import { Command, Config, ux } from "@oclif/core";
+import { Command, Config, Flags, ux } from "@oclif/core";
 
 import { DockerCompose } from "../run/docker-compose.js";
 import loadConfig from "../helpers/config-loader.js";
@@ -12,6 +12,17 @@ export default class Down extends Command {
     static examples = [
         "$ chs-dev down"
     ];
+
+    static flags = {
+        removeVolumes: Flags.boolean({
+            name: "remove-volumes",
+            char: "V",
+            aliases: ["removeVolumes"],
+            default: false,
+            allowNo: false,
+            description: "Will remove all associated volumes"
+        })
+    };
 
     private readonly dockerCompose: DockerCompose;
     private readonly chsDevConfig: ChsDevConfig;
@@ -29,7 +40,9 @@ export default class Down extends Command {
     async run (): Promise<any> {
         ux.action.start(`Stopping chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
 
-        await this.dockerCompose.down();
+        const { flags } = await this.parse(Down);
+
+        await this.dockerCompose.down(flags.removeVolumes);
 
         ux.action.stop();
     }

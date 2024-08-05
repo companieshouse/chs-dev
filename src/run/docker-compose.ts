@@ -45,8 +45,14 @@ export class DockerCompose {
             `compose.out.${Math.floor(Date.now() / 1000)}.txt`);
     }
 
-    down (signal?: AbortSignal): Promise<void> {
-        return this.runDockerCompose(["down", "--remove-orphans"],
+    down (removeVolumes?: boolean, signal?: AbortSignal): Promise<void> {
+        const dockerComposeArgs = [
+            "down",
+            "--remove-orphans",
+            ...(removeVolumes ? ["--volumes"] : [])
+        ];
+
+        return this.runDockerCompose(dockerComposeArgs,
             this.createStatusMatchLogHandler(CONTAINER_STOPPED_STATUS_PATTERN, stopStatusColouriser),
             signal
         );

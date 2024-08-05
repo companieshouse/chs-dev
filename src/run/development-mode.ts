@@ -52,7 +52,7 @@ export class DevelopmentMode {
 
             ux.action.start("Stopping chs-dev environment");
             if (stop) {
-                return this.dockerCompose.down();
+                return this.dockerCompose.down(false);
             }
         })
             .then(() => controller.abort());
