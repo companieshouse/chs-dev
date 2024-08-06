@@ -10,7 +10,14 @@ export default class Down extends Command {
     static description: string = "Takes down the docker-chs-development environment";
 
     static examples = [
-        "$ chs-dev down"
+        {
+            description: "Take down environment",
+            command: "$ <%= config.bin %> <%= command.id %>"
+        },
+        {
+            description: "Take down environment, removing all images and volumes created",
+            command: "$ <%= config.bin %> <%= command.id %> -I -V"
+        }
     ];
 
     static flags = {
@@ -21,6 +28,14 @@ export default class Down extends Command {
             default: false,
             allowNo: false,
             description: "Will remove all associated volumes"
+        }),
+        removeImages: Flags.boolean({
+            name: "remove-images",
+            char: "I",
+            aliases: ["removeImages"],
+            default: false,
+            allowNo: false,
+            description: "Will remove all images built by the environment"
         })
     };
 
@@ -42,7 +57,10 @@ export default class Down extends Command {
 
         const { flags } = await this.parse(Down);
 
-        await this.dockerCompose.down(flags.removeVolumes);
+        await this.dockerCompose.down({
+            removeVolumes: flags.removeVolumes,
+            removeImages: flags.removeImages
+        });
 
         ux.action.stop();
     }

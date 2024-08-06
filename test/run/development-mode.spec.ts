@@ -89,7 +89,10 @@ describe("DevelopmentMode", () => {
 
             await developmentMode.sigintHandler(controllerMock, prompterMock);
 
-            expect(dockerComposeMock.down).toHaveBeenCalledWith(false);
+            expect(dockerComposeMock.down).toHaveBeenCalledWith({
+                removeVolumes: false,
+                removeImages: false
+            });
         });
 
         it("releases lock", async () => {
