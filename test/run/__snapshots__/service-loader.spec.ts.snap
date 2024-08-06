@@ -111,6 +111,7 @@ exports[`ServiceLoader loads modules, no services enabled, none in dev mode 1`] 
       "service-six",
       "service-seven",
       "service-eight",
+      "service-eleven",
     ],
     "liveUpdate": false,
     "metadata": {},

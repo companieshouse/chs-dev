@@ -47,7 +47,12 @@ export class ServiceLoader {
             .flatMap(service => service.dependsOn)
             .reduce(deduplicate, [])
             .filter(serviceName => !loadedServices.some(service => service.name === serviceName))
-            .map(serviceName => this.findService(serviceName) as Service)
+            .map(serviceName => this.findService(serviceName))
+            .filter(service => {
+                return typeof service !== "undefined";
+            })
+            // wont be undefined as filtered out above
+            // @ts-expect-error
             .map(withLiveUpdate);
 
         return [
