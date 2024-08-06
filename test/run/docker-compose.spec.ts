@@ -290,7 +290,9 @@ describe("DockerCompose", () => {
                 }
             });
 
-            await dockerCompose.down(true);
+            await dockerCompose.down({
+                removeVolumes: true
+            });
             const expectedSpawnOptions = {
                 logHandler: { handle: mockPatternMatchingHandle },
                 spawnOptions: {
@@ -310,6 +312,40 @@ describe("DockerCompose", () => {
                     "down",
                     "--remove-orphans",
                     "--volumes"
+                ], expectedSpawnOptions);
+        });
+
+        it("removes images when removeImages true", async () => {
+            mockOnce.mockImplementation((type, listener) => {
+                if (type === "exit") {
+                    // @ts-expect-error
+                    listener(0);
+                }
+            });
+
+            await dockerCompose.down({
+                removeImages: true
+            });
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockPatternMatchingHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value"
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
+
+            expect(spawnMock).toHaveBeenCalledWith("docker",
+                [
+                    "compose",
+                    "down",
+                    "--remove-orphans",
+                    "--rmi",
+                    "local"
                 ], expectedSpawnOptions);
         });
     });

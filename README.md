@@ -256,16 +256,23 @@ Takes down the docker-chs-development environment
 
 ```
 USAGE
-  $ chs-dev down [-V]
+  $ chs-dev down [-V] [-I]
 
 FLAGS
+  -I, --removeImages   Will remove all images built by the environment
   -V, --removeVolumes  Will remove all associated volumes
 
 DESCRIPTION
   Takes down the docker-chs-development environment
 
 EXAMPLES
-  $ chs-dev down
+  Take down environment
+
+    $ chs-dev down
+
+  Take down environment, removing all images and volumes created
+
+    $ chs-dev down -I -V
 ```
 
 ## `chs-dev exclude SERVICE`

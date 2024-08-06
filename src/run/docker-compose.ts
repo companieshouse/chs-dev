@@ -45,11 +45,15 @@ export class DockerCompose {
             `compose.out.${Math.floor(Date.now() / 1000)}.txt`);
     }
 
-    down (removeVolumes?: boolean, signal?: AbortSignal): Promise<void> {
+    down (options?: {
+        removeVolumes?: boolean,
+        removeImages?: boolean
+    }, signal?: AbortSignal): Promise<void> {
         const dockerComposeArgs = [
             "down",
             "--remove-orphans",
-            ...(removeVolumes ? ["--volumes"] : [])
+            ...(options?.removeVolumes ? ["--volumes"] : []),
+            ...(options?.removeImages ? ["--rmi", "local"] : [])
         ];
 
         return this.runDockerCompose(dockerComposeArgs,

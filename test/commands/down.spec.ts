@@ -60,25 +60,50 @@ describe("Down command", () => {
         // @ts-expect-error
         parseMock.mockResolvedValue({
             flags: {
-                removeVolumes: false
+                removeVolumes: false,
+                removeImages: false
             }
         });
 
         await downCommand.run();
 
-        expect(dockerComposeDownMock).toHaveBeenCalledWith(false);
+        expect(dockerComposeDownMock).toHaveBeenCalledWith({
+            removeVolumes: false,
+            removeImages: false
+        });
     });
 
     it("takes down the environment and removes volumes", async () => {
         // @ts-expect-error
         parseMock.mockResolvedValue({
             flags: {
-                removeVolumes: true
+                removeVolumes: true,
+                removeImages: false
             }
         });
 
         await downCommand.run();
 
-        expect(dockerComposeDownMock).toHaveBeenCalledWith(true);
+        expect(dockerComposeDownMock).toHaveBeenCalledWith({
+            removeVolumes: true,
+            removeImages: false
+        });
+    });
+
+    it("takes down the environment and removes volumes", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            flags: {
+                removeVolumes: false,
+                removeImages: true
+            }
+        });
+
+        await downCommand.run();
+
+        expect(dockerComposeDownMock).toHaveBeenCalledWith({
+            removeVolumes: false,
+            removeImages: true
+        });
     });
 });
