@@ -129,7 +129,8 @@ const serviceNine = {
         "service-five",
         "service-six",
         "service-seven",
-        "service-eight"
+        "service-eight",
+        "service-eleven"
     ],
     repository: null,
     builder: "",
