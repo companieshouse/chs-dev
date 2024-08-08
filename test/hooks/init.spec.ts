@@ -1,13 +1,14 @@
-import { afterAll, beforeAll, expect, jest } from "@jest/globals";
-import { Hook, IConfig } from "@oclif/config";
-// @ts-expect-error
-import { rmSync } from "fs";
+import { beforeAll, expect, jest } from "@jest/globals";
+import { Hook, Config } from "@oclif/core";
 import { getLatestReleaseVersion as getLatestReleaseVersionMock } from "../../src/helpers/latest-release";
 import { isOnVpn as isOnVpnMock } from "../../src/helpers/vpn-check";
+import configLoaderMock from "../../src/helpers/config-loader";
+import { hookFilter as hookFilterMock } from "../../src/hooks/hook-filter";
 
 jest.mock("../../src/helpers/latest-release");
 jest.mock("../../src/helpers/config-loader");
 jest.mock("../../src/helpers/vpn-check");
+jest.mock("../../src/hooks/hook-filter");
 
 const versionCheckRunMock = jest.fn();
 
@@ -23,8 +24,9 @@ jest.mock("../../src/run/version-check", () => {
 
 describe("init hook", () => {
 
-    let testConfig: IConfig;
+    let testConfig: Config;
     let initHook: Hook<"init">;
+    const runHookMock = jest.fn();
 
     const version = "1.1.1";
 
@@ -39,13 +41,40 @@ describe("init hook", () => {
     beforeAll(async () => {
 
         // @ts-expect-error
-        testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", dataDir: "./data", version, pjson };
+        testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", dataDir: "./data", version, pjson, runHook: runHookMock };
 
         initHook = (await import("../../src/hooks/init")).hook;
     });
 
     beforeEach(() => {
         jest.resetAllMocks();
+
+        // @ts-expect-error
+        configLoaderMock.mockReturnValue({
+            projectPath: "/home/project"
+        });
+        // @ts-expect-error
+        hookFilterMock.mockReturnValue(true);
+    });
+
+    it("does nothing when hookFilter returns false", async () => {
+        // @ts-expect-error
+        hookFilterMock.mockReturnValue(false);
+
+        const context: unknown = {
+            warn: jest.fn()
+        };
+
+        await initHook.bind(context as Hook.Context)({
+            config: testConfig,
+            id: "",
+            argv: [],
+            context: context as unknown as Hook.Context
+        });
+
+        expect(versionCheckRunMock).not.toHaveBeenCalled();
+        expect(getLatestReleaseVersionMock).not.toHaveBeenCalled();
+        expect(isOnVpnMock).not.toHaveBeenCalled();
     });
 
     it("runs version check", async () => {
@@ -56,7 +85,8 @@ describe("init hook", () => {
         await initHook.bind(context as Hook.Context)({
             config: testConfig,
             id: "",
-            argv: []
+            argv: [],
+            context: context as unknown as Hook.Context
         });
 
         expect(versionCheckRunMock).toHaveBeenCalledWith(version);
@@ -75,7 +105,8 @@ describe("init hook", () => {
         await initHook.bind(context as Hook.Context)({
             config: testConfig,
             id: "",
-            argv: []
+            argv: [],
+            context: context as unknown as Hook.Context
         });
 
         expect(isOnVpnMock).toHaveBeenCalled();
@@ -97,7 +128,8 @@ describe("init hook", () => {
         await initHook.bind(context as unknown as Hook.Context)({
             config: testConfig,
             id: "",
-            argv: []
+            argv: [],
+            context: context as unknown as Hook.Context
         });
 
         expect(context.warn).toHaveBeenCalledWith(
@@ -121,12 +153,32 @@ describe("init hook", () => {
         await initHook.bind(context as unknown as Hook.Context)({
             config: testConfig,
             id: "",
-            argv: []
+            argv: [],
+            context: context as unknown as Hook.Context
         });
 
         expect(context.warn).not.toHaveBeenCalledWith(
             `WARNING - not on VPN. Some containers may not build properly.`
         );
+    });
+
+    it("runs the validate-project-state hook", async () => {
+        const context: unknown = {
+            warn: jest.fn()
+        };
+
+        await initHook.bind(context as Hook.Context)({
+            config: testConfig,
+            id: "",
+            argv: [],
+            context: context as unknown as Hook.Context
+        });
+
+        expect(runHookMock).toHaveBeenCalledWith("validate-project-state", {
+            requiredFiles: [
+                "services"
+            ]
+        });
     });
 
 });
