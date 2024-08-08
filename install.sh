@@ -5,6 +5,8 @@ trap 'rm -rf "${temp_d}"' EXIT
 
 releases_file="${temp_d}"/releases.json
 downloaded_cli_tar_file="${temp_d}"/chs-dev.tar.gz
+backup_cli="${temp_d}"/chs-dev.bak
+backup_symlink="${temp_d}"/chs-dev.sym.bak
 
 F_FG_RED="$(tput setaf 1)"
 F_FG_GREEN="$(tput setaf 2)"
@@ -45,6 +47,9 @@ EOF
 # Logs error and then exits process with error exit code
 panic() {
   log ERROR "${1:?message required}" >&2
+
+  revert_uninstall
+
   exit 1
 }
 
@@ -367,7 +372,22 @@ install() {
   fi
 }
 
-# Uninstalls the installed CLI
+# When called will attempt to revert any possible uninstall by moving the files
+# from the backed up location to their installed location.
+revert_uninstall() {
+  if [ -d "${backup_cli}" ]; then
+    log "DEBUG" 'Restoring installation'
+    mv "${backup_cli}" "${INSTALLATION_DIRECTORY}"
+  fi
+
+  if [ -f "${backup_symlink}" ]; then
+    log "DEBUG" 'Restoring symlink'
+    mv "${backup_symlink}" "${SYMLINK_DIRECTORY}"/chs-dev
+  fi
+}
+
+# Uninstalls the installed CLI - does this by moving the files to the temporary
+# directory and so are removed after script is successful
 uninstall() {
   log INFO "Uninstalling CLI tool"
 
@@ -378,10 +398,10 @@ uninstall() {
 
   # Remove symlink and the chs-dev directory
   log DEBUG "Removing symlink"
-  rm -f "${SYMLINK_DIRECTORY}"/chs-dev
+  mv "${SYMLINK_DIRECTORY}"/chs-dev "${backup_symlink}"
 
   log DEBUG "Removing CLI files"
-  rm -rf "${INSTALLATION_DIRECTORY}"
+  mv "${INSTALLATION_DIRECTORY}" "${backup_cli}"
 
   log INFO "chs-dev CLI uninstalled successfully"
 }
