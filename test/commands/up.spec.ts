@@ -149,6 +149,22 @@ describe("Up command", () => {
         setUpCommand(NO_SERVICES_IN_DEV_MODE);
     });
 
+    it("runs validate-project-state hook with docker-compose.yaml required", async () => {
+        await up.run();
+
+        expect(runHookMock).toHaveBeenCalledWith(
+            "validate-project-state", {
+                requiredFiles: [
+                    "docker-compose.yaml"
+                ],
+                suggestionsOnFailure: [
+                    "Try rerunning the command from a valid project with docker-compose.yaml",
+                    "Try enabling a service you already have enabled to force recreation of docker-compose.yaml file"
+                ]
+            }
+        );
+    });
+
     it("should ensure all permanent repos are present", async () => {
         await up.run();
 
