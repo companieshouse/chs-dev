@@ -138,7 +138,9 @@ describe("validate-project-state", () => {
         ["status", ["--help"]],
         ["--version", []],
         ["help", ["status"]],
-        ["--help", []]
+        ["--help", []],
+        ["autocomplete", []],
+        ["autocomplete:script", []]
     ];
 
     for (const testCase of okToCallFromNonProject) {
