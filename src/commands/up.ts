@@ -49,6 +49,18 @@ export default class Up extends Command {
     }
 
     async run (): Promise<any> {
+        await this.config.runHook(
+            "validate-project-state", {
+                requiredFiles: [
+                    "docker-compose.yaml"
+                ],
+                suggestionsOnFailure: [
+                    "Try rerunning the command from a valid project with docker-compose.yaml",
+                    "Try enabling a service you already have enabled to force recreation of docker-compose.yaml file"
+                ]
+            }
+        );
+
         try {
             await this.config.runHook("ensure-ecr-logged-in", {});
         } catch (error) {
