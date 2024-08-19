@@ -13,7 +13,9 @@ export const hookFilter = (commandId: string | undefined, argv: string[]) => {
         "help",
         "readme",
         "--version",
-        "--help"
+        "--help",
+        "autocomplete",
+        "autocomplete:script"
     ];
 
     if (commandId && optionalCommands.includes(commandId)) {
