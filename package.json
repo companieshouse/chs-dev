@@ -28,7 +28,7 @@
     "@types/chai": "^4.2.11",
     "@types/fs-extra": "^11.0.4",
     "@types/mocha": "^5.2.7",
-    "@types/node": "^10.17.60",
+    "@types/node": "^22.4.1",
     "@typescript-eslint/eslint-plugin": "^7.11.0",
     "@typescript-eslint/parser": "^7.11.0",
     "eslint": "^8.57.0",
@@ -107,8 +107,8 @@
     "posttest": "eslint . --ext .ts --config .eslintrc",
     "prepack": "rm -rf lib && tsc -b && oclif manifest && oclif readme",
     "pack": "oclif pack tarballs --targets 'linux-x64,darwin-arm64,darwin-x64' --parallel --no-xz",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles",
-    "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --forceExit --passWithNoTests --detectOpenHandles"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --runInBand",
+    "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --forceExit --passWithNoTests --detectOpenHandles --runInBand"
   },
   "types": "lib/index.d.ts",
   "type": "module",

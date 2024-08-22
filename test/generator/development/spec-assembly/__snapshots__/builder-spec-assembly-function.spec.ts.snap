@@ -1,0 +1,192 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`builderSpecAssemblyFunction adds dependency builder on service and can handle dependencies present 1`] = `
+{
+  "service-four": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project",
+      "dockerfile": "local/builders/java/v2/Dockerfile",
+    },
+    "depends_on": {
+      "service-four-builder": {
+        "condition": "service_completed_successfully",
+        "restart": true,
+      },
+      "service-two": {
+        "condition": "service_started",
+      },
+    },
+    "volumes": [
+      "repositories/service-four/target:/opt/",
+    ],
+  },
+  "service-four-builder": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project",
+      "dockerfile": "local/builders/java/v2/build.Dockerfile",
+    },
+    "develop": {
+      "watch": [
+        {
+          "action": "rebuild",
+          "path": ".touch",
+        },
+      ],
+    },
+    "volumes": [
+      "repositories/service-four:/app/",
+      "./out:/opt/out",
+    ],
+  },
+}
+`;
+
+exports[`builderSpecAssemblyFunction adds dependency builder on service and can handle no dependencies present 1`] = `
+{
+  "service-four": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project",
+      "dockerfile": "local/builders/java/v2/Dockerfile",
+    },
+    "depends_on": {
+      "service-four-builder": {
+        "condition": "service_completed_successfully",
+        "restart": true,
+      },
+    },
+    "volumes": [
+      "repositories/service-four/target:/opt/",
+    ],
+  },
+  "service-four-builder": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project",
+      "dockerfile": "local/builders/java/v2/build.Dockerfile",
+    },
+    "develop": {
+      "watch": [
+        {
+          "action": "rebuild",
+          "path": ".touch",
+        },
+      ],
+    },
+    "volumes": [
+      "repositories/service-four:/app/",
+      "./out:/opt/out",
+    ],
+  },
+}
+`;
+
+exports[`builderSpecAssemblyFunction adds extra builder service to the generated spec 1`] = `
+{
+  "service-four": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project",
+      "dockerfile": "local/builders/java/v2/Dockerfile",
+    },
+    "depends_on": {
+      "service-four-builder": {
+        "condition": "service_completed_successfully",
+        "restart": true,
+      },
+    },
+    "volumes": [
+      "repositories/service-four/target:/opt/",
+    ],
+  },
+  "service-four-builder": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project",
+      "dockerfile": "local/builders/java/v2/build.Dockerfile",
+    },
+    "develop": {
+      "watch": [
+        {
+          "action": "rebuild",
+          "path": ".touch",
+        },
+      ],
+    },
+    "volumes": [
+      "repositories/service-four:/app/",
+      "./out:/opt/out",
+    ],
+  },
+}
+`;
+
+exports[`builderSpecAssemblyFunction applies extra properties to service 1`] = `
+{
+  "service-four": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project",
+      "dockerfile": "local/builders/java/v2/Dockerfile",
+    },
+    "depends_on": {
+      "service-four-builder": {
+        "condition": "service_completed_successfully",
+        "restart": true,
+      },
+    },
+    "volumes": [
+      "repositories/service-four/target:/opt/",
+    ],
+  },
+  "service-four-builder": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project",
+      "dockerfile": "local/builders/java/v2/build.Dockerfile",
+    },
+    "develop": {
+      "watch": [
+        {
+          "action": "rebuild",
+          "path": ".touch",
+        },
+      ],
+    },
+    "volumes": [
+      "repositories/service-four:/app/",
+      "./out:/opt/out",
+    ],
+  },
+}
+`;
+
+exports[`builderSpecAssemblyFunction can handle repository builder 1`] = `
+{
+  "service-four": {
+    "build": {
+      "context": "/home/test/user/projects/docker-project/repositories/service-four",
+    },
+  },
+}
+`;
+
+exports[`builderSpecAssemblyFunction can handle setting dockerfile and context for repo builder 1`] = `
+{
+  "build": {
+    "context": "/home/test/user/projects/docker-project/repositories/service-four/another-dir/",
+    "dockerfile": "another.Dockerfile",
+  },
+}
+`;
+
+exports[`builderSpecAssemblyFunction can handle setting dockerfile for repo builder 1`] = `
+{
+  "build": {
+    "context": "/home/test/user/projects/docker-project/repositories/service-three/docker-env",
+    "dockerfile": "tilt/Dockerfile",
+  },
+}
+`;
+
+exports[`builderSpecAssemblyFunction can handle setting repository context for repo builder 1`] = `
+{
+  "build": {
+    "context": "/home/test/user/projects/docker-project/repositories/service-eight/tilt/",
+  },
+}
+`;

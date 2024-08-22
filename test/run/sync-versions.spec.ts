@@ -19,7 +19,6 @@ describe("SynchronizeChsDevVersion", () => {
     const tempDirPath = "/tmp/temp-dir/";
     const mktempdSyncSpy = jest.spyOn(fs, "mkdtempSync");
     const writeFileSyncSpy = jest.spyOn(fs, "writeFileSync");
-    // @ts-expect-error
     const rmSyncSpy = jest.spyOn(fs, "rmSync");
     let syncVersions: SynchronizeChsDevVersion;
 
@@ -34,7 +33,6 @@ describe("SynchronizeChsDevVersion", () => {
             jest.resetAllMocks();
 
             mktempdSyncSpy.mockReturnValue(tempDirPath);
-            // @ts-expect-error
             rmSyncSpy.mockReturnValue(undefined);
             writeFileSyncSpy.mockImplementation((fl, dat, _) => {});
 
@@ -155,7 +153,6 @@ describe("SynchronizeChsDevVersion", () => {
                 jest.resetAllMocks();
 
                 mktempdSyncSpy.mockReturnValue(tempDirPath);
-                // @ts-expect-error
                 rmSyncSpy.mockReturnValue(undefined);
                 writeFileSyncSpy.mockImplementation((fl, dat, _) => {});
 

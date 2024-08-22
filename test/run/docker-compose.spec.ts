@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
 import childProcess from "child_process";
-// @ts-expect-error it does have rmSync
 import fs, { mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";

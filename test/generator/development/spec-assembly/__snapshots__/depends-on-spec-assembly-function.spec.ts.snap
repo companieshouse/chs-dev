@@ -1,0 +1,31 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`dependsOnSpecAssemblyFunction adds dependencies to development spec from service spec 1`] = `
+{
+  "service-one": {
+    "condition": "service_healthy",
+  },
+  "service-seven-builder": {
+    "condition": "service_completed_succcessfully",
+    "restart": true,
+  },
+  "service-two": {
+    "condition": "service_healthy",
+  },
+}
+`;
+
+exports[`dependsOnSpecAssemblyFunction converts from array 1`] = `
+{
+  "service-five": {
+    "condition": "service_started",
+  },
+  "service-seven-builder": {
+    "condition": "service_completed_succcessfully",
+    "restart": true,
+  },
+  "service-three": {
+    "condition": "service_started",
+  },
+}
+`;

@@ -81,7 +81,7 @@ describe("DockerComposeWatchLogHandler", () => {
             // eslint-disable-next-line no-useless-escape
             const pattern = new RegExp(`\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\.\\d{3}Z\\s-\\s${expectedLine}`, "g");
 
-            expect(pattern.test(contentsWrittenToFile)).toBe(true);
+            expect(pattern.test(contentsWrittenToFile.toString())).toBe(true);
         }
     });
 
@@ -104,7 +104,7 @@ describe("DockerComposeWatchLogHandler", () => {
             // eslint-disable-next-line no-useless-escape
             const pattern = new RegExp(`\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\.\\d{3}Z\\s-\\s${expectedLine}`, "g");
 
-            expect(pattern.test(contentsWrittenToFile)).toBe(true);
+            expect(pattern.test(contentsWrittenToFile.toString())).toBe(true);
         }
 
         expect(mockLogger.log).not.toHaveBeenCalled();

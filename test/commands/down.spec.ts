@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
 import { Config } from "@oclif/core";
 
-// @ts-expect-error
 import { mkdtempSync, rmSync } from "fs";
 import Down from "../../src/commands/down";
 import { join } from "path";

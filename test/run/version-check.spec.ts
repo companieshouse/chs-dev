@@ -46,7 +46,9 @@ describe("VersionCheck", () => {
         beforeEach(() => {
             jest.resetAllMocks();
 
-            mkdirSyncSpy.mockImplementation((_, __) => { });
+            mkdirSyncSpy.mockImplementation((_, __) => {
+                return undefined;
+            });
         });
 
         it("checks if data directory exists", () => {

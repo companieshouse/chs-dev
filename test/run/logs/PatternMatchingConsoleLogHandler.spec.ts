@@ -32,7 +32,7 @@ describe("PatternMatchingConsoleLogHandler", () => {
             logLines.join("\n")
         );
 
-        const linesWrittenToFile = writeFileSpy.mock.calls[0][1].split("\n");
+        const linesWrittenToFile = writeFileSpy.mock.calls[0][1].toString().split("\n");
 
         // Trailing new line at end of file will increase length by 1
         expect(linesWrittenToFile).toHaveLength(logLines.length + 1);

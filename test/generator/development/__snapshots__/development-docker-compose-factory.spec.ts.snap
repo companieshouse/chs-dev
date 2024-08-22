@@ -1,0 +1,73 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`DevelopmentDockerComposeSpecFactory create adds builder service 1`] = `
+{
+  "service-seven": {
+    "build": {
+      "context": "/home/test-user/projects/docker-chs",
+      "dockerfile": "locals/builder/java/v2/Dockerfile",
+    },
+    "depends_on": {
+      "service-five": {
+        "condition": "service_started",
+      },
+      "service-four": {
+        "condition": "service_started",
+      },
+      "service-one": {
+        "condition": "service_started",
+      },
+      "service-seven-builder": {
+        "condition": "service_completed_successfully",
+        "restart": true,
+      },
+      "service-six": {
+        "condition": "service_started",
+      },
+      "service-three": {
+        "condition": "service_started",
+      },
+      "service-two": {
+        "condition": "service_started",
+      },
+    },
+    "environment": [
+      "ENV_VAR_ONE=one",
+      "ENV_VAR_TWO=one",
+    ],
+    "healthcheck": {
+      "interval": "60s",
+      "test": "echo 1",
+    },
+    "image": "12345678.ecr.eu-west-2.amazonaws.com/local/service-seven:latest",
+    "labels": [
+      "chs.local.builder=repository",
+      "chs.repository.url=git@github.com/companieshouse/repo-seven.git",
+    ],
+    "networks": [
+      "chs",
+    ],
+    "volumes": [
+      "repositories/service-seven/target:/opt/",
+    ],
+  },
+  "service-seven-builder": {
+    "build": {
+      "context": "/home/test-user/projects/docker-chs",
+      "dockerfile": "locals/builder/java/v2/build.Dockerfile",
+    },
+    "develop": {
+      "watch": [
+        {
+          "action": "rebuild",
+          "path": ".touch",
+        },
+      ],
+    },
+    "volumes": [
+      "repositories/service-seven:/app/",
+      "./out:/opt/out",
+    ],
+  },
+}
+`;
