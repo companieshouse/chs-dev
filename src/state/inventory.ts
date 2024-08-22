@@ -9,6 +9,7 @@ import { Service } from "../model/Service.js";
 import { Module } from "../model/Module.js";
 import { readServices } from "./service-reader.js";
 import { DependencyNameResolver } from "./dependency-name-resolver.js";
+import { DependencyTreeBuilder } from "./dependency-tree-builder.js";
 
 interface InventoryCache {
   hash: string;
@@ -23,7 +24,6 @@ export class Inventory {
     constructor (private path: string, cacheDir: string) {
         this.path = path;
         this.inventoryCacheFile = join(cacheDir, `${basename(path)}.inventory.yaml`);
-
         if (!existsSync(cacheDir)) {
             mkdirSync(cacheDir, {
                 recursive: true
@@ -75,8 +75,14 @@ export class Inventory {
 
     private loadServices (): Service[] {
         const partialServices: Partial<Service>[] = this.serviceFiles.flatMap(readServices);
-
         const dependencyNameResolver = new DependencyNameResolver(partialServices);
+
+        const dependencyTreeBuilder = new DependencyTreeBuilder(partialServices);
+
+        partialServices.map(service => ({
+            ...service,
+            dependencyTree: dependencyTreeBuilder.dependencyTree(service.name as string)
+        } as Service));
 
         return partialServices.map(service => ({
             ...service,

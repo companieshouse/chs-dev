@@ -15,9 +15,16 @@
     "@oclif/plugin-plugins": "^5",
     "@types/semver": "^7.3.1",
     "ansis": "^3.3.2",
+    "fs-extra": "^11.2.0",
     "glob": "^7.1.6",
+    "graphology": "^0.25.4",
+    "graphviz": "^0.0.9",
+    "node-graphviz": "^0.1.1",
+    "open": "^10.1.0",
     "semver": "^7.3.2",
+    "sigma": "^3.0.0-beta.28",
     "simple-git": "^3.22.0",
+    "ts-graphviz": "^2.1.2",
     "tslib": "^2",
     "yaml": "^1.10.0"
   },
@@ -46,7 +53,8 @@
     "ts-jest-resolver": "^2.0.1",
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9",
-    "typescript": "^5.3"
+    "typescript": "^5.3",
+    "why-is-node-running": "^3.2.0"
   },
   "engines": {
     "node": ">=20.0.0",
@@ -95,6 +103,9 @@
       },
       "services": {
         "description": "manages the addition and removal of services"
+      },
+      "information": {
+        "description": "displays information about specified services"
       }
     }
   },
