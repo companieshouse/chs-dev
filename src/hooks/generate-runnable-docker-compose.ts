@@ -3,7 +3,6 @@ import { Hook } from "@oclif/config";
 import { Inventory } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
 import { DockerComposeFileGenerator } from "../generator/docker-compose-file-generator.js";
-import { TiltfileGenerator } from "../generator/tiltfile-generator.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import loadConfig from "../helpers/config-loader.js";
 
@@ -13,7 +12,6 @@ export const hook: Hook<"generate-runnable-docker-compose"> = async function (op
     const inventory = new Inventory(path, options.config.cacheDir);
     const stateManager = new StateManager(path);
     const dockerComposeFileGenerator = new DockerComposeFileGenerator(path);
-    const tiltfileGenerator = new TiltfileGenerator(path);
 
     const state = stateManager.snapshot;
 
@@ -24,9 +22,6 @@ export const hook: Hook<"generate-runnable-docker-compose"> = async function (op
     const { excludedServices } = state || [];
 
     dockerComposeFileGenerator.generateDockerComposeFile(enabledServices, excludedServices);
-
-    // TODO: Once dual running over remove
-    tiltfileGenerator.generate(enabledServices, excludedServices);
 };
 
 export default hook;
