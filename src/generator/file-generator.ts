@@ -8,6 +8,9 @@ export abstract class AbstractFileGenerator {
     protected constructor (protected path: string, protected fileName: string) {}
 
     protected writeFile (lines: string[], joinChar: string = EOL + EOL, fileName = this.fileName) {
-        writeFileSync(join(this.path, fileName), ["# DO NOT MODIFY THIS FILE MANUALLY", ...lines].join(joinChar));
+        writeFileSync(join(this.path, fileName), [
+            "# DO NOT MODIFY THIS FILE MANUALLY - this file is generated automatically and changes may be lost",
+            ...lines
+        ].join(joinChar));
     }
 }
