@@ -3,6 +3,9 @@ services:
     labels:
       - chs.description=simple service
       - chs.repository.url=git@github.com/companieshouse/repo.git
+      - chs.local.builder=node
+      - chs.local.builder.requiresSecrets=true
+      - chs.local.builder.languageVersion=18
     image: some-service-api
     ports:
       - 12345
