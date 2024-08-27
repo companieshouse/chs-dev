@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`getBuilder throws error when builder does not exist 1`] = `"No builder found for javascript builder"`;
+
+exports[`getBuilder throws error when builder version does not exist 1`] = `"No version v3 of java builder"`;

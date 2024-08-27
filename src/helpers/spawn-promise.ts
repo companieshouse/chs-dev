@@ -44,11 +44,16 @@ export const spawn = (
         const process = childProcess.spawn(
             command,
             args,
-            spawnOptions
+            spawnOptions || {}
         );
 
-        process.stdout.on("data", data => logHandler.handle(data));
-        process.stderr.on("data", data => stderrLogHandler.handle(data));
+        if (process.stdout !== null) {
+            process.stdout.on("data", data => logHandler.handle(data));
+        }
+
+        if (process.stderr !== null) {
+            process.stderr.on("data", data => stderrLogHandler.handle(data));
+        }
 
         process.once("exit", (code: number) => {
             if (acceptableExitCodes.includes(code)) {

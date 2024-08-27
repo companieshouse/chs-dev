@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, expect } from "@jest/globals";
-// @ts-expect-error does exist
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "fs";
 import { StateManager } from "../../src/state/state-manager";
 import { join } from "path";

@@ -140,7 +140,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.2.0 darwin-arm64 node-v20.10.0
+chs-dev/1.3.0 darwin-arm64 node-v20.12.2
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -226,10 +226,13 @@ Adds a service to development mode
 
 ```
 USAGE
-  $ chs-dev development enable SERVICES...
+  $ chs-dev development enable SERVICES... [-b <value>]
 
 ARGUMENTS
   SERVICES...  names of services to be added to development mode
+
+FLAGS
+  -b, --builderVersion=<value>  [default: latest] version of the builder to use with service
 
 DESCRIPTION
   Adds a service to development mode
@@ -672,14 +675,63 @@ and their dependencies.
 
 ### Builders
 
-A builder is a directory within `local/builders` which contains a Dockerfile
-capable of building a repository into an image. Services can reference them via
-the `chs.local.builder` label and provide a value for build argument
-`LANGUAGE_MAJOR_VERSION` with the value from label:
-`chs.local.builder.languageVersion`.
+In this project, a builder is a template Docker Compose spec with service(s)
+capable of taking a project repository and building it to a runnable service.
+For example, a service which needs compiling before being run a service could
+take care of building it.
 
-When a service is enabled in development mode a Docker Compose specification is
-created within the `local` directory with `build` and `develop` sections
-allowing Docker Compose the ability to build and watch for changes. If the
-service configuration has been modified in the services directory it must be
-re-enabled in development mode for the changes to be reflected for the service.
+A builder is a directory within `local/builders` and versions of the builder
+are sub-directories within it. The spec file must have the name
+`builder.docker-compose.yaml`. The builder spec can have any of the following
+strings which are replaced when a development Docker Compose spec file is
+generated:
+
+* `<service>` becomes the name of the service
+* `<chs_dev_root>` becomes the absolute path to root of the chs-dev project
+* `<repository_path>` becomes the relative path of the repository from the root
+  of the project
+* `<absolute_repository_path>` becomes the absolute path to the repository
+
+An example template spec is below:
+
+```yaml
+services:
+  <service>-builder:
+    build:
+      dockerfile: local/builders/my-awesome-builder/v3/build.Dockerfile
+      context: <chs_dev_root>
+      args:
+        one: two three
+    volumes:
+      - <absolute_repository_path>:/opt/out
+      - ${HOME}/.m2:/root/.m2
+    develop:
+      watch:
+        - path: .touch
+          action: rebuild
+
+  <service>:
+    build:
+      dockerfile: local/builders/my-awesome-builder/v3/Dockerfile
+      context: <chs_dev_root>
+      args:
+        one: two three
+    volumes:
+      - <absolute_repository_path>:/opt/out
+    depends_on:
+      <service>-builder:
+        condition: service_completed_successfully
+        restart: true
+
+```
+
+Within these directories can be an useful resources for the images or the
+builder.
+
+To select a builder the service must have a `chs.local.builder` label which is
+the name of the directory. Optionally, it can have a
+`chs.local.builder.languageVersion` to customise the specific major version for
+any language or base image(s) used. When no builder label is supplied the
+generated spec file will point at the root of the repository and expect a
+Dockerfile to be present. This can be further customised with the
+`chs.local.dockerfile` and `chs.local.repoContext` labels.

@@ -80,7 +80,10 @@ describe("development enable", () => {
             args: {
                 services: ""
             },
-            argv: []
+            argv: [],
+            flags: {
+                builderVersion: "latest"
+            }
         });
 
         await developmentEnable.run();
@@ -99,7 +102,10 @@ describe("development enable", () => {
                 "",
                 "",
                 ""
-            ]
+            ],
+            flags: {
+                builderVersion: "latest"
+            }
         });
 
         await expect(developmentEnable.run()).rejects.toEqual(new Error("Service \"\" is not defined in inventory"));
@@ -116,7 +122,10 @@ describe("development enable", () => {
             },
             argv: [
                 "service-one"
-            ]
+            ],
+            flags: {
+                builderVersion: "latest"
+            }
         });
 
         await expect(developmentEnable.run()).resolves.toBeUndefined();
@@ -141,7 +150,10 @@ describe("development enable", () => {
             },
             argv: [
                 "service-two"
-            ]
+            ],
+            flags: {
+                builderVersion: "latest"
+            }
         });
 
         // @ts-expect-error
@@ -169,7 +181,10 @@ describe("development enable", () => {
                 },
                 argv: [
                     serviceName
-                ]
+                ],
+                flags: {
+                    builderVersion: "latest"
+                }
             });
 
             // @ts-expect-error
@@ -191,7 +206,10 @@ describe("development enable", () => {
             },
             argv: [
                 serviceName
-            ]
+            ],
+            flags: {
+                builderVersion: "latest"
+            }
         });
 
         // @ts-expect-error
@@ -212,7 +230,10 @@ describe("development enable", () => {
             argv: [
                 "service-one",
                 "service-two"
-            ]
+            ],
+            flags: {
+                builderVersion: "latest"
+            }
         });
 
         await expect(developmentEnable.run()).resolves.toBeUndefined();
@@ -223,4 +244,29 @@ describe("development enable", () => {
         expect(runHookMock).toHaveBeenCalledWith("generate-runnable-docker-compose", {});
     });
 
+    for (const [builderVersion, expectedVersionRequested] of [["1", "v1"], ["v1", "v1"]]) {
+        it(`can specify builderVersion (${builderVersion}) of builder`, async () => {
+            // @ts-expect-error
+            parseMock.mockResolvedValue({
+                args: {
+                    command: "enable",
+                    services: "service-one"
+                },
+                argv: [
+                    "service-one"
+                ],
+                flags: {
+                    builderVersion
+                }
+            });
+
+            await expect(developmentEnable.run()).resolves.toBeUndefined();
+
+            expect(runHookMock).toHaveBeenCalledTimes(2);
+            expect(runHookMock).toHaveBeenCalledWith("generate-development-docker-compose", { serviceName: "service-one", builderVersion: expectedVersionRequested });
+            expect(runHookMock).toHaveBeenCalledWith("generate-runnable-docker-compose", {});
+
+        });
+
+    }
 });

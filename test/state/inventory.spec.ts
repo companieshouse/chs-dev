@@ -26,7 +26,6 @@ describe("Inventory", () => {
     });
 
     afterEach(() => {
-        // @ts-expect-error does exist
         fs.rmSync(tempDir, { recursive: true, force: true });
     });
 
@@ -58,7 +57,6 @@ describe("Inventory", () => {
 
     describe("constructor", () => {
         afterEach(() => {
-            // @ts-expect-error
             fs.rmSync(confDir, { recursive: true, force: true });
         });
 
@@ -203,7 +201,6 @@ describe("Inventory", () => {
 
             const servicePath = join(inventoryDir, "services/modules/module-two/service-three.docker-compose.yaml");
 
-            // @ts-expect-error does exist
             fs.rmSync(servicePath);
 
             inventory = new Inventory(inventoryDir, confDir);

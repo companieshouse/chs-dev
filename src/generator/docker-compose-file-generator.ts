@@ -5,6 +5,8 @@ import yaml from "yaml";
 import { EOL } from "os";
 import { readFileSync, existsSync, mkdirSync } from "fs";
 import { deduplicate } from "../helpers/array-reducers.js";
+import { getBuilder } from "../state/builders.js";
+import DevelopmentDockerComposeSpecFactory from "./development/development-docker-compose-factory.js";
 
 interface LiveUpdate {
   liveUpdate: boolean;
@@ -44,7 +46,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         );
     }
 
-    generateDevelopmentServiceDockerComposeFile (service: Service) {
+    generateDevelopmentServiceDockerComposeFile (service: Service, builderVersion: string | undefined) {
         const developmentServicePath = join(this.path, "local", service.name);
 
         if (!existsSync(developmentServicePath)) {
@@ -55,54 +57,20 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         const touchFileName = ".touch";
         const touchFile = join("local", service.name, touchFileName);
 
+        const builderDockerComposeSpec = getBuilder(this.path, service.builder, builderVersion);
+        const dockerComposeSpecFactory = new DevelopmentDockerComposeSpecFactory(
+            builderDockerComposeSpec, this.path
+        );
+
         const dockerComposeConfig = yaml.parse(readFileSync(service.source).toString("utf-8"));
 
-        // Sets up the output docker compose file with the configuration which watches for changes
-        // to the touch file (i.e. watch configuration)
-        dockerComposeConfig.services[service.name].develop = {
-            watch: [{
-                path: touchFileName,
-                action: "rebuild"
-            }]
-        };
-
-        if (dockerComposeConfig.services[service.name].env_file) {
-            dockerComposeConfig.services[service.name].env_file =
-                this.formatEnvFileForDevelopmentMode(
-                    service.source,
-                    service.name,
-                    dockerComposeConfig
-                );
-        }
-
-        // Sets up the output docker compose file with the build information
-        if (service.builder === "repository" || service.builder === "") {
-            // When builder should be the repository setup the build instructions to
-            // point to the repository
-            const repositoryContext = service.metadata.repoContext || "";
-            const dockerfile = service.metadata.dockerfile ? { dockerfile: service.metadata.dockerfile } : {};
-
-            dockerComposeConfig.services[service.name].build = {
-                ...dockerfile,
-                context: join(this.path, "repositories", service.name, repositoryContext)
-            };
-        } else {
-            // The docker compose file has a builder label therefore use builder
-            dockerComposeConfig.services[service.name].build = {
-                dockerfile: join(this.path, "local/builders", service.builder, "Dockerfile"),
-                context: this.path,
-                args: {
-                    ...this.optionalBuildArg("LANGUAGE_MAJOR_VERSION", service.metadata.languageMajorVersion),
-                    ...this.optionalBuildArg("ENTRYPOINT", service.metadata.entrypoint),
-                    ...this.optionalBuildArg("OUTDIR", service.metadata.buildOutputDir),
-                    REPO_PATH: relative(this.path, join(this.path, "repositories", service.name))
-                }
-            };
-        }
+        const developmentDockerComposeSpec = dockerComposeSpecFactory.create(
+            dockerComposeConfig, service
+        );
 
         // Create the development compose file and touch files
         this.writeFile(
-            yaml.stringify(dockerComposeConfig).split(EOL),
+            yaml.stringify(developmentDockerComposeSpec).split(EOL),
             EOL,
             developmentComposeFile
         );
@@ -114,36 +82,6 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             EOL,
             touchFile
         );
-    }
-
-    private optionalBuildArg (name: string, value: string | null | undefined) {
-        const buildArg: Record<string, string> = {};
-
-        if (value) {
-            buildArg[name] = value;
-        }
-
-        return buildArg;
-    }
-
-    private formatEnvFileForDevelopmentMode (source: string, serviceName: string, dockerComposeConfig: Record<string, any>): any {
-        const envFile = dockerComposeConfig.services[serviceName].env_file;
-
-        if (typeof envFile === "string") {
-            return this.formatEnvFileValue(source, serviceName, envFile);
-        }
-
-        if (Array.isArray(envFile)) {
-            return envFile.map(envFileValue => this.formatEnvFileValue(source, serviceName, envFileValue));
-        }
-
-        return envFile;
-    }
-
-    private formatEnvFileValue (source: string, serviceName: string, envFileValue: string) {
-        const relativePathToSource = relative(join(this.path, "local", serviceName), source);
-
-        return join(dirname(relativePathToSource), envFileValue);
     }
 
     private listIngressDependencies (services: ServiceWithLiveUpdate[]): Record<string, {condition: string, restart: boolean}> {

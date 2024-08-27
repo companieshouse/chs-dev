@@ -64,7 +64,32 @@ describe("Hook: generate-development-docker-compose", () => {
             context: testContext
         });
 
-        expect(generateDevelopmentServiceDockerComposeFileMock).toHaveBeenCalledWith(service);
+        expect(generateDevelopmentServiceDockerComposeFileMock).toHaveBeenCalledWith(service, undefined);
+    });
+
+    it("generates development docker compose file with version", async () => {
+        const service: Service = {
+            name: "service",
+            module: "module",
+            source: "./services/modules/module/service.docker-compose.yaml",
+            repository: null,
+            dependsOn: [],
+            builder: "",
+            metadata: {}
+        };
+        inventoryServicesFindMock.mockReturnValue(service);
+
+        const testContext = jest.fn();
+
+        // @ts-expect-error
+        await generateDevelopmentDockerComposeHook({
+            serviceName: "service",
+            builderVersion: "v2",
+            config: testConfig,
+            context: testContext
+        });
+
+        expect(generateDevelopmentServiceDockerComposeFileMock).toHaveBeenCalledWith(service, "v2");
     });
 
     it("does not generate docker compose when service not found", async () => {

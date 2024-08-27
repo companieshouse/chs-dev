@@ -13,7 +13,7 @@ describe("DependencyCache", () => {
     });
 
     it("creates local m2 cache when not in existence", () => {
-        mkdirSyncMock.mockImplementation(() => {});
+        mkdirSyncMock.mockReturnValue(undefined);
         existsSyncMock.mockReturnValue(false);
 
         // Testing the side effects from constructor call

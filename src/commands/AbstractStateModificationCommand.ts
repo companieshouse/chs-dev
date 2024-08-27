@@ -23,6 +23,8 @@ export default abstract class AbstractStateModificationCommand extends Command {
     protected validArgumentHandler: ValidArgumentHandler = defaultValidArgumentHandler;
     protected chsDevConfig: ChsDevConfig;
 
+    protected flagValues: Record<string, any> | undefined = undefined;
+
     constructor (argv: string[], config: Config, stateModificationObjectType: "service" | "module") {
         super(argv, config);
 
@@ -35,7 +37,9 @@ export default abstract class AbstractStateModificationCommand extends Command {
 
     async run (): Promise<any> {
 
-        const { argv } = await this.parse(AbstractStateModificationCommand);
+        const { argv, flags } = await this.parseArgumentsAndFlags();
+
+        this.flagValues = flags;
 
         if (argv.length === 0) {
             this.error(`${this.properStateModificationObjectType} not supplied`);
@@ -56,6 +60,13 @@ export default abstract class AbstractStateModificationCommand extends Command {
         if (runHook) {
             this.config.runHook("generate-runnable-docker-compose", {});
         }
+    }
+
+    protected parseArgumentsAndFlags (): Promise<{
+        argv: unknown[],
+        flags: Record<string, any>
+    }> {
+        return this.parse(AbstractStateModificationCommand);
     }
 
     private get properStateModificationObjectType (): string {

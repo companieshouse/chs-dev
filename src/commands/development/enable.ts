@@ -1,6 +1,6 @@
 import { join, relative } from "path";
 import { existsSync } from "fs";
-import { ux, Args, Config } from "@oclif/core";
+import { ux, Args, Config, Flags } from "@oclif/core";
 import { Service } from "../../model/Service.js";
 import simpleGit from "simple-git";
 import AbstractStateModificationCommand from "../AbstractStateModificationCommand.js";
@@ -17,6 +17,16 @@ export default class Enable extends AbstractStateModificationCommand {
         })
     };
 
+    static flags = {
+        builderVersion: Flags.string({
+            name: "builder-version",
+            char: "b",
+            aliases: ["builderVersion"],
+            description: "version of the builder to use with service",
+            default: "latest"
+        })
+    };
+
     constructor (argv: string[], config: Config) {
         super(argv, config, "service");
 
@@ -24,10 +34,27 @@ export default class Enable extends AbstractStateModificationCommand {
         this.validArgumentHandler = this.handleValidService;
     }
 
+    protected override parseArgumentsAndFlags (): Promise<{
+        argv: unknown[],
+        flags: Record<string, any>
+    }> {
+        return this.parse(Enable);
+    }
+
     private async handleValidService (serviceName: string): Promise<void> {
         this.enableService(serviceName);
 
-        await this.config.runHook("generate-development-docker-compose", { serviceName });
+        const versionFlagValue: string = this.flagValues?.builderVersion || "latest";
+
+        const hookOptions: Record<string, string> = { serviceName };
+
+        if (versionFlagValue.toLowerCase() !== "latest") {
+            hookOptions.builderVersion = versionFlagValue.startsWith("v")
+                ? versionFlagValue
+                : `v${versionFlagValue}`;
+        }
+
+        await this.config.runHook("generate-development-docker-compose", hookOptions);
 
         await this.cloneServiceRepository(serviceName);
     }

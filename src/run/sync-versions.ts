@@ -1,4 +1,3 @@
-// @ts-expect-error
 import { rmSync, mkdtempSync, writeFileSync } from "fs";
 import { join } from "path";
 import { getLatestReleaseSatisfying } from "../helpers/latest-release.js";
