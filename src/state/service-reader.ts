@@ -40,6 +40,7 @@ const metadataLabelMapping = {
     dockerfile: "chs.local.dockerfile",
     entrypoint: "chs.local.entrypoint",
     buildOutputDir: "chs.local.builder.outputDir",
+    secretsRequired: "chs.local.builder.requiresSecrets",
     repositoryRequired: "chs.local.repositoryRequired"
 };
 

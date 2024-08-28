@@ -7,6 +7,7 @@ import { readFileSync, existsSync, mkdirSync } from "fs";
 import { deduplicate } from "../helpers/array-reducers.js";
 import { getBuilder } from "../state/builders.js";
 import DevelopmentDockerComposeSpecFactory from "./development/development-docker-compose-factory.js";
+import getInitialDockerComposeFile from "../helpers/initial-docker-compose-file.js";
 
 interface LiveUpdate {
   liveUpdate: boolean;
@@ -20,9 +21,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
     }
 
     generateDockerComposeFile (services: ServiceWithLiveUpdate[], excluded: string[] | undefined) {
-        const initialDockerComposeFile = join(this.path, "services/infrastructure/docker-compose.yaml");
-
-        const dockerCompose = yaml.parse(readFileSync(initialDockerComposeFile).toString("utf-8"));
+        const dockerCompose = getInitialDockerComposeFile(this.path);
 
         // Remove any excluded services (if supplied)
         const runnableServices = typeof excluded !== "undefined"

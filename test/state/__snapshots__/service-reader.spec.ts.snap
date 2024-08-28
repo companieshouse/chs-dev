@@ -27,13 +27,15 @@ exports[`readServices loads a more complicated 1`] = `
 exports[`readServices loads a simple service 1`] = `
 [
   {
-    "builder": "",
+    "builder": "node",
     "dependsOn": [
       "mongo",
     ],
     "description": "simple service",
     "metadata": {
       "healthcheck": undefined,
+      "languageMajorVersion": "18",
+      "secretsRequired": "true",
     },
     "module": "module-one",
     "name": "simple-service",

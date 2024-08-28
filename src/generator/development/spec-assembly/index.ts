@@ -1,5 +1,6 @@
 import { DockerComposeSpec } from "../../../model/DockerComposeSpec.js";
 import buildArgsSpecAssemblyFunction from "./build-args-spec-assembly-function.js";
+import builderSecretsSpecAssemblyFunction from "./builder-secrets-spec-assembly-function.js";
 import builderSpecAssemblyFunction from "./builder-spec-assembly-function.js";
 import dependsOnSpecAssemblyFunction from "./depends-on-spec-assembly-function.js";
 import { simpleSpecAssemblyFunctionFactory } from "./simple-spec-assembly-function.js";
@@ -17,7 +18,8 @@ const specAssemblyFunctions: SpecAssemblyFunction[] = [
     builderSpecAssemblyFunction,
     dependsOnSpecAssemblyFunction,
     ...specFieldsWhichAreImmutable.map(simpleSpecAssemblyFunctionFactory),
-    buildArgsSpecAssemblyFunction
+    buildArgsSpecAssemblyFunction,
+    builderSecretsSpecAssemblyFunction
 ];
 
 /**
