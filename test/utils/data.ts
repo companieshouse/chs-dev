@@ -1,4 +1,6 @@
-export const services = [
+import Service from "../../src/model/Service";
+
+export const services: Service[] = [
     {
         name: "service-one",
         description: "A Service for one and for all",

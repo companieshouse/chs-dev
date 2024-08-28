@@ -659,6 +659,8 @@ are referenced by chs-dev for the given purposes:
 * `chs.local.builder.outputDir` - specifies the value for `OUTDIR` on the
   builder build arg. Typically for node applications which do not build to
   standard output directory of `dist`.
+* `chs.local.builder.requiresSecrets` - when set to `true` will apply all the
+  secrets defined in the docker compose spec to the builder service
 * `chs.local.entrypoint` - specifies the entrypoint script for a given service
   typically for a node application which does not have a
   `ecs-image-buid/docker_start.sh` file
