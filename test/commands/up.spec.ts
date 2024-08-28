@@ -244,6 +244,16 @@ describe("Up command", () => {
             });
         });
 
+        it("should synchronise local docker compose specs for services in development mode", async () => {
+            await up.run();
+
+            expect(runHookMock).toHaveBeenCalledWith(
+                "generate-development-docker-compose", {
+                    serviceName: SERVICES_IN_DEV_MODE.servicesWithLiveUpdate[0]
+                }
+            );
+        });
+
     });
 
     describe("services in live update are not enabled", () => {
@@ -276,5 +286,14 @@ describe("Up command", () => {
         await expect(up.run()).rejects.toEqual(expect.anything());
 
         expect(dockerComposeUpMock).not.toHaveBeenCalled();
+    });
+
+    it("should not run generate-development-docker-compose hook", async () => {
+        await up.run();
+
+        expect(runHookMock).not.toHaveBeenCalledWith(
+            "generate-development-docker-compose",
+            expect.anything()
+        );
     });
 });

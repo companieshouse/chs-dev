@@ -71,6 +71,10 @@ export default class Up extends Command {
             });
         }
 
+        ux.action.start("Synchronising current services in development mode with inventory");
+        await this.synchroniseServicesInDevelopmentMode();
+        ux.action.stop();
+
         ux.action.start("Ensuring all permanent repos are up to date");
         await this.permanentRepositories.ensureAllExistAndAreUpToDate();
         ux.action.stop();
@@ -123,5 +127,13 @@ export default class Up extends Command {
 
                 return typeof service !== "undefined";
             });
+    }
+
+    private async synchroniseServicesInDevelopmentMode (): Promise<any> {
+        for (const serviceInDevelopmentMode of this.stateManager.snapshot.servicesWithLiveUpdate) {
+            await this.config.runHook("generate-development-docker-compose", {
+                serviceName: serviceInDevelopmentMode
+            });
+        }
     }
 }
