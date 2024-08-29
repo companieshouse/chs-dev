@@ -35,6 +35,9 @@ exports[`DevelopmentDockerComposeSpecFactory create adds builder service 1`] = `
       "ENV_VAR_ONE=one",
       "ENV_VAR_TWO=one",
     ],
+    "expose": [
+      8080,
+    ],
     "healthcheck": {
       "interval": "60s",
       "test": "echo 1",
