@@ -140,7 +140,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.3.0 darwin-arm64 node-v20.12.2
+chs-dev/1.4.0 darwin-arm64 node-v20.12.2
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -168,6 +168,7 @@ USAGE
 * [`chs-dev modules enable MODULES`](#chs-dev-modules-enable-modules)
 * [`chs-dev reload SERVICE`](#chs-dev-reload-service)
 * [`chs-dev services available`](#chs-dev-services-available)
+* [`chs-dev services create REPONAME [MODULE]`](#chs-dev-services-create-reponame-module)
 * [`chs-dev services disable SERVICES`](#chs-dev-services-disable-services)
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
 * [`chs-dev status`](#chs-dev-status)
@@ -507,6 +508,33 @@ FLAGS
 
 DESCRIPTION
   Lists all the available services
+```
+
+## `chs-dev services create REPONAME [MODULE]`
+
+Creates a new service in inventory based on a supplied service
+
+```
+USAGE
+  $ chs-dev services create REPONAME [MODULE] -f <value> [-n <value>] [-d <value>] [-r <value>] [-p <value>] [-B
+    <value>]
+
+ARGUMENTS
+  REPONAME  Name of the github repository the new service is for
+  MODULE    Name of the module of the new service
+
+FLAGS
+  -B, --gitHubRepoBranchName=<value>  Name of the Git branch to clone by default for the service (if different to
+                                      default repo branch)
+  -d, --descriptionLabel=<value>      Description of the service describing its role in CHS and local environment
+  -f, --from=<value>                  (required) Name of the service to use as the template for the new service
+  -n, --containerName=<value>         Name of the container
+  -p, --traefikPrioityLabel=<value>   Provides a value for the priority of the routes to the service
+  -r, --traefikRuleLabel=<value>      Traefik rule label value - defines the routing rule for Traefik to route traffic
+                                      to service
+
+DESCRIPTION
+  Creates a new service in inventory based on a supplied service
 ```
 
 ## `chs-dev services disable SERVICES`
