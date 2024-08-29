@@ -3,6 +3,7 @@ import buildArgsSpecAssemblyFunction from "./build-args-spec-assembly-function.j
 import builderSecretsSpecAssemblyFunction from "./builder-secrets-spec-assembly-function.js";
 import builderSpecAssemblyFunction from "./builder-spec-assembly-function.js";
 import dependsOnSpecAssemblyFunction from "./depends-on-spec-assembly-function.js";
+import envFileSpecAssemblyFunction from "./env-file-assembly-function.js";
 import { simpleSpecAssemblyFunctionFactory } from "./simple-spec-assembly-function.js";
 import { SpecAssemblyFunction, SpecAssemblyFunctionOptions } from "./spec-assembly-function.js";
 
@@ -11,7 +12,9 @@ const specFieldsWhichAreImmutable = [
     "labels",
     "networks",
     "image",
-    "healthcheck"
+    "healthcheck",
+    "ports",
+    "expose"
 ];
 
 const specAssemblyFunctions: SpecAssemblyFunction[] = [
@@ -19,6 +22,7 @@ const specAssemblyFunctions: SpecAssemblyFunction[] = [
     dependsOnSpecAssemblyFunction,
     ...specFieldsWhichAreImmutable.map(simpleSpecAssemblyFunctionFactory),
     buildArgsSpecAssemblyFunction,
+    envFileSpecAssemblyFunction,
     builderSecretsSpecAssemblyFunction
 ];
 
