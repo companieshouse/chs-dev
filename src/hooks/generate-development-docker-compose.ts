@@ -11,7 +11,7 @@ export const hook: Hook<"generate-development-docker-compose"> = async function 
     const path = chsDevConfig.projectPath;
     const inventory = new Inventory(path, config.cacheDir);
     const dockerComposeFileGenerator = new DockerComposeFileGenerator(path);
-    const service = inventory.services.find(service => service.name === serviceName);
+    const service = inventory.services.find(service => service.name === serviceName && !service.source.includes("tilt/"));
 
     if (typeof service === "undefined") {
         return this.error("Cannot create development compose file for a service that does not exist.");
