@@ -67,7 +67,7 @@ if [[ ! -f "${profile_mapping_file}" || -n "${recreate_profile_mapping}" ]]; the
     # Handle SSO profiles and login if necessary
     if [[ -n "${sso_account_id}" ]]; then
       while : ""; do
-        account_id="$(aws sts get-caller-identity --query Account --output text --profile "${profile}")"
+        account_id="$(aws sts get-caller-identity --query Account --output text --profile "${profile}" --no-verify-ssl)"
 
         if [[ -n "${account_id}" ]]; then
           region="$(aws configure get region --profile "${profile}")"
@@ -79,7 +79,7 @@ if [[ ! -f "${profile_mapping_file}" || -n "${recreate_profile_mapping}" ]]; the
       done
     else
       # otherwise assume the user has configured AWS access for profile with access keys
-      account_id="$(aws sts get-caller-identity --query Account --output text --profile "${profile}")"
+      account_id="$(aws sts get-caller-identity --query Account --output text --profile "${profile}" --no-verify-ssl)"
 
       if [[ -n "${account_id}" ]]; then
         region="$(aws configure get region --profile "${profile}")"

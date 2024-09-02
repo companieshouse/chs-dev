@@ -20,5 +20,7 @@ export type DockerComposeSpec = {
         } & Record<string, any>
     },
     secrets?: Record<string, Secret>,
-    include?: string[]
+    include?: string[],
+    networks?: Record<string, any>,
+    volumes?: Record<string, any>
 };
