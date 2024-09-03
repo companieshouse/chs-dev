@@ -25,7 +25,7 @@ export const hook: Hook<"init"> = async function (options) {
 
     const versionCheck = VersionCheck.create({
         dataDirectory: options.config.dataDir,
-        runThresholdDays: parseInt(options.config.pjson["chs-dev"]["version-check-schedule"]["number-of-days "]),
+        runThresholdDays: parseInt(options.config.pjson["chs-dev"]["version-check-schedule"]["number-of-days"]),
         config: projectConfig,
         logger: {
             warn: (msg) => this.warn(msg),
