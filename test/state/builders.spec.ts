@@ -129,6 +129,7 @@ describe("getBuilder", () => {
         const expectedBuilderSpec = yaml.stringify({
             services: {
                 "<service>": {
+                    pull_policy: "build",
                     build: {
                         context: "<absolute_repository_path>",
                         args: {
@@ -173,6 +174,7 @@ describe("getBuilder", () => {
             const expectedBuilderSpec = yaml.stringify({
                 services: {
                     "<service>": {
+                        pull_policy: "build",
                         build: {
                             context: "<absolute_repository_path>",
                             args: {
