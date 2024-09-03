@@ -47,6 +47,25 @@ chs-dev/0.1.0 darwin-arm64 node-v20.10.0
 $
 ```
 
+### Installing a local copy of your changes
+
+To test out development changes you likely will want to install a development
+copy like so:
+
+```sh
+$ ./install.sh -B -d "${HOME}"/.devchs-dev -n devchs-dev
+$ devchs-dev --version
+...
+$
+```
+
+Provided you've configured your path properly with the default Symlink
+directory you should be able to run:
+
+```sh
+devchs-dev --version
+```
+
 ### `install.sh` usage
 
 The install script can manage the installation/uninstallation (or
@@ -64,6 +83,8 @@ reinstallation) of the chs-dev CLI. It can be use as follows
 * `-f` - forces the command and does not prompt user for input
 * `-l <DEBUG|INFO|WARN|ERROR>` - specifies the Logging level (*Defaults to*
   *`INFO`*)
+* `-n <name>` - specifies the name of the symlink created in the symlink
+  directory (*Defaults to* *`chs-dev`*)
 * `-S` - will prevent the Symlink file to be created
 * `-s <directory>` - specifies the directory to add the symlink to, if there is
   already a local directory on your `PATH` which you can add symlinks to
@@ -140,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.3.0 darwin-arm64 node-v20.12.2
+chs-dev/1.3.0 darwin-arm64 node-v20.10.0
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
