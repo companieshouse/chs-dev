@@ -31,6 +31,7 @@ OPTIONS
     exists. Without the flag, user will have to confirm reinstallation
 -l <loglevel> - sets the log level to set logging output, valid options are DEBUG,
     INFO, WARN, ERROR (defaults to INFO)
+-n <name> - sets the name of the symlink file (defaults to chs-dev)
 -S - when set does not create symlink to binary
 -s <path-to-symlink-loc> - Sets the path to the place to output the symlink to (Defaults to ~/.companies_house_config/bin)
 -v <version> - installs a specific version (Defaults to latest)
@@ -239,7 +240,7 @@ install_cli_tarball() {
     mkdir -p "${SYMLINK_DIRECTORY}" || return_status=$?
 
     if [ "${return_status}" -eq 0 ]; then
-      ln -s "${INSTALLATION_DIRECTORY}"/bin/chs-dev "${SYMLINK_DIRECTORY}"/chs-dev || return_status=$?
+      ln -s "${INSTALLATION_DIRECTORY}"/bin/chs-dev "${SYMLINK_DIRECTORY}"/"${SYMLINK_NAME}" || return_status=$?
     fi
 
     if [ "${return_status}" -eq 0 ]; then
@@ -294,9 +295,9 @@ user_confirm_action() {
 install() {
   # Try to find chs-dev and if present offer to uninstall it before
   # installing the latest version
-  if [ -L "${SYMLINK_DIRECTORY}"/chs-dev ] ||
+  if [ -L "${SYMLINK_DIRECTORY}"/"${SYMLINK_NAME}" ] ||
     [ -d "${INSTALLATION_DIRECTORY}" ]; then
-    chs_dev_version_installed=$(chs-dev --version || : "")
+    chs_dev_version_installed="$("${SYMLINK_NAME}" --version || : "")"
 
     if [ -n "${chs_dev_version_installed}" ]; then
       log WARN "chs-dev (version ${chs_dev_version_installed}) already installed"
@@ -382,7 +383,7 @@ revert_uninstall() {
 
   if [ -f "${backup_symlink}" ]; then
     log "DEBUG" 'Restoring symlink'
-    mv "${backup_symlink}" "${SYMLINK_DIRECTORY}"/chs-dev
+    mv "${backup_symlink}" "${SYMLINK_DIRECTORY}"/"${SYMLINK_NAME}"
   fi
 }
 
@@ -398,7 +399,7 @@ uninstall() {
 
   # Remove symlink and the chs-dev directory
   log DEBUG "Removing symlink"
-  mv "${SYMLINK_DIRECTORY}"/chs-dev "${backup_symlink}"
+  mv "${SYMLINK_DIRECTORY}"/"${SYMLINK_NAME}" "${backup_symlink}"
 
   log DEBUG "Removing CLI files"
   mv "${INSTALLATION_DIRECTORY}" "${backup_cli}"
@@ -415,13 +416,15 @@ DEFAULT_LOGGING_LEVEL=INFO
 DEFAULT_VERSION=latest
 DEFAULT_INSTALLATION_DIRECTORY="${HOME}"/.chs-dev
 DEFAULT_SYMLINK_DIRECTORY="${HOME}"/.companies_house_config/bin
+DEFAULT_SYMLINK_NAME=chs-dev
 DEFAULT_COMMAND=install
 
 # Parse options
-while getopts 'd:l:s:v:BSfhW' opt; do
+while getopts 'd:l:n:s:v:BSfhW' opt; do
   case "${opt}" in
   d) INSTALLATION_DIRECTORY="${OPTARG}" ;;
   l) LOGGING_LEVEL="${OPTARG}" ;;
+  n) SYMLINK_NAME="${OPTARG}" ;;
   s) SYMLINK_DIRECTORY="${OPTARG}" ;;
   v) VERSION="${OPTARG}" ;;
   B) THIS_DIR=1 ;;
@@ -450,5 +453,6 @@ esac
 : "${VERSION:="${DEFAULT_VERSION}"}"
 : "${INSTALLATION_DIRECTORY:="${DEFAULT_INSTALLATION_DIRECTORY}"}"
 : "${SYMLINK_DIRECTORY:="${DEFAULT_SYMLINK_DIRECTORY}"}"
+: "${SYMLINK_NAME:="${DEFAULT_SYMLINK_NAME}"}"
 
 "${COMMAND}"
