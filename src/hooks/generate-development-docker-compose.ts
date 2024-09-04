@@ -14,7 +14,7 @@ export const hook: Hook<"generate-development-docker-compose"> = async function 
     const service = inventory.services.find(service => service.name === serviceName && !service.source.includes("tilt/"));
 
     if (typeof service === "undefined") {
-        return this.error("Cannot create development compose file for a service that does not exist.");
+        return this.error(`Cannot create development compose file for the service: ${serviceName} since it does not exist.`);
     }
 
     try {
