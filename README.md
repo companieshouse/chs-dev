@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.3.0 darwin-arm64 node-v20.10.0
+chs-dev/1.3.0 darwin-arm64 node-v20.12.2
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -506,10 +506,13 @@ Rebuilds and restarts the supplied service running in development mode to load i
 
 ```
 USAGE
-  $ chs-dev reload SERVICE
+  $ chs-dev reload SERVICE [-f]
 
 ARGUMENTS
   SERVICE  Name of the service
+
+FLAGS
+  -f, --force  Forcefully reload service and force a rebuild
 
 DESCRIPTION
   Rebuilds and restarts the supplied service running in development mode to load in any changes to source code
