@@ -3,6 +3,7 @@ import { Service } from "../../src/model/Service";
 import { join } from "path";
 import { Config } from "@oclif/core";
 import Reload from "../../src/commands/reload";
+import fs from "fs";
 
 const ensureFileMock = jest.fn();
 const utimesMock = jest.fn();
@@ -69,6 +70,8 @@ describe("reload spec", () => {
     const parseMock = jest.fn();
     const logMock = jest.fn();
     const errorMock = jest.fn();
+    const unlinkSyncSpy = jest.spyOn(fs, "unlinkSync");
+    const existsSyncSpy = jest.spyOn(fs, "existsSync");
 
     const testDateTime = new Date(2023, 1, 1, 0, 0, 0);
 
@@ -93,6 +96,9 @@ describe("reload spec", () => {
         reload.log = logMock;
         // @ts-expect-error
         reload.error = errorMock;
+
+        unlinkSyncSpy.mockImplementation((_) => {});
+        existsSyncSpy.mockReturnValue(true);
     });
 
     it("should not reload an invalid service", async () => {
@@ -100,6 +106,9 @@ describe("reload spec", () => {
         parseMock.mockResolvedValue({
             args: {
                 service: "not-found"
+            },
+            flags: {
+                force: false
             }
         });
 
@@ -115,6 +124,9 @@ describe("reload spec", () => {
         parseMock.mockResolvedValue({
             args: {
                 service: "service-one"
+            },
+            flags: {
+                force: false
             }
         });
 
@@ -134,6 +146,9 @@ describe("reload spec", () => {
         parseMock.mockResolvedValue({
             args: {
                 service: "service-one"
+            },
+            flags: {
+                force: false
             }
         });
 
@@ -143,4 +158,73 @@ describe("reload spec", () => {
         expect(utimesMock).toHaveBeenCalledWith(join(projectDir, "local/service-one/.touch"), testDateTime, testDateTime);
     });
 
+    it("does not remove code hash when force flag not supplied", async () => {
+        // @ts-expect-error
+        ensureFileMock.mockResolvedValue(undefined);
+
+        // @ts-expect-error
+        utimesMock.mockResolvedValue(undefined);
+
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            flags: {
+                force: false
+            }
+        });
+
+        await reload.run();
+
+        expect(unlinkSyncSpy).not.toHaveBeenCalled();
+    });
+
+    it("removes code hash when force flag supplied", async () => {
+        // @ts-expect-error
+        ensureFileMock.mockResolvedValue(undefined);
+
+        // @ts-expect-error
+        utimesMock.mockResolvedValue(undefined);
+
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            flags: {
+                force: true
+            }
+        });
+
+        await reload.run();
+
+        expect(unlinkSyncSpy).toHaveBeenCalledWith(
+            join(projectDir, "local/service-one/out/.code.hash")
+        );
+    });
+
+    it("does not remove code hash when force flag supplied and code hash does not exist", async () => {
+        existsSyncSpy.mockReturnValue(false);
+
+        // @ts-expect-error
+        ensureFileMock.mockResolvedValue(undefined);
+
+        // @ts-expect-error
+        utimesMock.mockResolvedValue(undefined);
+
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            flags: {
+                force: true
+            }
+        });
+
+        await reload.run();
+
+        expect(unlinkSyncSpy).not.toHaveBeenCalled();
+    });
 });
