@@ -53,6 +53,7 @@ export const clearBuilders = () => {
 const repositoryBuilderSpec = yaml.stringify({
     services: {
         "<service>": {
+            pull_policy: "build",
             build: {
                 context: "<absolute_repository_path>",
                 args: {

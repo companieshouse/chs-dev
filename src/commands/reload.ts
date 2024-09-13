@@ -1,10 +1,11 @@
-import { Args, Command, Config } from "@oclif/core";
+import { Args, Command, Config, Flags } from "@oclif/core";
 import { Inventory } from "../state/inventory.js";
 import { join } from "path";
 import fsExtra from "fs-extra";
 import { DependencyCache } from "../run/dependency-cache.js";
 import ChsDevConfig from "../model/Config.js";
 import loadConfig from "../helpers/config-loader.js";
+import { existsSync, unlinkSync } from "fs";
 
 export default class Reload extends Command {
 
@@ -15,6 +16,18 @@ export default class Reload extends Command {
         service: Args.string({
             required: true,
             description: "Name of the service"
+        })
+    };
+
+    static flags = {
+        force: Flags.boolean({
+            required: false,
+            allowNo: false,
+            default: false,
+            description: "Forcefully reload service and force a rebuild",
+            name: "force",
+            char: "f",
+            aliases: ["force"]
         })
     };
 
@@ -32,9 +45,19 @@ export default class Reload extends Command {
     }
 
     async run (): Promise<any> {
-        const { args } = await this.parse(Reload);
+        const { args, flags } = await this.parse(Reload);
 
         const serviceName: string = args.service;
+        const codeHashFile = join(
+            this.chsDevConfig.projectPath,
+            "local",
+            serviceName,
+            "out/.code.hash"
+        );
+
+        if (flags.force && existsSync(codeHashFile)) {
+            unlinkSync(codeHashFile);
+        }
 
         if (this.isServiceValid(serviceName)) {
             const touchFile = join(this.chsDevConfig.projectPath, "local", serviceName, ".touch");
