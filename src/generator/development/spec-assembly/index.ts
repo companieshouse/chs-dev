@@ -24,7 +24,6 @@ const specAssemblyFunctions: SpecAssemblyFunction[] = [
     dependsOnSpecAssemblyFunction,
     buildArgsSpecAssemblyFunction,
     envFileSpecAssemblyFunction,
-    builderSecretsSpecAssemblyFunction,
     nonServiceTlaSpecAssemblyFunction,
     volumeSpecAssemblyFunction,
     builderSecretsSpecAssemblyFunction
