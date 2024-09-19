@@ -12,6 +12,7 @@ import DevelopmentEnable from "./development/enable.js";
 import DevelopmentDisable from "./development/disable.js";
 import ServicesAvailable from "./services/available.js";
 import ServiceEnable from "./services/enable.js";
+import ServiceCreate from "./services/create.js";
 import ServiceDisable from "./services/disable.js";
 import ModulesAvailable from "./modules/available.js";
 import ModulesEnable from "./modules/enable.js";
@@ -36,6 +37,7 @@ export const commands = {
     "services:available": ServicesAvailable,
     "services:enable": ServiceEnable,
     "services:disable": ServiceDisable,
+    "services:create": ServiceCreate,
     "modules:available": ModulesAvailable,
     "modules:enable": ModulesEnable,
     "modules:disable": ModulesDisable,

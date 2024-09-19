@@ -11,7 +11,19 @@ export const CONSTANTS = {
     /**
      * Value for a boolean label to be considered true
      */
-    BOOLEAN_LABEL_TRUE_VALUE: "true"
+    BOOLEAN_LABEL_TRUE_VALUE: "true",
+
+    /**
+     * Path to the inventory of modules within the project
+     */
+    MODULES_DIRECTORY: "services/modules",
+
+    /**
+     * Defines placeholders used to reference different data items
+     */
+    templatePlaceHolders: {
+        SERVICE_NAME: "<service>"
+    }
 };
 
 export default CONSTANTS;
