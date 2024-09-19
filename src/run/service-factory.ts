@@ -7,16 +7,51 @@ import { confirm, editor, input } from "../helpers/user-input.js";
 import { join } from "path";
 import CONSTANTS from "../model/Constants.js";
 
+/**
+ * Options for creating a new Service providing values for the different
+ * attributes to be set on the new service.
+ */
 type CreateNewBasedOnOptions = {
-    gitHubRepoName: string,
-    moduleName?: string,
-    containerName?: string,
-    descriptionLabel?: string,
-    traefikRuleLabel?: string,
-    traefikPriorityLabel?: string,
+    /**
+     * Name of the GitHub repo/service which is being created
+     */
+    gitHubRepoName: string;
+
+    /**
+     * Name of the module which the new service is being added to
+     */
+    moduleName?: string;
+
+    /**
+     * Name of the container for the service
+     */
+    containerName?: string;
+
+    /**
+     * Description of the new service
+     */
+    descriptionLabel?: string;
+
+    /**
+     * Traefik routing label value
+     */
+    traefikRuleLabel?: string;
+
+    /**
+     * Traefik priority label
+     */
+    traefikPriorityLabel?: string;
+
+    /**
+     * Name of the GitHub branch (if different to default branch set in GitHub
+     * settings)
+     */
     gitHubRepoBranchName?: string
 }
 
+/**
+ * Orchestration service for creating new Services based on other services.
+ */
 export class ServiceFactory {
 
     private readonly serviceGenerator: ServiceGenerator;
@@ -25,6 +60,16 @@ export class ServiceFactory {
         this.serviceGenerator = new ServiceGenerator(config);
     }
 
+    /**
+     * Creates a new service based on the service referenced by the
+     * `serviceName` supplied. Assumes the service exists otherwise will do
+     * nothing. Will prompt the user whether or not they want to set the values
+     * for the different unique attributes of the service.
+     * @param serviceName Name of the service which is being used as the basis
+    *       of the new service
+     * @param options Properties for the new service being created which may be
+     *      overridden by use input
+     */
     async createNewBasedOn (
         serviceName: string,
         options: CreateNewBasedOnOptions

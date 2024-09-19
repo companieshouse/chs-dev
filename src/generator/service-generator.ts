@@ -5,18 +5,67 @@ import { join } from "path";
 import CONSTANTS from "../model/Constants.js";
 import yaml from "yaml";
 
+/**
+ * Defines the type for the Options object passed to the
+ * `generateDockerComposeForService` method
+ */
 type NewDockerComposeSpecOptions = {
-    initialSpecValue: DockerComposeSpec,
-    force?: boolean,
-    containerName?: string,
-    descriptionLabel?: string,
-    traefikRuleLabel?: string,
-    traefikPriorityLabel?: string,
-    gitHubRepoBranchName?: string
+    /**
+     * Initial Docker Compose Spec file which is being constructed prior to the
+     * customisations to make it the new service
+     */
+    initialSpecValue: DockerComposeSpec;
+
+    /**
+     * Allow the generator to replace a service specification which already
+     * exists
+     */
+    force?: boolean;
+
+    /**
+     * Name of the container
+     */
+    containerName?: string;
+
+    /**
+     * Description of the new service
+     */
+    descriptionLabel?: string;
+
+    /**
+     * Traefik rule defining any routing to the new service
+     */
+    traefikRuleLabel?: string;
+
+    /**
+     * Traefik priority label value for the new service
+     */
+    traefikPriorityLabel?: string;
+
+    /**
+     * Default branch name for the service - if different from hte value
+     * configured in GitHub
+     */
+    gitHubRepoBranchName?: string;
 }
 
+/**
+ * Defines an object which determines which value for the label exists within
+ * the options supplied with the purpose of handling the options supplied to
+ * the method.
+ */
 type LabelOverride = {
-    testExpression: RegExp,
+    /**
+     * An expression which identifies if the label should use the override
+     */
+    testExpression: RegExp;
+
+    /**
+     * Supplier of the value from the options when the label matches the
+     * expression
+     * @param options passed to the generator method
+     * @returns value of option or undefined if the option has not been set
+     */
     supplier: (options: NewDockerComposeSpecOptions) => string | undefined
 }
 
@@ -39,6 +88,9 @@ const labelsToBeOverriddenMapping: Record<string, LabelOverride> = {
     }
 };
 
+/**
+ * Creates a Docker Compose Service Specification for the supplied service
+ */
 export class ServiceGenerator {
 
     // eslint-disable-next-line no-useless-constructor
@@ -46,6 +98,16 @@ export class ServiceGenerator {
         private readonly config: Config
     ) { }
 
+    /**
+     * Generates new Docker Compose Specification for the supplied service with
+     * name `serviceName`. Options provide new values for the different properties
+     * on the new service
+     * @param serviceName Name of the new service being created
+     * @param module Name of the module the new service belongs to
+     * @param options defines the properties for the new service and a few
+     *      additional settings required for generating the new service
+     * @returns Generated Docker Compose Specification
+     */
     generateDockerComposeSpecForService (
         serviceName: string,
         module: string,
