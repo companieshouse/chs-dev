@@ -21,10 +21,6 @@ describe("Hook: generate-runnable-docker-compose", () => {
     const generateDockerComposeFileMock =
         jest.fn();
 
-    const generateTilefileMock = jest.fn();
-
-    const inventoryServicesFindMock = jest.fn();
-
     const testConfig = {
         root: "./",
         configDir: "/users/user/.config/chs-dev/"
@@ -37,16 +33,6 @@ describe("Hook: generate-runnable-docker-compose", () => {
             DockerComposeFileGenerator: function () {
                 return {
                     generateDockerComposeFile: generateDockerComposeFileMock
-                };
-            }
-        };
-    });
-
-    jest.mock("../../src/generator/tiltfile-generator", () => {
-        return {
-            TiltfileGenerator: function () {
-                return {
-                    generate: generateTilefileMock
                 };
             }
         };
@@ -127,31 +113,6 @@ describe("Hook: generate-runnable-docker-compose", () => {
             expectDockerComposeCalledForServices(
                 expectedServicesEnabled
             );
-        });
-
-        it("generates tilt file", async () => {
-            // @ts-expect-error
-            await generateRunnableDockerComposeHook({
-                config: testConfig,
-                context: jest.fn()
-            });
-
-            expect(generateTilefileMock).toHaveBeenCalledTimes(1);
-
-            const generateTiltfileCall = generateTilefileMock.mock.calls[0];
-
-            const expectedServices = expectedServicesEnabled.map(serviceName => services.find(service => service.name === serviceName));
-
-            expect(generateTiltfileCall[0]).toHaveLength(expectedServices.length);
-
-            for (const expectedService of expectedServices) {
-                expect(generateTiltfileCall[0]).toContainEqual({
-                    ...expectedService,
-                    liveUpdate: false
-                });
-            }
-
-            expect(generateTiltfileCall[1]).toEqual([]);
         });
     });
 

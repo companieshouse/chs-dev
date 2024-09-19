@@ -33,6 +33,11 @@ const repositoryRequiredServiceFile = join(
     "test/data/service-reader/modules/module-one/repository-required.docker-compose.yaml"
 );
 
+const deprecatedServiceFile = join(
+    process.cwd(),
+    "test/data/service-reader/modules/module-three/deprecated-service.docker-compose.yaml"
+);
+
 const normaliseLocations = (svcs: Partial<Service>[]) => {
     return svcs.map(svc => {
         svc.source = svc.source?.replace(process.cwd(), ".");
@@ -64,5 +69,9 @@ describe("readServices", () => {
 
     it("loads service with repo required", () => {
         expect(normaliseLocations(readServices(repositoryRequiredServiceFile))).toMatchSnapshot();
+    });
+
+    it("loads a deprecated service", () => {
+        expect(normaliseLocations(readServices(deprecatedServiceFile))).toMatchSnapshot();
     });
 });
