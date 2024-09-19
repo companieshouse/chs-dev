@@ -1,7 +1,7 @@
 {
   "name": "chs-dev",
   "version": "1.3.0",
-  "author": "Damian Dunajski (ddunajski@companieshouse.gov.uk)",
+  "author": "Companies House",
   "bin": {
     "chs-dev": "./bin/run.js"
   },
