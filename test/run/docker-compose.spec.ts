@@ -122,7 +122,7 @@ describe("DockerCompose", () => {
 
             const dockerCompose = new DockerCompose(config, logger);
 
-            expect(dockerCompose.logFile).toBe("local/.logs/compose.out.1706745600.txt");
+            expect(dockerCompose.logFile).toBe("local/.logs/compose.out.2024-1-4.txt");
         });
     });
 

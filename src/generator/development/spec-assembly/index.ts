@@ -3,22 +3,29 @@ import buildArgsSpecAssemblyFunction from "./build-args-spec-assembly-function.j
 import builderSecretsSpecAssemblyFunction from "./builder-secrets-spec-assembly-function.js";
 import builderSpecAssemblyFunction from "./builder-spec-assembly-function.js";
 import dependsOnSpecAssemblyFunction from "./depends-on-spec-assembly-function.js";
-import { simpleSpecAssemblyFunctionFactory } from "./simple-spec-assembly-function.js";
+import envFileSpecAssemblyFunction from "./env-file-assembly-function.js";
+import { immutableServiceFieldsSpecAssemblyFunction } from "./immutable-service-fields-spec-assembly-function.js";
+import nonServiceTlaSpecAssemblyFunction from "./non-services-tla-spec-assembly-function.js";
 import { SpecAssemblyFunction, SpecAssemblyFunctionOptions } from "./spec-assembly-function.js";
+import { volumeSpecAssemblyFunction } from "./volume-spec-assembly-function.js";
 
-const specFieldsWhichAreImmutable = [
-    "environment",
-    "labels",
-    "networks",
-    "image",
-    "healthcheck"
+const specFieldsWhichAreMutable = [
+    "build",
+    "develop",
+    "env_file",
+    "volumes",
+    "depends_on",
+    "secrets"
 ];
 
 const specAssemblyFunctions: SpecAssemblyFunction[] = [
+    immutableServiceFieldsSpecAssemblyFunction(specFieldsWhichAreMutable),
     builderSpecAssemblyFunction,
     dependsOnSpecAssemblyFunction,
-    ...specFieldsWhichAreImmutable.map(simpleSpecAssemblyFunctionFactory),
     buildArgsSpecAssemblyFunction,
+    envFileSpecAssemblyFunction,
+    nonServiceTlaSpecAssemblyFunction,
+    volumeSpecAssemblyFunction,
     builderSecretsSpecAssemblyFunction
 ];
 

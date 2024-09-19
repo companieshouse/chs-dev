@@ -1,16 +1,11 @@
-import { dirname, join, relative } from "path";
+import { join } from "path";
 import { SpecAssemblyFunction } from "./spec-assembly-function.js";
+import relativiseServicePath from "../utils/relativise-path.js";
 
 const formatEnvFile = (envFileValue: string | string[], projectPath: string, source: string, serviceName: string) => {
-    if (Array.isArray(envFileValue)) {
-        return envFileValue.map(
-            singleValue => formatEnvFile(singleValue, projectPath, source, serviceName)
-        );
-    }
-
-    const relativePathToSource = relative(join(projectPath, "local", serviceName), source);
-
-    return join(dirname(relativePathToSource), envFileValue);
+    return relativiseServicePath(
+        envFileValue, source, join(projectPath, "local", serviceName)
+    );
 };
 
 /**
