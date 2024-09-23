@@ -89,6 +89,7 @@ exports[`readServices loads atypical with entrypoint and outdir 1`] = `
     "description": "simple service",
     "metadata": {
       "buildOutputDir": "out/",
+      "builderUseServiceDockerFile": "true",
       "entrypoint": "docker_start.sh",
       "healthcheck": undefined,
       "languageMajorVersion": "20",
