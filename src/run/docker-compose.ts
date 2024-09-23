@@ -44,7 +44,7 @@ export class DockerCompose {
         const date = new Date(Date.now());
 
         this.logFile = join(logsDir,
-            `compose.out.${date.getFullYear()}-${date.getMonth()}-${date.getDay()}.txt`);
+            `compose.out.${date.getFullYear()}-${date.getMonth()}-${date.getDate()}.txt`);
     }
 
     down (options?: {

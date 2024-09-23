@@ -67,7 +67,7 @@ describe("DockerCompose", () => {
     let tmpDir: string;
     let DockerCompose: new (arg0: Config, arg1: { log: (msg: string) => void; }) => any;
 
-    const testDateTime = new Date(2024, 1, 1, 0, 0, 0);
+    const testDateTime = new Date(2024, 1, 14, 0, 0, 0);
 
     beforeAll(async () => {
 
@@ -122,7 +122,7 @@ describe("DockerCompose", () => {
 
             const dockerCompose = new DockerCompose(config, logger);
 
-            expect(dockerCompose.logFile).toBe("local/.logs/compose.out.2024-1-4.txt");
+            expect(dockerCompose.logFile).toBe("local/.logs/compose.out.2024-1-14.txt");
         });
     });
 
