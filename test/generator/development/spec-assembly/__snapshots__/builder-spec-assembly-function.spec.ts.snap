@@ -190,3 +190,80 @@ exports[`builderSpecAssemblyFunction can handle setting repository context for r
   },
 }
 `;
+
+exports[`builderSpecAssemblyFunction can handle using builder and service dockerfile 1`] = `
+{
+  "build": {
+    "context": "/home/test/user/projects/docker-project/repositories/service-one",
+  },
+  "depends_on": {
+    "service-one-builder": {
+      "condition": "service_completed_successfully",
+      "restart": true,
+    },
+  },
+  "volumes": [
+    "repositories/service-one/target:/opt/",
+  ],
+}
+`;
+
+exports[`builderSpecAssemblyFunction can handle using builder and service dockerfile 2`] = `
+{
+  "build": {
+    "context": "/home/test/user/projects/docker-project",
+    "dockerfile": "local/builders/java/v2/build.Dockerfile",
+  },
+  "develop": {
+    "watch": [
+      {
+        "action": "rebuild",
+        "path": ".touch",
+      },
+    ],
+  },
+  "volumes": [
+    "repositories/service-one:/app/",
+    "./out:/opt/out",
+  ],
+}
+`;
+
+exports[`builderSpecAssemblyFunction can handle using builder and service dockerfile appending custom context and dockerfile 1`] = `
+{
+  "build": {
+    "context": "/home/test/user/projects/docker-project/repositories/service-one/another-dir/",
+    "dockerfile": "another.Dockerfile",
+  },
+  "depends_on": {
+    "service-one-builder": {
+      "condition": "service_completed_successfully",
+      "restart": true,
+    },
+  },
+  "volumes": [
+    "repositories/service-one/target:/opt/",
+  ],
+}
+`;
+
+exports[`builderSpecAssemblyFunction can handle using builder and service dockerfile appending custom context and dockerfile 2`] = `
+{
+  "build": {
+    "context": "/home/test/user/projects/docker-project",
+    "dockerfile": "local/builders/java/v2/build.Dockerfile",
+  },
+  "develop": {
+    "watch": [
+      {
+        "action": "rebuild",
+        "path": ".touch",
+      },
+    ],
+  },
+  "volumes": [
+    "repositories/service-one:/app/",
+    "./out:/opt/out",
+  ],
+}
+`;

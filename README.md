@@ -685,6 +685,10 @@ are referenced by chs-dev for the given purposes:
   standard output directory of `dist`.
 * `chs.local.builder.requiresSecrets` - when set to `true` will apply all the
   secrets defined in the docker compose spec to the builder service
+* `chs.local.builder.useServiceDockerfile` - when set to `true` will us the
+  Dockerfile for the service rather than the one provided by the builder. The
+  equivalent of merging repository builder with one of the builders within the
+  repository.
 * `chs.local.entrypoint` - specifies the entrypoint script for a given service
   typically for a node application which does not have a
   `ecs-image-buid/docker_start.sh` file

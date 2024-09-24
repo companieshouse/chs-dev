@@ -41,7 +41,8 @@ const metadataLabelMapping = {
     entrypoint: "chs.local.entrypoint",
     buildOutputDir: "chs.local.builder.outputDir",
     secretsRequired: "chs.local.builder.requiresSecrets",
-    repositoryRequired: "chs.local.repositoryRequired"
+    repositoryRequired: "chs.local.repositoryRequired",
+    builderUseServiceDockerFile: "chs.local.builder.useServiceDockerfile"
 };
 
 const readService: (module: string, source: string, serviceName: string, service: ServiceDefinition) => Partial<Service> = (module, source, serviceName, service) => ({
