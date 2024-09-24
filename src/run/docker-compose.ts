@@ -43,8 +43,15 @@ export class DockerCompose {
 
         const date = new Date(Date.now());
 
-        this.logFile = join(logsDir,
-            `compose.out.${date.getFullYear()}-${date.getMonth()}-${date.getDate()}.txt`);
+        const dateLabel = date.toLocaleDateString(
+            "en-CA", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit"
+            }
+        );
+
+        this.logFile = join(logsDir, `compose.out.${dateLabel}.txt`);
     }
 
     down (options?: {
