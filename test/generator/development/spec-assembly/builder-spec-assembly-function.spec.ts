@@ -6,6 +6,7 @@ import { DockerComposeSpec } from "../../../../src/model/DockerComposeSpec";
 import { services } from "../../../utils/data";
 import { generateBuilderSpec, generateServiceSpec } from "../../../utils/docker-compose-spec";
 import Service from "../../../../src/model/Service";
+import { join } from "path";
 
 describe("builderSpecAssemblyFunction", () => {
 
@@ -228,5 +229,54 @@ describe("builderSpecAssemblyFunction", () => {
         });
 
         expect(developmentDockerComposeSpec.services[serviceWithDockerfileAndContext.name]).toMatchSnapshot();
+    });
+
+    it("can handle using builder and service dockerfile", () => {
+        const serviceBuildServiceFromRepo: Service = { ...services[0] };
+        serviceBuildServiceFromRepo.metadata.builderUseServiceDockerFile = "true";
+
+        const developmentDockerComposeSpec: DockerComposeSpec = {
+            services: {
+                [serviceBuildServiceFromRepo.name]: {}
+            }
+        };
+
+        builderSpecAssemblyFunction(developmentDockerComposeSpec, {
+            projectPath,
+            serviceDockerComposeSpec: generateServiceSpec(serviceBuildServiceFromRepo),
+            service: serviceBuildServiceFromRepo,
+            builderDockerComposeSpec
+        });
+
+        expect(developmentDockerComposeSpec.services[serviceBuildServiceFromRepo.name]).toMatchSnapshot();
+
+        expect(developmentDockerComposeSpec.services[`${serviceBuildServiceFromRepo.name}-builder`]).toMatchSnapshot();
+    });
+
+    it("can handle using builder and service dockerfile appending custom context and dockerfile", () => {
+        const serviceBuildServiceFromRepo: Service = { ...services[0] };
+        serviceBuildServiceFromRepo.metadata.builderUseServiceDockerFile = "true";
+
+        const context = "another-dir/";
+        const dockerfile = "another.Dockerfile";
+        serviceBuildServiceFromRepo.metadata.dockerfile = dockerfile;
+        serviceBuildServiceFromRepo.metadata.repoContext = context;
+
+        const developmentDockerComposeSpec: DockerComposeSpec = {
+            services: {
+                [serviceBuildServiceFromRepo.name]: {}
+            }
+        };
+
+        builderSpecAssemblyFunction(developmentDockerComposeSpec, {
+            projectPath,
+            serviceDockerComposeSpec: generateServiceSpec(serviceBuildServiceFromRepo),
+            service: serviceBuildServiceFromRepo,
+            builderDockerComposeSpec
+        });
+
+        expect(developmentDockerComposeSpec.services[serviceBuildServiceFromRepo.name]).toMatchSnapshot();
+
+        expect(developmentDockerComposeSpec.services[`${serviceBuildServiceFromRepo.name}-builder`]).toMatchSnapshot();
     });
 });

@@ -319,13 +319,15 @@ install() {
   fi
 
   # Download the most recent releases and validate the version
-  if ! download_releases; then
-    panic "Cannot download latest releases."
-  fi
+  if [ -z "${THIS_DIR}" ]; then
+    if ! download_releases; then
+      panic "Cannot download latest releases."
+    fi
 
-  if [ ! "${VERSION}" = "${DEFAULT_VERSION}" ]; then
-    if ! validate_version; then
-      panic 'Could not install chs-dev'
+    if [ ! "${VERSION}" = "${DEFAULT_VERSION}" ]; then
+      if ! validate_version; then
+        panic 'Could not install chs-dev'
+      fi
     fi
   fi
 
