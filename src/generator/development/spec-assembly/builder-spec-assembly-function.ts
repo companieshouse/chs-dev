@@ -2,6 +2,7 @@ import { join } from "path";
 import { SpecAssemblyFunction, SpecAssemblyFunctionOptions } from "./spec-assembly-function.js";
 import yaml from "yaml";
 import { DockerComposeSpec } from "../../../model/DockerComposeSpec.js";
+import CONSTANTS from "../../../model/Constants.js";
 
 const formatBuilderSpec = (builderSpec: string, serviceName: string, projectPath: string) => {
     const relativeRepositoryPath = join("repositories", serviceName);
@@ -29,6 +30,41 @@ const builderSpecAssemblyFunction: SpecAssemblyFunction = (developmentDockerComp
     projectPath,
     builderDockerComposeSpec
 }: SpecAssemblyFunctionOptions) => {
+
+    const applyServiceBuildOptions = (usingServiceDockerFile: boolean = false) => {
+        const repositoryRoot = join(projectPath, "repositories", service.name);
+
+        if (typeof developmentDockerComposeSpec.services[service.name].build === "undefined") {
+            developmentDockerComposeSpec.services[service.name].build = {
+                context: repositoryRoot
+            };
+        } else if (usingServiceDockerFile) {
+            // @ts-expect-error - this is not undefined
+            developmentDockerComposeSpec.services[service.name].build.context = repositoryRoot;
+        }
+
+        // append the repo context supplied in metadata to the existing value of context
+        if (typeof service.metadata.repoContext !== "undefined") {
+            // @ts-expect-error - this is not undefined
+            const context = developmentDockerComposeSpec.services[service.name].build.context;
+            // @ts-expect-error - this is not undefined
+            developmentDockerComposeSpec.services[service.name].build.context = join(context, service.metadata.repoContext as string);
+        } else {
+            // @ts-expect-error - this is not undefined
+            developmentDockerComposeSpec.services[service.name].build.context = repositoryRoot;
+        }
+
+        // Set the value of dockerfile to the value in metadata
+        if (typeof service.metadata.dockerfile !== "undefined") {
+            // @ts-expect-error - this is not undefined
+            developmentDockerComposeSpec.services[service.name].build.dockerfile = service.metadata.dockerfile;
+        // @ts-expect-error - this is not undefined
+        } else if (typeof developmentDockerComposeSpec.services[service.name].build.dockerfile !== "undefined") {
+            // @ts-expect-error - this is not undefined
+            delete developmentDockerComposeSpec.services[service.name].build.dockerfile;
+        }
+    };
+
     // Apply the values in the builder spec now they are known and parse the yaml file
     const formattedBuilderSpec = formatBuilderSpec(builderDockerComposeSpec.builderSpec, service.name, projectPath);
 
@@ -69,21 +105,11 @@ const builderSpecAssemblyFunction: SpecAssemblyFunction = (developmentDockerComp
 
     // Repository or default behaviour has a few metadata items which can
     // customise the context as well as the build context
-    if (builderDockerComposeSpec.name === "repository" &&
+    if (service.metadata?.builderUseServiceDockerFile === CONSTANTS.BOOLEAN_LABEL_TRUE_VALUE) {
+        applyServiceBuildOptions(true);
+    } else if (builderDockerComposeSpec.name === "repository" &&
         typeof developmentDockerComposeSpec.services[service.name].build !== "undefined") {
-        // append the repo context supplied in metadata to the existing value of context
-        if (typeof service.metadata.repoContext !== "undefined") {
-            // @ts-expect-error - this is not undefined
-            const context = developmentDockerComposeSpec.services[service.name].build.context;
-            // @ts-expect-error - this is not undefined
-            developmentDockerComposeSpec.services[service.name].build.context = join(context, service.metadata.repoContext as string);
-        }
-
-        // Set the value of dockerfile to the value in metadata
-        if (typeof service.metadata.dockerfile !== "undefined") {
-            // @ts-expect-error - this is not undefined
-            developmentDockerComposeSpec.services[service.name].build.dockerfile = service.metadata.dockerfile;
-        }
+        applyServiceBuildOptions();
     }
 };
 
