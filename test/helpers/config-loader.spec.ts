@@ -3,6 +3,7 @@ import fs from "fs";
 import { load } from "../../src/helpers/config-loader";
 import yaml from "yaml";
 import { join } from "path";
+import CONSTANTS from "../../src/model/Constants";
 
 describe("load", () => {
 
@@ -33,7 +34,7 @@ describe("load", () => {
     it("returns empty configuration when no configuration file exists", () => {
         existsSyncMock.mockReturnValue(false);
 
-        expect(load()).toEqual({ projectName: "docker-chs", env: {}, projectPath: pwd, authenticatedRepositories: [] });
+        expect(load()).toEqual({ projectName: "docker-chs", env: {}, projectPath: pwd, performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD });
     });
 
     it("returns configuration file with environment when file exists with environment", () => {
@@ -77,9 +78,6 @@ describe("load", () => {
                 ENV_VAR_SIX: "file://~/.file-not-found"
             },
             projectPath: pwd,
-            authenticatedRepositories: [
-                "123456789.dkr.eu-west-2.amazonaws.com"
-            ],
             performEcrLoginHoursThreshold: 8
         });
     });
@@ -103,7 +101,6 @@ describe("load", () => {
             env: {},
             projectPath: pwd,
             projectName: "docker-chs",
-            authenticatedRepositories: ["123456789.dkr.eu-west-2.amazonaws.com"],
             performEcrLoginHoursThreshold: 7
         });
     });
@@ -125,8 +122,8 @@ describe("load", () => {
             env: {},
             projectPath: pwd,
             projectName: "docker-chs",
-            authenticatedRepositories: [],
-            versionSpecification: ">1.0 <2.0"
+            versionSpecification: ">1.0 <2.0",
+            performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD
         });
     });
 
@@ -140,6 +137,6 @@ describe("load", () => {
 
         existsSyncMock.mockReturnValue(false);
 
-        expect(load()).toEqual({ projectName: "chs-docker-project", env: {}, projectPath: chsDevProjectPath, authenticatedRepositories: [] });
+        expect(load()).toEqual({ projectName: "chs-docker-project", env: {}, projectPath: chsDevProjectPath, performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD });
     });
 });
