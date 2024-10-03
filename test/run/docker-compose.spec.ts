@@ -24,7 +24,6 @@ describe("DockerCompose", () => {
             ANOTHER_VALUE: "another-value"
         },
         projectPath: "./",
-        authenticatedRepositories: [],
         projectName: "project"
     };
 
@@ -253,8 +252,7 @@ describe("DockerCompose", () => {
             const configMinusEnv = {
                 projectPath: "./",
                 projectName: "project",
-                env: {},
-                authenticatedRepositories: []
+                env: {}
             };
 
             const dockerComposeMinusEnv = new DockerCompose(configMinusEnv, logger);

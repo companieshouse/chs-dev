@@ -11,7 +11,12 @@ export const CONSTANTS = {
     /**
      * Value for a boolean label to be considered true
      */
-    BOOLEAN_LABEL_TRUE_VALUE: "true"
+    BOOLEAN_LABEL_TRUE_VALUE: "true",
+
+    /**
+     * Default value for the number of hours between ecr login checks
+     */
+    DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD: 8
 };
 
 export default CONSTANTS;

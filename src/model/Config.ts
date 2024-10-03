@@ -21,12 +21,6 @@ export type Config = {
     readonly env: Record<string, string>;
 
     /**
-     * collection of Docker repositories in use by the project which require
-     * authentication.
-     */
-    readonly authenticatedRepositories: string[];
-
-    /**
      * when supplied defines the threshold for number of hours after which to
      * attempt ecr login
      */

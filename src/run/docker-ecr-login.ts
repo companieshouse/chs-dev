@@ -8,7 +8,7 @@ import { Logger } from "./logs/logs-handler.js";
 export class DockerEcrLogin {
 
     // eslint-disable-next-line no-useless-constructor
-    constructor (private readonly chsDevInstallDirectory: string, private readonly config: Config, private readonly logger: Logger) { }
+    constructor (private readonly chsDevInstallDirectory: string, private readonly logger: Logger) { }
 
     attemptLoginToDockerEcr (): Promise<void> {
         const awsConfigurationFile = join(process.env.HOME as string, ".aws/config");
@@ -20,10 +20,7 @@ export class DockerEcrLogin {
         return spawn(
             // "/bin/bash",
             join(this.chsDevInstallDirectory, "bin/docker_login.sh"),
-            [
-                "--",
-                ...this.config.authenticatedRepositories
-            ],
+            [],
             {
                 logHandler: new LogEverythingLogHandler(this.logger),
                 spawnOptions: {

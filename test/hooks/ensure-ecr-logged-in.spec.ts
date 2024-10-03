@@ -52,16 +52,12 @@ describe("prerun hook", () => {
 
     const environmentConfigWithAuthedRepositories = {
         env: {},
-        authenticatedRepositories: [
-            "123456789.dkr.ecr.eu-west-2.amazonaws.com"
-        ],
         projectPath: "/users/user/docker-chs",
         projectName: "docker-chs",
         performEcrLoginHoursThreshold: 8
     };
     const environmentConfigWithoutAuthedRepositories = {
         env: {},
-        authenticatedRepositories: [],
         projectPath: "/users/user/docker-chs",
         projectName: "docker-chs"
     };
@@ -226,19 +222,6 @@ describe("prerun hook", () => {
                 join(dataDir, "docker-chs.prerun.last_run_time")
             );
 
-        });
-
-        it("does nothing if there are no authed repos", async () => {
-            configLoaderMock.mockReturnValue(
-                environmentConfigWithoutAuthedRepositories
-            );
-
-            // @ts-expect-error
-            await hook({ config: testConfig, context: testContext });
-
-            expect(confirm).not.toHaveBeenCalled();
-            expect(writeFileSyncSpy).not.toHaveBeenCalled();
-            expect(attemptLoginToDockerEcrMock).not.toHaveBeenCalled();
         });
     });
 

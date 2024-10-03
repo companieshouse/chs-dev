@@ -86,8 +86,7 @@ const inventoryMock = {
 const config: Config = {
     projectName: "chs-docker",
     projectPath: "./chs-docler",
-    env: {},
-    authenticatedRepositories: []
+    env: {}
 };
 
 const dockerComposeConfigurationIncludingServices = (...services: Service[]) => {
