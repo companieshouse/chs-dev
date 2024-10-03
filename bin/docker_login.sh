@@ -44,10 +44,16 @@ function install_l_docker() {
   case "${install_y_n}" in
   y | Y)
     if git clone -- git@github.com:companieshouse/dev-env-setup "${dev_env_setup_dir}"; then
+
       if "${dev_env_setup_dir}"/scripts/aws/setup_aws_profiles --install; then
+
+        # If the user has l_aws installed chances are they will have a former version of l_docker
+        # which needs to be removed since it is not compatible with this script
         if command -v l_aws >/dev/null 2>&1; then
+
           if ! reinstall_l_aws "${dev_env_setup_dir}"; then
-            printf -- 'Could not remove former l_docker command. You may have to do this separately\n' >&2
+
+            printf -- 'Encountered an error reinstalling the updated l_aws command therefore could not remove former l_docker command. You may have to do this separately\n' >&2
             return 1
           fi
         fi
@@ -74,10 +80,12 @@ if [[ ! -f "${l_docker_script}" ]]; then
   install_l_docker || exit $?
 fi
 
+# Check that the expected group 'dev' exists otherwise fallback on the default
+# group
 if "${l_docker_script}" -l | grep -q "Group ${dev_group_name}"; then
-  "${l_docker_script}" -g "${dev_group_name}"
+  "${l_docker_script}" -g "${dev_group_name}" || exit $?
 else
   printf -- 'Unexpected setup discovered, using default profile group to login\n'
 
-  "${l_docker_script}"
+  "${l_docker_script}" || exit $?
 fi
