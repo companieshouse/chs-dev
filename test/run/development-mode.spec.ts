@@ -1,6 +1,5 @@
 import { DockerCompose } from "../../src/run/docker-compose";
 import { beforeAll, expect, jest } from "@jest/globals";
-import fs from "fs";
 
 const action = {
     stop: jest.fn(),
@@ -14,10 +13,6 @@ describe("DevelopmentMode", () => {
     });
 
     let DevelopmentMode;
-
-    const writeFileSyncSpy = jest.spyOn(fs, "writeFileSync");
-    const existsSyncMock = jest.spyOn(fs, "existsSync");
-    const unlinkSyncMock = jest.spyOn(fs, "unlinkSync");
 
     const dockerComposeMock: DockerCompose = {
         // @ts-expect-error
@@ -42,25 +37,10 @@ describe("DevelopmentMode", () => {
     beforeEach(async () => {
         jest.resetAllMocks();
 
-        developmentMode = new DevelopmentMode(dockerComposeMock, "/home/user/project");
+        developmentMode = new DevelopmentMode(dockerComposeMock);
 
         // @ts-expect-error
         dockerComposeMock.down.mockResolvedValue(undefined as never);
-    });
-
-    it("rejects when lock already exists", async () => {
-        existsSyncMock.mockReturnValue(true);
-
-        try {
-            await developmentMode.start(prompterMock);
-            // @ts-expect-error
-            // eslint-disable-next-line no-undef
-            fail("Should have raised error");
-        } catch (error) {
-            expect(error).toEqual(new Error(
-                "ERROR! There are services running in development mode. Stop other development mode processes and try again."
-            ));
-        }
     });
 
     describe("sigintHandle", () => {
@@ -72,8 +52,6 @@ describe("DevelopmentMode", () => {
         });
 
         it("does not stop environment when prompt is no", async () => {
-
-            unlinkSyncMock.mockImplementation((_) => {});
             // @ts-expect-error
             prompterMock.mockResolvedValue(false);
 
@@ -83,7 +61,6 @@ describe("DevelopmentMode", () => {
         });
 
         it("stops environment when prompt is yes", async () => {
-            unlinkSyncMock.mockImplementation((_) => {});
             // @ts-expect-error
             prompterMock.mockResolvedValue(true);
 
@@ -95,19 +72,7 @@ describe("DevelopmentMode", () => {
             });
         });
 
-        it("releases lock", async () => {
-            unlinkSyncMock.mockImplementation((_) => {});
-            // @ts-expect-error
-            prompterMock.mockResolvedValue(true);
-
-            await developmentMode.sigintHandler(controllerMock, prompterMock);
-
-            expect(unlinkSyncMock).toHaveBeenCalledTimes(1);
-        });
-
         it("notifies controller it should stop", async () => {
-
-            unlinkSyncMock.mockImplementation((_) => {});
             // @ts-expect-error
             prompterMock.mockResolvedValue(true);
 
@@ -117,7 +82,6 @@ describe("DevelopmentMode", () => {
         });
 
         it("restarts spinner", async () => {
-            unlinkSyncMock.mockImplementation((_) => {});
             // @ts-expect-error
             prompterMock.mockResolvedValue(true);
 
@@ -128,22 +92,4 @@ describe("DevelopmentMode", () => {
         });
 
     });
-
-    it("releases lock if there's an error running watch", async () => {
-        // @ts-expect-error
-        dockerComposeMock.watch.mockRejectedValue(new Error("Kaboom!"));
-        unlinkSyncMock.mockImplementation((_) => {});
-
-        existsSyncMock.mockReturnValue(false);
-
-        try {
-            await developmentMode.start(prompterMock);
-            // @ts-expect-error
-            // eslint-disable-next-line no-undef
-            fail("Should have raised error");
-        } catch (error) {
-            expect(unlinkSyncMock).toHaveBeenCalledTimes(1);
-        }
-    });
-
 });
