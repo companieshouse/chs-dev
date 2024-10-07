@@ -244,4 +244,18 @@ describe("ServiceLoader", () => {
 
         expect(result).toMatchSnapshot();
     });
+
+    it("does not load a transient service in dev mode", async () => {
+        state = {
+            services: [],
+            modules: ["module-three"],
+            servicesWithLiveUpdate: ["service-four"],
+            excludedServices: []
+        };
+
+        const result = serviceLoader.loadServices(state);
+
+        expect(result).toMatchSnapshot();
+
+    });
 });

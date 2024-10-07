@@ -9,48 +9,56 @@ exports[`Status command should log json correctly 1`] = `
     "services": [
       {
         "composeStatus": "Not running",
+        "excluded": false,
         "liveUpdate": false,
         "name": "service-eight",
         "transient": false,
       },
       {
         "composeStatus": "stopped",
+        "excluded": false,
         "liveUpdate": false,
         "name": "service-five",
         "transient": false,
       },
       {
         "composeStatus": "stopped",
+        "excluded": false,
         "liveUpdate": false,
         "name": "service-four",
-        "transient": true,
+        "transient": false,
       },
       {
         "composeStatus": "running",
+        "excluded": false,
         "liveUpdate": false,
         "name": "service-one",
         "transient": false,
       },
       {
         "composeStatus": "Not running",
+        "excluded": false,
         "liveUpdate": false,
         "name": "service-seven",
         "transient": false,
       },
       {
         "composeStatus": "Not running",
+        "excluded": false,
         "liveUpdate": false,
         "name": "service-six",
         "transient": false,
       },
       {
         "composeStatus": "Not running",
+        "excluded": true,
         "liveUpdate": false,
         "name": "service-three",
         "transient": false,
       },
       {
         "composeStatus": "running",
+        "excluded": false,
         "liveUpdate": true,
         "name": "service-two",
         "transient": false,
@@ -116,7 +124,7 @@ Automatically activated services:",
     " - service-six ([31mExited (137)[39m) ",
   ],
   [
-    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m) ",
+    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m) [EXCLUDED]",
   ],
   [
     " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m) [LIVE UPDATE]",
@@ -187,7 +195,7 @@ Automatically activated services:",
     " - service-six  ",
   ],
   [
-    " - service-three  ",
+    " - service-three  [EXCLUDED]",
   ],
   [
     " - service-two  [LIVE UPDATE]",
@@ -199,5 +207,149 @@ Manually deactivated services:",
   [
     " - service-three",
   ],
+]
+`;
+
+exports[`Status command transient services in development mode should return correct log without six in development mode 1`] = `
+[
+  [
+    "Manually activated modules:",
+  ],
+  [
+    " - module-three",
+  ],
+  [
+    "
+Manually activated services:",
+  ],
+  [
+    " - service-one ",
+  ],
+  [
+    " - service-seven ",
+  ],
+  [
+    "
+Automatically activated services:",
+  ],
+  [
+    " - service-eight  ",
+  ],
+  [
+    " - service-five  ",
+  ],
+  [
+    " - service-four  ",
+  ],
+  [
+    " - service-nine  ",
+  ],
+  [
+    " - service-one  ",
+  ],
+  [
+    " - service-seven  ",
+  ],
+  [
+    " - service-six  ",
+  ],
+  [
+    " - service-ten  ",
+  ],
+  [
+    " - service-three  [EXCLUDED]",
+  ],
+  [
+    " - service-two  ",
+  ],
+  [
+    "
+Manually deactivated services:",
+  ],
+  [
+    " - service-three",
+  ],
+]
+`;
+
+exports[`Status command transient services in development mode should show not show a service in live update if is not enabled 1`] = `
+[
+  {
+    "modules": [
+      "module-three",
+    ],
+    "services": [
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-eight",
+        "transient": false,
+      },
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-five",
+        "transient": true,
+      },
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-four",
+        "transient": true,
+      },
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-nine",
+        "transient": false,
+      },
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-one",
+        "transient": false,
+      },
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-seven",
+        "transient": false,
+      },
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-six",
+        "transient": true,
+      },
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-ten",
+        "transient": false,
+      },
+      {
+        "composeStatus": "",
+        "excluded": true,
+        "liveUpdate": false,
+        "name": "service-three",
+        "transient": true,
+      },
+      {
+        "composeStatus": "",
+        "excluded": false,
+        "liveUpdate": false,
+        "name": "service-two",
+        "transient": true,
+      },
+    ],
+  },
 ]
 `;

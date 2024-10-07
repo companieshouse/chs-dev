@@ -1,4 +1,5 @@
 import { deduplicate } from "../helpers/array-reducers.js";
+import { isTransientService } from "../helpers/transient-service.js";
 import Service from "../model/Service.js";
 import State from "../model/State.js";
 import { Inventory } from "../state/inventory.js";
@@ -25,6 +26,8 @@ export class ServiceLoader {
      * @returns list of loaded services to be run
      */
     loadServices (state: State): LoadedService[] {
+        const isTransient = isTransientService(state, this.inventory);
+
         /**
          * Appends the field liveUpdate to service to make a LoadedService
          * @param service missing liveUpdate
@@ -32,7 +35,8 @@ export class ServiceLoader {
          */
         const withLiveUpdate = (service: Service) => ({
             ...service,
-            liveUpdate: state.servicesWithLiveUpdate.includes(service.name)
+            // liveUpdate: state.servicesWithLiveUpdate.includes(service.name)
+            liveUpdate: state.servicesWithLiveUpdate.includes(service.name) && !isTransient(service.name)
         });
 
         // Collect all services specifed by the state to include

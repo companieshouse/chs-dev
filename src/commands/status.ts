@@ -9,6 +9,7 @@ import loadConfig from "../helpers/config-loader.js";
 import State from "../model/State.js";
 import ChsDevConfig from "../model/Config.js";
 import { statusColouriser } from "../helpers/colouriser.js";
+import { isTransientService } from "../helpers/transient-service.js";
 
 export default class Status extends Command {
     static description = "print status of an environment";
@@ -36,6 +37,8 @@ export default class Status extends Command {
 
     private chsDevConfig: ChsDevConfig;
 
+    private isTransient: (serviceName: string) => boolean;
+
     constructor (argv: string[], config: Config) {
         super(argv, config);
         this.chsDevConfig = loadConfig();
@@ -44,6 +47,7 @@ export default class Status extends Command {
         this.dockerCompose = new DockerCompose(this.chsDevConfig, {
             log: (msg: string) => this.log(msg)
         });
+        this.isTransient = isTransientService(this.stateManager.snapshot, this.inventory);
     }
 
     async run (): Promise<void> {
@@ -91,8 +95,9 @@ export default class Status extends Command {
             services: enabledServiceNames.map((serviceName: string) => ({
                 name: serviceName,
                 composeStatus: serviceState(serviceName, false).replaceAll(/[()]/g, ""),
-                liveUpdate: state.servicesWithLiveUpdate.includes(serviceName),
-                transient: !state.services.includes(serviceName)
+                liveUpdate: this.isServiceInLiveUpdate(state, serviceName),
+                transient: this.isTransient(serviceName),
+                excluded: state.excludedServices.includes(serviceName)
             }))
         };
     }
@@ -114,12 +119,24 @@ export default class Status extends Command {
 
         this.log("\nAutomatically activated services:");
         for (const serviceName of enabledServiceNames) {
-            this.log(` - ${serviceName} ${serviceState(serviceName, true)} ${state.servicesWithLiveUpdate.includes(serviceName) ? "[LIVE UPDATE]" : ""}`);
+            this.log(` - ${serviceName} ${serviceState(serviceName, true)} ${this.createServiceLabel(state, serviceName)}`);
         }
 
         this.log("\nManually deactivated services:");
         for (const file of state.excludedServices || []) {
             this.log(` - ${file}`);
         }
+    }
+
+    private createServiceLabel (state: State, serviceName: string): string {
+        return this.isServiceInLiveUpdate(state, serviceName)
+            ? "[LIVE UPDATE]"
+            : state.excludedServices.includes(serviceName)
+                ? "[EXCLUDED]"
+                : "";
+    }
+
+    private isServiceInLiveUpdate (state: State, serviceName: string): boolean {
+        return state.servicesWithLiveUpdate.includes(serviceName) && !this.isTransient(serviceName);
     }
 }
