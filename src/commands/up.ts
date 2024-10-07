@@ -107,26 +107,7 @@ export default class Up extends Command {
     }
 
     private hasServicesInDevelopmentMode (): boolean {
-        if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
-            return this.hasServiceEnabledInLiveUpdate() ||
-                this.hasServiceFromEnabledModuleInLiveUpdate();
-        }
-
-        return false;
-    }
-
-    private hasServiceFromEnabledModuleInLiveUpdate (): boolean {
-        return this.inventory.services.filter(service => this.stateManager.snapshot.modules.includes(service.module))
-            .some(service => this.stateManager.snapshot.servicesWithLiveUpdate.includes(service.name));
-    }
-
-    private hasServiceEnabledInLiveUpdate (): boolean {
-        return this.stateManager.snapshot.servicesWithLiveUpdate
-            .some(serviceWithLiveUpdate => {
-                const service = this.stateManager.snapshot.services.find(serviceName => serviceName === serviceWithLiveUpdate);
-
-                return typeof service !== "undefined";
-            });
+        return this.stateManager.snapshot.servicesWithLiveUpdate.length > 0;
     }
 
     private async synchroniseServicesInDevelopmentMode (): Promise<any> {

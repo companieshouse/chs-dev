@@ -30,18 +30,6 @@ const SERVICES_IN_DEV_MODE = {
     excludedServices: []
 };
 
-const UNRELATED_SERVICE_IN_DEV_MODE = {
-    modules: [
-    ],
-    services: [
-        "service-one"
-    ],
-    servicesWithLiveUpdate: [
-        "service-two"
-    ],
-    excludedServices: []
-};
-
 const MODULE_WITH_SERVICE_IN_DEV_MODE = {
     modules: [
         "module-five"
@@ -252,24 +240,6 @@ describe("Up command", () => {
                     serviceName: SERVICES_IN_DEV_MODE.servicesWithLiveUpdate[0]
                 }
             );
-        });
-
-    });
-
-    describe("services in live update are not enabled", () => {
-
-        beforeEach(() => {
-            jest.resetAllMocks();
-
-            setUpCommand(UNRELATED_SERVICE_IN_DEV_MODE);
-        });
-
-        it("should not run development mode", async () => {
-            await up.run();
-
-            expect(startDevelopmentModeMock).not.toHaveBeenCalled();
-
-            expect(dependencyCacheUpdateMock).not.toHaveBeenCalled();
         });
 
     });
