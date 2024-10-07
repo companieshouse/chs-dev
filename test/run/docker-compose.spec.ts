@@ -215,7 +215,6 @@ describe("DockerCompose", () => {
             const expectedSpawnOptions = {
                 logHandler: { handle: mockPatternMatchingHandle },
                 spawnOptions: {
-                    cwd: config.projectPath,
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
@@ -228,6 +227,8 @@ describe("DockerCompose", () => {
             expect(spawnMock).toHaveBeenCalledWith("docker",
                 [
                     "compose",
+                    "--project-directory",
+                    config.projectPath,
                     "down",
                     "--remove-orphans"
                 ], expectedSpawnOptions);
@@ -262,13 +263,13 @@ describe("DockerCompose", () => {
             const expectedSpawnOptions = {
                 logHandler: { handle: mockPatternMatchingHandle },
                 acceptableExitCodes: [0, 130],
-                spawnOptions: {
-                    cwd: "./"
-                }
+                spawnOptions: {}
             };
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
+                "--project-directory",
+                config.projectPath,
                 "down",
                 "--remove-orphans"
             ], expectedSpawnOptions);
@@ -294,7 +295,6 @@ describe("DockerCompose", () => {
             const expectedSpawnOptions = {
                 logHandler: { handle: mockPatternMatchingHandle },
                 spawnOptions: {
-                    cwd: config.projectPath,
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
@@ -307,6 +307,8 @@ describe("DockerCompose", () => {
             expect(spawnMock).toHaveBeenCalledWith("docker",
                 [
                     "compose",
+                    "--project-directory",
+                    config.projectPath,
                     "down",
                     "--remove-orphans",
                     "--volumes"
@@ -327,7 +329,6 @@ describe("DockerCompose", () => {
             const expectedSpawnOptions = {
                 logHandler: { handle: mockPatternMatchingHandle },
                 spawnOptions: {
-                    cwd: config.projectPath,
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
@@ -340,6 +341,8 @@ describe("DockerCompose", () => {
             expect(spawnMock).toHaveBeenCalledWith("docker",
                 [
                     "compose",
+                    "--project-directory",
+                    config.projectPath,
                     "down",
                     "--remove-orphans",
                     "--rmi",
@@ -366,7 +369,6 @@ describe("DockerCompose", () => {
             const expectedSpawnOptions = {
                 logHandler: { handle: mockPatternMatchingHandle },
                 spawnOptions: {
-                    cwd: config.projectPath,
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
@@ -378,6 +380,8 @@ describe("DockerCompose", () => {
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
+                "--project-directory",
+                config.projectPath,
                 "up",
                 "-d",
                 "--remove-orphans"
@@ -414,7 +418,6 @@ describe("DockerCompose", () => {
             const expectedSpawnOptions = {
                 logHandler: { handle: mockWatchLogHandle },
                 spawnOptions: {
-                    cwd: config.projectPath,
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
@@ -426,6 +429,8 @@ describe("DockerCompose", () => {
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
+                "--project-directory",
+                config.projectPath,
                 "watch"
             ], expectedSpawnOptions);
         });
@@ -459,7 +464,6 @@ describe("DockerCompose", () => {
             const expectedSpawnOptions = {
                 logHandler: { handle: mockLogEverythingLogHandle },
                 spawnOptions: {
-                    cwd: config.projectPath,
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
@@ -471,6 +475,8 @@ describe("DockerCompose", () => {
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
+                "--project-directory",
+                config.projectPath,
                 "logs"
             ], expectedSpawnOptions);
         });
@@ -488,7 +494,6 @@ describe("DockerCompose", () => {
             const expectedSpawnOptions = {
                 logHandler: { handle: mockLogEverythingLogHandle },
                 spawnOptions: {
-                    cwd: config.projectPath,
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
@@ -500,6 +505,8 @@ describe("DockerCompose", () => {
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
+                "--project-directory",
+                config.projectPath,
                 "logs",
                 "--",
                 "service-one",
@@ -524,6 +531,8 @@ describe("DockerCompose", () => {
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
+                "--project-directory",
+                config.projectPath,
                 "logs",
                 "--tail",
                 "10",
@@ -544,6 +553,8 @@ describe("DockerCompose", () => {
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
+                "--project-directory",
+                config.projectPath,
                 "logs",
                 "--follow",
                 "--",
