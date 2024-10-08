@@ -15,7 +15,7 @@ import { hookFilter } from "./hook-filter.js";
  */
 export const hook: Hook<"validate-project-state"> = (options) => {
 
-    if (!options.requiredFiles) {
+    if (!options.requiredFiles || typeof process.env.CHS_DEV_SKIP_PROJECT_STATE_VALIDATION !== "undefined") {
         return Promise.resolve();
     }
 
