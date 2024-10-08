@@ -562,4 +562,37 @@ describe("DockerCompose", () => {
             ], expect.anything());
         });
     });
+
+    describe("pull", () => {
+
+        let dockerCompose;
+        const mockStdout = jest.fn();
+
+        const mockSterr = jest.fn();
+        const mockOnce = jest.fn();
+
+        beforeEach(() => {
+            jest.resetAllMocks();
+            dockerCompose = new DockerCompose(config, logger);
+
+            spawnMock.mockResolvedValue(undefined as never);
+
+        });
+
+        it("pulls the service", async () => {
+            await dockerCompose.pull(
+                "my-awesome-service"
+            );
+
+            expect(spawnMock).toHaveBeenCalledWith(
+                "docker",
+                [
+                    "compose",
+                    "pull",
+                    "my-awesome-service"
+                ],
+                expect.anything()
+            );
+        });
+    });
 });

@@ -25,6 +25,26 @@ describe("validate-project-state", () => {
 
         // @ts-expect-error
         testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", dataDir: "./data" };
+
+        delete process.env.CHS_DEV_SKIP_PROJECT_STATE_VALIDATION;
+    });
+
+    it("does not do anything when CHS_DEV_SKIP_PROJECT_STATE_VALIDATION env var is set", async () => {
+        process.env.CHS_DEV_SKIP_PROJECT_STATE_VALIDATION = "TRUE";
+
+        const context = {
+            warn: jest.fn(),
+            error: jest.fn()
+        };
+
+        await hook.bind(context as unknown as Hook.Context)({
+            argv: [],
+            config: testConfig,
+            id: "status"
+        });
+
+        expect(existsSyncSpy).not.toHaveBeenCalled();
+        expect(context.error).not.toHaveBeenCalled();
     });
 
     it("checks resolves and does nothing if requiredFiles not supplied", async () => {

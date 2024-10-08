@@ -13,6 +13,10 @@ import Config from "../model/Config.js";
  */
 export const hook: Hook<"ensure-ecr-logged-in"> = async ({ config, context }) => {
 
+    if (typeof process.env.CHS_DEV_SKIP_ECR_LOGIN_CHECK !== "undefined") {
+        return;
+    }
+
     const projectConfig = loadConfig();
     const executionTime = Date.now();
 
