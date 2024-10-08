@@ -58,7 +58,9 @@ export default abstract class AbstractStateModificationCommand extends Command {
         }
 
         if (runHook) {
-            this.config.runHook("generate-runnable-docker-compose", {});
+            await this.config.runHook("generate-runnable-docker-compose", {});
+
+            await this.handlePostHookCall(argv as string[]);
         }
     }
 
@@ -68,6 +70,8 @@ export default abstract class AbstractStateModificationCommand extends Command {
     }> {
         return this.parse(AbstractStateModificationCommand);
     }
+
+    protected async handlePostHookCall (_: string[]): Promise<void> {}
 
     private get properStateModificationObjectType (): string {
         return `${this.stateModificationObjectType.substring(0, 1).toUpperCase()}${this.stateModificationObjectType.substring(1)}`;

@@ -11,6 +11,8 @@ import { Config as ChsDevConfig } from "../model/Config.js";
 import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 import { PermanentRepositories } from "../state/permanent-repositories.js";
 import { Inventory } from "../state/inventory.js";
+import { spawn } from "../helpers/spawn-promise.js";
+import LogEverythingLogHandler from "../run/logs/LogEverythingLogHandler.js";
 
 export default class Up extends Command {
 
@@ -42,7 +44,7 @@ export default class Up extends Command {
 
         this.stateManager = new StateManager(this.chsDevConfig.projectPath);
         this.dependencyCache = new DependencyCache(this.chsDevConfig.projectPath);
-        this.developmentMode = new DevelopmentMode(this.dockerCompose, this.chsDevConfig.projectPath);
+        this.developmentMode = new DevelopmentMode(this.dockerCompose);
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.permanentRepositories = new PermanentRepositories(this.chsDevConfig, this.inventory);

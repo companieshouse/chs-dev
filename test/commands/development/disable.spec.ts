@@ -1,32 +1,34 @@
 import { expect, jest } from "@jest/globals";
 import { modules, services } from "../../utils/data";
 import Disable from "../../../src/commands/development/disable";
+import { Inventory } from "../../../src/state/inventory";
+import { StateManager } from "../../../src/state/state-manager";
 import { Config } from "@oclif/core";
+import Module from "../../../src/model/Module";
+import { DockerCompose } from "../../../src/run/docker-compose";
 
 const excludeServiceFromLiveUpdateMock = jest.fn();
 let snapshot;
 
-jest.mock("../../../src/state/inventory", () => {
-    return {
-        Inventory: function () {
-            return {
-                services,
-                modules
-            };
-        }
-    };
-});
+const inventoryMock = {
+    services,
+    modules: modules as Module[]
+};
 
-jest.mock("../../../src/state/state-manager", () => {
-    return {
-        StateManager: function () {
-            return {
-                snapshot,
-                excludeServiceFromLiveUpdate: excludeServiceFromLiveUpdateMock
-            };
-        }
-    };
-});
+const stateManagerMock = {
+    snapshot,
+    excludeServiceFromLiveUpdate: excludeServiceFromLiveUpdateMock
+};
+
+const dockerComposeMock = {
+    pull: jest.fn()
+};
+
+jest.mock("../../../src/state/inventory");
+
+jest.mock("../../../src/state/state-manager");
+
+jest.mock("../../../src/run/docker-compose");
 
 describe("development disable", () => {
     const cwdSpy = jest.spyOn(process, "cwd");
@@ -40,6 +42,15 @@ describe("development disable", () => {
         jest.resetAllMocks();
 
         cwdSpy.mockReturnValue("./project");
+
+        // @ts-expect-error
+        Inventory.mockReturnValue(inventoryMock);
+
+        // @ts-expect-error
+        StateManager.mockReturnValue(stateManagerMock);
+
+        // @ts-expect-error
+        DockerCompose.mockReturnValue(dockerComposeMock);
 
         developmentDisable = new Disable(
             // @ts-expect-error
@@ -60,6 +71,9 @@ describe("development disable", () => {
                 command: "disable",
                 services: ""
             },
+            flags: {
+                noPull: false
+            },
             argv: []
         });
 
@@ -74,6 +88,9 @@ describe("development disable", () => {
         parseMock.mockResolvedValue({
             args: {
                 services: ""
+            },
+            flags: {
+                noPull: false
             },
             argv: [
                 "",
@@ -95,6 +112,9 @@ describe("development disable", () => {
                 command: "disable",
                 services: serviceName
             },
+            flags: {
+                noPull: false
+            },
             argv: [
                 serviceName
             ]
@@ -111,6 +131,9 @@ describe("development disable", () => {
             args: {
                 services: "service-two"
             },
+            flags: {
+                noPull: false
+            },
             argv: ["service-two"]
         });
 
@@ -122,5 +145,41 @@ describe("development disable", () => {
 
         expect(excludeServiceFromLiveUpdateMock).toHaveBeenCalledWith("service-two");
 
+    });
+
+    it("runs docker compose pull", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                services: "service-two"
+            },
+            flags: {
+                noPull: false
+            },
+            argv: ["service-two"]
+        });
+
+        await expect(developmentDisable.run()).resolves.toBeUndefined();
+
+        expect(dockerComposeMock.pull).toHaveBeenCalledWith(
+            "service-two"
+        );
+    });
+
+    it("does not run docker compose pull when noPull true", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                services: "service-two"
+            },
+            flags: {
+                noPull: true
+            },
+            argv: ["service-two"]
+        });
+
+        await expect(developmentDisable.run()).resolves.toBeUndefined();
+
+        expect(dockerComposeMock.pull).not.toHaveBeenCalled();
     });
 });

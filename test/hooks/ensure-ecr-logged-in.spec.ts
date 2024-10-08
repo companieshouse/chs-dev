@@ -4,25 +4,17 @@ import confirm from "@inquirer/confirm";
 import { hook } from "../../src/hooks/ensure-ecr-logged-in";
 import { join } from "path";
 import { error } from "console";
+import { DockerEcrLogin } from "../../src/run/docker-ecr-login";
+import configLoaderMock from "../../src/helpers/config-loader";
 
 const attemptLoginToDockerEcrMock = jest.fn();
-const configLoaderMock = jest.fn();
+const dockerEcrLoginMock = {
+    attemptLoginToDockerEcr: attemptLoginToDockerEcrMock
+};
 
-jest.mock("../../src/run/docker-ecr-login", () => {
-    return {
-        DockerEcrLogin: function () {
-            return {
-                attemptLoginToDockerEcr: attemptLoginToDockerEcrMock
-            };
-        }
-    };
-});
+jest.mock("../../src/run/docker-ecr-login");
 
-jest.mock("../../src/helpers/config-loader", () => {
-    return () => {
-        return configLoaderMock();
-    };
-});
+jest.mock("../../src/helpers/config-loader");
 
 jest.mock("@inquirer/confirm");
 
@@ -68,6 +60,20 @@ describe("prerun hook", () => {
         Date.now = () => Date.parse(testTimeIsoUtc);
 
         delete process.env.CHS_DEV_FORCE_ECR_CHECK;
+        delete process.env.CHS_DEV_SKIP_ECR_LOGIN_CHECK;
+
+        // @ts-expect-error
+        DockerEcrLogin.mockReturnValue(dockerEcrLoginMock);
+    });
+
+    it("does not run check when CHS_DEV_SKIP_ECR_LOGIN_CHECK is set", async () => {
+        process.env.CHS_DEV_SKIP_ECR_LOGIN_CHECK = "FORCE";
+
+        // @ts-expect-error
+        await hook({ config: testConfig, context: testContext });
+
+        expect(attemptLoginToDockerEcrMock).not.toHaveBeenCalled();
+        expect(writeFileSyncSpy).not.toHaveBeenCalled();
     });
 
     it("always run check when CHS_DEV_FORCE_ECR_CHECK is set", async () => {
@@ -82,6 +88,7 @@ describe("prerun hook", () => {
             Buffer.from(testTimeMinusHours(7), "utf8")
         );
 
+        // @ts-expect-error
         configLoaderMock.mockReturnValue(
             environmentConfigWithAuthedRepositories
         );
@@ -96,11 +103,16 @@ describe("prerun hook", () => {
         beforeEach(() => {
             jest.resetAllMocks();
 
+            // @ts-expect-error
             configLoaderMock.mockReturnValue(
                 environmentConfigWithAuthedRepositories
             );
 
             existsSyncSpy.mockReturnValue(false);
+            delete process.env.CHS_DEV_SKIP_ECR_LOGIN_CHECK;
+
+            // @ts-expect-error
+            DockerEcrLogin.mockReturnValue(dockerEcrLoginMock);
 
         });
 
@@ -230,11 +242,16 @@ describe("prerun hook", () => {
         beforeEach(() => {
             jest.resetAllMocks();
 
+            // @ts-expect-error
             configLoaderMock.mockReturnValue(
                 environmentConfigWithAuthedRepositories
             );
 
             existsSyncSpy.mockReturnValue(true);
+            delete process.env.CHS_DEV_SKIP_ECR_LOGIN_CHECK;
+
+            // @ts-expect-error
+            DockerEcrLogin.mockReturnValue(dockerEcrLoginMock);
 
         });
 
