@@ -139,11 +139,9 @@ export class DockerCompose {
         // Spawn docker compose process
         const dockerComposeEnv = this.config.env;
         const spawnOptions: {
-            cwd: string,
             signal?: AbortSignal,
             env?: Record<string, string>
         } = {
-            cwd: this.config.projectPath,
             signal
         };
 
@@ -160,6 +158,8 @@ export class DockerCompose {
                 "docker",
                 [
                     "compose",
+                    "--project-directory",
+                    this.config.projectPath,
                     ...composeArgs
                 ],
                 {
