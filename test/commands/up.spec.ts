@@ -3,9 +3,14 @@ import Up from "../../src/commands/up";
 import { Config } from "@oclif/core";
 import { State } from "../../src/model/State";
 import { services, modules } from "../utils/data";
+import { StateManager } from "../../src/state/state-manager";
+import { Inventory } from "../../src/state/inventory";
+import { DependencyCache } from "../../src/run/dependency-cache";
+import { DockerCompose } from "../../src/run/docker-compose";
+import { DevelopmentMode } from "../../src/run/development-mode";
+import { ComposeLogViewer } from "../../src/run/compose-log-viewer";
+import { PermanentRepositories } from "../../src/state/permanent-repositories";
 
-const startDevelopmentModeMock = jest.fn();
-const dockerComposeUpMock = jest.fn();
 const dependencyCacheUpdateMock = jest.fn();
 const composeLogViewerViewMock = jest.fn();
 const permanentRepositoriesEnsureAllExistAndAreUpToDateMock = jest.fn();
@@ -55,73 +60,27 @@ const MODULE_WITH_SERVICE_IN_DEV_MODE = {
     excludedServices: []
 };
 
-const stateManagerMock = jest.fn();
+const dockerComposeMock = {
+    up: jest.fn()
+};
 
-jest.mock("../../src/state/state-manager", () => {
-    return {
-        StateManager: function () {
-            return stateManagerMock();
-        }
-    };
-});
+const developmentModeMock = {
+    start: jest.fn()
+};
 
-jest.mock("../../src/state/inventory", () => {
-    return {
-        Inventory: function () {
-            return { services, modules };
-        }
-    };
-});
+jest.mock("../../src/state/state-manager");
 
-jest.mock("../../src/run/dependency-cache", () => {
-    return {
-        DependencyCache: function () {
-            return {
-                update: dependencyCacheUpdateMock
-            };
-        }
-    };
-});
+jest.mock("../../src/state/inventory");
 
-jest.mock("../../src/run/docker-compose", () => {
-    return {
-        DockerCompose: function () {
-            return {
-                up: dockerComposeUpMock
-            };
-        }
-    };
-});
+jest.mock("../../src/run/dependency-cache");
 
-jest.mock("../../src/run/development-mode", () => {
-    return {
-        DevelopmentMode: function () {
-            return {
-                start: startDevelopmentModeMock
-            };
-        }
-    };
-});
+jest.mock("../../src/run/docker-compose");
 
-jest.mock("../../src/run/compose-log-viewer", () => {
-    return {
-        ComposeLogViewer: function () {
-            return {
-                view: composeLogViewerViewMock
-            };
-        }
-    };
-});
+jest.mock("../../src/run/development-mode");
 
-jest.mock("../../src/state/permanent-repositories", () => {
-    return {
-        PermanentRepositories: function () {
-            return {
-                ensureAllExistAndAreUpToDate: permanentRepositoriesEnsureAllExistAndAreUpToDateMock
-            };
-        }
-    };
-});
+jest.mock("../../src/run/compose-log-viewer");
+
+jest.mock("../../src/state/permanent-repositories");
 
 describe("Up command", () => {
     let up: Up;
@@ -138,7 +97,32 @@ describe("Up command", () => {
         // @ts-expect-error
         testConfig = { root: "./", configDir: "./config", cacheDir: "./cache", runHook: runHookMock };
 
-        stateManagerMock.mockReturnValue({ snapshot });
+        //  @ts-expect-error
+        Inventory.mockReturnValue({ services, modules });
+
+        // @ts-expect-error
+        StateManager.mockReturnValue({ snapshot });
+
+        // @ts-expect-error
+        DependencyCache.mockReturnValue({
+            update: dependencyCacheUpdateMock
+        });
+
+        // @ts-expect-error
+        DockerCompose.mockReturnValue(dockerComposeMock);
+
+        // @ts-expect-error
+        DevelopmentMode.mockReturnValue(developmentModeMock);
+
+        // @ts-expect-error
+        ComposeLogViewer.mockReturnValue({
+            view: composeLogViewerViewMock
+        });
+
+        // @ts-expect-error
+        PermanentRepositories.mockReturnValue({
+            ensureAllExistAndAreUpToDate: permanentRepositoriesEnsureAllExistAndAreUpToDateMock
+        });
 
         up = new Up([], testConfig);
     };
@@ -174,13 +158,13 @@ describe("Up command", () => {
     it("should call up", async () => {
         await up.run();
 
-        expect(dockerComposeUpMock).toHaveBeenCalledTimes(1);
+        expect(dockerComposeMock.up).toHaveBeenCalledTimes(1);
     });
 
     it("should not call developmentMode start when no services in dev", async () => {
         await up.run();
 
-        expect(startDevelopmentModeMock).not.toHaveBeenCalled();
+        expect(developmentModeMock.start).not.toHaveBeenCalled();
     });
 
     it("should not update dependency cache when no services in dev mode", async () => {
@@ -190,7 +174,7 @@ describe("Up command", () => {
     });
 
     it("should display a couple of lines of output if it fails", async () => {
-        dockerComposeUpMock.mockRejectedValue(new Error("error") as never);
+        dockerComposeMock.up.mockRejectedValue(new Error("error") as never);
 
         await expect(up.run()).rejects.toEqual(expect.any(Error));
 
@@ -210,7 +194,7 @@ describe("Up command", () => {
         it("should call up", async () => {
             await up.run();
 
-            expect(dockerComposeUpMock).toHaveBeenCalledTimes(1);
+            expect(dockerComposeMock.up).toHaveBeenCalledTimes(1);
         });
 
         it("should handle service being in module", async () => {
@@ -218,13 +202,13 @@ describe("Up command", () => {
 
             await up.run();
 
-            expect(startDevelopmentModeMock).toHaveBeenCalledTimes(1);
+            expect(developmentModeMock.start).toHaveBeenCalledTimes(1);
         });
 
         it("should call developmentMode start", async () => {
             await up.run();
 
-            expect(startDevelopmentModeMock).toHaveBeenCalled();
+            expect(developmentModeMock.start).toHaveBeenCalled();
         });
 
         it("should update dependency cache", async () => {
@@ -234,7 +218,7 @@ describe("Up command", () => {
         });
 
         it("should display a couple of lines of output if it fails", async () => {
-            startDevelopmentModeMock.mockRejectedValue(new Error("error") as never);
+            dockerComposeMock.up.mockRejectedValue(new Error("error") as never);
 
             await expect(up.run()).rejects.toEqual(expect.any(Error));
 
@@ -267,7 +251,7 @@ describe("Up command", () => {
         it("should not run development mode", async () => {
             await up.run();
 
-            expect(startDevelopmentModeMock).not.toHaveBeenCalled();
+            expect(developmentModeMock.start).not.toHaveBeenCalled();
 
             expect(dependencyCacheUpdateMock).not.toHaveBeenCalled();
         });
@@ -285,7 +269,7 @@ describe("Up command", () => {
 
         await expect(up.run()).rejects.toEqual(expect.anything());
 
-        expect(dockerComposeUpMock).not.toHaveBeenCalled();
+        expect(dockerComposeMock.up).not.toHaveBeenCalled();
     });
 
     it("should not run generate-development-docker-compose hook", async () => {
