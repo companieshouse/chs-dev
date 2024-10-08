@@ -588,6 +588,8 @@ describe("DockerCompose", () => {
                 "docker",
                 [
                     "compose",
+                    "--project-directory",
+                    "./",
                     "pull",
                     "my-awesome-service"
                 ],
