@@ -232,10 +232,13 @@ Removes a service from development mode
 
 ```
 USAGE
-  $ chs-dev development disable SERVICES...
+  $ chs-dev development disable SERVICES... [-P]
 
 ARGUMENTS
   SERVICES...  names of services to be removed to development mode
+
+FLAGS
+  -P, --noPull  Does not perform a docker compose pull to reset the service to what is stored in ECR
 
 DESCRIPTION
   Removes a service from development mode
