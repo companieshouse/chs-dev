@@ -9,6 +9,9 @@ import ExclusionsAdd from "./exclusions/add.js";
 import ExclusionsRemove from "./exclusions/remove.js";
 import DevelopmentServices from "./development/services.js";
 import DevelopmentEnable from "./development/enable.js";
+import InformationTree from "./information/generateServiceDependencyTrees.js";
+import InformationDiagram from "./information/generateServiceDependencyDiagrams.js";
+import InformationSystemDiagram from "./information/generateSystemDependencyDiagram.js";
 import DevelopmentDisable from "./development/disable.js";
 import ServicesAvailable from "./services/available.js";
 import ServiceEnable from "./services/enable.js";
@@ -26,7 +29,6 @@ export const commands = {
     up: Up,
     sync: Sync,
     logs: Logs,
-    "compose-logs": ComposeLogs,
     "exclusions:list": ExclusionsList,
     "exclusions:add": ExclusionsAdd,
     "exclusions:remove": ExclusionsRemove,
@@ -36,6 +38,9 @@ export const commands = {
     "services:available": ServicesAvailable,
     "services:enable": ServiceEnable,
     "services:disable": ServiceDisable,
+    "information:tree": InformationTree,
+    "information:diagram": InformationDiagram,
+    "information:system": InformationSystemDiagram,
     "modules:available": ModulesAvailable,
     "modules:enable": ModulesEnable,
     "modules:disable": ModulesDisable,

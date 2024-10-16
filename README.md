@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.3.0 darwin-arm64 node-v20.12.2
+chs-dev/1.3.0 darwin-arm64 node-v22.6.0
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -183,6 +183,9 @@ USAGE
 * [`chs-dev exclusions remove SERVICE`](#chs-dev-exclusions-remove-service)
 * [`chs-dev help [COMMAND]`](#chs-dev-help-command)
 * [`chs-dev include SERVICE`](#chs-dev-include-service)
+* [`chs-dev information diagram SERVICES`](#chs-dev-information-diagram-services)
+* [`chs-dev information system`](#chs-dev-information-system)
+* [`chs-dev information tree SERVICES`](#chs-dev-information-tree-services)
 * [`chs-dev logs [SERVICENAME]`](#chs-dev-logs-servicename)
 * [`chs-dev modules available`](#chs-dev-modules-available)
 * [`chs-dev modules disable MODULES`](#chs-dev-modules-disable-modules)
@@ -407,6 +410,48 @@ DESCRIPTION
 
 ALIASES
   $ chs-dev include
+```
+
+## `chs-dev information diagram SERVICES`
+
+Generates a dependency Diagram for the specified service(s)
+
+```
+USAGE
+  $ chs-dev information diagram SERVICES...
+
+ARGUMENTS
+  SERVICES...  names of services to be graphed
+
+DESCRIPTION
+  Generates a dependency Diagram for the specified service(s)
+```
+
+## `chs-dev information system`
+
+Generates a System dependency Diagram
+
+```
+USAGE
+  $ chs-dev information system
+
+DESCRIPTION
+  Generates a System dependency Diagram
+```
+
+## `chs-dev information tree SERVICES`
+
+Generates a dependency tree for the specified service(s)
+
+```
+USAGE
+  $ chs-dev information tree SERVICES...
+
+ARGUMENTS
+  SERVICES...  names of services to be graphed
+
+DESCRIPTION
+  Generates a dependency tree for the specified service(s)
 ```
 
 ## `chs-dev logs [SERVICENAME]`
