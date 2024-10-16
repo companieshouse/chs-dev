@@ -42,6 +42,7 @@ const metadataLabelMapping = {
     buildOutputDir: "chs.local.builder.outputDir",
     secretsRequired: "chs.local.builder.requiresSecrets",
     repositoryRequired: "chs.local.repositoryRequired",
+    builderUseServiceDockerFile: "chs.local.builder.useServiceDockerfile",
     deprecated: "chs.deprecated"
 };
 
