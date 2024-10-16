@@ -1,5 +1,3 @@
-import { existsSync, unlinkSync, writeFileSync } from "fs";
-import { join } from "path";
 import { ux } from "@oclif/core";
 
 import { DockerCompose } from "./docker-compose.js";
@@ -8,19 +6,10 @@ type Prompter = (prompt: string) => Promise<boolean>
 
 export class DevelopmentMode {
 
-    private readonly lockFile: string;
-
-    constructor (private readonly dockerCompose: DockerCompose, private readonly path: string) {
-        this.lockFile = join(this.path, "local/.watch");
-    }
+    // eslint-disable-next-line no-useless-constructor
+    constructor (private readonly dockerCompose: DockerCompose) {}
 
     async start (prompter?: Prompter): Promise<void> {
-        if (this.lockExists()) {
-            throw new Error("ERROR! There are services running in development mode. Stop other development mode processes and try again.");
-        }
-
-        this.acquireLock();
-
         const controller = new AbortController();
         const { signal } = controller;
 
@@ -32,16 +21,11 @@ export class DevelopmentMode {
                     .catch(reject);
             });
 
-            return this.dockerCompose.watch(signal).catch((err) => {
-                this.releaseLock();
-                reject(err);
-            });
+            return this.dockerCompose.watch(signal).catch(reject);
         });
     }
 
     protected sigintHandler (controller: AbortController, prompter?: Prompter): Promise<void> {
-        this.releaseLock();
-
         ux.action.stop();
 
         const stopEnvironment = prompter
@@ -59,20 +43,5 @@ export class DevelopmentMode {
             }
         })
             .then(() => controller.abort());
-    }
-
-    private acquireLock () {
-        writeFileSync(
-            this.lockFile,
-            new Date().toISOString()
-        );
-    }
-
-    private lockExists (): boolean {
-        return existsSync(this.lockFile);
-    }
-
-    private releaseLock () {
-        unlinkSync(this.lockFile);
     }
 }

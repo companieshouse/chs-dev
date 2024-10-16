@@ -2,9 +2,9 @@ import { existsSync, readFileSync } from "fs";
 import { basename, join } from "path";
 import yaml from "yaml";
 import Config from "../model/Config.js";
+import Constants from "../model/Constants.js";
 
 const fileVarRegExp = /^file:\/\/(.+)$/;
-const DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD = 8;
 
 /**
  * Loads the configuration from the project root. When project does not contain
@@ -19,8 +19,7 @@ export const load: () => Config = () => {
 
     if (!existsSync(confFile)) {
         config = {
-            env: {},
-            authenticatedRepositories: []
+            env: {}
         };
 
     } else {
@@ -30,16 +29,15 @@ export const load: () => Config = () => {
 
         config = {
             env: parseEnv(projectConfiguration.env) || {},
-            authenticatedRepositories: projectConfiguration.authed_repositories || [],
             performEcrLoginHoursThreshold: projectConfiguration.authed_repositories && projectConfiguration.ecr_login_threshold_hours ? projectConfiguration.ecr_login_threshold_hours : undefined,
             versionSpecification: projectConfiguration.version
         };
     }
 
-    if (config.authenticatedRepositories && config.authenticatedRepositories.length > 0 && !config.performEcrLoginHoursThreshold) {
+    if (!config.performEcrLoginHoursThreshold) {
         config = {
             ...config,
-            performEcrLoginHoursThreshold: DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD
+            performEcrLoginHoursThreshold: Constants.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD
         };
     }
 

@@ -31,7 +31,6 @@ describe("ComposeLogViewer", () => {
         composeLogViewer = new ComposeLogViewer({
             env: {},
             projectPath: ".",
-            authenticatedRepositories: [],
             projectName: "docker-chs"
         }, loggerMock);
 

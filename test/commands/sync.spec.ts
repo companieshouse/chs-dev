@@ -11,7 +11,6 @@ const chsDevConfig: ChsDevConfig = {
     projectPath: "./docker-chs",
     projectName: "docker-chs",
     env: {},
-    authenticatedRepositories: [],
     versionSpecification: "<=0.1.16"
 };
 

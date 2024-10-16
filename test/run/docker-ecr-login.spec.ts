@@ -3,7 +3,7 @@ import fs from "fs";
 import { join } from "path";
 import LogEverythingLogHandler from "../../src/run/logs/LogEverythingLogHandler";
 
-describe("DockerLogin", () => {
+describe("DockerEcrLogin", () => {
 
     let DockerEcrLogin;
     let dockerLogin;
@@ -15,12 +15,6 @@ describe("DockerLogin", () => {
             spawn: spawnMock
         };
     });
-
-    const authenticatedRepositories = [
-        "123456789.dkr.ecr.eu-west-1.amazonaws.com",
-        "123456789.dkr.ecr.eu-west-2.amazonaws.com",
-        "223456789.dkr.ecr.eu-west-2.amazonaws.com"
-    ];
 
     const chsDevInstallDir = "/users/user/.chs-dev";
 
@@ -38,11 +32,7 @@ describe("DockerLogin", () => {
         beforeEach(() => {
             jest.resetAllMocks();
 
-            dockerLogin = new DockerEcrLogin(chsDevInstallDir, {
-                env: {},
-                projectPath: ".",
-                authenticatedRepositories
-            }, loggerMock);
+            dockerLogin = new DockerEcrLogin(chsDevInstallDir, loggerMock);
 
         });
 
@@ -77,10 +67,7 @@ describe("DockerLogin", () => {
 
             expect(spawnMock).toHaveBeenCalledWith(
                 join(chsDevInstallDir, "bin/docker_login.sh"),
-                [
-                    "--",
-                    ...authenticatedRepositories
-                ], {
+                [], {
                     logHandler: expect.any(LogEverythingLogHandler),
                     spawnOptions: {
                         shell: "/bin/bash"

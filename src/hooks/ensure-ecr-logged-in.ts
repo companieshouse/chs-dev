@@ -13,24 +13,26 @@ import Config from "../model/Config.js";
  */
 export const hook: Hook<"ensure-ecr-logged-in"> = async ({ config, context }) => {
 
+    if (typeof process.env.CHS_DEV_SKIP_ECR_LOGIN_CHECK !== "undefined") {
+        return;
+    }
+
     const projectConfig = loadConfig();
     const executionTime = Date.now();
 
-    if (projectConfig.authenticatedRepositories.length > 0) {
-        const lastRunTimeFile = join(config.dataDir, `${projectConfig.projectName}.prerun.last_run_time`);
+    const lastRunTimeFile = join(config.dataDir, `${projectConfig.projectName}.prerun.last_run_time`);
 
-        const lastRuntimeExists = existsSync(lastRunTimeFile);
+    const lastRuntimeExists = existsSync(lastRunTimeFile);
 
-        const runCheck = "CHS_DEV_FORCE_ECR_CHECK" in process.env || !(lastRuntimeExists && timeWithinThreshold(
-            lastRunTimeFile,
-            executionTime,
+    const runCheck = "CHS_DEV_FORCE_ECR_CHECK" in process.env || !(lastRuntimeExists && timeWithinThreshold(
+        lastRunTimeFile,
+        executionTime,
             projectConfig.performEcrLoginHoursThreshold as number,
             ThresholdUnit.HOURS
-        ));
+    ));
 
-        if (runCheck) {
-            await attemptEcrLogin(config, projectConfig, context, lastRunTimeFile, executionTime);
-        }
+    if (runCheck) {
+        await attemptEcrLogin(config, projectConfig, context, lastRunTimeFile, executionTime);
     }
 };
 
@@ -46,7 +48,7 @@ const attemptEcrLogin = async (
 
     if (runLogin) {
         const dockerEcrLogin = new DockerEcrLogin(
-            config.root, projectConfig, {
+            config.root, {
                 log: console.log
             }
         );

@@ -4,10 +4,12 @@ import { getLatestReleaseVersion as getLatestReleaseVersionMock } from "../../sr
 import { isOnVpn as isOnVpnMock } from "../../src/helpers/vpn-check";
 import configLoaderMock from "../../src/helpers/config-loader";
 import { hookFilter as hookFilterMock } from "../../src/hooks/hook-filter";
+import { spawn as spawnMock } from "../../src/helpers/spawn-promise";
 
 jest.mock("../../src/helpers/latest-release");
 jest.mock("../../src/helpers/config-loader");
 jest.mock("../../src/helpers/vpn-check");
+jest.mock("../../src/helpers/spawn-promise");
 jest.mock("../../src/hooks/hook-filter");
 
 const versionCheckRunMock = jest.fn();
@@ -55,6 +57,8 @@ describe("init hook", () => {
         });
         // @ts-expect-error
         hookFilterMock.mockReturnValue(true);
+        // @ts-expect-error
+        spawnMock.mockRejectedValue(1);
     });
 
     it("does nothing when hookFilter returns false", async () => {
@@ -76,6 +80,73 @@ describe("init hook", () => {
         expect(getLatestReleaseVersionMock).not.toHaveBeenCalled();
         expect(isOnVpnMock).not.toHaveBeenCalled();
     });
+
+    for (const commandId of ["up", "down"]) {
+        it("checks for other processes when running " + commandId, async () => {
+            const context: unknown = {
+                warn: jest.fn(),
+                error: jest.fn()
+            };
+
+            await initHook.bind(context as Hook.Context)({
+                config: testConfig,
+                id: commandId,
+                argv: [],
+                context: context as unknown as Hook.Context
+            });
+
+            expect(spawnMock).toHaveBeenCalledWith(
+                "pgrep",
+                [
+                    "-fq",
+                    "docker compose .*(watch|up|down)"
+                ],
+                {
+                    logHandler: expect.anything()
+                }
+            );
+        });
+
+        it("errors when there are other processes when running " + commandId, async () => {
+            const context: unknown = {
+                warn: jest.fn(),
+                error: jest.fn()
+            };
+
+            // @ts-expect-error
+            spawnMock.mockResolvedValue();
+
+            await initHook.bind(context as Hook.Context)({
+                config: testConfig,
+                id: commandId,
+                argv: [],
+                context: context as unknown as Hook.Context
+            });
+
+            // @ts-expect-error
+            expect(context.error).toHaveBeenCalledWith(
+                "There are other chs-dev processes running. Wait for them to complete or stop them before retrying"
+            );
+        });
+    }
+
+    for (const commandId of ["reload", "status", "development:enable", "development:disable", "services:enable", "services:disable"]) {
+        it("does not check for other processes running when running command: " + commandId, async () => {
+            const context: unknown = {
+                warn: jest.fn(),
+                error: jest.fn()
+            };
+
+            await initHook.bind(context as Hook.Context)({
+                config: testConfig,
+                id: commandId,
+                argv: [],
+                context: context as unknown as Hook.Context
+            });
+
+            expect(spawnMock).not.toHaveBeenCalled();
+        });
+    }
 
     it("runs version check", async () => {
         const context: unknown = {

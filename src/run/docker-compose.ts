@@ -8,6 +8,7 @@ import Config from "../model/Config.js";
 import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
 import { spawn } from "../helpers/spawn-promise.js";
 import { runStatusColouriser, stopStatusColouriser } from "../helpers/colouriser.js";
+import LogNothingLogHandler from "./logs/LogNothingLogHandler.js";
 
 interface Logger {
     log: (msg: string) => void;
@@ -43,8 +44,15 @@ export class DockerCompose {
 
         const date = new Date(Date.now());
 
-        this.logFile = join(logsDir,
-            `compose.out.${date.getFullYear()}-${date.getMonth()}-${date.getDay()}.txt`);
+        const dateLabel = date.toLocaleDateString(
+            "en-CA", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit"
+            }
+        );
+
+        this.logFile = join(logsDir, `compose.out.${dateLabel}.txt`);
     }
 
     down (options?: {
@@ -108,6 +116,17 @@ export class DockerCompose {
             ...(serviceNames && serviceNames.length > 0 ? ["--", ...serviceNames] : [])
         ], new LogEverythingLogHandler(this.logger),
         signal);
+    }
+
+    pull (serviceName: string, abortSignal?: AbortSignal): Promise<void> {
+        return this.runDockerCompose(
+            [
+                "pull",
+                serviceName
+            ],
+            new LogNothingLogHandler(this.logFile, this.logger),
+            abortSignal
+        );
     }
 
     private createStatusMatchLogHandler (pattern: RegExp, colouriser?: (status: string) => string) {

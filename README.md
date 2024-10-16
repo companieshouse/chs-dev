@@ -232,10 +232,13 @@ Removes a service from development mode
 
 ```
 USAGE
-  $ chs-dev development disable SERVICES...
+  $ chs-dev development disable SERVICES... [-P]
 
 ARGUMENTS
   SERVICES...  names of services to be removed to development mode
+
+FLAGS
+  -P, --noPull  Does not perform a docker compose pull to reset the service to what is stored in ECR
 
 DESCRIPTION
   Removes a service from development mode
@@ -650,6 +653,9 @@ within the current working directory.
   with GitHub's API.
 * `CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING` - when set does not show any
   warnings relating to version not being suitable for project.
+* `CHS_DEV_SKIP_PROJECT_STATE_VALIDATION` - when set will not check that the
+  project is valid before running any commands
+* `CHS_DEV_SKIP_ECR_LOGIN_CHECK` - when set will not attempt to login to ECR
 
 ### Service configuration
 
@@ -685,6 +691,10 @@ are referenced by chs-dev for the given purposes:
   standard output directory of `dist`.
 * `chs.local.builder.requiresSecrets` - when set to `true` will apply all the
   secrets defined in the docker compose spec to the builder service
+* `chs.local.builder.useServiceDockerfile` - when set to `true` will us the
+  Dockerfile for the service rather than the one provided by the builder. The
+  equivalent of merging repository builder with one of the builders within the
+  repository.
 * `chs.local.entrypoint` - specifies the entrypoint script for a given service
   typically for a node application which does not have a
   `ecs-image-buid/docker_start.sh` file

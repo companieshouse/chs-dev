@@ -24,7 +24,6 @@ describe("DockerCompose", () => {
             ANOTHER_VALUE: "another-value"
         },
         projectPath: "./",
-        authenticatedRepositories: [],
         projectName: "project"
     };
 
@@ -67,7 +66,8 @@ describe("DockerCompose", () => {
     let tmpDir: string;
     let DockerCompose: new (arg0: Config, arg1: { log: (msg: string) => void; }) => any;
 
-    const testDateTime = new Date(2024, 1, 1, 0, 0, 0);
+    // 2024-02-14T00:00:00.000Z
+    const testDateTime = new Date(2024, 1, 14, 0, 0, 0);
 
     beforeAll(async () => {
 
@@ -122,7 +122,7 @@ describe("DockerCompose", () => {
 
             const dockerCompose = new DockerCompose(config, logger);
 
-            expect(dockerCompose.logFile).toBe("local/.logs/compose.out.2024-1-4.txt");
+            expect(dockerCompose.logFile).toBe("local/.logs/compose.out.2024-02-14.txt");
         });
     });
 
@@ -252,8 +252,7 @@ describe("DockerCompose", () => {
             const configMinusEnv = {
                 projectPath: "./",
                 projectName: "project",
-                env: {},
-                authenticatedRepositories: []
+                env: {}
             };
 
             const dockerComposeMinusEnv = new DockerCompose(configMinusEnv, logger);
@@ -550,6 +549,39 @@ describe("DockerCompose", () => {
                 "--",
                 "service-one"
             ], expect.anything());
+        });
+    });
+
+    describe("pull", () => {
+
+        let dockerCompose;
+        const mockStdout = jest.fn();
+
+        const mockSterr = jest.fn();
+        const mockOnce = jest.fn();
+
+        beforeEach(() => {
+            jest.resetAllMocks();
+            dockerCompose = new DockerCompose(config, logger);
+
+            spawnMock.mockResolvedValue(undefined as never);
+
+        });
+
+        it("pulls the service", async () => {
+            await dockerCompose.pull(
+                "my-awesome-service"
+            );
+
+            expect(spawnMock).toHaveBeenCalledWith(
+                "docker",
+                [
+                    "compose",
+                    "pull",
+                    "my-awesome-service"
+                ],
+                expect.anything()
+            );
         });
     });
 });

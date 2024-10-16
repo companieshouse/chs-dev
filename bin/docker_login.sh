@@ -9,7 +9,8 @@ shell_files=(
   "${HOME}"/.companies_house_config/easy_aws_docker_login.sh
 )
 
-ecr_repo_pattern="([[:digit:]]+)\.dkr\.ecr\.([^.]+)\.amazonaws.com"
+dev_group_name=dev
+l_docker_script="${HOME}"/.ch_dev/bin/l_docker
 
 # Source all the user's shell files
 for shell_file in "${shell_files[@]}"; do
@@ -19,107 +20,72 @@ for shell_file in "${shell_files[@]}"; do
   fi
 done
 
-command -v l_aws >/dev/null 2>&1 || function l_aws() {
-  while getopts 'p:' opt; do
-    case "${opt}" in
-    p) profile="${OPTARG}" ;;
-    *) printf -- 'Unknown arg\n' >&2 ;;
-    esac
-  done
+function reinstall_l_aws() {
+  local dev_env_setup_dir="$1"
 
-  : "${profile:?profile required}"
+  "${dev_env_setup_dir}"/scripts/aws/setup_aws_sso_login_util --install --auto
 
-  aws sso login --profile "${profile}"
+  return $?
 }
 
-repository_urls=("$@")
+function install_l_docker() {
+  printf -- 'Does not look like the required utility: l_docker is installed on your local machine.\n'
+  printf -- 'Do you want to install it? \n'
+  printf -- '-- Answer y/n\n'
 
-# Create companies house config directory should it not exist
-companies_house_configuration_directory="${HOME}"/.chs-dev/var
+  local dev_env_setup_dir
+  dev_env_setup_dir="$(mktemp -d)"
 
-if [[ ! -d "${companies_house_configuration_directory}" ]]; then
-  mkdir -p "${companies_house_configuration_directory}"
-fi
+  trap 'rm -rf "${dev_env_setup_dir}"' RETURN
 
-profile_mapping_file="${companies_house_configuration_directory}"/aws_account_profile_mapping
+  read -n 1 -r install_y_n
+  printf -- '\n'
 
-aws_profiles="$(aws configure list-profiles --output text)"
+  case "${install_y_n}" in
+  y | Y)
+    if git clone -- git@github.com:companieshouse/dev-env-setup "${dev_env_setup_dir}"; then
 
-if [[ -f "${profile_mapping_file}" ]]; then
-  # Load profiles and check that each has an entry in the profile mapping
-  # if not trigger the recreation of the profile mapping file
+      if "${dev_env_setup_dir}"/scripts/aws/setup_aws_profiles --install; then
 
-  if ! xargs -I % grep -q % "${profile_mapping_file}" <<<"${aws_profiles}"; then
-    printf -- 'Profile mapping missing profiles, will recreate...\n'
-    recreate_profile_mapping=true
-  fi
-fi
+        # If the user has l_aws installed chances are they will have a former version of l_docker
+        # which needs to be removed since it is not compatible with this script
+        if command -v l_aws >/dev/null 2>&1; then
 
-if [[ ! -f "${profile_mapping_file}" || -n "${recreate_profile_mapping}" ]]; then
-  # Remove the old mapping file
-  [[ -f "${profile_mapping_file}" ]] && rm "${profile_mapping_file}"
+          if ! reinstall_l_aws "${dev_env_setup_dir}"; then
 
-  # Iteratively process profile retrieving its account details and output to
-  # mapping  file
-  while read -r profile; do
-    sso_account_id="$(aws configure get sso_account_id --profile "${profile}")"
-
-    # Handle SSO profiles and login if necessary
-    if [[ -n "${sso_account_id}" ]]; then
-      while : ""; do
-        account_id="$(aws sts get-caller-identity --query Account --output text --profile "${profile}" --no-verify-ssl)"
-
-        if [[ -n "${account_id}" ]]; then
-          region="$(aws configure get region --profile "${profile}")"
-          printf -- '%s %s %s\n' "${account_id}" "${region}" "${profile}" >>"${profile_mapping_file}"
-          break
-        else
-          l_aws -p "${profile}"
+            printf -- 'Encountered an error reinstalling the updated l_aws command therefore could not remove former l_docker command. You may have to do this separately\n' >&2
+            return 1
+          fi
         fi
-      done
+
+      else
+        printf -- 'There was an error installing l_docker and aws profiles - try manually running this before trying again\n' >&2
+        return 1
+      fi
     else
-      # otherwise assume the user has configured AWS access for profile with access keys
-      account_id="$(aws sts get-caller-identity --query Account --output text --profile "${profile}" --no-verify-ssl)"
-
-      if [[ -n "${account_id}" ]]; then
-        region="$(aws configure get region --profile "${profile}")"
-        printf -- '%s %s %s\n' "${account_id}" "${region}" "${profile}" >>"${profile_mapping_file}"
-      else
-        printf -- 'Cannot determine account id for profile %s are the keys correct?\n' "${profile}" >&2
-      fi
-
+      # shellcheck disable=SC2016
+      printf -- 'Could not clone dev-env-setup. Run `scripts/aws/setup_aws_profiles --install` separately\n' >&2
+      return 1
     fi
-  done <<<"${aws_profiles}"
+
+    ;;
+  *)
+    printf -- 'Bailing out...\n' >&2
+    return 2
+    ;;
+  esac
+}
+
+if [[ ! -f "${l_docker_script}" ]]; then
+  install_l_docker || exit $?
 fi
 
-# Iterate over each ECR repo and try to login to ECR
-# When there is not an exact account/region match uses the correct profile
-# configured for same account but for another region.
-for required_repo in "${repository_urls[@]}"; do
-  if [[ "${required_repo}" =~ ${ecr_repo_pattern} ]]; then
-    required_account="${BASH_REMATCH[1]}"
-    required_region="${BASH_REMATCH[2]}"
+# Check that the expected group 'dev' exists otherwise fallback on the default
+# group
+if "${l_docker_script}" -l | grep -q "Group ${dev_group_name}"; then
+  "${l_docker_script}" -g "${dev_group_name}" || exit $?
+else
+  printf -- 'Unexpected setup discovered, using default profile group to login\n'
 
-    profile="$(grep -E "^${required_account}\s${required_region}" "${profile_mapping_file}" | head -n1 | cut -d' ' -f3)"
-
-    while : ""; do
-      if [[ -n "${profile}" ]]; then
-        printf -- 'Logging into %s\n' "${required_repo}"
-
-        aws ecr get-login-password --profile "${profile}" --region "${required_region}" |
-          docker login --username AWS --password-stdin "${required_repo}"
-        break
-      else
-        profile="$(grep -E "^${required_account}\s" "${profile_mapping_file}" | head -n1 | cut -d' ' -f3)"
-
-        if [[ -z "${profile}" ]]; then
-          printf -- 'Could not find profile for '%s' you are going to have to configure one using "aws configure sso"\n' "${required_account}" >&2
-
-          exit 1
-        else
-          break
-        fi
-      fi
-    done
-  fi
-done
+  "${l_docker_script}" || exit $?
+fi

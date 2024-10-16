@@ -15,7 +15,6 @@ describe("VersionCheck", () => {
         env: {},
         projectPath: "./docker-project",
         projectName: "docker-project",
-        authenticatedRepositories: [],
         versionSpecification: ">=1.0.0 <2.0.0"
     };
     const loggerMock = {
