@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set +e
 
@@ -23,7 +23,7 @@ done
 function reinstall_l_aws() {
   local dev_env_setup_dir="$1"
 
-  "${dev_env_setup_dir}"/scripts/aws/setup_aws_sso_login_util --install --auto
+  CH_SKIP_USER_INFO_ASSERTION="true" "${dev_env_setup_dir}"/scripts/aws/setup_aws_sso_login_util --install --auto
 
   return $?
 }
@@ -38,14 +38,14 @@ function install_l_docker() {
 
   trap 'rm -rf "${dev_env_setup_dir}"' RETURN
 
-  read -n 1 -r install_y_n
+  read -n 1 -r install_y_n </dev/tty
   printf -- '\n'
 
   case "${install_y_n}" in
   y | Y)
     if git clone -- git@github.com:companieshouse/dev-env-setup "${dev_env_setup_dir}"; then
 
-      if "${dev_env_setup_dir}"/scripts/aws/setup_aws_profiles --install; then
+      if CH_SKIP_USER_INFO_ASSERTION="true" "${dev_env_setup_dir}"/scripts/aws/setup_aws_profiles --install; then
 
         # If the user has l_aws installed chances are they will have a former version of l_docker
         # which needs to be removed since it is not compatible with this script
