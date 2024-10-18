@@ -18,6 +18,7 @@ import ModulesEnable from "./modules/enable.js";
 import ModulesDisable from "./modules/disable.js";
 import ComposeLogs from "./deprecated/compose-logs.js";
 import ServiceLogs from "./deprecated/service-logs.js";
+import Troubleshoot from "./troubleshoot.js";
 
 export const commands = {
     down: Down,
@@ -26,6 +27,7 @@ export const commands = {
     up: Up,
     sync: Sync,
     logs: Logs,
+    troubleshoot: Troubleshoot,
     "compose-logs": ComposeLogs,
     "exclusions:list": ExclusionsList,
     "exclusions:add": ExclusionsAdd,
