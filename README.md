@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.3.0 darwin-arm64 node-v20.12.2
+chs-dev/2.0.0 darwin-arm64 node-v20.12.2
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -193,6 +193,7 @@ USAGE
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
+* [`chs-dev troubleshoot OUTPUTDIRECTORY`](#chs-dev-troubleshoot-outputdirectory)
 * [`chs-dev up`](#chs-dev-up)
 
 ## `chs-dev autocomplete [SHELL]`
@@ -604,6 +605,25 @@ DESCRIPTION
   will depend on the number of calls to the GitHub API, the CLI may require the environment
   variable 'GITHUB_PAT' set with a PAT capable of calling GitHub. GitHub rate limiting
   will prevent >60 unauthenticated requests an hour.
+```
+
+## `chs-dev troubleshoot OUTPUTDIRECTORY`
+
+Runs through a routine for trying to troubleshoot a failure in the environment and produces an artifact containing pertinent information for troubleshooting by another member of the team
+
+```
+USAGE
+  $ chs-dev troubleshoot OUTPUTDIRECTORY [-G]
+
+ARGUMENTS
+  OUTPUTDIRECTORY  Directory to output the zipped artifact to
+
+FLAGS
+  -G, --noGuide  Produce troubleshooting output without any guidance for troubleshooting the issue encountered
+
+DESCRIPTION
+  Runs through a routine for trying to troubleshoot a failure in the environment and produces an artifact containing
+  pertinent information for troubleshooting by another member of the team
 ```
 
 ## `chs-dev up`
