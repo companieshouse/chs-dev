@@ -34,25 +34,25 @@ export const readServices: (filePath: string) => Partial<Service>[] = (filePath:
 };
 
 const metadataLabelMapping = {
-    repoContext: "chs.local.repoContext",
+    repoContext: "chs.local.repoContext=",
     ingressRoute: "traefik.http.routers.",
-    languageMajorVersion: "chs.local.builder.languageVersion",
-    dockerfile: "chs.local.dockerfile",
-    entrypoint: "chs.local.entrypoint",
-    buildOutputDir: "chs.local.builder.outputDir",
-    secretsRequired: "chs.local.builder.requiresSecrets",
-    repositoryRequired: "chs.local.repositoryRequired",
-    builderUseServiceDockerFile: "chs.local.builder.useServiceDockerfile"
+    languageMajorVersion: "chs.local.builder.languageVersion=",
+    dockerfile: "chs.local.dockerfile=",
+    entrypoint: "chs.local.entrypoint=",
+    buildOutputDir: "chs.local.builder.outputDir=",
+    secretsRequired: "chs.local.builder.requiresSecrets=",
+    repositoryRequired: "chs.local.repositoryRequired=",
+    builderUseServiceDockerFile: "chs.local.builder.useServiceDockerfile="
 };
 
 const readService: (module: string, source: string, serviceName: string, service: ServiceDefinition) => Partial<Service> = (module, source, serviceName, service) => ({
     name: serviceName,
     module,
     source,
-    description: findLabel(service.labels, "chs.description"),
+    description: findLabel(service.labels, "chs.description="),
     dependsOn: parseDependsOn(service.depends_on),
     repository: parseRepository(service.labels),
-    builder: findLabel(service.labels, "chs.local.builder") || "",
+    builder: findLabel(service.labels, "chs.local.builder=") || "",
     metadata: {
         ...readLabels(service.labels),
         healthcheck: service.healthcheck?.test
