@@ -35,7 +35,10 @@ export const readServices: (filePath: string) => Partial<Service>[] = (filePath:
 
 const metadataLabelMapping = {
     repoContext: "chs.local.repoContext",
-    ingressRoute: "traefik.http.routers.",
+    // The escaped \. indicates a partial label and so this is not a
+    // useless escape
+    // eslint-disable-next-line no-useless-escape
+    ingressRoute: "traefik.http.routers\.",
     languageMajorVersion: "chs.local.builder.languageVersion",
     dockerfile: "chs.local.dockerfile",
     entrypoint: "chs.local.entrypoint",
@@ -59,17 +62,30 @@ const readService: (module: string, source: string, serviceName: string, service
     }
 });
 
-const findLabel = (labels: string[] | undefined, prefix: string) => {
+/**
+ * Searches for label which satisfies the prefixRegex within the supplied
+ * labels
+ * @param labels list of labels or undefined when no labels defined
+ * @param prefixRegex a regex expression (as string) which when found at
+ *      start of label indicates the label which is desired. A partial
+ *      prefix will end with a '\.'
+ * @returns value of the matched label or undefined if a matching label
+ * could not be found or there were no labels
+ */
+const findLabel = (labels: string[] | undefined, prefixRegex: string) => {
     if (!labels) {
         return undefined;
     }
 
-    const completeLabelKey = !prefix.endsWith(".");
+    // Check whether the prefix is a complete or partial label name (i.e.
+    // partial would have a trailing dot) and append '=' to prefix when
+    // prefix is complete
+    // eslint-disable-next-line no-useless-escape
+    if (!prefixRegex.endsWith("\.")) {
+        prefixRegex += "=";
+    }
 
-    // Regex which tests the label begins with prefix, if does not end in trailing '.'
-    // assumes the label name is complete therefore expects the label name to be followed
-    // by '='
-    const labelKeyRegex = new RegExp(`^${prefix}${completeLabelKey ? "=" : ""}.+$`);
+    const labelKeyRegex = new RegExp(`^${prefixRegex}.+$`);
 
     const value = labels.find(label => labelKeyRegex.test(label));
     if (value) {
