@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, openSync, closeSync } from "fs";
 import { join } from "path";
 import { LogHandler } from "./logs/logs-handler.js";
 import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
@@ -53,6 +53,10 @@ export class DockerCompose {
         );
 
         this.logFile = join(logsDir, `compose.out.${dateLabel}.txt`);
+
+        if (!existsSync(this.logFile)) {
+            closeSync(openSync(this.logFile, 'w'))
+        }
     }
 
     down (options?: {
