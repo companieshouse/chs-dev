@@ -55,8 +55,8 @@ export class DockerCompose {
         this.logFile = join(logsDir, `compose.out.${dateLabel}.txt`);
 
         if (!existsSync(this.logFile)) {
-            closeSync(openSync(this.logFile, 'w'))
-        }
+            closeSync(openSync(this.logFile, "w"))
+        };
     }
 
     down (options?: {
