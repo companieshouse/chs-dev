@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
 import childProcess from "child_process";
-import fs, { mkdtempSync, rmSync } from "fs";
+import fs, { mkdtempSync, rmSync, openSync, closeSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import Config from "../../src/model/Config";
@@ -10,7 +10,8 @@ describe("DockerCompose", () => {
     const spawnMock = jest.fn();
     const existsSyncMock = jest.spyOn(fs, "existsSync");
     const mkdirSyncMock = jest.spyOn(fs, "mkdirSync");
-    const readFileSyncMock = jest.spyOn(fs, "readFileSync");
+    const openSyncMock = jest.spyOn(fs, "openSync");
+    const closeSyncMock = jest.spyOn(fs, "closeSync");
 
     const mockPatternMatchingHandle = jest.fn();
     const mockWatchLogHandle = jest.fn();
@@ -64,6 +65,9 @@ describe("DockerCompose", () => {
     };
 
     let tmpDir: string;
+    let tmpLogFile: string;
+    let date: Date;
+    let dateLabel: string;
     let DockerCompose: new (arg0: Config, arg1: { log: (msg: string) => void; }) => any;
 
     // 2024-02-14T00:00:00.000Z
@@ -96,7 +100,7 @@ describe("DockerCompose", () => {
             // eslint-disable-next-line no-new
             new DockerCompose(config, logger);
 
-            expect(existsSyncMock).toHaveBeenCalledTimes(1);
+            expect(existsSyncMock).toHaveBeenCalledTimes(2);
             expect(existsSyncMock).toHaveBeenCalledWith("local/.logs");
             expect(mkdirSyncMock).not.toHaveBeenCalled();
         });
@@ -107,7 +111,7 @@ describe("DockerCompose", () => {
             // eslint-disable-next-line no-new
             new DockerCompose(config, logger);
 
-            expect(existsSyncMock).toHaveBeenCalledTimes(1);
+            expect(existsSyncMock).toHaveBeenCalledTimes(2);
             expect(mkdirSyncMock).toHaveBeenCalledTimes(1);
             expect(mkdirSyncMock).toHaveBeenCalledWith(
                 "local/.logs",
@@ -115,6 +119,8 @@ describe("DockerCompose", () => {
                     recursive: true
                 }
             );
+            expect(openSyncMock).toHaveBeenCalledTimes(1);
+            expect(openSyncMock).toHaveBeenCalledWith("local/.logs/compose.out.2024-02-14.txt", "w");
         });
 
         it("sets its log file correctly", () => {
