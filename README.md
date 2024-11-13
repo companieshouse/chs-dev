@@ -193,7 +193,8 @@ USAGE
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
-* [`chs-dev troubleshoot OUTPUTDIRECTORY`](#chs-dev-troubleshoot-outputdirectory)
+* [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
+* [`chs-dev troubleshoot report OUTPUTDIRECTORY`](#chs-dev-troubleshoot-report-outputdirectory)
 * [`chs-dev up`](#chs-dev-up)
 
 ## `chs-dev autocomplete [SHELL]`
@@ -607,23 +608,43 @@ DESCRIPTION
   will prevent >60 unauthenticated requests an hour.
 ```
 
-## `chs-dev troubleshoot OUTPUTDIRECTORY`
+## `chs-dev troubleshoot analyse [OUTPUTFILE]`
 
-Runs through a routine for trying to troubleshoot a failure in the environment and produces an artifact containing pertinent information for troubleshooting by another member of the team
+Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user as to how they can resolve the issues encountered.
 
 ```
 USAGE
-  $ chs-dev troubleshoot OUTPUTDIRECTORY [-G]
+  $ chs-dev troubleshoot analyse [OUTPUTFILE] [-q]
 
 ARGUMENTS
-  OUTPUTDIRECTORY  Directory to output the zipped artifact to
+  OUTPUTFILE  Path to output the analysis results (if desired)
 
 FLAGS
-  -G, --noGuide  Produce troubleshooting output without any guidance for troubleshooting the issue encountered
+  -q, --quiet  Suppresses log output
 
 DESCRIPTION
-  Runs through a routine for trying to troubleshoot a failure in the environment and produces an artifact containing
-  pertinent information for troubleshooting by another member of the team
+  Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user
+  as to how they can resolve the issues encountered.
+```
+
+## `chs-dev troubleshoot report OUTPUTDIRECTORY`
+
+Produces an artifact containing resources to aid others providing assistance
+
+```
+USAGE
+  $ chs-dev troubleshoot report OUTPUTDIRECTORY [-A] [-a <value>]
+
+ARGUMENTS
+  OUTPUTDIRECTORY  Directory to output the produced report to
+
+FLAGS
+  -A, --skipTroubleshootAnalyses      Whether to skip producing the analyses output if not provided as input (Not
+                                      recommended)
+  -a, --troubleshootAnalyses=<value>  Previously generated analyses of the environment
+
+DESCRIPTION
+  Produces an artifact containing resources to aid others providing assistance
 ```
 
 ## `chs-dev up`

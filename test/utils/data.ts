@@ -105,7 +105,7 @@ export const services: Service[] = [
         module: "module-three",
         source: "services/modules/module-three/service-nine.docker-compose.yaml",
         dependsOn: [],
-        builder: "java",
+        builder: "java-11",
         repository: {
             url: "git@github.com/companieshouse/repo-nine.git"
         },

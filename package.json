@@ -96,6 +96,9 @@
       },
       "services": {
         "description": "manages the addition and removal of services"
+      },
+      "troubleshoot": {
+        "description": "analyses and outputs state of the system for troubleshooting and support"
       }
     }
   },

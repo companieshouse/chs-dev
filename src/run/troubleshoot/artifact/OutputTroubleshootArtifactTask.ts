@@ -22,7 +22,9 @@ export type OutputTroubleshootArtifactTaskOptions = {
     config: Config
 
     /**
-     * Defines the context for the Troubleshooting which
+     * Defines the context for the Troubleshooting which can be appended to
+     * by tasks, idea being rather than having loads of small files all can
+     * be within this file
      */
     context: TroubleshootArtifactContext
 }
@@ -36,7 +38,7 @@ export type OutputTroubleshootArtifactTask = {
     /**
      * Executes a task required to compose part of the Troubleshooting artifact
      * @param options which the task can use to execute
-     * @returns file created or undefined
+     * @returns file created or undefined if no file created as part of task
      */
     run: (options: OutputTroubleshootArtifactTaskOptions) => Promise<string | undefined>;
 }
