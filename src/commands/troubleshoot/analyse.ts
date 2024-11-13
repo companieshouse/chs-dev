@@ -8,7 +8,7 @@ export default class Analyse extends Command {
 
     static description = "Provides analyses of the environment to determine " +
         "root cause of any issues encountered. Providing information to user as " +
-        "to how they can resolve the issues encountered."; 
+        "to how they can resolve the issues encountered.";
 
     static args = {
         outputFile: Args.file({

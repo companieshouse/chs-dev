@@ -14,6 +14,7 @@ describe("builderSecretsSpecAssemblyFunction", () => {
 
     let service: Service;
     let developmentDockerComposeSpec: DockerComposeSpec;
+    let developmentDockerComposeSpecNoBuilder: DockerComposeSpec;
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -22,6 +23,11 @@ describe("builderSecretsSpecAssemblyFunction", () => {
         developmentDockerComposeSpec = {
             services: {
                 [`${service.name}-builder`]: {},
+                [service.name]: {}
+            }
+        };
+        developmentDockerComposeSpecNoBuilder = {
+            services: {
                 [service.name]: {}
             }
         };
@@ -145,6 +151,40 @@ describe("builderSecretsSpecAssemblyFunction", () => {
         });
 
         expect(developmentDockerComposeSpec.services[service.name].secrets).toBeUndefined();
+    });
+
+    it("set secrets on main service when no builder", () => {
+        service.metadata.secretsRequired = "true";
+
+        readFileSyncSpy.mockReturnValue(Buffer.from(yaml.stringify({
+            secrets: {
+                "secret-one": {
+                    environment: "ENV_VAR_ONE"
+                },
+                "secret-two": {
+                    file: "./file.txt"
+                }
+            }
+        }), "utf-8"));
+
+        builderSecretsSpecAssemblyFunction(developmentDockerComposeSpecNoBuilder, {
+            service,
+            projectPath: "/home/testuser/docker-c",
+            serviceDockerComposeSpec: {
+                services: {}
+            },
+            builderDockerComposeSpec: {
+                builderSpec: "",
+                name: "",
+                version: ""
+            }
+        });
+
+        expect(developmentDockerComposeSpecNoBuilder.services[service.name].secrets)
+            .toEqual([
+                "secret-one",
+                "secret-two"
+            ]);
     });
 
     it("does not set secrets when secretsRequired not set", () => {

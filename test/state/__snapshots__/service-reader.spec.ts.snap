@@ -47,6 +47,29 @@ exports[`readServices loads a more complicated 1`] = `
 ]
 `;
 
+exports[`readServices loads a repository builder requiring secrets 1`] = `
+[
+  {
+    "builder": "",
+    "dependsOn": [
+      "mongo",
+    ],
+    "description": "simple service",
+    "metadata": {
+      "healthcheck": undefined,
+      "secretsRequired": "true",
+    },
+    "module": "module-three",
+    "name": "another-atypical",
+    "repository": {
+      "branch": undefined,
+      "url": "git@github.com/companieshouse/reapo.git",
+    },
+    "source": "./test/data/service-reader/modules/module-three/repository-builder-with-secrets.docker-compose.yaml",
+  },
+]
+`;
+
 exports[`readServices loads a simple service 1`] = `
 [
   {
