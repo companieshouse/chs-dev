@@ -1,12 +1,11 @@
 import { expect, jest } from "@jest/globals";
-import { modules, services } from "../../../utils/data";
-import { getBuilders as getBuildersMock } from "../../../../src/state/builders";
-import { generateBuilderSpec } from "../../../utils/docker-compose-spec";
-import ServicesInLiveUpdateConfiguredCorrectlyAnalysis from "../../../../src/run/troubleshoot/analysis/ServicesInLiveUpdateConfiguredCorrectlyAnalysis";
 import fs from "fs";
-import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "../../../../src/run/troubleshoot/analysis/AnalysisTask";
 import { join } from "path";
-import AnalysisOutcome from "../../../../src/run/troubleshoot/analysis/AnalysisOutcome";
+import { TroubleshootAnalysisTaskContext } from "../../../../src/run/troubleshoot/analysis/AnalysisTask";
+import ServicesInLiveUpdateConfiguredCorrectlyAnalysis from "../../../../src/run/troubleshoot/analysis/ServicesInLiveUpdateConfiguredCorrectlyAnalysis";
+import { getBuilders as getBuildersMock } from "../../../../src/state/builders";
+import { modules, services } from "../../../utils/data";
+import { generateBuilderSpec } from "../../../utils/docker-compose-spec";
 import "../utils/outcome-expectation-extension";
 
 const inventoryMock = {
@@ -185,15 +184,4 @@ describe("ServicesInLiveUpdateConfiguredCorrectlyAnalysis", () => {
 
         expect(result).outcomeIncludesIssue(expectedIssue);
     });
-
-    // it("Returns true when builder is correct", async () => {
-    //     await expect(checkForServicesInLiveUpdateConfigured.autoTask(actionContext)).resolves.toBe(true);
-    // });
-
-    // it("Returns false when builder does not exist", async () => {
-    //     existsSyncSpy.mockReturnValue(false as never);
-
-    //     await expect(checkForServicesInLiveUpdateConfigured.autoTask(actionContext)).resolves.toBe(false);
-    // });
-
 });
