@@ -46,6 +46,26 @@ export const getBuilder = (projectPath: string, builderName: string | undefined,
     return builderVersion;
 };
 
+export const getBuilders = (projectPath: string) => {
+    if (typeof builders === "undefined") {
+        builders = {
+            repository: {
+                v1: {
+                    name: "repository",
+                    version: "v1",
+                    builderSpec: repositoryBuilderSpec
+                }
+            }
+        };
+
+        populateBuildersCache(projectPath, builders);
+    }
+
+    return {
+        ...builders
+    };
+};
+
 export const clearBuilders = () => {
     builders = undefined;
 };
