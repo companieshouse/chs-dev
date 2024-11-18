@@ -1,0 +1,87 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`TroubleshootAnalyses Default behaviour logs the outcome of failed tasks correctly 1`] = `
+[
+  [
+    "There were issues found with your environment",
+  ],
+  [
+    "WARNING - Check for services in development mode correctly configured:",
+  ],
+  [
+    "	* Missing Dockerfile for service in Development mode without builder label:",
+  ],
+  [
+    "		Missing Dockerfile for service service-ten
+",
+  ],
+  [
+    "		Suggestions:",
+  ],
+  [
+    "			- Provide a valid value for the builder label",
+  ],
+  [
+    "			- Create a Dockerfile",
+  ],
+  [
+    "
+		Documentation Links:",
+  ],
+  [
+    "			- https://www.github.com/companieshouse/chs-dev/blob/main/docs/troubleshooting-remedies/correctly-setup-repository-builder.md",
+  ],
+  [
+    "			- https://www.github.com/companieshouse/chs-dev/blob/main/docs/troubleshooting-remedies/correctly-setup-builder.md",
+  ],
+  [
+    "	* Incorrect Builder defined for service in development mode:",
+  ],
+  [
+    "		Service: service-nine contains an incorrect builder label: java-11
+",
+  ],
+  [
+    "		Suggestions:",
+  ],
+  [
+    "			- Provide a valid value for the builder label from: java, node",
+  ],
+  [
+    "			- Remove the builder label and Produce a Dockerfile in the source",
+  ],
+  [
+    "
+		Documentation Links:",
+  ],
+  [
+    "			- https://www.github.com/companieshouse/chs-dev/blob/main/docs/troubleshooting-remedies/correctly-setup-repository-builder.md",
+  ],
+  [
+    "			- https://www.github.com/companieshouse/chs-dev/blob/main/docs/troubleshooting-remedies/correctly-setup-builder.md",
+  ],
+  [
+    "CRITICAL - Incorrect something else:",
+  ],
+  [
+    "	* Something seriously incorrect with your setup:",
+  ],
+  [
+    "		Description about what is seriously wrong
+",
+  ],
+  [
+    "		Suggestions:",
+  ],
+  [
+    "			- Provide a valid value for this or that",
+  ],
+  [
+    "
+		Documentation Links:",
+  ],
+  [
+    "			- https://www.github.com/companieshouse/chs-dev/blob/main/docs/troubleshooting-remedies/correctly-do-the-right-thing.md",
+  ],
+]
+`;
