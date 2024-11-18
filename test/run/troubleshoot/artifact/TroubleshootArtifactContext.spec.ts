@@ -1,5 +1,5 @@
 import { expect, jest } from "@jest/globals";
-import { OutputTroubleshootArtifactContext } from "../../../../src/run/troubleshoot/artifact/TroubleshootArtifactContext";
+import { OutputTroubleshootArtifactContext } from "../../../../src/run/troubleshoot/report/TroubleshootArtifactContext";
 import fs from "fs";
 import { join } from "path";
 
