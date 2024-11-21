@@ -5,7 +5,7 @@ export const services: Service[] = [
         name: "service-one",
         description: "A Service for one and for all",
         module: "module-one",
-        source: "docker-project/services/modules/module-one/service-one.docker-compose.yaml",
+        source: "services/modules/module-one/service-one.docker-compose.yaml",
         dependsOn: [],
         builder: "java",
         repository: {
@@ -16,7 +16,7 @@ export const services: Service[] = [
     {
         name: "service-two",
         module: "module-one",
-        source: "docker-project/services/modules/module-one/service-two.docker-compose.yaml",
+        source: "services/modules/module-one/service-two.docker-compose.yaml",
         dependsOn: ["service-one"],
         builder: "node",
         repository: {
@@ -28,7 +28,7 @@ export const services: Service[] = [
     {
         name: "service-three",
         module: "module-one",
-        source: "docker-project/services/modules/module-one/service-three.docker-compose.yaml",
+        source: "services/modules/module-one/service-three.docker-compose.yaml",
         dependsOn: ["service-one", "service-two"],
         builder: "",
         repository: null,
@@ -39,7 +39,7 @@ export const services: Service[] = [
     {
         name: "service-four",
         module: "module-one",
-        source: "docker-project/services/modules/module-one/service-four.docker-compose.yaml",
+        source: "services/modules/module-one/service-four.docker-compose.yaml",
         dependsOn: ["service-two", "service-one"],
         builder: "java",
         repository: {
@@ -52,7 +52,7 @@ export const services: Service[] = [
     {
         name: "service-five",
         module: "module-two",
-        source: "docker-project/services/modules/module-two/service-five.docker-compose.yaml",
+        source: "services/modules/module-two/service-five.docker-compose.yaml",
         dependsOn: ["service-four", "service-three", "service-two", "service-one"],
         builder: "",
         repository: {
@@ -60,13 +60,13 @@ export const services: Service[] = [
         },
         metadata: {
             repoContext: "docker-env",
-            dockerFile: "env.Dockerfile"
+            dockerfile: "env.Dockerfile"
         }
     },
     {
         name: "service-six",
         module: "module-two",
-        source: "docker-project/services/modules/module-two/service-six.docker-compose.yaml",
+        source: "services/modules/module-two/service-six.docker-compose.yaml",
         dependsOn: ["service-five", "service-four", "service-three", "service-two", "service-one"],
         builder: "node",
         repository: null,
@@ -77,20 +77,20 @@ export const services: Service[] = [
     {
         name: "service-seven",
         module: "module-two",
-        source: "docker-project/services/modules/module-two/service-seven.docker-compose.yaml",
+        source: "services/modules/module-two/service-seven.docker-compose.yaml",
         dependsOn: ["service-six", "service-five", "service-four", "service-three", "service-two", "service-one"],
         builder: "repository",
         repository: {
             url: "git@github.com/companieshouse/repo-seven.git"
         },
         metadata: {
-            dockerFile: "env.Dockerfile"
+            dockerfile: "env.Dockerfile"
         }
     },
     {
         name: "service-eight",
         module: "module-three",
-        source: "docker-project/services/modules/module-three/service-eight.docker-compose.yaml",
+        source: "services/modules/module-three/service-eight.docker-compose.yaml",
         dependsOn: ["service-three", "service-two", "service-one"],
         builder: "node",
         repository: {
@@ -103,9 +103,9 @@ export const services: Service[] = [
     {
         name: "service-nine",
         module: "module-three",
-        source: "docker-project/services/modules/module-three/service-nine.docker-compose.yaml",
+        source: "services/modules/module-three/service-nine.docker-compose.yaml",
         dependsOn: [],
-        builder: "java",
+        builder: "java-11",
         repository: {
             url: "git@github.com/companieshouse/repo-nine.git"
         },
@@ -116,7 +116,7 @@ export const services: Service[] = [
     {
         name: "service-ten",
         module: "module-three",
-        source: "docker-project/services/modules/module-three/service-ten.docker-compose.yaml",
+        source: "services/modules/module-three/service-ten.docker-compose.yaml",
         dependsOn: ["service-one"],
         builder: "",
         repository: {
@@ -127,7 +127,7 @@ export const services: Service[] = [
     {
         name: "service-eleven",
         module: "module-four",
-        source: "docker-project/services/modules/module-four/service-eleven.docker-compose.yaml",
+        source: "services/modules/module-four/service-eleven.docker-compose.yaml",
         dependsOn: ["service-four", "service-three", "service-two", "service-one"],
         builder: "",
         repository: {
@@ -138,7 +138,7 @@ export const services: Service[] = [
     {
         name: "service-twelve",
         module: "module-five",
-        source: "docker-project/services/modules/module-five/service-twelve.docker-compose.yaml",
+        source: "services/modules/module-five/service-twelve.docker-compose.yaml",
         dependsOn: [],
         builder: "",
         repository: {
