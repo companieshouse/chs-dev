@@ -16,8 +16,15 @@
     "@oclif/plugin-plugins": "^5",
     "@types/semver": "^7.3.1",
     "ansis": "^3.3.2",
+    "cli-progress": "^3.12.0",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.2.0",
     "glob": "^7.1.6",
+    "graphology": "^0.25.4",
+    "node-graphviz": "^0.1.1",
+    "open": "^10.1.0",
     "semver": "^7.3.2",
+    "sigma": "^3.0.0-beta.33",
     "simple-git": "^3.22.0",
     "supports-hyperlinks": "^3.1.0",
     "tslib": "^2",
@@ -101,6 +108,9 @@
       },
       "troubleshoot": {
         "description": "analyses and outputs state of the system for troubleshooting and support"
+      },
+      "information": {
+        "description": "generates required information based on git repositories"
       }
     }
   },

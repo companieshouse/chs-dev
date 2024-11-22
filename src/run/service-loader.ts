@@ -35,7 +35,7 @@ export class ServiceLoader {
             liveUpdate: state.servicesWithLiveUpdate.includes(service.name)
         });
 
-        // Collect all services specifed by the state to include
+        // Collect all services specified by the state to include
         const loadedServices = this.getActivatedServicesList(state)
             // TODO: Remove after dual running period - RAND-397
             .filter(service => !this.serviceIsDeprecated(service))
