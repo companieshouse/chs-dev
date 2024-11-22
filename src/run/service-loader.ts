@@ -35,7 +35,7 @@ export class ServiceLoader {
             liveUpdate: state.servicesWithLiveUpdate.includes(service.name)
         });
 
-        // Collect all services specifed by the state to include
+        // Collect all services specified by the state to include
         const loadedServices = this.inventory.services
             .filter(service => state.services.includes(service.name) || state.modules.includes(service.module))
             // TODO: Remove after dual running period - RAND-397
@@ -69,5 +69,4 @@ export class ServiceLoader {
     private serviceIsDeprecated (service: Service): boolean {
         return service.source.includes("tilt");
     }
-
 }

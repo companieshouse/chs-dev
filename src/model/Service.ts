@@ -1,4 +1,5 @@
 import { OrNull } from "./OrNull.js";
+import { DependencyNode } from "./DependencyNode.js";
 
 /**
  * Represents a service within the development environment. A service is a
@@ -33,6 +34,17 @@ export interface Service {
      */
     dependsOn: string[];
 
+    /**
+     * Tree of the dependencies for the service.
+     *
+     * This will include all of the direct and indirect/transitive dependencies
+     * the service has.
+     */
+    dependencyTree : DependencyNode;
+
+    timesUsedByOtherServices: number;
+    
+    numberOfDependencies: number;
     /**
      * Details about the code repository for the service (required for
      * development mode)
