@@ -138,3 +138,8 @@ version
 
 !src/run/logs
 !test/run/logs
+
+local/
+
+# Mac files
+.DS_Store
