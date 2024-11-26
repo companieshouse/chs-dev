@@ -702,6 +702,9 @@ are referenced by chs-dev for the given purposes:
   repository locally in order to be run. This is useful where there may not be
   a remote repository to use for the service. The service can define its own
   build configuration referencing its repository/Dockerfile.
+* `chs.deprecated` - when set to `true` the service is deprecated and no longer
+  in use, useful where there are multiple service definitions for the same
+  service and only want to maintain one.
 
 #### Dependencies
 

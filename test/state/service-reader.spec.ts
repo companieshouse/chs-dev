@@ -33,6 +33,11 @@ const repositoryRequiredServiceFile = join(
     "test/data/service-reader/modules/module-one/repository-required.docker-compose.yaml"
 );
 
+const deprecatedServiceFile = join(
+    process.cwd(),
+    "test/data/service-reader/modules/module-three/deprecated-service.docker-compose.yaml"
+);
+
 const repositoryBuilderWithSecrets = join(
     process.cwd(),
     "test/data/service-reader/modules/module-three/repository-builder-with-secrets.docker-compose.yaml"
@@ -69,6 +74,10 @@ describe("readServices", () => {
 
     it("loads service with repo required", () => {
         expect(normaliseLocations(readServices(repositoryRequiredServiceFile))).toMatchSnapshot();
+    });
+
+    it("loads a deprecated service", () => {
+        expect(normaliseLocations(readServices(deprecatedServiceFile))).toMatchSnapshot();
     });
 
     it("loads a repository builder requiring secrets", () => {

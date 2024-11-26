@@ -16,16 +16,6 @@ const serviceOne = {
     metadata: {}
 };
 
-const serviceTwoTilt = {
-    name: "service-two",
-    module: "module-one",
-    source: "./module-one/tilt/service-two.docker-compose.yaml",
-    dependsOn: ["service-one"],
-    repository: null,
-    builder: "",
-    metadata: {}
-};
-
 const serviceTwo = {
     name: "service-two",
     module: "module-one",
@@ -147,19 +137,20 @@ const serviceTen = {
     metadata: {}
 };
 
-const serviceTenTilt = {
-    name: "service-ten",
+const deprecatedService = {
+    name: "service-eleven",
     module: "module-four",
-    source: "./module-four/tilt/service-ten.docker-compose.yaml",
+    source: "./module-four/service-eleven.docker-compose.yaml",
     dependsOn: [],
     repository: null,
     builder: "",
-    metadata: {}
+    metadata: {
+        deprecated: "true"
+    }
 };
 
 const services: Service[] = [
     serviceOne,
-    serviceTwoTilt,
     serviceTwo,
     serviceThree,
     serviceFour,
@@ -169,7 +160,7 @@ const services: Service[] = [
     serviceEight,
     serviceNine,
     serviceTen,
-    serviceTenTilt
+    deprecatedService
 ];
 
 const modules: Module[] = services.map(service => service.module)

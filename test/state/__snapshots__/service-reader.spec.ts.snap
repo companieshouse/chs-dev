@@ -1,5 +1,28 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`readServices loads a deprecated service 1`] = `
+[
+  {
+    "builder": "",
+    "dependsOn": [
+      "mongo",
+    ],
+    "description": "simple service",
+    "metadata": {
+      "deprecated": "true",
+      "healthcheck": undefined,
+    },
+    "module": "module-three",
+    "name": "simple-service",
+    "repository": {
+      "branch": undefined,
+      "url": "git@github.com/companieshouse/repo.git",
+    },
+    "source": "./test/data/service-reader/modules/module-three/deprecated-service.docker-compose.yaml",
+  },
+]
+`;
+
 exports[`readServices loads a more complicated 1`] = `
 [
   {

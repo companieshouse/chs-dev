@@ -65,9 +65,9 @@ export class ServiceLoader {
         return this.inventory.services.find(service => service.name === serviceName && !this.serviceIsDeprecated(service));
     }
 
-    // TODO: Remove after dual running period - RAND-397
     private serviceIsDeprecated (service: Service): boolean {
-        return service.source.includes("tilt");
+        return Object.keys(service.metadata).includes("deprecated") &&
+            service.metadata.deprecated?.toLowerCase() === "true";
     }
 
 }
