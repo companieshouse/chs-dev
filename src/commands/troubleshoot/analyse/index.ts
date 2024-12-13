@@ -1,8 +1,8 @@
 import { Args, Command, Config, Flags } from "@oclif/core";
-import { Inventory } from "../../state/inventory.js";
-import TroubleshootAnalyses from "../../run/TroubleshootAnalyses.js";
-import load from "../../helpers/config-loader.js";
-import { StateManager } from "../../state/state-manager.js";
+import { Inventory } from "../../../state/inventory.js";
+import TroubleshootAnalyses from "../../../run/TroubleshootAnalyses.js";
+import load from "../../../helpers/config-loader.js";
+import { StateManager } from "../../../state/state-manager.js";
 
 export default class Analyse extends Command {
 
