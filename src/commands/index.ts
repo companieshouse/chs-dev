@@ -18,8 +18,9 @@ import ModulesEnable from "./modules/enable.js";
 import ModulesDisable from "./modules/disable.js";
 import ComposeLogs from "./deprecated/compose-logs.js";
 import ServiceLogs from "./deprecated/service-logs.js";
-import TroubleshootAnalysis from "./troubleshoot/analyse.js";
+import TroubleshootAnalysis from "./troubleshoot/analyse/index.js";
 import TroubleshootReport from "./troubleshoot/report.js";
+import TroubleshootProxyStatus from "./troubleshoot/analyse/proxy-status.js";
 
 export const commands = {
     down: Down,
@@ -43,6 +44,7 @@ export const commands = {
     "modules:disable": ModulesDisable,
     "service-logs": ServiceLogs,
     "troubleshoot:analyse": TroubleshootAnalysis,
+    "troubleshoot:proxy-status": TroubleshootProxyStatus,
     "troubleshoot:report": TroubleshootReport
 };
 
