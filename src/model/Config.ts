@@ -13,6 +13,12 @@ export type Config = {
      * path to the project repository
      */
     readonly projectPath: string;
+
+     /**
+     * path to docker settings-store.json
+     */
+    readonly dockerSettingsPath: string;
+
     /**
      * additional environment variables for running the environment. Values can
      * contain 'file://' prefixes will try to read file in and set as value in

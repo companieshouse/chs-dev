@@ -30,8 +30,8 @@ const DOCKER_PROXY_CONFIGURATION_SUGGESTIONS = [
 
 export default class ProxiesConfiguredCorrectlyAnalysis {
 
-    async analyse (): Promise<AnalysisOutcome> {
-        const dockerIssues = this.checkDockerProxiesConfig();
+    async analyse ({ config }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
+        const dockerIssues = this.checkDockerProxiesConfig(config.dockerSettingsPath);
 
         const issues: AnalysisIssue[] = dockerIssues ? [dockerIssues] : [];
 
@@ -44,20 +44,19 @@ export default class ProxiesConfiguredCorrectlyAnalysis {
             : AnalysisOutcome.createSuccessful(ANALYSIS_HEADLINE);
     }
 
-    private checkDockerProxiesConfig (): AnalysisIssue | undefined {
+    private checkDockerProxiesConfig (dkSettingsPath: string): AnalysisIssue | undefined {
         const httpProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
-        const settingsFilePath = this.getDockerSettingsFilePath;
 
-        if (!fs.existsSync(settingsFilePath)) {
+        if (!fs.existsSync(dkSettingsPath)) {
             return {
                 title: "Docker settings file not found on user's device",
-                description: `invalid file path ${settingsFilePath}`,
+                description: `invalid file path ${dkSettingsPath}`,
                 suggestions: DOCKER_SETTINGS_FILE_SUGGESTIONS,
                 documentationLinks: []
             };
         }
 
-        const fileContents = fs.readFileSync(settingsFilePath, "utf-8");
+        const fileContents = fs.readFileSync(dkSettingsPath, "utf-8");
         const settings:DockerSettingsInterface = JSON.parse(fileContents);
 
         if (
@@ -78,20 +77,6 @@ export default class ProxiesConfiguredCorrectlyAnalysis {
 
         }
 
-    }
-
-    private get getDockerSettingsFilePath (): string {
-        const homeDir = process.env.HOME || os.homedir();
-        switch (process.platform) {
-        case "win32":
-            return path.join(homeDir, "AppData", "Roaming", "Docker", "settings-store.json");
-        case "darwin":
-            return path.join(homeDir, "Library", "Group Containers", "group.com.docker", "settings-store.json");
-        case "linux":
-            return path.join(homeDir, ".docker", "desktop", "settings-store.json");
-        default:
-            throw new Error("Unsupported operating system.");
-        }
     }
 
 }
