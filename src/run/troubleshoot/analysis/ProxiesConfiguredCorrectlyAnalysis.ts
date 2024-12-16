@@ -31,7 +31,8 @@ const DOCKER_PROXY_CONFIGURATION_SUGGESTIONS = [
 export default class ProxiesConfiguredCorrectlyAnalysis {
 
     async analyse ({ config }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
-        const dockerIssues = this.checkDockerProxiesConfig(config.dockerSettingsPath);
+        const { dockerSettingsPath } = config;
+        const dockerIssues = this.checkDockerProxiesConfig(dockerSettingsPath);
 
         const issues: AnalysisIssue[] = dockerIssues ? [dockerIssues] : [];
 
@@ -44,7 +45,7 @@ export default class ProxiesConfiguredCorrectlyAnalysis {
             : AnalysisOutcome.createSuccessful(ANALYSIS_HEADLINE);
     }
 
-    private checkDockerProxiesConfig (dkSettingsPath: string): AnalysisIssue | undefined {
+    private checkDockerProxiesConfig (dkSettingsPath): AnalysisIssue | undefined {
         const httpProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
 
         if (!fs.existsSync(dkSettingsPath)) {

@@ -17,7 +17,7 @@ export type Config = {
      /**
      * path to docker settings-store.json
      */
-    readonly dockerSettingsPath: string;
+    readonly dockerSettingsPath?: string;
 
     /**
      * additional environment variables for running the environment. Values can
