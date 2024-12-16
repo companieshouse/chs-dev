@@ -1,17 +1,17 @@
 import * as os from "os";
 import * as path from "path";
 
-const WindowsDockerSettingsDir = "AppData/Roaming/Docker/settings-store.json";
-const MacDockerSettingsDir = "Library/Group Containers/group.com.docker/settings-store.json";
+const windowsDockerSettingsDir = "AppData/Roaming/Docker/settings-store.json";
+const macDockerSettingsDir = "Library/Group Containers/group.com.docker/settings-store.json";
 const linuxDockerSettingsDir = ".docker/desktop/settings-store.json";
 
 export const getDockerSettingsFilePath = (): string => {
     const homeDir = process.env.HOME || os.homedir();
     switch (process.platform) {
     case "win32":
-        return path.join(homeDir, WindowsDockerSettingsDir);
+        return path.join(homeDir, windowsDockerSettingsDir);
     case "darwin":
-        return path.join(homeDir, MacDockerSettingsDir);
+        return path.join(homeDir, macDockerSettingsDir);
     case "linux":
         return path.join(homeDir, linuxDockerSettingsDir);
     default:
