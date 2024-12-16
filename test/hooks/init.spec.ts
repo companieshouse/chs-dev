@@ -1,7 +1,7 @@
 import { beforeAll, expect, jest } from "@jest/globals";
 import { Hook, Config } from "@oclif/core";
 import { getLatestReleaseVersion as getLatestReleaseVersionMock } from "../../src/helpers/latest-release";
-import { isOnVpn as isOnVpnMock } from "../../src/helpers/vpn-check";
+import { isOnVpn as isOnVpnMock, isWebProxyHostSet as isWebProxyHostSetMock } from "../../src/helpers/vpn-check";
 import configLoaderMock from "../../src/helpers/config-loader";
 import { hookFilter as hookFilterMock } from "../../src/hooks/hook-filter";
 import { spawn as spawnMock } from "../../src/helpers/spawn-promise";
@@ -78,6 +78,7 @@ describe("init hook", () => {
 
         expect(versionCheckRunMock).not.toHaveBeenCalled();
         expect(getLatestReleaseVersionMock).not.toHaveBeenCalled();
+        expect(isWebProxyHostSetMock).not.toHaveBeenCalled();
         expect(isOnVpnMock).not.toHaveBeenCalled();
     });
 
@@ -167,6 +168,9 @@ describe("init hook", () => {
         // @ts-expect-error
         getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
 
+        // @ts-expect-error
+        isWebProxyHostSetMock.mockReturnValueOnce(true);
+
         process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING = "true";
 
         const context: unknown = {
@@ -180,10 +184,39 @@ describe("init hook", () => {
             context: context as unknown as Hook.Context
         });
 
+        expect(isWebProxyHostSetMock).toHaveBeenCalled();
         expect(isOnVpnMock).toHaveBeenCalled();
     });
 
+    it("logs statement when CH_PROXY_HOST env not set", async () => {
+        // @ts-expect-error
+        isWebProxyHostSetMock.mockReturnValueOnce(false);
+
+        // @ts-expect-error
+        getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
+
+        process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING = "true";
+
+        const context = {
+            warn: jest.fn()
+        };
+
+        await initHook.bind(context as unknown as Hook.Context)({
+            config: testConfig,
+            id: "",
+            argv: [],
+            context: context as unknown as Hook.Context
+        });
+
+        expect(context.warn).toHaveBeenCalledWith(
+            "CH_PROXY_HOST env not set. Some containers may not build properly."
+        );
+    });
+
     it("logs statement when not on vpn", async () => {
+        // @ts-expect-error
+        isWebProxyHostSetMock.mockReturnValueOnce(true);
+
         // @ts-expect-error
         isOnVpnMock.mockReturnValueOnce(false);
 
