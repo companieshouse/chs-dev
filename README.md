@@ -194,7 +194,6 @@ USAGE
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
 * [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
-* [`chs-dev troubleshoot proxy-status`](#chs-dev-troubleshoot-proxy-status)
 * [`chs-dev troubleshoot report OUTPUTDIRECTORY`](#chs-dev-troubleshoot-report-outputdirectory)
 * [`chs-dev up`](#chs-dev-up)
 
@@ -626,18 +625,6 @@ FLAGS
 DESCRIPTION
   Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user
   as to how they can resolve the issues encountered.
-```
-
-## `chs-dev troubleshoot proxy-status`
-
-Checks user's proxy configuration and docker proxy configuration
-
-```
-USAGE
-  $ chs-dev troubleshoot proxy-status
-
-DESCRIPTION
-  Checks user's proxy configuration and docker proxy configuration
 ```
 
 ## `chs-dev troubleshoot report OUTPUTDIRECTORY`
