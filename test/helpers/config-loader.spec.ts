@@ -4,12 +4,14 @@ import { load } from "../../src/helpers/config-loader";
 import yaml from "yaml";
 import { join } from "path";
 import CONSTANTS from "../../src/model/Constants";
+import { getDockerSettingsFilePath } from "../../src/helpers/docker-settings-config";
 
 describe("load", () => {
 
     const existsSyncMock = jest.spyOn(fs, "existsSync");
     const readFileSyncMock = jest.spyOn(fs, "readFileSync");
     const pwdMock = jest.spyOn(process, "cwd");
+    const mockDockerSettingsPath = getDockerSettingsFilePath();
 
     const pwd = "/users/user/docker-chs";
 
@@ -34,7 +36,7 @@ describe("load", () => {
     it("returns empty configuration when no configuration file exists", () => {
         existsSyncMock.mockReturnValue(false);
 
-        expect(load()).toEqual({ projectName: "docker-chs", env: {}, projectPath: pwd, performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD });
+        expect(load()).toEqual({ projectName: "docker-chs", env: {}, projectPath: pwd, performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD, dockerSettingsPath: mockDockerSettingsPath });
     });
 
     it("returns configuration file with environment when file exists with environment", () => {
@@ -78,7 +80,8 @@ describe("load", () => {
                 ENV_VAR_SIX: "file://~/.file-not-found"
             },
             projectPath: pwd,
-            performEcrLoginHoursThreshold: 8
+            performEcrLoginHoursThreshold: 8,
+            dockerSettingsPath: mockDockerSettingsPath
         });
     });
 
@@ -101,7 +104,8 @@ describe("load", () => {
             env: {},
             projectPath: pwd,
             projectName: "docker-chs",
-            performEcrLoginHoursThreshold: 7
+            performEcrLoginHoursThreshold: 7,
+            dockerSettingsPath: mockDockerSettingsPath
         });
     });
 
@@ -123,7 +127,8 @@ describe("load", () => {
             projectPath: pwd,
             projectName: "docker-chs",
             versionSpecification: ">1.0 <2.0",
-            performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD
+            performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD,
+            dockerSettingsPath: mockDockerSettingsPath
         });
     });
 
@@ -137,6 +142,6 @@ describe("load", () => {
 
         existsSyncMock.mockReturnValue(false);
 
-        expect(load()).toEqual({ projectName: "chs-docker-project", env: {}, projectPath: chsDevProjectPath, performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD });
+        expect(load()).toEqual({ projectName: "chs-docker-project", env: {}, projectPath: chsDevProjectPath, performEcrLoginHoursThreshold: CONSTANTS.DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD, dockerSettingsPath: mockDockerSettingsPath });
     });
 });

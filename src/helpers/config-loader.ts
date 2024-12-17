@@ -3,6 +3,7 @@ import { basename, join } from "path";
 import yaml from "yaml";
 import Config from "../model/Config.js";
 import Constants from "../model/Constants.js";
+import { getDockerSettingsFilePath } from "./docker-settings-config.js";
 
 const fileVarRegExp = /^file:\/\/(.+)$/;
 
@@ -14,6 +15,7 @@ const fileVarRegExp = /^file:\/\/(.+)$/;
 export const load: () => Config = () => {
     const projectPath = process.env.CHS_DEV_PROJECT || process.cwd();
     const confFile = join(projectPath, "chs-dev/config.yaml");
+    const dockerSettingsPath:string = getDockerSettingsFilePath();
 
     let config: Partial<Config> = {};
 
@@ -44,7 +46,8 @@ export const load: () => Config = () => {
     return {
         ...config,
         projectPath,
-        projectName: basename(projectPath)
+        projectName: basename(projectPath),
+        dockerSettingsPath
     } as Config;
 };
 

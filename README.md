@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.3.0 darwin-arm64 node-v20.12.2
+chs-dev/2.0.0 darwin-arm64 node-v20.18.0
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -193,6 +193,8 @@ USAGE
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
+* [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
+* [`chs-dev troubleshoot report OUTPUTDIRECTORY`](#chs-dev-troubleshoot-report-outputdirectory)
 * [`chs-dev up`](#chs-dev-up)
 
 ## `chs-dev autocomplete [SHELL]`
@@ -604,6 +606,45 @@ DESCRIPTION
   will depend on the number of calls to the GitHub API, the CLI may require the environment
   variable 'GITHUB_PAT' set with a PAT capable of calling GitHub. GitHub rate limiting
   will prevent >60 unauthenticated requests an hour.
+```
+
+## `chs-dev troubleshoot analyse [OUTPUTFILE]`
+
+Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user as to how they can resolve the issues encountered.
+
+```
+USAGE
+  $ chs-dev troubleshoot analyse [OUTPUTFILE] [-q]
+
+ARGUMENTS
+  OUTPUTFILE  Path to output the analysis results (if desired)
+
+FLAGS
+  -q, --quiet  Suppresses log output
+
+DESCRIPTION
+  Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user
+  as to how they can resolve the issues encountered.
+```
+
+## `chs-dev troubleshoot report OUTPUTDIRECTORY`
+
+Produces an artifact containing resources to aid others providing assistance
+
+```
+USAGE
+  $ chs-dev troubleshoot report OUTPUTDIRECTORY [-A] [-a <value>]
+
+ARGUMENTS
+  OUTPUTDIRECTORY  Directory to output the produced report to
+
+FLAGS
+  -A, --skipTroubleshootAnalyses      Whether to skip producing the analyses output if not provided as input (Not
+                                      recommended)
+  -a, --troubleshootAnalyses=<value>  Previously generated analyses of the environment
+
+DESCRIPTION
+  Produces an artifact containing resources to aid others providing assistance
 ```
 
 ## `chs-dev up`

@@ -1,7 +1,7 @@
 import { Hook } from "@oclif/core";
 
 import { load } from "../helpers/config-loader.js";
-import { isOnVpn } from "../helpers/vpn-check.js";
+import { isOnVpn, isWebProxyHostSet } from "../helpers/vpn-check.js";
 import { VersionCheck } from "../run/version-check.js";
 import { hookFilter } from "./hook-filter.js";
 import LogEverythingLogHandler from "../run/logs/LogEverythingLogHandler.js";
@@ -33,8 +33,12 @@ export const hook: Hook<"init"> = async function (options) {
 
     const projectConfig = load();
 
-    if (!isOnVpn()) {
-        this.warn("Not on VPN. Some containers may not build properly.");
+    if (isWebProxyHostSet()) {
+        if (!isOnVpn()) {
+            this.warn("Not on VPN. Some containers may not build properly.");
+        }
+    } else {
+        this.warn("CH_PROXY_HOST env not set. Some containers may not build properly.");
     }
 
     const versionCheck = VersionCheck.create({

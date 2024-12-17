@@ -1,7 +1,13 @@
 import { execSync } from "child_process";
 
-const webproxyHost = "websenseproxy.internal.ch";
+const webproxyHost = process.env.CH_PROXY_HOST;
 const statisticsPattern = /received,\s([^%]+%).packet.loss/;
+
+/**
+ * Checks whether current machine CH_PROXY_HOST environment variable is set
+ * @returns boolean indicating set or not
+ */
+export const isWebProxyHostSet = (): boolean => !!webproxyHost;
 
 /**
  * Checks whether current machine can access the internal proxy server, if so
@@ -16,7 +22,6 @@ export const isOnVpn = () => {
 
         if (statisticsMatches) {
             const matchPercentage = statisticsMatches[1];
-
             if (matchPercentage !== "100.0%") {
                 return true;
             }

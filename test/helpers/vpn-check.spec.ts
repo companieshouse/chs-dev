@@ -1,20 +1,22 @@
 import { expect, jest } from "@jest/globals";
-import { isOnVpn } from "../../src/helpers/vpn-check";
+
 import childProcess from "child_process";
 
 describe("isOnVpn", () => {
 
     const execSpy = jest.spyOn(childProcess, "execSync");
+    let isOnVpn;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         jest.resetAllMocks();
 
         execSpy.mockReturnValue(Buffer.from("", "utf8"));
+        process.env.CH_PROXY_HOST = "websenseproxy.internal.ch";
+        ({ isOnVpn } = await import("./../../src/helpers/vpn-check.js"));
     });
 
     it("calls exec ping", () => {
         isOnVpn();
-
         expect(execSpy).toHaveBeenCalledWith("ping -c 3 websenseproxy.internal.ch");
     });
 
