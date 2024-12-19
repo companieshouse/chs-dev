@@ -53,7 +53,7 @@ export const fetchDockerSettings = (): DockerSettings| DockerSettingsIssue => {
         return {
             title: "Docker settings-store.json file not found on user's device",
             description: `invalid file path ${settingsPath}. Docker settings check will fail to validate failed`,
-            suggestions: ["DOCKER_SETTINGS_FILE_SUGGESTIONS"],
+            suggestions: ["Rerun docker setup and reinstall docker with the dev-env"],
             documentationLinks: []
         }; ;
     }
