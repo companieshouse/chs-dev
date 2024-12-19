@@ -14,6 +14,13 @@ export type DockerSettings = {
     MemoryMiB: number;
 }
 
+type DockerSettingsIssue = {
+    title: string;
+    description: string;
+    suggestions: string[];
+    documentationLinks: string[];
+}
+
 const getSettingsPath = (): string => {
     const homeDir = process.env.HOME || os.homedir();
     switch (process.platform) {
@@ -37,13 +44,18 @@ const parseDockerSettingsFile = (settingsPath: string): DockerSettings => {
     return JSON.parse(fileContents);
 };
 
-export const fetchDockerSettings = (): DockerSettings => {
+export const fetchDockerSettings = (): DockerSettings| DockerSettingsIssue => {
     const settingsPath = getSettingsPath();
     const isPathSet = isSettingsPathSet(settingsPath);
     if (isPathSet) {
         return parseDockerSettingsFile(settingsPath);
     } else {
-        throw new Error(`Docker settings-store.json file not found on user's device: Invalid file path ${settingsPath}`);
+        return {
+            title: "Docker settings-store.json file not found on user's device",
+            description: `invalid file path ${settingsPath}. Docker settings check will fail to validate failed`,
+            suggestions: ["DOCKER_SETTINGS_FILE_SUGGESTIONS"],
+            documentationLinks: []
+        }; ;
     }
 
 };

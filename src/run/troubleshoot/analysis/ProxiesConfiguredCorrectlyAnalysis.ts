@@ -1,4 +1,4 @@
-import { fetchDockerSettings } from "../../../helpers/docker-settings-store.js";
+import { DockerSettings, fetchDockerSettings } from "../../../helpers/docker-settings-store.js";
 import { isOnVpn, isWebProxyHostSet } from "../../../helpers/vpn-check.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
 import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "./AnalysisTask.js";
@@ -62,17 +62,24 @@ export default class ProxiesConfiguredCorrectlyAnalysis {
 
     private checkDockerProxiesConfig (): AnalysisIssue | undefined {
         const httpProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
-        const { OverrideProxyHTTP, OverrideProxyHTTPS, ProxyHTTPMode, ProxyHttpMode } = fetchDockerSettings();
+        const result = fetchDockerSettings();
+        const { OverrideProxyHTTP, OverrideProxyHTTPS, ProxyHTTPMode, ProxyHttpMode } = result as DockerSettings;
+        const issues = result as AnalysisIssue;
 
-        if (!(OverrideProxyHTTP === httpProxy && OverrideProxyHTTPS === httpProxy &&
-            ProxyHTTPMode === "manual" && ProxyHttpMode === "manual")) {
-            return {
-                title: "Docker proxy settings invalid",
-                description: `Docker proxy settings properties not configured correctly`,
-                suggestions: DOCKER_PROXY_CONFIGURATION_SUGGESTIONS,
-                documentationLinks: []
-            };
+        if (!issues.title) {
+            if (!(OverrideProxyHTTP === httpProxy && OverrideProxyHTTPS === httpProxy &&
+                ProxyHTTPMode === "manual" && ProxyHttpMode === "manual")) {
+                return {
+                    title: "Docker proxy settings invalid",
+                    description: `Docker proxy settings properties not configured correctly`,
+                    suggestions: DOCKER_PROXY_CONFIGURATION_SUGGESTIONS,
+                    documentationLinks: []
+                };
+            }
+        } else {
+            return issues;
         }
+
     }
 
 }
