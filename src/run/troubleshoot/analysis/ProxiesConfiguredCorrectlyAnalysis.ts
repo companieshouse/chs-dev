@@ -1,16 +1,7 @@
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "./AnalysisTask.js";
-import AnalysisOutcome from "./AnalysisOutcome.js";
+import { fetchDockerSettings } from "../../../helpers/docker-settings-store.js";
 import { isOnVpn, isWebProxyHostSet } from "../../../helpers/vpn-check.js";
-
-type DockerSettingsInterface = {
-    OverrideProxyHTTP: string;
-    OverrideProxyHTTPS: string;
-    ProxyHttpMode: string
-    ProxyHTTPMode: string
-}
+import AnalysisOutcome from "./AnalysisOutcome.js";
+import { AnalysisIssue } from "./AnalysisTask.js";
 
 const ANALYSIS_HEADLINE = "Check user's device proxy configuration";
 
@@ -18,9 +9,6 @@ const WEB_PROXY_SUGGESTION = [
     "Run echo $CH_PROXY_HOST to check web proxy value on device"
 ];
 
-const DOCKER_SETTINGS_FILE_SUGGESTIONS = [
-    "Check file path to docker 'settings-store.json'"
-];
 const DOCKER_PROXY_CONFIGURATION_SUGGESTIONS = [
     "Run 'chproxyon' to set ProxyHttpMode for docker",
     "'ProxyHttpMode' property in docker settings-store.json file must be set to 'manual'",
@@ -36,10 +24,10 @@ const DOCKER_PROXY_CONFIGURATION_SUGGESTIONS = [
 
 export default class ProxiesConfiguredCorrectlyAnalysis {
 
-    async analyse ({ config }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
-        const { dockerSettingsPath } = config;
+    async analyse (): Promise<AnalysisOutcome> {
+
         const vpnIssues = this.checkCHProxyConfig();
-        const dockerIssues = this.checkDockerProxiesConfig(dockerSettingsPath);
+        const dockerIssues = this.checkDockerProxiesConfig();
 
         const issues: AnalysisIssue[] = [vpnIssues, dockerIssues].filter((issue): issue is AnalysisIssue => issue !== undefined);
 
@@ -72,39 +60,19 @@ export default class ProxiesConfiguredCorrectlyAnalysis {
         }
     }
 
-    private checkDockerProxiesConfig (dkSettingsPath): AnalysisIssue | undefined {
+    private checkDockerProxiesConfig (): AnalysisIssue | undefined {
         const httpProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+        const { OverrideProxyHTTP, OverrideProxyHTTPS, ProxyHTTPMode, ProxyHttpMode } = fetchDockerSettings();
 
-        if (!fs.existsSync(dkSettingsPath)) {
-            return {
-                title: "Docker settings file not found on user's device",
-                description: `invalid file path ${dkSettingsPath}`,
-                suggestions: DOCKER_SETTINGS_FILE_SUGGESTIONS,
-                documentationLinks: []
-            };
-        }
-
-        const fileContents = fs.readFileSync(dkSettingsPath, "utf-8");
-        const settings:DockerSettingsInterface = JSON.parse(fileContents);
-
-        if (
-            !(
-                settings.OverrideProxyHTTP === httpProxy &&
-                settings.OverrideProxyHTTPS === httpProxy &&
-                settings.ProxyHTTPMode === "manual" &&
-                settings.ProxyHttpMode === "manual"
-            )
-        ) {
-
+        if (!(OverrideProxyHTTP === httpProxy && OverrideProxyHTTPS === httpProxy &&
+            ProxyHTTPMode === "manual" && ProxyHttpMode === "manual")) {
             return {
                 title: "Docker proxy settings invalid",
                 description: `Docker proxy settings properties not configured correctly`,
                 suggestions: DOCKER_PROXY_CONFIGURATION_SUGGESTIONS,
                 documentationLinks: []
             };
-
         }
-
     }
 
 }
