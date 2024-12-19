@@ -28,7 +28,7 @@ const getSettingsPath = (): string => {
     }
 };
 
-const doesSettingsPathExist = (settingsPath: string): boolean => {
+const isSettingsPathSet = (settingsPath: string): boolean => {
     return !!fs.existsSync(settingsPath);
 };
 
@@ -39,8 +39,8 @@ const parseDockerSettingsFile = (settingsPath: string): DockerSettings => {
 
 export const fetchDockerSettings = (): DockerSettings => {
     const settingsPath = getSettingsPath();
-    const pathExist = doesSettingsPathExist(settingsPath);
-    if (pathExist) {
+    const isPathSet = isSettingsPathSet(settingsPath);
+    if (isPathSet) {
         return parseDockerSettingsFile(settingsPath);
     } else {
         throw new Error(`Docker settings-store.json file not found on user's device: Invalid file path ${settingsPath}`);
