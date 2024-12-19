@@ -1,10 +1,8 @@
-import * as fs from "fs";
 import { expect, jest } from "@jest/globals";
-import ProxiesConfiguredCorrectlyAnalysis from "../../../../src/run/troubleshoot/analysis/ProxiesConfiguredCorrectlyAnalysis";
-import { TroubleshootAnalysisTaskContext } from "../../../../src/run/troubleshoot/analysis/AnalysisTask";
-import AnalysisOutcome from "../../../../src/run/troubleshoot/analysis/AnalysisOutcome";
-import childProcess from "child_process";
+import * as fs from "fs";
 import { isOnVpn, isWebProxyHostSet } from "../../../../src/helpers/vpn-check";
+import AnalysisOutcome from "../../../../src/run/troubleshoot/analysis/AnalysisOutcome";
+import ProxiesConfiguredCorrectlyAnalysis from "../../../../src/run/troubleshoot/analysis/ProxiesConfiguredCorrectlyAnalysis";
 
 jest.mock("fs");
 jest.mock("../../../../src/helpers/vpn-check", () => ({
@@ -13,7 +11,6 @@ jest.mock("../../../../src/helpers/vpn-check", () => ({
 }));
 
 describe("ProxiesConfiguredCorrectlyAnalysis", () => {
-    const mockDockerSettingsPath = "/mock/docker/settings-store.json";
     let analysis: ProxiesConfiguredCorrectlyAnalysis;
     const WEB_PROXY_SUGGESTION = [
         "Run echo $CH_PROXY_HOST to check web proxy value on device"
@@ -41,11 +38,7 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
         (isWebProxyHostSet as jest.Mock).mockReturnValue(true);
         (isOnVpn as jest.Mock).mockReturnValue(true);
 
-        const context = {
-            config: { dockerSettingsPath: mockDockerSettingsPath }
-        } as TroubleshootAnalysisTaskContext;
-
-        const outcome = await analysis.analyse(context);
+        const outcome = await analysis.analyse();
 
         expect(outcome).toBeInstanceOf(AnalysisOutcome);
         expect(outcome.isSuccess()).toBe(true);
@@ -67,11 +60,7 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
         delete process.env.CH_PROXY_HOST;
         (isWebProxyHostSet as jest.Mock).mockReturnValue(false);
 
-        const context = {
-            config: { dockerSettingsPath: mockDockerSettingsPath }
-        } as TroubleshootAnalysisTaskContext;
-
-        const outcome = await analysis.analyse(context);
+        const outcome = await analysis.analyse();
 
         expect(outcome).toBeInstanceOf(AnalysisOutcome);
         expect(outcome.isSuccess()).toBe(false);
@@ -102,11 +91,7 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
         (isWebProxyHostSet as jest.Mock).mockReturnValue(true);
         (isOnVpn as jest.Mock).mockReturnValue(false);
 
-        const context = {
-            config: { dockerSettingsPath: mockDockerSettingsPath }
-        } as TroubleshootAnalysisTaskContext;
-
-        const outcome = await analysis.analyse(context);
+        const outcome = await analysis.analyse();
 
         expect(outcome).toBeInstanceOf(AnalysisOutcome);
         expect(outcome.isSuccess()).toBe(false);
@@ -115,30 +100,6 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
                 title: "CH_PROXY_HOST ping unsuccessful",
                 description: "Ping on webproxy not successful",
                 suggestions: WEB_PROXY_SUGGESTION,
-                documentationLinks: []
-            }
-        ]);
-    });
-
-    it("should return a failed outcome if the Docker settings file is missing", async () => {
-        (fs.existsSync as jest.Mock).mockReturnValue(false);
-
-        const context = {
-            config: { dockerSettingsPath: mockDockerSettingsPath }
-        } as TroubleshootAnalysisTaskContext;
-
-        (isWebProxyHostSet as jest.Mock).mockReturnValue(true);
-        (isOnVpn as jest.Mock).mockReturnValue(true);
-
-        const outcome = await analysis.analyse(context);
-
-        expect(outcome).toBeInstanceOf(AnalysisOutcome);
-        expect(outcome.isSuccess()).toBe(false);
-        expect(outcome.issues).toEqual([
-            {
-                title: "Docker settings file not found on user's device",
-                description: `invalid file path ${mockDockerSettingsPath}`,
-                suggestions: ["Check file path to docker 'settings-store.json'"],
                 documentationLinks: []
             }
         ]);
@@ -157,14 +118,10 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
             })
         );
 
-        const context = {
-            config: { dockerSettingsPath: mockDockerSettingsPath }
-        } as TroubleshootAnalysisTaskContext;
-
         (isWebProxyHostSet as jest.Mock).mockReturnValue(true);
         (isOnVpn as jest.Mock).mockReturnValue(true);
 
-        const outcome = await analysis.analyse(context);
+        const outcome = await analysis.analyse();
 
         expect(outcome).toBeInstanceOf(AnalysisOutcome);
         expect(outcome.isSuccess()).toBe(false);
