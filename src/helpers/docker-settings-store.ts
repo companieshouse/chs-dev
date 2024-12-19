@@ -6,13 +6,6 @@ const DOCKER_SETTINGS_PATH_WINDOWS = "AppData/Roaming/Docker/settings-store.json
 const DOCKER_SETTINGS_PATH_MAC = "Library/Group Containers/group.com.docker/settings-store.json";
 const DOCKER_SETTINGS_PATH_LINUX = ".docker/desktop/settings-store.json";
 
-type DockerSettingsIssue = {
-    title: string;
-    description: string;
-    suggestions: string[];
-    documentationLinks: string[];
-}
-
 export type DockerSettings = {
     OverrideProxyHTTP: string;
     OverrideProxyHTTPS: string;
@@ -21,7 +14,7 @@ export type DockerSettings = {
     MemoryMiB: number;
 }
 
-const getDockerSettingsPath = (): string => {
+const getSettingsPath = (): string => {
     const homeDir = process.env.HOME || os.homedir();
     switch (process.platform) {
     case "win32":
@@ -35,22 +28,22 @@ const getDockerSettingsPath = (): string => {
     }
 };
 
-const doesDockerSettingsPathExist = (dkSettingsPath: string): boolean => {
-    return !!fs.existsSync(dkSettingsPath);
+const doesSettingsPathExist = (settingsPath: string): boolean => {
+    return !!fs.existsSync(settingsPath);
 };
 
-const parseDockerSettingsFile = (dkSettingsPath: string): DockerSettings => {
-    const fileContents = fs.readFileSync(dkSettingsPath, "utf-8");
+const parseDockerSettingsFile = (settingsPath: string): DockerSettings => {
+    const fileContents = fs.readFileSync(settingsPath, "utf-8");
     return JSON.parse(fileContents);
 };
 
 export const fetchDockerSettings = (): DockerSettings => {
-    const dkSettingsPath = getDockerSettingsPath();
-    const pathExist = doesDockerSettingsPathExist(dkSettingsPath);
+    const settingsPath = getSettingsPath();
+    const pathExist = doesSettingsPathExist(settingsPath);
     if (pathExist) {
-        return parseDockerSettingsFile(dkSettingsPath);
+        return parseDockerSettingsFile(settingsPath);
     } else {
-        throw new Error(`Docker settings-store.json file not found on user's device: Invalid file path ${dkSettingsPath}`);
+        throw new Error(`Docker settings-store.json file not found on user's device: Invalid file path ${settingsPath}`);
     }
 
 };
