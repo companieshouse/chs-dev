@@ -1,7 +1,7 @@
 import { fetchDockerSettings } from "../../../helpers/docker-settings-store.js";
 import { isOnVpn, isWebProxyHostSet } from "../../../helpers/vpn-check.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
-import { AnalysisIssue } from "./AnalysisTask.js";
+import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "./AnalysisTask.js";
 
 const ANALYSIS_HEADLINE = "Check user's device proxy configuration";
 
@@ -24,7 +24,7 @@ const DOCKER_PROXY_CONFIGURATION_SUGGESTIONS = [
 
 export default class ProxiesConfiguredCorrectlyAnalysis {
 
-    async analyse (): Promise<AnalysisOutcome> {
+    async analyse (context: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
 
         const vpnIssues = this.checkCHProxyConfig();
         const dockerIssues = this.checkDockerProxiesConfig();

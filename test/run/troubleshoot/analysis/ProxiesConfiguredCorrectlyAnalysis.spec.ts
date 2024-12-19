@@ -3,6 +3,7 @@ import * as fs from "fs";
 import { isOnVpn, isWebProxyHostSet } from "../../../../src/helpers/vpn-check";
 import AnalysisOutcome from "../../../../src/run/troubleshoot/analysis/AnalysisOutcome";
 import ProxiesConfiguredCorrectlyAnalysis from "../../../../src/run/troubleshoot/analysis/ProxiesConfiguredCorrectlyAnalysis";
+import { TroubleshootAnalysisTaskContext } from "../../../../src/run/troubleshoot/analysis/AnalysisTask";
 
 jest.mock("fs");
 jest.mock("../../../../src/helpers/vpn-check", () => ({
@@ -38,7 +39,8 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
         (isWebProxyHostSet as jest.Mock).mockReturnValue(true);
         (isOnVpn as jest.Mock).mockReturnValue(true);
 
-        const outcome = await analysis.analyse();
+        const context = { } as TroubleshootAnalysisTaskContext;
+        const outcome = await analysis.analyse(context);
 
         expect(outcome).toBeInstanceOf(AnalysisOutcome);
         expect(outcome.isSuccess()).toBe(true);
@@ -60,7 +62,8 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
         delete process.env.CH_PROXY_HOST;
         (isWebProxyHostSet as jest.Mock).mockReturnValue(false);
 
-        const outcome = await analysis.analyse();
+        const context = { } as TroubleshootAnalysisTaskContext;
+        const outcome = await analysis.analyse(context);
 
         expect(outcome).toBeInstanceOf(AnalysisOutcome);
         expect(outcome.isSuccess()).toBe(false);
@@ -91,7 +94,8 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
         (isWebProxyHostSet as jest.Mock).mockReturnValue(true);
         (isOnVpn as jest.Mock).mockReturnValue(false);
 
-        const outcome = await analysis.analyse();
+        const context = { } as TroubleshootAnalysisTaskContext;
+        const outcome = await analysis.analyse(context);
 
         expect(outcome).toBeInstanceOf(AnalysisOutcome);
         expect(outcome.isSuccess()).toBe(false);
@@ -121,7 +125,8 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
         (isWebProxyHostSet as jest.Mock).mockReturnValue(true);
         (isOnVpn as jest.Mock).mockReturnValue(true);
 
-        const outcome = await analysis.analyse();
+        const context = { } as TroubleshootAnalysisTaskContext;
+        const outcome = await analysis.analyse(context);
 
         expect(outcome).toBeInstanceOf(AnalysisOutcome);
         expect(outcome.isSuccess()).toBe(false);
