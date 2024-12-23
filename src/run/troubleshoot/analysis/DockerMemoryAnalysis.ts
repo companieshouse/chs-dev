@@ -13,10 +13,19 @@ import os from "os";
 const ANALYSIS_HEADLINE = "Check docker's memory allocation size";
 
 const DOCKER_MEMORY_SUGGESTIONS = [
-    "Got to settings on Docker Desktop application",
-    "Select the Resource tab - Advanced",
-    "Add to Memory Limit using the slider"
+    "Adjust Docker Memory Allocation: refer to the documentation for guidance."
 ];
+
+const DOCUMENTATION_LINKS = [
+    "troubleshooting-remedies/correctly-modify-docker-memory-limit.md"
+];
+
+/**
+ * An analysis task that evaluates whether the allocated Docker memory is sufficient to support running services.
+ *
+ * - Verifies if the Docker memory allocation is less than 12GB and if at least 50% of the device's total memory is allocated.
+ * - Checks if the Docker memory allocation is less than 12GB while resource-intensive services are enabled.
+ */
 
 export default class DockerMemoryAnalysis {
 
@@ -50,7 +59,7 @@ export default class DockerMemoryAnalysis {
                         title: "Docker memory size is too low",
                         description: `Docker memory size is ${dockerMemoryInGB}GB. It should be atleast >=12GB or half the device RAM`,
                         suggestions: DOCKER_MEMORY_SUGGESTIONS,
-                        documentationLinks: []
+                        documentationLinks: DOCUMENTATION_LINKS
                     };
                 }
 
@@ -62,8 +71,9 @@ export default class DockerMemoryAnalysis {
                     return {
                         title: "Docker memory size is too low",
                         description: `Docker memory size should be >=12GB, as resource intensive services may not run properly`,
-                        suggestions: DOCKER_MEMORY_SUGGESTIONS,
-                        documentationLinks: []
+                        suggestions: [...DOCKER_MEMORY_SUGGESTIONS, "OR",
+                            "Reduce number of services running"],
+                        documentationLinks: DOCUMENTATION_LINKS
                     };
                 }
 
