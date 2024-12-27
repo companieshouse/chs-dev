@@ -1,5 +1,6 @@
 import { DockerSettings, fetchDockerSettings } from "../../../helpers/docker-settings-store.js";
 import { isOnVpn, isWebProxyHostSet } from "../../../helpers/vpn-check.js";
+import BaseAnalysis from "./AbstractBaseAnalysis.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
 import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "./AnalysisTask.js";
 
@@ -22,7 +23,7 @@ const DOCKER_PROXY_CONFIGURATION_SUGGESTIONS = [
  * An analysis task which checks whether the proxy configuration for the user device are configured correctly.
  */
 
-export default class ProxiesConfiguredCorrectlyAnalysis {
+export default class ProxiesConfiguredCorrectlyAnalysis extends BaseAnalysis {
 
     async analyse (context: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
 
@@ -31,13 +32,7 @@ export default class ProxiesConfiguredCorrectlyAnalysis {
 
         const issues: AnalysisIssue[] = [vpnIssues, dockerIssues].filter((issue): issue is AnalysisIssue => issue !== undefined);
 
-        return this.createOutcomeFrom(issues);
-    }
-
-    private createOutcomeFrom (issues: AnalysisIssue[]): AnalysisOutcome | PromiseLike<AnalysisOutcome> {
-        return issues.length > 0
-            ? AnalysisOutcome.createFailed(ANALYSIS_HEADLINE, issues)
-            : AnalysisOutcome.createSuccessful(ANALYSIS_HEADLINE);
+        return this.createOutcomeFrom(ANALYSIS_HEADLINE, issues, "Fail");
     }
 
     private checkCHProxyConfig (): AnalysisIssue | undefined {

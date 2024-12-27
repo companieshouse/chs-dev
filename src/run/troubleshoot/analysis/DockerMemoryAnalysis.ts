@@ -6,6 +6,7 @@ import {
 import Service from "../../../model/Service.js";
 import { Inventory } from "../../../state/inventory.js";
 import { StateManager } from "../../../state/state-manager.js";
+import BaseAnalysis from "./AbstractBaseAnalysis.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
 import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "./AnalysisTask.js";
 import os from "os";
@@ -27,19 +28,14 @@ const DOCUMENTATION_LINKS = [
  * - Checks if the Docker memory allocation is less than 12GB while resource-intensive services are enabled.
  */
 
-export default class DockerMemoryAnalysis {
+export default class DockerMemoryAnalysis extends BaseAnalysis {
 
     static readonly ENABLED_SERVICE_COUNT_THRESHOLD:number = 10;
-    static readonly ENABLED_RESOURCE_INTENSIVE_SERVICES :string[] = ["elasticsearch"];
+    static readonly ENABLED_RESOURCE_INTENSIVE_SERVICES: string[] = ["elasticsearch"];
 
     async analyse ({ inventory, stateManager, config }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
         const issues = this.checkDockerMemorySize(inventory, stateManager);
-
-        return this.createOutcomeFrom(issues ? [issues] : []);
-    }
-
-    private createOutcomeFrom (issues: AnalysisIssue[]): AnalysisOutcome | PromiseLike<AnalysisOutcome> {
-        return issues.length > 0 ? AnalysisOutcome.createWarning(ANALYSIS_HEADLINE, issues) : AnalysisOutcome.createSuccessful(ANALYSIS_HEADLINE);
+        return this.createOutcomeFrom(ANALYSIS_HEADLINE, issues, "Warn");
     }
 
     checkDockerMemorySize (inventory: Inventory, stateManager:StateManager): AnalysisIssue | undefined {
