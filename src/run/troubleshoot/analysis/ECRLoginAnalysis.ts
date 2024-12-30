@@ -26,28 +26,38 @@ export default class ECRLoginAnalysis extends BaseAnalysis {
     }
 
     async checkUserECRLoginStatus (config: Config): Promise<AnalysisIssue | undefined> {
-        const projectConfig = config;
+        const { projectName, performEcrLoginHoursThreshold, chsDevDataDir } = config;
         const executionTime = Date.now();
 
-        const lastRunTimeFile = join(config.chsDevDataDir, `${projectConfig.projectName}.prerun.last_run_time`);
+        if (chsDevDataDir) {
+            const lastRunTimeFile = join(chsDevDataDir, `${projectName}.prerun.last_run_time`);
 
-        const lastRuntimeExists = existsSync(lastRunTimeFile);
+            const lastRuntimeExists = existsSync(lastRunTimeFile);
 
-        const isUserEcrLoginValid = lastRuntimeExists && timeWithinThreshold(
-            lastRunTimeFile,
-            executionTime,
-                    projectConfig.performEcrLoginHoursThreshold as number,
-                    ThresholdUnit.HOURS
-        );
+            const isUserEcrLoginValid = lastRuntimeExists && timeWithinThreshold(
+                lastRunTimeFile,
+                executionTime,
+                        performEcrLoginHoursThreshold as number,
+                        ThresholdUnit.HOURS
+            );
 
-        if (!isUserEcrLoginValid) {
+            if (!isUserEcrLoginValid) {
+                return {
+                    title: "User Not Logged into ECR",
+                    description: "The login logs indicate that the user is either not logged in or the login session has expired.",
+                    suggestions: ECR_LOGIN_SUGGESTIONS,
+                    documentationLinks: DOCUMENTATION_LINKS
+                };
+
+            }
+
+        } else {
             return {
-                title: "User Not Logged into ECR",
-                description: "The login logs indicate that the user is either not logged in or the login session has expired.",
+                title: "ECR Login Status Check Failed",
+                description: "Unable to perform check. DataDir path is missing from configuration.",
                 suggestions: ECR_LOGIN_SUGGESTIONS,
                 documentationLinks: DOCUMENTATION_LINKS
             };
-
         }
 
     }

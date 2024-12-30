@@ -17,12 +17,12 @@ export type Config = {
     /**
      * path to the chs-dev local repository
      */
-    readonly chsDevPath: string;
+    readonly chsDevPath?: string;
 
     /**
      * path to the chs-dev data
      */
-    readonly chsDevDataDir: string;
+    readonly chsDevDataDir?: string;
 
     /**
      * additional environment variables for running the environment. Values can
