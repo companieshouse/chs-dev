@@ -37,8 +37,8 @@ export default class ECRLoginAnalysis extends BaseAnalysis {
             const isUserEcrLoginValid = lastRuntimeExists && timeWithinThreshold(
                 lastRunTimeFile,
                 executionTime,
-                        performEcrLoginHoursThreshold as number,
-                        ThresholdUnit.HOURS
+                performEcrLoginHoursThreshold as number,
+                ThresholdUnit.HOURS
             );
 
             if (!isUserEcrLoginValid) {
