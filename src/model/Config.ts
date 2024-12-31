@@ -42,6 +42,11 @@ export type Config = {
      */
     readonly versionSpecification?: string;
 
+    /**
+     * specifies the application version
+     */
+    readonly chsDevVersion?: string;
+
 }
 
 export default Config;

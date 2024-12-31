@@ -43,7 +43,11 @@ export const load: (commandConfig?: CMConfig) => Config = (commandConfig) => {
     }
 
     const chsDevConfig = commandConfig
-        ? { chsDevPath: commandConfig.root, chsDevDataDir: commandConfig.dataDir }
+        ? {
+            chsDevPath: commandConfig.root,
+            chsDevDataDir: commandConfig.dataDir,
+            chsDevVersion: commandConfig.version
+        }
         : {};
 
     return {
