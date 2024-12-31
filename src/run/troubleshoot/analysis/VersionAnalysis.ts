@@ -16,7 +16,7 @@ const DOCUMENTATION_LINKS = [
 ];
 
 /**
- * An analysis task that evaluates whether the chs-dev version is the latest.
+ * An analysis task that evaluates whether the chs-dev version  meets the required specifications and the latest.
  */
 export default class VersionAnalysis extends BaseAnalysis {
     async analyse ({ config }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
