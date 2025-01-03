@@ -17,15 +17,15 @@ const DOCUMENTATION_LINKS = [];
  * It checks the user's ECR login status using the last runtime file and a threshold configuration for the verification of a current or previous login.
  */
 
-export default class ECRLoginAnalysis extends BaseAnalysis {
+export default class EcrLoginAnalysis extends BaseAnalysis {
 
     async analyse ({ inventory, stateManager, config }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
-        const issues = await this.checkUserECRLoginStatus(config);
+        const issues = await this.checkUserEcrLoginStatus(config);
 
         return this.createOutcomeFrom(ANALYSIS_HEADLINE, issues, "Fail");
     }
 
-    async checkUserECRLoginStatus (config: Config): Promise<AnalysisIssue | undefined> {
+    async checkUserEcrLoginStatus (config: Config): Promise<AnalysisIssue | undefined> {
         const { projectName, performEcrLoginHoursThreshold, chsDevDataDir } = config;
         const executionTime = Date.now();
 
