@@ -51,12 +51,13 @@ export default class DockerMemoryAnalysis extends BaseAnalysis {
                 const isAtLeastHalfMemory = this.isHalfAboveDeviceMemory(dockerMemoryInGB);
 
                 if (!isAtLeastHalfMemory) {
-                    return {
-                        title: "Docker memory size is too low",
-                        description: `Docker memory size is ${dockerMemoryInGB}GB. It should be atleast >=12GB or half the device RAM`,
-                        suggestions: DOCKER_MEMORY_SUGGESTIONS,
-                        documentationLinks: DOCUMENTATION_LINKS
-                    };
+                    return this.createIssue(
+                        "Docker memory size is too low",
+                        `Docker memory size is ${dockerMemoryInGB}GB. It should be atleast >=12GB or half the device RAM.`,
+                        DOCKER_MEMORY_SUGGESTIONS,
+                        DOCUMENTATION_LINKS
+                    );
+
                 }
 
                 const enabledServices = this.getEnabledServices(inventory, stateManager);
@@ -64,13 +65,14 @@ export default class DockerMemoryAnalysis extends BaseAnalysis {
                 const resourceIntensiveServiceEnabled = DockerMemoryAnalysis.ENABLED_RESOURCE_INTENSIVE_SERVICES.some((service: string) => enabledServices.includes(service));
 
                 if (enabledServiceCountAboveThreshold || resourceIntensiveServiceEnabled) {
-                    return {
-                        title: "Docker memory size is too low",
-                        description: `Docker memory size should be >=12GB, as resource intensive services may not run properly`,
-                        suggestions: [...DOCKER_MEMORY_SUGGESTIONS, "OR",
+                    return this.createIssue(
+                        "Docker memory size is too low",
+                        `Docker memory size should be >=12GB, as resource intensive services may not run properly.`,
+                        [...DOCKER_MEMORY_SUGGESTIONS, "OR",
                             "Reduce number of services running"],
-                        documentationLinks: DOCUMENTATION_LINKS
-                    };
+                        DOCUMENTATION_LINKS
+                    );
+
                 }
 
             }

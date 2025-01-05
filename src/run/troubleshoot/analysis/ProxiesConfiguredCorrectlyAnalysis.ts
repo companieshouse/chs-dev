@@ -38,20 +38,19 @@ export default class ProxiesConfiguredCorrectlyAnalysis extends BaseAnalysis {
     private checkCHProxyConfig (): AnalysisIssue | undefined {
         if (isWebProxyHostSet()) {
             if (!isOnVpn()) {
-                return {
-                    title: "CH_PROXY_HOST ping unsuccessful",
-                    description: `Ping on webproxy not successful`,
-                    suggestions: WEB_PROXY_SUGGESTION,
-                    documentationLinks: []
-                };
+                return this.createIssue(
+                    "CH_PROXY_HOST ping unsuccessful",
+                    `Ping on webproxy not successful`,
+                    WEB_PROXY_SUGGESTION
+                );
             }
         } else {
-            return {
-                title: "CH_PROXY_HOST env not set",
-                description: `CH_PROXY_HOST value missing in env.`,
-                suggestions: WEB_PROXY_SUGGESTION,
-                documentationLinks: []
-            };
+            return this.createIssue(
+                "CH_PROXY_HOST env not set",
+                `CH_PROXY_HOST value missing in env.`,
+                WEB_PROXY_SUGGESTION
+            );
+
         }
     }
 
@@ -64,12 +63,11 @@ export default class ProxiesConfiguredCorrectlyAnalysis extends BaseAnalysis {
         if (!issues.title) {
             if (!(OverrideProxyHTTP === httpProxy && OverrideProxyHTTPS === httpProxy &&
                 ProxyHTTPMode === "manual" && ProxyHttpMode === "manual")) {
-                return {
-                    title: "Docker proxy settings invalid",
-                    description: `Docker proxy settings properties not configured correctly`,
-                    suggestions: DOCKER_PROXY_CONFIGURATION_SUGGESTIONS,
-                    documentationLinks: []
-                };
+                return this.createIssue(
+                    "Docker proxy settings invalid",
+                    `Docker proxy settings properties not configured correctly`,
+                    DOCKER_PROXY_CONFIGURATION_SUGGESTIONS
+                );
             }
         } else {
             return issues;
