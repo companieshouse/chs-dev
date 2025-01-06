@@ -3,7 +3,7 @@ import AnalysisOutcome from "../../../../src/run/troubleshoot/analysis/AnalysisO
 import { TroubleshootAnalysisTaskContext } from "../../../../src/run/troubleshoot/analysis/AnalysisTask";
 import EcrLoginAnalysis from "../../../../src/run/troubleshoot/analysis/ECRLoginAnalysis";
 import * as fs from "fs";
-import { timeWithinThreshold, ThresholdUnit } from "../../../../src/helpers/time-within-threshold";
+import { timeWithinThreshold } from "../../../../src/helpers/time-within-threshold";
 
 jest.mock("fs");
 
