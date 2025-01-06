@@ -25,7 +25,7 @@ export default class EcrLoginAnalysis extends BaseAnalysis {
         return this.createOutcomeFrom(ANALYSIS_HEADLINE, issues, "Fail");
     }
 
-    async checkUserEcrLoginStatus (config: Config): Promise<AnalysisIssue | undefined> {
+    private async checkUserEcrLoginStatus (config: Config): Promise<AnalysisIssue | undefined> {
         const { projectName, performEcrLoginHoursThreshold, chsDevDataDir } = config;
         const executionTime = Date.now();
 
