@@ -1,6 +1,4 @@
-import { existsSync } from "fs";
-import { join } from "path";
-import { ThresholdUnit, timeWithinThreshold } from "../../../helpers/time-within-threshold.js";
+import { hasValidEcrLoginWithinThreshold } from "../../../helpers/ecr-login.js";
 import Config from "../../../model/Config.js";
 import BaseAnalysis from "./AbstractBaseAnalysis.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
@@ -26,38 +24,27 @@ export default class EcrLoginAnalysis extends BaseAnalysis {
     }
 
     private async checkUserEcrLoginStatus (config: Config): Promise<AnalysisIssue | undefined> {
-        const { projectName, performEcrLoginHoursThreshold, chsDevDataDir } = config;
-        const executionTime = Date.now();
-
+        const { chsDevDataDir } = config;
         if (chsDevDataDir) {
-            const lastRunTimeFile = join(chsDevDataDir, `${projectName}.prerun.last_run_time`);
-
-            const lastRuntimeExists = existsSync(lastRunTimeFile);
-
-            const isUserEcrLoginValid = lastRuntimeExists && timeWithinThreshold(
-                lastRunTimeFile,
-                executionTime,
-                performEcrLoginHoursThreshold as number,
-                ThresholdUnit.HOURS
-            );
-
+            const isUserEcrLoginValid = hasValidEcrLoginWithinThreshold(config);
             if (!isUserEcrLoginValid) {
-                return {
-                    title: "User Not Logged into ECR",
-                    description: "The login logs indicate that the user is either not logged in or the login session has expired.",
-                    suggestions: ECR_LOGIN_SUGGESTIONS,
-                    documentationLinks: DOCUMENTATION_LINKS
-                };
+                return this.createIssue(
+                    "User Not Logged into ECR",
+                    "The login logs indicate that the user is either not logged in or the login session has expired.",
+                    ECR_LOGIN_SUGGESTIONS,
+                    DOCUMENTATION_LINKS
+                );
 
             }
 
         } else {
-            return {
-                title: "ECR Login Status Check Failed",
-                description: "Unable to perform check. DataDir path is missing from configuration.",
-                suggestions: ECR_LOGIN_SUGGESTIONS,
-                documentationLinks: DOCUMENTATION_LINKS
-            };
+            return this.createIssue(
+                "ECR Login Status Check Failed",
+                "Unable to perform check. DataDir path is missing from configuration.",
+                ECR_LOGIN_SUGGESTIONS,
+                DOCUMENTATION_LINKS
+            );
+
         }
 
     }
