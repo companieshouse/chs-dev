@@ -3,7 +3,7 @@ import { Hook } from "@oclif/core";
 import { writeFileSync } from "fs";
 import { join } from "path";
 import loadConfig from "../helpers/config-loader.js";
-import { hasValidEcrLoginWithinThreshold } from "../helpers/ecr-login.js";
+import { hasValidEcrLoginWithinThreshold, isForceEcrCheckEnabled } from "../helpers/ecr-login.js";
 import Config from "../model/Config.js";
 import { DockerEcrLogin } from "../run/docker-ecr-login.js";
 
@@ -30,7 +30,7 @@ export const hook: Hook<"ensure-ecr-logged-in"> = async ({ config, context }) =>
         executionTime
     };
 
-    const runCheck = "CHS_DEV_FORCE_ECR_CHECK" in process.env || !hasValidEcrLoginWithinThreshold(ecrLoginCheckProperties);
+    const runCheck = isForceEcrCheckEnabled() || !hasValidEcrLoginWithinThreshold(ecrLoginCheckProperties);
 
     if (runCheck) {
         await attemptEcrLogin(config, projectConfig, context, lastRunTimeFile, executionTime);
