@@ -1,11 +1,11 @@
-import { Hook } from "@oclif/core";
 import confirm from "@inquirer/confirm";
-import { DockerEcrLogin } from "../run/docker-ecr-login.js";
-import loadConfig from "../helpers/config-loader.js";
-import { existsSync, writeFileSync } from "fs";
+import { Hook } from "@oclif/core";
+import { writeFileSync } from "fs";
 import { join } from "path";
-import { ThresholdUnit, timeWithinThreshold } from "../helpers/time-within-threshold.js";
+import loadConfig from "../helpers/config-loader.js";
+import { hasValidEcrLoginWithinThreshold } from "../helpers/ecr-login.js";
 import Config from "../model/Config.js";
+import { DockerEcrLogin } from "../run/docker-ecr-login.js";
 
 /**
  * Oclif hook which will offer the user to login to ECR if not logged in
@@ -22,14 +22,15 @@ export const hook: Hook<"ensure-ecr-logged-in"> = async ({ config, context }) =>
 
     const lastRunTimeFile = join(config.dataDir, `${projectConfig.projectName}.prerun.last_run_time`);
 
-    const lastRuntimeExists = existsSync(lastRunTimeFile);
-
-    const runCheck = "CHS_DEV_FORCE_ECR_CHECK" in process.env || !(lastRuntimeExists && timeWithinThreshold(
+    const ecrLoginCheckProperties = {
+        projectName: projectConfig.projectName,
+        performEcrLoginHoursThreshold: projectConfig.performEcrLoginHoursThreshold,
+        chsDevDataDir: config.dataDir,
         lastRunTimeFile,
-        executionTime,
-            projectConfig.performEcrLoginHoursThreshold as number,
-            ThresholdUnit.HOURS
-    ));
+        executionTime
+    };
+
+    const runCheck = "CHS_DEV_FORCE_ECR_CHECK" in process.env || !hasValidEcrLoginWithinThreshold(ecrLoginCheckProperties);
 
     if (runCheck) {
         await attemptEcrLogin(config, projectConfig, context, lastRunTimeFile, executionTime);
