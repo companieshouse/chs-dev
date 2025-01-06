@@ -1,5 +1,6 @@
 import { DockerSettings, fetchDockerSettings } from "../../../helpers/docker-settings-store.js";
 import { isOnVpn, isWebProxyHostSet } from "../../../helpers/vpn-check.js";
+import BaseAnalysis from "./AbstractBaseAnalysis.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
 import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "./AnalysisTask.js";
 
@@ -22,7 +23,7 @@ const DOCKER_PROXY_CONFIGURATION_SUGGESTIONS = [
  * An analysis task which checks whether the proxy configuration for the user device are configured correctly.
  */
 
-export default class ProxiesConfiguredCorrectlyAnalysis {
+export default class ProxiesConfiguredCorrectlyAnalysis extends BaseAnalysis {
 
     async analyse (context: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
 
@@ -31,32 +32,25 @@ export default class ProxiesConfiguredCorrectlyAnalysis {
 
         const issues: AnalysisIssue[] = [vpnIssues, dockerIssues].filter((issue): issue is AnalysisIssue => issue !== undefined);
 
-        return this.createOutcomeFrom(issues);
-    }
-
-    private createOutcomeFrom (issues: AnalysisIssue[]): AnalysisOutcome | PromiseLike<AnalysisOutcome> {
-        return issues.length > 0
-            ? AnalysisOutcome.createFailed(ANALYSIS_HEADLINE, issues)
-            : AnalysisOutcome.createSuccessful(ANALYSIS_HEADLINE);
+        return this.createOutcomeFrom(ANALYSIS_HEADLINE, issues, "Fail");
     }
 
     private checkCHProxyConfig (): AnalysisIssue | undefined {
         if (isWebProxyHostSet()) {
             if (!isOnVpn()) {
-                return {
-                    title: "CH_PROXY_HOST ping unsuccessful",
-                    description: `Ping on webproxy not successful`,
-                    suggestions: WEB_PROXY_SUGGESTION,
-                    documentationLinks: []
-                };
+                return this.createIssue(
+                    "CH_PROXY_HOST ping unsuccessful",
+                    `Ping on webproxy not successful`,
+                    WEB_PROXY_SUGGESTION
+                );
             }
         } else {
-            return {
-                title: "CH_PROXY_HOST env not set",
-                description: `CH_PROXY_HOST value missing in env.`,
-                suggestions: WEB_PROXY_SUGGESTION,
-                documentationLinks: []
-            };
+            return this.createIssue(
+                "CH_PROXY_HOST env not set",
+                `CH_PROXY_HOST value missing in env.`,
+                WEB_PROXY_SUGGESTION
+            );
+
         }
     }
 
@@ -69,12 +63,11 @@ export default class ProxiesConfiguredCorrectlyAnalysis {
         if (!issues.title) {
             if (!(OverrideProxyHTTP === httpProxy && OverrideProxyHTTPS === httpProxy &&
                 ProxyHTTPMode === "manual" && ProxyHttpMode === "manual")) {
-                return {
-                    title: "Docker proxy settings invalid",
-                    description: `Docker proxy settings properties not configured correctly`,
-                    suggestions: DOCKER_PROXY_CONFIGURATION_SUGGESTIONS,
-                    documentationLinks: []
-                };
+                return this.createIssue(
+                    "Docker proxy settings invalid",
+                    `Docker proxy settings properties not configured correctly`,
+                    DOCKER_PROXY_CONFIGURATION_SUGGESTIONS
+                );
             }
         } else {
             return issues;

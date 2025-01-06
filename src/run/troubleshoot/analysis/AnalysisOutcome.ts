@@ -19,25 +19,7 @@ export default class AnalysisOutcome {
         return this.issues.length === 0;
     }
 
-    static createFailed (headline: string, issues: AnalysisIssue[]) {
-        return new AnalysisOutcome(
-            headline, issues, AnalysisFailureLevel.FAIL
-        );
-    }
-
-    static createWarning (headline: string, issues: AnalysisIssue[]) {
-        return new AnalysisOutcome(
-            headline, issues, AnalysisFailureLevel.WARN
-        );
-    }
-
-    static createInformational (headline: string, issues: AnalysisIssue[]) {
-        return new AnalysisOutcome(
-            headline, issues, AnalysisFailureLevel.INFO
-        );
-    }
-
-    static createSuccessful (headline: string) {
-        return new AnalysisOutcome(headline, []);
+    static createOutcome (headline: string, issues: AnalysisIssue[], level: AnalysisFailureLevel) {
+        return new AnalysisOutcome(headline, issues, level);
     }
 }

@@ -5,6 +5,7 @@ import { existsSync } from "fs";
 import Service from "../../../model/Service.js";
 import Config from "../../../model/Config.js";
 import { getBuilders } from "../../../state/builders.js";
+import BaseAnalysis from "./AbstractBaseAnalysis.js";
 
 const ANALYSIS_HEADLINE = "Check for services in development mode correctly configured";
 const REPOSITORY_BUILDER_MISSING_DOCKERFILE_TITLE = "Missing Dockerfile for service in Development mode without builder label";
@@ -25,7 +26,7 @@ const DOCUMENTATION_LINKS = [
  * mode are correctly configured with a Dockerfile - either from the builder
  * label or whether the repository itself has a Dockerfile within it.
  */
-export default class ServicesInLiveUpdateConfiguredCorrectlyAnalysis {
+export default class ServicesInLiveUpdateConfiguredCorrectlyAnalysisextends extends BaseAnalysis {
 
     async analyse ({ inventory, stateManager, config }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
         const servicesInLiveUpdate = inventory.services.filter(
@@ -36,7 +37,7 @@ export default class ServicesInLiveUpdateConfiguredCorrectlyAnalysis {
             .map(service => this.analyseService(service, config))
             .filter(issueOrUndefined => typeof issueOrUndefined !== "undefined") as AnalysisIssue[];
 
-        return this.createOutcomeFrom(issues);
+        return this.createOutcomeFrom(ANALYSIS_HEADLINE, issues, "Warn");
     }
 
     private analyseService (service: Service, config: Config) {
@@ -44,30 +45,25 @@ export default class ServicesInLiveUpdateConfiguredCorrectlyAnalysis {
         let issue: AnalysisIssue | undefined;
         if (isRepo) {
             if (!this.repositoryDockerfileExists(config, service)) {
-                issue = {
-                    title: REPOSITORY_BUILDER_MISSING_DOCKERFILE_TITLE,
-                    description: `Missing Dockerfile for service ${service.name}`,
-                    suggestions: REPOSITORY_BUILDER_DOCKERFILE_SUGGESTIONS,
-                    documentationLinks: DOCUMENTATION_LINKS
-                };
+                issue = this.createIssue(
+                    REPOSITORY_BUILDER_MISSING_DOCKERFILE_TITLE,
+                    `Missing Dockerfile for service ${service.name}`,
+                    REPOSITORY_BUILDER_DOCKERFILE_SUGGESTIONS,
+                    DOCUMENTATION_LINKS
+                );
+
             }
         } else {
             if (!this.builderExists(config, service.builder)) {
-                issue = {
-                    title: INCORRECT_BUILDER_TITLE,
-                    description: `Service: ${service.name} contains an incorrect builder label: ${service.builder}`,
-                    suggestions: this.constructSuggestionsForIncorrectBuilder(config),
-                    documentationLinks: DOCUMENTATION_LINKS
-                };
+                issue = this.createIssue(
+                    INCORRECT_BUILDER_TITLE,
+                    `Service: ${service.name} contains an incorrect builder label: ${service.builder}`,
+                    this.constructSuggestionsForIncorrectBuilder(config),
+                    DOCUMENTATION_LINKS
+                );
             }
         }
         return issue;
-    }
-
-    private createOutcomeFrom (issues: AnalysisIssue[]): AnalysisOutcome | PromiseLike<AnalysisOutcome> {
-        return issues.length > 0
-            ? AnalysisOutcome.createWarning(ANALYSIS_HEADLINE, issues)
-            : AnalysisOutcome.createSuccessful(ANALYSIS_HEADLINE);
     }
 
     private constructSuggestionsForIncorrectBuilder (config: Config): string[] {
