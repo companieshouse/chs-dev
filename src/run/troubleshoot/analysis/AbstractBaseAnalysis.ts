@@ -32,4 +32,13 @@ export default abstract class BaseAnalysis {
         return new AnalysisOutcome(headline, []);
     }
 
+    protected createIssue (
+        title: string,
+        description: string,
+        suggestions: string[] = [],
+        documentationLinks: string[] = []
+    ): AnalysisIssue {
+        return { title, description, suggestions, documentationLinks };
+    }
+
 }
