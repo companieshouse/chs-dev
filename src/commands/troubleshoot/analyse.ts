@@ -30,7 +30,7 @@ export default class Analyse extends Command {
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
-        const chsDevConfig = load();
+        const chsDevConfig = load(config);
 
         const inventory = new Inventory(chsDevConfig.projectPath, config.cacheDir);
         const stateManager = new StateManager(chsDevConfig.projectPath);

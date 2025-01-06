@@ -38,7 +38,7 @@ export default class DockerMemoryAnalysis extends BaseAnalysis {
         return this.createOutcomeFrom(ANALYSIS_HEADLINE, issues, "Warn");
     }
 
-    checkDockerMemorySize (inventory: Inventory, stateManager:StateManager): AnalysisIssue | undefined {
+    private checkDockerMemorySize (inventory: Inventory, stateManager:StateManager): AnalysisIssue | undefined {
         const result = fetchDockerSettings();
         const { MemoryMiB } = result as DockerSettings;
         const issues = result as AnalysisIssue;

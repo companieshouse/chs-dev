@@ -3,6 +3,7 @@ import { basename, join } from "path";
 import yaml from "yaml";
 import Config from "../model/Config.js";
 import Constants from "../model/Constants.js";
+import { Config as CMConfig } from "@oclif/core";
 
 const fileVarRegExp = /^file:\/\/(.+)$/;
 
@@ -11,7 +12,7 @@ const fileVarRegExp = /^file:\/\/(.+)$/;
  * configuration then returns an empty configuration object.
  * @returns Project Config
  */
-export const load: () => Config = () => {
+export const load: (commandConfig?: CMConfig) => Config = (commandConfig) => {
     const projectPath = process.env.CHS_DEV_PROJECT || process.cwd();
     const confFile = join(projectPath, "chs-dev/config.yaml");
 
@@ -41,10 +42,15 @@ export const load: () => Config = () => {
         };
     }
 
+    const chsDevConfig = commandConfig
+        ? { chsDevPath: commandConfig.root, chsDevDataDir: commandConfig.dataDir }
+        : {};
+
     return {
         ...config,
         projectPath,
-        projectName: basename(projectPath)
+        projectName: basename(projectPath),
+        ...chsDevConfig
     } as Config;
 };
 
