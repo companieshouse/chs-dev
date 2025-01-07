@@ -16,7 +16,7 @@ const DOCUMENTATION_LINKS = [
 ];
 
 /**
- * An analysis task that evaluates whether the chs-dev version  meets the required specifications and the latest.
+ * An analysis task that evaluates whether the chs-dev version  meets the required specification and the latest.
  */
 export default class VersionAnalysis extends BaseAnalysis {
     async analyse ({ config }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
@@ -26,6 +26,10 @@ export default class VersionAnalysis extends BaseAnalysis {
 
     /**
      * Checks if the current chs-dev version meets the required specifications and is up-to-date.
+     * @param {Config} params - properties required for the check:
+     * @param {string} versionSpecification -  required application versions
+     * @param {string} chsDevVersion - current application version
+     * @returns {AnalysisIssue[] | AnalysisIssue} - returns Object Array of issues or a single issue
      */
     private async checkVersionCompliance (config: Config): Promise<AnalysisIssue[] | AnalysisIssue> {
         const issues: AnalysisIssue[] = [];
@@ -53,6 +57,9 @@ export default class VersionAnalysis extends BaseAnalysis {
 
     /**
      * Checks if the current version satisfies the project's version specification.
+     * @param {string} versionSpecification: required application versions
+     * @param {string} appVersion - current application version
+     * @returns {AnalysisIssue | undefined} - returns an single issue or undefined
      */
     private checkVersionSpecification (versionSpecification:string, appVersion:string): AnalysisIssue | undefined {
 
@@ -70,6 +77,8 @@ export default class VersionAnalysis extends BaseAnalysis {
 
     /**
      * Checks if the current version is the latest available.
+     * @param {string} appVersion - current application version
+     * @returns { Promise<AnalysisIssue | undefined> } -  returns a single issue or undefined as promise
      */
     private async checkIfVersionIsLatest (appVersion: string): Promise<AnalysisIssue | undefined> {
 
@@ -77,10 +86,6 @@ export default class VersionAnalysis extends BaseAnalysis {
         const semverDifference = diff(latestVersion, appVersion);
 
         if (semverDifference !== null) {
-            const versionType = semverDifference === "major" || semverDifference === "minor"
-                ? `${semverDifference} `
-                : "";
-
             return this.createIssue(
                 "chs-dev version not latest",
                 `A newer version (${latestVersion}) is available (current version: ${appVersion}).`,
@@ -90,17 +95,5 @@ export default class VersionAnalysis extends BaseAnalysis {
         }
 
         return undefined;
-    }
-
-    /**
-     * Helper method to create an `AnalysisIssue` object. : Move to BaseAnalysis
-     */
-    private createIssue (
-        title: string,
-        description: string,
-        suggestions: string[] = [],
-        documentationLinks: string[] = []
-    ): AnalysisIssue {
-        return { title, description, suggestions, documentationLinks };
     }
 }
