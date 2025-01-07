@@ -1,9 +1,9 @@
 import { expect, jest } from "@jest/globals";
 import AnalysisOutcome from "../../../../src/run/troubleshoot/analysis/AnalysisOutcome";
 import { TroubleshootAnalysisTaskContext } from "../../../../src/run/troubleshoot/analysis/AnalysisTask";
-import ECRLoginAnalysis from "../../../../src/run/troubleshoot/analysis/ECRLoginAnalysis";
+import EcrLoginAnalysis from "../../../../src/run/troubleshoot/analysis/ECRLoginAnalysis";
 import * as fs from "fs";
-import { timeWithinThreshold, ThresholdUnit } from "../../../../src/helpers/time-within-threshold";
+import { timeWithinThreshold } from "../../../../src/helpers/time-within-threshold";
 
 jest.mock("fs");
 
@@ -17,10 +17,10 @@ jest.mock("../../../../src/helpers/time-within-threshold", () => ({
 }));
 
 describe("ECRLoginAnalysis", () => {
-    let analysis: ECRLoginAnalysis;
+    let analysis: EcrLoginAnalysis;
 
     beforeEach(async () => {
-        analysis = new ECRLoginAnalysis();
+        analysis = new EcrLoginAnalysis();
         jest.resetAllMocks();
 
     });

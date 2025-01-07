@@ -45,21 +45,22 @@ export default class ServicesInLiveUpdateConfiguredCorrectlyAnalysisextends exte
         let issue: AnalysisIssue | undefined;
         if (isRepo) {
             if (!this.repositoryDockerfileExists(config, service)) {
-                issue = {
-                    title: REPOSITORY_BUILDER_MISSING_DOCKERFILE_TITLE,
-                    description: `Missing Dockerfile for service ${service.name}`,
-                    suggestions: REPOSITORY_BUILDER_DOCKERFILE_SUGGESTIONS,
-                    documentationLinks: DOCUMENTATION_LINKS
-                };
+                issue = this.createIssue(
+                    REPOSITORY_BUILDER_MISSING_DOCKERFILE_TITLE,
+                    `Missing Dockerfile for service ${service.name}`,
+                    REPOSITORY_BUILDER_DOCKERFILE_SUGGESTIONS,
+                    DOCUMENTATION_LINKS
+                );
+
             }
         } else {
             if (!this.builderExists(config, service.builder)) {
-                issue = {
-                    title: INCORRECT_BUILDER_TITLE,
-                    description: `Service: ${service.name} contains an incorrect builder label: ${service.builder}`,
-                    suggestions: this.constructSuggestionsForIncorrectBuilder(config),
-                    documentationLinks: DOCUMENTATION_LINKS
-                };
+                issue = this.createIssue(
+                    INCORRECT_BUILDER_TITLE,
+                    `Service: ${service.name} contains an incorrect builder label: ${service.builder}`,
+                    this.constructSuggestionsForIncorrectBuilder(config),
+                    DOCUMENTATION_LINKS
+                );
             }
         }
         return issue;
