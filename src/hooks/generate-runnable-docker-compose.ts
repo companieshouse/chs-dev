@@ -19,9 +19,7 @@ export const hook: Hook<"generate-runnable-docker-compose"> = async function (op
 
     const enabledServices = serviceLoader.loadServices(state);
 
-    const { excludedServices } = state || [];
-
-    dockerComposeFileGenerator.generateDockerComposeFile(enabledServices, excludedServices);
+    dockerComposeFileGenerator.generateDockerComposeFile(enabledServices);
 };
 
 export default hook;
