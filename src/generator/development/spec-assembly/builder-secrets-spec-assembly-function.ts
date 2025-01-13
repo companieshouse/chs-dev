@@ -1,4 +1,4 @@
-import getInitialDockerComposeFile from "../../../helpers/initial-docker-compose-file.js";
+import { getInitialDockerComposeFile } from "../../../helpers/docker-compose-file.js";
 import CONSTANTS from "../../../model/Constants.js";
 import { SpecAssemblyFunction } from "./spec-assembly-function.js";
 
