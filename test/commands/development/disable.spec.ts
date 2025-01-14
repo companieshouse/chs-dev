@@ -16,7 +16,9 @@ const inventoryMock = {
 };
 
 const stateManagerMock = {
-    snapshot,
+    snapshot: {
+        excludedServices: ["serviceA", "serviceB"]
+    },
     excludeServiceFromLiveUpdate: excludeServiceFromLiveUpdateMock
 };
 

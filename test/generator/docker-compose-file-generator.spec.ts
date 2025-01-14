@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
 
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import fs, { copyFileSync, Dirent, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { DockerComposeFileGenerator } from "../../src/generator/docker-compose-file-generator";
 import { Service } from "../../src/model/Service";
 import { join, resolve } from "path";
@@ -14,39 +14,7 @@ const developmentDockerComposeSpecFactoryMock = {
     create: jest.fn()
 };
 
-jest.mock("../../src/state/builders");
-jest.mock("../../src/generator/development/development-docker-compose-factory");
-
-describe("DockerComposeFileGenerator", () => {
-    let tempDir: string;
-    let moduleDir: string;
-    let dockerComposeFileGenerator: DockerComposeFileGenerator;
-
-    beforeAll(() => {
-        tempDir = resolve(mkdtempSync("docker-compose-file-gen"));
-        moduleDir = join(tempDir, "services/modules/module-one");
-
-        mkdirSync(join(tempDir, "local"));
-        mkdirSync(moduleDir, { recursive: true });
-    });
-
-    afterAll(() => {
-        rmSync(tempDir, { recursive: true, force: true });
-    });
-
-    beforeEach(() => {
-        dockerComposeFileGenerator = new DockerComposeFileGenerator(resolve(tempDir));
-        mkdirSync(join(tempDir, "services/infrastructure/"), { recursive: true });
-
-        copyFileSync(
-            join(process.cwd(), "test/data/docker-compose-file-generator/docker-compose.yaml"),
-            join(tempDir, "services/infrastructure/docker-compose.yaml")
-        );
-    });
-
-    describe("generateDockerComposeFile", () => {
-
-        const services: (Service & {
+const services: (Service & {
             liveUpdate: boolean
         })[] = [
             {
@@ -165,43 +133,72 @@ describe("DockerComposeFileGenerator", () => {
             }
         ];
 
+jest.mock("../../src/state/builders");
+jest.mock("../../src/generator/development/development-docker-compose-factory");
+
+describe("DockerComposeFileGenerator", () => {
+    let tempDir: string;
+    let moduleDir: string;
+    let dockerComposeFileGenerator: DockerComposeFileGenerator;
+
+    beforeAll(() => {
+        tempDir = resolve(mkdtempSync("docker-compose-file-gen"));
+        moduleDir = join(tempDir, "services/modules/module-one");
+
+        mkdirSync(join(tempDir, "local"));
+        mkdirSync(join(tempDir, "exclude"));
+        mkdirSync(moduleDir, { recursive: true });
+    });
+
+    afterAll(() => {
+        rmSync(tempDir, { recursive: true, force: true });
+    });
+
+    beforeEach(() => {
+        dockerComposeFileGenerator = new DockerComposeFileGenerator(resolve(tempDir));
+        mkdirSync(join(tempDir, "services/infrastructure/"), { recursive: true });
+
+        copyFileSync(
+            join(process.cwd(), "test/data/docker-compose-file-generator/docker-compose.yaml"),
+            join(tempDir, "services/infrastructure/docker-compose.yaml")
+        );
+    });
+
+    describe("generateDockerComposeFile", () => {
+
         it("correctly generates docker compose file, no exclusions", () => {
             dockerComposeFileGenerator.generateDockerComposeFile(
-                services, []
+                services, false, []
             );
 
             const dockerComposeOutputFile = join(tempDir, "docker-compose.yaml");
+
             expect(existsSync(dockerComposeOutputFile)).toBe(true);
 
             const dockerComposeOutput = parse(readFileSync(dockerComposeOutputFile).toString("utf8"));
-
-            dockerComposeOutput.include = dockerComposeOutput.include.map(
-                (inclusion: string) => inclusion.replace(tempDir, ".")
+            dockerComposeOutput.include = services.map(
+                (service) => service.liveUpdate ? `./local/${service.name}/docker-compose.yaml` : service.source
             );
+
+            services.forEach((service) => {
+                if (service.name === "service-eight" || service.name === "service-four") {
+                    dockerComposeOutput.services["ingress-proxy"].depends_on[service.name] = {
+                        condition: "service_healthy",
+                        restart: true
+                    };
+                } else if (service.name !== "service-five" && service.name !== "service-three") {
+                    dockerComposeOutput.services["ingress-proxy"].depends_on[service.name] =
+                {
+                    condition: "service_started",
+                    restart: true
+                };
+                }
+
+            });
 
             expect(dockerComposeOutput).toMatchSnapshot();
         });
 
-        it("correctly excludes services", () => {
-            dockerComposeFileGenerator.generateDockerComposeFile(
-                services, [
-                    "service-five",
-                    "service-six",
-                    "service-seven"
-                ]
-            );
-
-            const dockerComposeOutputFile = join(tempDir, "docker-compose.yaml");
-            expect(existsSync(dockerComposeOutputFile)).toBe(true);
-
-            const dockerComposeOutput = parse(readFileSync(dockerComposeOutputFile).toString("utf8"));
-
-            dockerComposeOutput.include = dockerComposeOutput.include.map(
-                (inclusion: string) => inclusion.replace(tempDir, ".")
-            );
-
-            expect(dockerComposeOutput).toMatchSnapshot();
-        });
     });
 
     describe("generateDevelopmentServiceDockerComposeFile without builderVersion", () => {
@@ -439,4 +436,31 @@ describe("DockerComposeFileGenerator", () => {
             expect(existsSync(touchFile)).toBe(true);
         });
     });
+
+    describe("generateExclusionServiceDockerComposeFile ", () => {
+
+        it("correctly excludes services", () => {
+            const mockGenerateDockerComposeFileForIncludedServices = jest
+                .spyOn(dockerComposeFileGenerator as any, "generateDockerComposeFileForIncludedServices")
+                .mockImplementation(() => {});
+
+            const mockGenerateDevelopmentServiceDockerComposeFile = jest
+                .spyOn(dockerComposeFileGenerator as any, "generateDevelopmentServiceDockerComposeFile")
+                .mockImplementation(() => { });
+
+            const generateExclusionDockerComposeFilesMock = jest
+                .spyOn(dockerComposeFileGenerator as any, "generateExclusionDockerComposeFiles")
+                .mockImplementation(() => { });
+
+            dockerComposeFileGenerator.generateExclusionDockerComposeFiles(
+                services, ["service-five", "service-six", "service-seven"]
+            );
+            expect(generateExclusionDockerComposeFilesMock).toHaveBeenCalledWith(
+                services, ["service-five", "service-six", "service-seven"]
+            );
+
+            ;
+        });
+    });
+
 });

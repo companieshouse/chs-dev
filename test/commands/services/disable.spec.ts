@@ -18,7 +18,12 @@ jest.mock("../../../src/state/inventory", () => {
 jest.mock("../../../src/state/state-manager", () => {
     return {
         StateManager: function () {
-            return { excludeService: disableServiceMock };
+            return {
+                excludeService: disableServiceMock,
+                snapshot: {
+                    excludedServices: ["serviceA", "serviceB"]
+                }
+            };
         }
     };
 });

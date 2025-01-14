@@ -46,11 +46,11 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
      * The development enabled services docker-compose.yaml file in local repository are linked into the include property instead of  new docker-compose.yaml file will not be generated.
      * @param dockerCompose - Docker Compose configuration object.
      * @param runnableServices - List of services to include.
-     * @param hasExcludedService - Indicates if there are excluded services.
+     * @param hasExcludedServices - Indicates if there are excluded services.
      * @returns Updated Docker Compose configuration.
      */
-    private addIncludePropertiesToDockerCompose (dockerCompose:DockerComposeSpec, runnableServices:ServiceWithLiveUpdate[], hasExcludedService = false): DockerComposeSpec {
-        if (!hasExcludedService) {
+    private addIncludePropertiesToDockerCompose (dockerCompose:DockerComposeSpec, runnableServices:ServiceWithLiveUpdate[], hasExcludedServices = false): DockerComposeSpec {
+        if (!hasExcludedServices) {
             dockerCompose.include = runnableServices.map(
                 service => service.liveUpdate
                     ? join(this.path, "local", service.name, "docker-compose.yaml")
@@ -63,8 +63,8 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
                     includes.push(join(this.path, "local", service.name, "docker-compose.yaml"));
                 }
             });
-            const otherDocke = getAllFilesInDirectory(join(this.path, "exclude"));
-            includes.push(...otherDocke);
+            const otherDocker = getAllFilesInDirectory(join(this.path, "exclude"));
+            includes.push(...otherDocker);
             dockerCompose.include = includes;
         }
         return dockerCompose;
@@ -151,15 +151,15 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
      * Generates the main Docker Compose file in the root directory based on the service configurations.
      * Add ingress-proxy service and its dependencies.
      * @param services - List of all services with live updates.
-     * @param hasExcludedService - Indicates if there are excluded services.
+     * @param hasExcludedServices - Indicates if there are excluded services.
      * @param includedServices - List of included services.
      */
-    generateDockerComposeFile (services: ServiceWithLiveUpdate[], hasExcludedService = false, includedServices?:ServiceWithLiveUpdate[]) {
+    generateDockerComposeFile (services: ServiceWithLiveUpdate[], hasExcludedServices = false, includedServices?:ServiceWithLiveUpdate[]) {
         let dockerCompose = getInitialDockerComposeFile(this.path);
 
         const runnableServices = includedServices ?? this.removeExcludedServices(services);
 
-        dockerCompose = this.addIncludePropertiesToDockerCompose(dockerCompose, runnableServices, hasExcludedService);
+        dockerCompose = this.addIncludePropertiesToDockerCompose(dockerCompose, runnableServices, hasExcludedServices);
 
         // Setup the ingress-proxy's dependencies (i.e. every service with an ingress route)
         dockerCompose.services["ingress-proxy"].depends_on = this.listIngressDependencies(runnableServices);
