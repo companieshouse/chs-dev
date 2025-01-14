@@ -58,7 +58,11 @@ export default abstract class AbstractStateModificationCommand extends Command {
         }
 
         if (runHook) {
-            if (this.id?.match(/^exclusions:(add|remove)$/)) {
+            const state = this.stateManager.snapshot;
+            const { excludedServices } = state || [];
+
+            if (this.id?.match(/^exclusions:(add|remove)$/) ||
+                (excludedServices.length && this.id?.match(/^development:(enable|disable)$/))) {
                 await this.config.runHook("generate-exclusion-docker-compose", {});
             } else {
                 await this.config.runHook("generate-runnable-docker-compose", {});
