@@ -41,7 +41,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
     }
 
     /**
-     * Adds services to the `include` property of the Docker Compose configuration.
+     * Adds services to the `include` property of the main Docker Compose configuration.
      * Handles live updates and excluded services.
      * The development enabled services docker-compose.yaml file in local repository are linked into the include property instead of  new docker-compose.yaml file will not be generated.
      * @param dockerCompose - Docker Compose configuration object.
@@ -49,7 +49,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
      * @param hasExcludedServices - Indicates if there are excluded services.
      * @returns Updated Docker Compose configuration.
      */
-    private addIncludePropertiesToDockerCompose (dockerCompose:DockerComposeSpec, runnableServices:ServiceWithLiveUpdate[], hasExcludedServices = false): DockerComposeSpec {
+    private addIncludePropertiesToMainDockerCompose (dockerCompose:DockerComposeSpec, runnableServices:ServiceWithLiveUpdate[], hasExcludedServices = false): DockerComposeSpec {
         if (!hasExcludedServices) {
             dockerCompose.include = runnableServices.map(
                 service => service.liveUpdate
@@ -63,7 +63,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
                     includes.push(join(this.path, "local", service.name, "docker-compose.yaml"));
                 }
             });
-            const otherDocker = getAllFilesInDirectory(join(this.path, "exclude"));
+            const otherDocker = getAllFilesInDirectory(join(this.path, "exclusion-filtered-compose-files"));
             includes.push(...otherDocker);
             dockerCompose.include = includes;
         }
@@ -106,12 +106,12 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
     }
 
     /**
-     * Generates a Docker Compose file in the `exclude` directory for a specific runnable service and remove excluded services from the depend_on property in the generated docker compose.
+     * Generates a Docker Compose file in the `exclusion-filtered-compose-files` directory for a specific runnable services and remove excluded services from the depend_on property in the generated compose files.
      * @param service - Service for which the file is generated.
      * @param excludedServices - List of excluded service names.
      */
     private generateDockerComposeFileForIncludedServices (service: ServiceWithLiveUpdate, excludedServices: string[]) {
-        const exclusionComposeFile = join("exclude", `${service.name}.docker-compose.yaml`);
+        const exclusionComposeFile = join("exclusion-filtered-compose-files", `${service.name}.docker-compose.yaml`);
         let dockerComposeConfig: DockerComposeSpec = yaml.parse(readFileSync(service.source).toString("utf-8"));
 
         dockerComposeConfig = this.removeExcludedServiceFromDependOn(dockerComposeConfig, excludedServices);
@@ -159,7 +159,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
         const runnableServices = includedServices ?? this.removeExcludedServices(services);
 
-        dockerCompose = this.addIncludePropertiesToDockerCompose(dockerCompose, runnableServices, hasExcludedServices);
+        dockerCompose = this.addIncludePropertiesToMainDockerCompose(dockerCompose, runnableServices, hasExcludedServices);
 
         // Setup the ingress-proxy's dependencies (i.e. every service with an ingress route)
         dockerCompose.services["ingress-proxy"].depends_on = this.listIngressDependencies(runnableServices);
@@ -171,15 +171,15 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
     }
 
     /**
-     * Generates exclusion-specific Docker Compose files in the `exclude` directory and updates the main docker-compose.yaml file `includes` property to list the generated exclusion-specific docker-compose files.
-     * create exlusion-specific docker-compose for non-development mode services.
-     * update development-mode services docker-compose file depend_on property with excluded services.
+     * Generates exclusion filtered Docker Compose files in the `exclusion-filtered-compose-files` directory and updates the main docker-compose.yaml file `includes` property as a list of the generated exclusion filtered docker-compose files.
+     * create exlusion filtered docker-compose for non-development mode services.
+     * update development-mode services docker-compose file by removing excluded services from its depend_on property.
      * update main docker-compose file `include` and `depends_on` properties appropriately.
      * @param services - List of all services with live updates.
      * @param excluded - List of excluded service names.
      */
     generateExclusionDockerComposeFiles (services: ServiceWithLiveUpdate[], excluded: string[] | undefined) {
-        const exclusionDirPath = join(this.path, "exclude");
+        const exclusionDirPath = join(this.path, "exclusion-filtered-compose-files");
 
         if (!excluded || !excluded?.length) {
             this.generateDockerComposeFile(services);

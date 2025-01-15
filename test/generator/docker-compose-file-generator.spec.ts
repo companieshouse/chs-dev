@@ -146,7 +146,7 @@ describe("DockerComposeFileGenerator", () => {
         moduleDir = join(tempDir, "services/modules/module-one");
 
         mkdirSync(join(tempDir, "local"));
-        mkdirSync(join(tempDir, "exclude"));
+        mkdirSync(join(tempDir, "exclusion-filtered-compose-files"));
         mkdirSync(moduleDir, { recursive: true });
     });
 
