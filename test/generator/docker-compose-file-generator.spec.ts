@@ -3,12 +3,13 @@ import { afterAll, beforeAll, expect, jest } from "@jest/globals";
 import fs, { copyFileSync, Dirent, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { DockerComposeFileGenerator } from "../../src/generator/docker-compose-file-generator";
 import { Service } from "../../src/model/Service";
-import { join, resolve } from "path";
+import path, { join, resolve } from "path";
 import { parse, stringify } from "yaml";
 import { getBuilder as getBuilderMock } from "../../src/state/builders";
 import { generateServiceSpec } from "../utils/docker-compose-spec";
 import DevelopmentDockerComposeFactory from "../../src/generator/development/development-docker-compose-factory";
 import { DockerComposeSpec } from "../../src/model/DockerComposeSpec";
+import ExclusionDockerComposeSpecFactory from "../../src/generator/exclusion/exclusion-docker-compose-factory";
 
 const developmentDockerComposeSpecFactoryMock = {
     create: jest.fn()
@@ -140,13 +141,16 @@ describe("DockerComposeFileGenerator", () => {
     let tempDir: string;
     let moduleDir: string;
     let dockerComposeFileGenerator: DockerComposeFileGenerator;
+    let exclusionFactory: ExclusionDockerComposeSpecFactory;
+    let excludedServices: string[];
 
     beforeAll(() => {
         tempDir = resolve(mkdtempSync("docker-compose-file-gen"));
         moduleDir = join(tempDir, "services/modules/module-one");
+        excludedServices = ["service-three", "service-four", "service-five", "service-six", "service-seven", "service-eight"];
 
         mkdirSync(join(tempDir, "local"));
-        mkdirSync(join(tempDir, "exclusion-filtered-compose-files"));
+        mkdirSync(join(tempDir, "exclusion-runnable-services"));
         mkdirSync(moduleDir, { recursive: true });
     });
 
@@ -156,6 +160,7 @@ describe("DockerComposeFileGenerator", () => {
 
     beforeEach(() => {
         dockerComposeFileGenerator = new DockerComposeFileGenerator(resolve(tempDir));
+        exclusionFactory = new ExclusionDockerComposeSpecFactory();
         mkdirSync(join(tempDir, "services/infrastructure/"), { recursive: true });
 
         copyFileSync(
@@ -168,7 +173,7 @@ describe("DockerComposeFileGenerator", () => {
 
         it("correctly generates docker compose file, no exclusions", () => {
             dockerComposeFileGenerator.generateDockerComposeFile(
-                services, false, []
+                services, { runnableServices: [], infrastructureSources: [] }
             );
 
             const dockerComposeOutputFile = join(tempDir, "docker-compose.yaml");
@@ -441,7 +446,7 @@ describe("DockerComposeFileGenerator", () => {
 
         it("correctly excludes services", () => {
             const mockGenerateDockerComposeFileForIncludedServices = jest
-                .spyOn(dockerComposeFileGenerator as any, "generateDockerComposeFileForIncludedServices")
+                .spyOn(exclusionFactory as any, "generateDockerComposeFileForExclusionRunnableServices")
                 .mockImplementation(() => {});
 
             const mockGenerateDevelopmentServiceDockerComposeFile = jest
@@ -459,7 +464,6 @@ describe("DockerComposeFileGenerator", () => {
                 services, ["service-five", "service-six", "service-seven"]
             );
 
-            ;
         });
     });
 

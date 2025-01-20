@@ -2,24 +2,16 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
 import { EOL } from "os";
 import { join } from "path";
 import yaml from "yaml";
-import { getAllFilesInDirectory, getInitialDockerComposeFile } from "../helpers/docker-compose-file.js";
+import { deduplicate } from "../helpers/array-reducers.js";
+import { getInitialDockerComposeFile } from "../helpers/docker-compose-file.js";
+import { getAllFilesInDirectory } from "../helpers/file-utils.js";
 import { DockerComposeSpec } from "../model/DockerComposeSpec.js";
 import { Service } from "../model/Service.js";
 import { getBuilder } from "../state/builders.js";
 import DevelopmentDockerComposeSpecFactory from "./development/development-docker-compose-factory.js";
+import ExclusionDockerComposeSpecFactory from "./exclusion/exclusion-docker-compose-factory.js";
 import { AbstractFileGenerator } from "./file-generator.js";
-import { deduplicate } from "../helpers/array-reducers.js";
-
-interface LiveUpdate {
-  liveUpdate: boolean;
-}
-
-type ServiceWithLiveUpdate = Service & LiveUpdate;
-
-type RunnableServicesObject = {
-    runnableServices: ServiceWithLiveUpdate[],
-    infrastructureSources: string[]
-}
+import { RunnableServicesObject, ServiceWithLiveUpdate } from "./interface/index.js";
 
 export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
@@ -27,12 +19,19 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         super(path, "docker-compose.yaml");
     }
 
+    /**
+     * Generates the main Docker Compose file in the root directory based on the service configurations.
+     * Add ingress-proxy service and its dependencies.
+     * @param services - List of all services with live updates.
+     * @param  {runnableObjects} - a List of runnable services and infrastrutural services generated from an exclusion execution.
+     * @param hasExcludedServices - Indicates if there are excluded services.
+     */
     generateDockerComposeFile (services: ServiceWithLiveUpdate[], runnableObjects = {} as RunnableServicesObject, hasExcludedServices = false) {
         const { runnableServices: runnableServicesList, infrastructureSources } = runnableObjects;
         let dockerCompose = getInitialDockerComposeFile(this.path);
         const runnableServices = runnableServicesList ?? services;
 
-        dockerCompose = this.addIncludePropertiesToMainDockerCompose(dockerCompose, { runnableServices, infrastructureSources }, hasExcludedServices);
+        dockerCompose = this.handleIncludePropertiesInMainDockerCompose(dockerCompose, { runnableServices, infrastructureSources }, hasExcludedServices);
 
         // Setup the ingress-proxy's dependencies (i.e. every service with an ingress route)
         dockerCompose.services["ingress-proxy"].depends_on = this.listIngressDependencies(runnableServices);
@@ -43,6 +42,13 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         );
     }
 
+    /**
+     * Generates a development-specific Docker Compose file for a service.
+     * @param service - The service for which the file is generated.
+     * @param builderVersion - Optional builder version.
+     * @param excludedServices - List of excluded service names.
+     */
+    // Create the development compose file and touch files
     generateDevelopmentServiceDockerComposeFile (service: Service, builderVersion: string | undefined, excludedServices: string[] = []) {
         const developmentServicePath = join(this.path, "local", service.name);
 
@@ -62,7 +68,8 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         let dockerComposeConfig = yaml.parse(readFileSync(service.source).toString("utf-8"));
 
         if (excludedServices.length) {
-            dockerComposeConfig = this.removeExcludedServiceFromDependOn(dockerComposeConfig, excludedServices);
+            const exclusionFactory = new ExclusionDockerComposeSpecFactory();
+            dockerComposeConfig = exclusionFactory.removeExcludedServiceFromDependOn(dockerComposeConfig, excludedServices);
         }
 
         const developmentDockerComposeSpec = dockerComposeSpecFactory.create(
@@ -85,6 +92,14 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         );
     }
 
+    /**
+     * Generates exclusion filtered Docker Compose files in the `exclusion-filtered-compose-files` directory and updates the main docker-compose.yaml file `includes` property as a list of the generated exclusion filtered docker-compose files.
+     * create exlusion filtered docker-compose for non-development mode services.
+     * update development-mode services docker-compose file by removing excluded services from its depend_on property.
+     * update main docker-compose file `include` and `depends_on` properties appropriately.
+     * @param services - List of all services with live updates.
+     * @param excluded - List of excluded service names.
+     */
     generateExclusionDockerComposeFiles (services: ServiceWithLiveUpdate[], excluded: string[] | undefined) {
         const exclusionDirPath = join(this.path, "exclusion-runnable-services");
 
@@ -99,13 +114,26 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         }
         mkdirSync(exclusionDirPath);
 
-        const { runnableServices, infrastructureSources } = this.handleExcludedServices(services, excluded);
+        const exclusionFactory = new ExclusionDockerComposeSpecFactory();
 
-        runnableServices.filter(service => service.liveUpdate
-            ? this.generateDevelopmentServiceDockerComposeFile(service, undefined, excluded)
-            // create services on dev mode
-            : this.generateDockerComposeFileForRunnableServices(service, excluded));
-        // create services on not on dev mode
+        const { runnableServices, infrastructureSources } = exclusionFactory.handleExcludedServices(services, excluded);
+
+        runnableServices.forEach(service => {
+            if (service.liveUpdate) {
+                // Create services in dev mode
+                this.generateDevelopmentServiceDockerComposeFile(service, undefined, excluded);
+            } else {
+                // Create services not in dev mode
+                const { runnableServicesComposeFile, updatedYamlContent } =
+            exclusionFactory.generateDockerComposeFileForExclusionRunnableServices(service, excluded);
+
+                this.writeFile(
+                    updatedYamlContent.split(EOL),
+                    EOL,
+                    runnableServicesComposeFile
+                );
+            }
+        });
 
         // update the dockercompose on root
         this.generateDockerComposeFile(services, { runnableServices, infrastructureSources }, true);
@@ -129,115 +157,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             }, {});
     }
 
-    private isExcludedServiceOrScript (service: Service | string, excludedServices: string[]) {
-        const serviceName = typeof service === "object" ? service.name : service;
-        return excludedServices.some(ex => new RegExp(`^execute-${ex}-scripts$`).test(serviceName) || ex === serviceName);
-    }
-
-    private removeExcludedServicesAndScripts (services: ServiceWithLiveUpdate[], excluded?: string[] | undefined):ServiceWithLiveUpdate[] {
-        return typeof excluded !== "undefined"
-            ? services.filter(service => !this.isExcludedServiceOrScript(service, excluded))
-            : services;
-    }
-
-    private handleExcludedServices (
-        services: ServiceWithLiveUpdate[],
-        excluded: string[] = []
-    ): RunnableServicesObject {
-        const runnableResults: RunnableServicesObject = {
-            runnableServices: [],
-            infrastructureSources: []
-        };
-
-        if (!excluded.length) {
-            runnableResults.runnableServices = services;
-            return runnableResults;
-        }
-
-        const result = this.removeExcludedServicesAndScripts(services, excluded);
-
-        const infrastructureSources = new Set<string>();
-
-        runnableResults.runnableServices = result.filter(service => {
-            if (service.module === "infrastructure") {
-                infrastructureSources.add(service.source);
-                return false;
-            }
-            return true;
-        });
-        runnableResults.infrastructureSources = Array.from(infrastructureSources);
-
-        return runnableResults;
-    }
-
-    private generateDockerComposeFileForRunnableServices (service: ServiceWithLiveUpdate, excludedServices: string[]) {
-        const runnableServicesComposeFile = join("exclusion-runnable-services", `${service.name}.docker-compose.yaml`);
-        let dockerComposeConfig: DockerComposeSpec = yaml.parse(readFileSync(service.source).toString("utf-8"));
-
-        dockerComposeConfig = this.removeExcludedServiceFromDependOn(dockerComposeConfig, excludedServices);
-
-        const updatedYamlContent = yaml.stringify(dockerComposeConfig);
-
-        this.writeFile(
-            updatedYamlContent.split(EOL),
-            EOL,
-            runnableServicesComposeFile
-        );
-    }
-
-    private removeExcludedServiceFromDependOn (dockerComposeConfig: DockerComposeSpec, excludedServices: string[]): DockerComposeSpec {
-        const updatedServices = Object.entries(dockerComposeConfig.services).map(([serviceName, serviceSpec]) => {
-            if (!serviceSpec.depends_on) return [serviceName, serviceSpec];
-
-            if (this.isObjectFormat(serviceSpec.depends_on)) {
-                serviceSpec.depends_on = this.filterObjectDependencies(serviceSpec.depends_on, excludedServices);
-
-                // Remove empty object
-                if (this.isEmptyObject(serviceSpec.depends_on)) {
-                    delete serviceSpec.depends_on;
-                }
-            } else if (Array.isArray(serviceSpec.depends_on)) {
-                serviceSpec.depends_on = this.filterArrayDependencies(serviceSpec.depends_on, excludedServices);
-
-                // Remove empty array
-                if (serviceSpec.depends_on.length === 0) {
-                    delete serviceSpec.depends_on;
-                }
-            }
-
-            return [serviceName, serviceSpec];
-        });
-
-        return {
-            ...dockerComposeConfig,
-            services: Object.fromEntries(updatedServices)
-        };
-    }
-
-    private isObjectFormat (dependsOn: unknown): dependsOn is Record<string, any> {
-        return typeof dependsOn === "object" && !Array.isArray(dependsOn);
-    }
-
-    private filterObjectDependencies (
-        dependsOn: Record<string, any>,
-        excludedServices: string[]
-    ): Record<string, any> {
-        return Object.fromEntries(
-            Object.entries(dependsOn).filter(
-                ([dependency]) => !this.isExcludedServiceOrScript(dependency, excludedServices)
-            )
-        );
-    }
-
-    private isEmptyObject (obj: Record<string, any>): boolean {
-        return Object.keys(obj).length === 0;
-    }
-
-    private filterArrayDependencies (dependsOn: string[], excludedServices: string[]): string[] {
-        return dependsOn.filter(dependency => !this.isExcludedServiceOrScript(dependency, excludedServices));
-    }
-
-    private addIncludePropertiesToMainDockerCompose (dockerCompose:DockerComposeSpec, { runnableServices, infrastructureSources: infrastructuralServicesSources }:RunnableServicesObject, hasExcludedServices): DockerComposeSpec {
+    private handleIncludePropertiesInMainDockerCompose (dockerCompose:DockerComposeSpec, { runnableServices, infrastructureSources: infrastructuralServicesSources }:RunnableServicesObject, hasExcludedServices): DockerComposeSpec {
         if (hasExcludedServices) {
             const localServicesCompose = runnableServices
                 .filter(service => service.liveUpdate)
@@ -255,5 +175,4 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         }
         return dockerCompose;
     }
-
 }
