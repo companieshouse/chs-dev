@@ -19,7 +19,10 @@ jest.mock("../../../src/state/state-manager", () => {
     return {
         StateManager: function () {
             return {
-                includeModule: includeModuleMock
+                includeModule: includeModuleMock,
+                snapshot: {
+                    excludedServices: ["serviceA", "serviceB"]
+                }
             };
         }
     };

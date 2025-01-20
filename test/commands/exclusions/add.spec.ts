@@ -18,7 +18,10 @@ jest.mock("../../../src/state/state-manager", () => {
     return {
         StateManager: function () {
             return {
-                addExclusionForService: addExclusionForServiceMock
+                addExclusionForService: addExclusionForServiceMock,
+                snapshot: {
+                    excludedServices: ["serviceA", "serviceB"]
+                }
             };
         }
     };

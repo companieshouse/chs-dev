@@ -1,114 +1,113 @@
 import { expect, jest } from "@jest/globals";
+import { hook as generateDevelopmentDockerComposeHook } from "./../../src/hooks/generate-development-docker-compose";
 import { Hook } from "@oclif/core";
 import { Service } from "../../src/model/Service";
+import { Inventory } from "../../src/state/inventory";
+import { StateManager } from "../../src/state/state-manager";
+import { DockerComposeFileGenerator } from "./../../src/generator/docker-compose-file-generator";
+import loadConfig from "./../../src/helpers/config-loader.js";
+import { ServiceLoader } from "./../../src/run/service-loader";
+import { modules } from "../utils/data";
+import { Config, IConfig } from "@oclif/config";
 
-describe("Hook: generate-development-docker-compose", () => {
-    const generateDevelopmentServiceDockerComposeFileMock =
-        jest.fn();
+jest.mock("../../src/state/state-manager");
+jest.mock("../../src/state/inventory");
+jest.mock("./../../src/generator/docker-compose-file-generator");
+jest.mock("./../../src/run/service-loader");
+jest.mock("./../../src/helpers/config-loader");
 
-    const inventoryServicesFindMock = jest.fn();
-
-    const testConfig = {
+describe("generate-development-docker-compose hook", () => {
+    const mockConfig = {
         root: "./",
-        configDir: "/users/user/.config/chs-dev/"
+        configDir: "/users/user/.config/chs-dev/",
+        cacheDir: "/mock/cache/dir"
+    };
+    const mockProjectPath = "/mock/project/path";
+    const mockServiceName = "mock-service";
+    const mockBuilderVersion = "v1.0.0";
+    const mockExcludedServices = ["excluded-service"];
+    const mockService = {
+        name: mockServiceName,
+        source: "/mock/source/path"
     };
 
-    jest.mock("../../src/generator/docker-compose-file-generator", () => {
-        return {
-            DockerComposeFileGenerator: function () {
-                return {
-                    generateDevelopmentServiceDockerComposeFile: generateDevelopmentServiceDockerComposeFileMock
-                };
-            }
-        };
-    });
+    let generateDevelopmentServiceDockerComposeFileMock: jest.Mock;
 
-    jest.mock("../../src/state/inventory", () => {
-        return {
-            Inventory: function () {
-                return {
-                    services: {
-                        find: inventoryServicesFindMock
-                    }
-                };
-            }
-        };
-    });
-
-    let generateDevelopmentDockerComposeHook: Hook<"generate-development-docker-compose">;
-
-    beforeEach(async () => {
+    beforeEach(() => {
         jest.resetAllMocks();
 
-        generateDevelopmentDockerComposeHook = (await import("../../src/hooks/generate-development-docker-compose")).hook;
-    });
-
-    it("generates development docker compose file", async () => {
-        const service: Service = {
-            name: "service",
-            module: "module",
-            source: "./services/modules/module/service.docker-compose.yaml",
-            repository: null,
-            dependsOn: [],
-            builder: "",
-            metadata: {}
-        };
-        inventoryServicesFindMock.mockReturnValue(service);
-
-        const testContext = jest.fn();
-
-        // @ts-expect-error
-        await generateDevelopmentDockerComposeHook({
-            serviceName: "service",
-            config: testConfig,
-            context: testContext
+        // Mock loadConfig
+        (loadConfig as jest.Mock).mockReturnValue({
+            projectPath: mockProjectPath
         });
 
-        expect(generateDevelopmentServiceDockerComposeFileMock).toHaveBeenCalledWith(service, undefined);
+        // Mock Inventory
+        (Inventory as jest.Mock).mockImplementation(() => ({
+            services: [mockService]
+        }));
+
+        // Mock DockerComposeFileGenerator
+        generateDevelopmentServiceDockerComposeFileMock = jest.fn();
+        (DockerComposeFileGenerator as jest.Mock).mockImplementation(() => ({
+            generateDevelopmentServiceDockerComposeFile: generateDevelopmentServiceDockerComposeFileMock
+        }));
+
+        // Mock StateManager
+        (StateManager as jest.Mock).mockImplementation(() => ({
+            snapshot: {
+                excludedServices: mockExcludedServices
+            }
+        }));
     });
 
-    it("generates development docker compose file with version", async () => {
-        const service: Service = {
-            name: "service",
-            module: "module",
-            source: "./services/modules/module/service.docker-compose.yaml",
-            repository: null,
-            dependsOn: [],
-            builder: "",
-            metadata: {}
-        };
-        inventoryServicesFindMock.mockReturnValue(service);
-
-        const testContext = jest.fn();
-
+    it("should generate a development docker-compose file for the specified service", async () => {
         // @ts-expect-error
         await generateDevelopmentDockerComposeHook({
-            serviceName: "service",
-            builderVersion: "v2",
-            config: testConfig,
-            context: testContext
+            serviceName: mockServiceName,
+            builderVersion: mockBuilderVersion,
+            config: mockConfig,
+            context: jest.fn()
         });
 
-        expect(generateDevelopmentServiceDockerComposeFileMock).toHaveBeenCalledWith(service, "v2");
+        expect(generateDevelopmentServiceDockerComposeFileMock).toHaveBeenCalledWith(
+            mockService,
+            mockBuilderVersion,
+            mockExcludedServices
+        );
     });
 
-    it("does not generate docker compose when service not found", async () => {
+    it("should throw an error if the service does not exist", async () => {
+        (Inventory as jest.Mock).mockImplementation(() => ({
+            services: []
+        }));
 
-        inventoryServicesFindMock.mockReturnValue(undefined);
+        const mockConfig2 = {
+            root: "/mock/root",
+            configDir: "/mock/config/dir",
+            cacheDir: "/mock/cache/dir"
+        } as any;
 
+        const errorMock = jest.fn();
         const testContext = {
-            error: jest.fn()
+            error: errorMock,
+            config: mockConfig2,
+            debug: jest.fn(),
+            exit: jest.fn(),
+            log: jest.fn(),
+            warn: jest.fn()
         };
 
-        // @ts-expect-error
-        await generateDevelopmentDockerComposeHook.apply(testContext, [{
-            serviceName: "service",
-            config: testConfig,
+        await generateDevelopmentDockerComposeHook.call(testContext, {
+            serviceName: "non-existent-service",
+            builderVersion: mockBuilderVersion,
+            config: mockConfig2,
             context: testContext
-        }]);
+        });
 
         expect(generateDevelopmentServiceDockerComposeFileMock).not.toHaveBeenCalled();
         expect(testContext.error).toHaveBeenCalledTimes(1);
+        expect(errorMock).toHaveBeenCalledWith(
+            "Cannot create development compose file for the service: non-existent-service since it does not exist."
+        );
     });
-
 });
