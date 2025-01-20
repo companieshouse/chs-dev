@@ -104,7 +104,13 @@ export default class ExclusionDockerComposeSpecFactory {
         };
     }
 
-    // Seperate Infrastructural Services and Non Infrastrutural services
+    /**
+ * Handles the infrastructural services by separating them from the other runnable services.
+ * It collects the sources of infrastructural services and returns them along with the non-infrastructural services.
+ *
+ * @param runnableServices - The list of services to process.
+ * @returns An object containing the list of runnable services (excluding infrastructure) and the infrastructure sources.
+ */
     private handleInfrastructuralServices (runnableServices:ServiceWithLiveUpdate[]): RunnableServicesObject {
         const infrastructureSources = new Set<string>();
 
@@ -122,17 +128,40 @@ export default class ExclusionDockerComposeSpecFactory {
         };
     }
 
+    /**
+ * Checks if a service is excluded and if the service has a scripted service as well
+ * It matches services whose names follow the pattern `^execute-{excludedService}-scripts$` or matches the exact service name.
+ *
+ * @param service - The service to check, which can be either a service object or a string (service name).
+ * @param excludedServices - The list of service names to exclude.
+ * @returns True if the service is excluded, otherwise false.
+ */
     private isExcludedServiceOrScript (service: Service | string, excludedServices: string[]) {
         const serviceName = typeof service === "object" ? service.name : service;
         return excludedServices.some(ex => new RegExp(`^execute-${ex}-scripts$`).test(serviceName) || ex === serviceName);
     }
 
+    /**
+ * Removes services and scripts from the provided list of services based on the excluded services list.
+ * If no exclusions are provided, all services are returned.
+ *
+ * @param services - The list of services to filter.
+ * @param excluded - The list of excluded services.
+ * @returns The list of services excluding the ones specified.
+ */
     private removeExcludedServicesAndScripts (services: ServiceWithLiveUpdate[], excluded?: string[] | undefined):ServiceWithLiveUpdate[] {
         return typeof excluded !== "undefined"
             ? services.filter(service => !this.isExcludedServiceOrScript(service, excluded))
             : services;
     }
 
+    /**
+ * Filters the dependencies in the 'depends_on' field of an object, removing any dependencies that are excluded.
+ *
+ * @param dependsOn - The 'depends_on' field, represented as an object of service dependencies.
+ * @param excludedServices - The list of excluded services to filter out.
+ * @returns A new object with the excluded dependencies removed.
+ */
     private filterObjectDependencies (
         dependsOn: Record<string, any>,
         excludedServices: string[]
@@ -144,6 +173,13 @@ export default class ExclusionDockerComposeSpecFactory {
         );
     }
 
+    /**
+ * Filters the dependencies in the 'depends_on' field of an array, removing any dependencies that are excluded.
+ *
+ * @param dependsOn - The 'depends_on' field, represented as an array of service names.
+ * @param excludedServices - The list of excluded services to filter out.
+ * @returns A new array with the excluded dependencies removed.
+ */
     private filterArrayDependencies (dependsOn: string[], excludedServices: string[]): string[] {
         return dependsOn.filter(dependency => !this.isExcludedServiceOrScript(dependency, excludedServices));
     }

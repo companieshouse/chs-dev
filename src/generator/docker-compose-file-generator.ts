@@ -140,6 +140,13 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
     }
 
+    /**
+     * Lists the ingress dependencies for a given list of services, identifying services that have an ingressRoute defined.
+     * It also determines the condition (either 'service_started' or 'service_healthy') based on the presence of a healthcheck.
+     *
+     * @param services - The list of services to examine.
+     * @returns An object where the keys are the service names and the values are their ingress conditions and restart settings.
+     */
     private listIngressDependencies (services: ServiceWithLiveUpdate[]): Record<string, {condition: string, restart: boolean}> {
         return services
             .reduce((dependencySpec: Record<string, {condition: string, restart: boolean}>, service) => {
@@ -157,6 +164,17 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             }, {});
     }
 
+    /**
+     * Modifies the main Docker Compose configuration by modifing the include property based on whether excluded services exist.
+     * If there are excluded services, it includes Compose files for both local and exclusion services.
+     * If no exclusions, it only includes the relevant source paths.
+     *
+     * @param dockerCompose - The original Docker Compose configuration.
+     * @param runnableServices - The list of runnable services.
+     * @param infrastructuralServicesSources - The sources for infrastructural services.
+     * @param hasExcludedServices - A flag indicating whether there are excluded services.
+     * @returns The modified Docker Compose configuration with the appropriate services included.
+     */
     private handleIncludePropertiesInMainDockerCompose (dockerCompose:DockerComposeSpec, { runnableServices, infrastructureSources: infrastructuralServicesSources }:RunnableServicesObject, hasExcludedServices): DockerComposeSpec {
         if (hasExcludedServices) {
             const localServicesCompose = runnableServices
