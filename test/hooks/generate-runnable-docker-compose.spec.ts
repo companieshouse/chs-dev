@@ -74,4 +74,58 @@ describe("generate-runnable-docker-compose hook", () => {
             mockEnabledServices
         );
     });
+
+    it("should generate a exclusion Docker Compose file", async () => {
+        // Mocking state
+        const mockSnapshot = { excludedServices: ["serviceA", "serviceB"] };
+        const mockStateManager = {
+            snapshot: mockSnapshot
+        };
+
+        // Mocking inventory
+        const mockInventory = { modules };
+        (Inventory as jest.Mock).mockImplementation(() => mockInventory);
+
+        // Mocking state manager
+        (StateManager as jest.Mock).mockImplementation(() => mockStateManager);
+
+        // Mocking enabled services
+        const mockEnabledServices = [
+            { name: "service1" },
+            { name: "service2" }
+        ];
+
+        const mockServiceLoader = {
+            loadServices: jest.fn().mockReturnValue(mockEnabledServices)
+        };
+        (ServiceLoader as jest.Mock).mockImplementation(() => mockServiceLoader);
+
+        // Mocking DockerComposeFileGenerator
+        const mockDockerComposeFileGenerator = {
+            generateExclusionDockerComposeFiles: jest.fn()
+        };
+        (DockerComposeFileGenerator as jest.Mock).mockImplementation(
+            () => mockDockerComposeFileGenerator
+        );
+        const testContext = jest.fn();
+        // Run the hook
+
+        // @ts-expect-error
+        await generateRunnableDockerCompose({
+            config: { cacheDir: mockCacheDir },
+            generateExclusionSpec: true,
+            context: testContext
+        });
+
+        // Assertions
+        expect(loadConfig).toHaveBeenCalled();
+        expect(Inventory).toHaveBeenCalledWith(mockPath, mockCacheDir);
+        expect(StateManager).toHaveBeenCalledWith(mockPath);
+        expect(ServiceLoader).toHaveBeenCalledWith(mockInventory);
+        expect(mockServiceLoader.loadServices).toHaveBeenCalledWith(mockSnapshot);
+        expect(mockDockerComposeFileGenerator.generateExclusionDockerComposeFiles).toHaveBeenCalledWith(
+            mockEnabledServices,
+            ["serviceA", "serviceB"]
+        );
+    });
 });
