@@ -467,4 +467,116 @@ describe("DockerComposeFileGenerator", () => {
         });
     });
 
+    describe("generateExclusionServiceDockerComposeFile ", () => {
+        let mockServices: (Service & {
+      liveUpdate: boolean;
+    })[] = [
+        {
+            name: "service-one",
+            module: "module-one",
+            source: "services/modules/module-one/service-one.docker-compose.yaml",
+            dependsOn: [],
+            builder: "java",
+            metadata: {
+                ingressRoute: "Path('One')"
+            },
+            repository: null,
+            liveUpdate: false
+        },
+        {
+            name: "service-two",
+            module: "module-one",
+            source: "services/modules/module-one/service-two.docker-compose.yaml",
+            dependsOn: [],
+            builder: "node",
+            metadata: {
+                ingressRoute: "Path(\"two\")"
+            },
+            repository: null,
+            liveUpdate: false
+        },
+        {
+            name: "service-three",
+            module: "module-one",
+            source: "services/modules/module-two/service-three.docker-compose.yaml",
+            dependsOn: [],
+            builder: "repository",
+            metadata: {},
+            repository: null,
+            liveUpdate: false
+        }
+    ];
+        const excludedService = ["service-one"];
+
+        beforeEach(() => {
+            let serviceDockerComposeFile: string;
+            mockServices = mockServices.map((service) => {
+                serviceDockerComposeFile = join(
+                    moduleDir,
+                    `${service.name}.docker-compose.yaml`
+                );
+
+                copyFileSync(
+                    join(
+                        process.cwd(),
+                        "test/data/docker-compose-file-generator/service.docker-compose.yaml"
+                    ),
+                    serviceDockerComposeFile
+                );
+                return {
+                    ...service,
+                    source: `${moduleDir}/${service.name}.docker-compose.yaml`
+                };
+            });
+        });
+
+        it("correctly calls the excluded functionality", () => {
+            const generateExclusionDockerComposeFilesMock = jest
+                .spyOn(
+          dockerComposeFileGenerator as any,
+          "generateExclusionDockerComposeFiles"
+                )
+                .mockImplementation(() => {});
+
+            dockerComposeFileGenerator.generateExclusionDockerComposeFiles(
+                mockServices,
+                excludedService
+            );
+            expect(generateExclusionDockerComposeFilesMock).toHaveBeenCalledWith(
+                mockServices,
+                excludedService
+            );
+        });
+
+        it("correctly generates docker compose file with exclusions", () => {
+            dockerComposeFileGenerator.generateExclusionDockerComposeFiles(
+                mockServices,
+                excludedService
+            );
+
+            const dockerComposeOutputFile = join(tempDir, "docker-compose.yaml");
+
+            expect(existsSync(dockerComposeOutputFile)).toBe(true);
+
+            const dockerComposeOutput = parse(
+                readFileSync(dockerComposeOutputFile).toString("utf8")
+            );
+
+            const runnableServices = [mockServices[1], mockServices[2]];
+            dockerComposeOutput.include = dockerComposeOutput.include.map(
+                (path) => path.split(tempDir)[1]
+            );
+
+            runnableServices.forEach((service) => {
+                dockerComposeOutput.services["ingress-proxy"].depends_on[service.name] =
+          {
+              condition: "service_started",
+              restart: true
+          };
+            });
+
+            expect(dockerComposeOutput).toMatchSnapshot();
+        });
+    });
+
 });
