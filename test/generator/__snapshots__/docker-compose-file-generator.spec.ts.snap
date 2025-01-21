@@ -50,3 +50,29 @@ exports[`DockerComposeFileGenerator generateDockerComposeFile correctly generate
   },
 }
 `;
+
+exports[
+  `DockerComposeFileGenerator generateExclusionServiceDockerComposeFile  correctly generates docker compose file with exclusions 1`
+] = `
+{
+  "include": [
+    "/exclusion-runnable-services/service-three.docker-compose.yaml",
+    "/exclusion-runnable-services/service-two.docker-compose.yaml",
+  ],
+  "services": {
+    "ingress-proxy": {
+      "depends_on": {
+        "service-three": {
+          "condition": "service_started",
+          "restart": true,
+        },
+        "service-two": {
+          "condition": "service_started",
+          "restart": true,
+        },
+      },
+      "image": "nginx:latest",
+    },
+  },
+}
+`;
