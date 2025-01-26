@@ -6,6 +6,8 @@ import { StateManager } from "../state/state-manager.js";
 import { Logger } from "./logs/logs-handler.js";
 import analysisTasks from "./troubleshoot/analysis/analysis-tasks.js";
 import AnalysisTask, { AnalysisFailureLevel, AnalysisIssue, AnalysisTaskOutcome } from "./troubleshoot/analysis/AnalysisTask.js";
+import ProxiesConfiguredCorrectlyAnalysis from "./troubleshoot/analysis/ProxiesConfiguredCorrectlyAnalysis.js";
+import { isIbossEnabled } from "../helpers/iboss-status.js";
 
 export type AnalysesOutome = {
     success: boolean
@@ -58,7 +60,9 @@ export default class TroubleshootAnalyses {
             stateManager: this.stateManager
         };
 
-        const analysesOutcome = await Promise.all(this.analysisTasks.map((task) => task.analyse(analysisContext)));
+        const analysisTasks = this.handleIbossCheck(this.analysisTasks);
+
+        const analysesOutcome = await Promise.all(analysisTasks.map((task) => task.analyse(analysisContext)));
 
         let outcome: boolean = true;
 
@@ -160,5 +164,20 @@ export default class TroubleshootAnalyses {
 
     private documentationLink (documentationFileName: string) {
         return `https://www.github.com/companieshouse/chs-dev/blob/main/docs/${documentationFileName}`;
+    }
+
+    /**
+ * Filters out `ProxiesConfiguredCorrectlyAnalysis` analysis tasks if iBoss (a network security service) is enabled.
+ * @param {AnalysisTask[]} analysisTasks - The list of analysis tasks to be processed.
+ * @returns {AnalysisTask[]} - The filtered list of analysis tasks with proxy checks removed if iBoss is enabled.
+ */
+    private handleIbossCheck (analysisTasks: AnalysisTask[]): AnalysisTask[] {
+
+        if (isIbossEnabled()) {
+            analysisTasks = analysisTasks.filter(
+                task => !(task instanceof ProxiesConfiguredCorrectlyAnalysis)
+            );
+        }
+        return analysisTasks;
     }
 }
