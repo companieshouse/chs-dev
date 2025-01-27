@@ -697,6 +697,7 @@ within the current working directory.
 * `CHS_DEV_SKIP_PROJECT_STATE_VALIDATION` - when set will not check that the
   project is valid before running any commands
 * `CHS_DEV_SKIP_ECR_LOGIN_CHECK` - when set will not attempt to login to ECR
+* `CH_IBOSS_TRIAL` - when set will bypass the vpn and proxies checks.
 
 ### Service configuration
 
