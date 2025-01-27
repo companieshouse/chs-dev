@@ -1,4 +1,5 @@
 import { DockerSettings, fetchDockerSettings } from "../../../helpers/docker-settings-store.js";
+import { isIbossEnabled } from "../../../helpers/iboss-status.js";
 import { isOnVpn, isWebProxyHostSet } from "../../../helpers/vpn-check.js";
 import BaseAnalysis from "./AbstractBaseAnalysis.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
@@ -26,7 +27,9 @@ const DOCKER_PROXY_CONFIGURATION_SUGGESTIONS = [
 export default class ProxiesConfiguredCorrectlyAnalysis extends BaseAnalysis {
 
     async analyse (context: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
-
+        if (isIbossEnabled()) {
+            return this.createOutcomeFrom(ANALYSIS_HEADLINE, []);
+        }
         const vpnIssues = this.checkCHProxyConfig();
         const dockerIssues = this.checkDockerProxiesConfig();
 
