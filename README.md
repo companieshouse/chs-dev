@@ -188,6 +188,7 @@ USAGE
 * [`chs-dev modules disable MODULES`](#chs-dev-modules-disable-modules)
 * [`chs-dev modules enable MODULES`](#chs-dev-modules-enable-modules)
 * [`chs-dev reload SERVICE`](#chs-dev-reload-service)
+* [`chs-dev request new-service NAME`](#chs-dev-request-new-service-name)
 * [`chs-dev services available`](#chs-dev-services-available)
 * [`chs-dev services disable SERVICES`](#chs-dev-services-disable-services)
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
@@ -523,6 +524,20 @@ DESCRIPTION
   Rebuilds and restarts the supplied service running in development mode to load in any changes to source code
 ```
 
+## `chs-dev request new-service NAME`
+
+```
+USAGE
+  $ chs-dev request new-service NAME [-F <value>] [-d]
+
+ARGUMENTS
+  NAME  The name of the service to create
+
+FLAGS
+  -F, --file=<value>  The file containing values for the new service spec
+  -d, --dryRun        Run the command without making any changes
+```
+
 ## `chs-dev services available`
 
 Lists all the available services
@@ -698,6 +713,8 @@ within the current working directory.
   project is valid before running any commands
 * `CHS_DEV_SKIP_ECR_LOGIN_CHECK` - when set will not attempt to login to ECR
 * `CH_IBOSS_TRIAL` - when set will bypass the vpn and proxies checks.
+* `CHS_DEV_NEW_SERVICE_LOCAL_DIRECTORY` - when set will use the specified
+  directory as the repository for new services
 
 ### Service configuration
 

@@ -15,10 +15,13 @@ export const hookFilter = (commandId: string | undefined, argv: string[]) => {
         "--version",
         "--help",
         "autocomplete",
-        "autocomplete:script"
+        "autocomplete:script",
+        "request"
     ];
 
-    if (commandId && optionalCommands.includes(commandId)) {
+    console.log("commandId: ", commandId);
+
+    if (commandId && optionalCommands.some(optionalCommand => commandId.includes(optionalCommand))) {
         required = false;
     }
 

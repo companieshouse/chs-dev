@@ -20,6 +20,7 @@ import ComposeLogs from "./deprecated/compose-logs.js";
 import ServiceLogs from "./deprecated/service-logs.js";
 import TroubleshootAnalysis from "./troubleshoot/analyse.js";
 import TroubleshootReport from "./troubleshoot/report.js";
+import NewServiceRequestCommand from "./request/NewServiceRequestCommand.js";
 
 export const commands = {
     down: Down,
@@ -41,6 +42,7 @@ export const commands = {
     "modules:available": ModulesAvailable,
     "modules:enable": ModulesEnable,
     "modules:disable": ModulesDisable,
+    "request:new-service": NewServiceRequestCommand,
     "service-logs": ServiceLogs,
     "troubleshoot:analyse": TroubleshootAnalysis,
     "troubleshoot:report": TroubleshootReport
