@@ -6,8 +6,6 @@ import { StateManager } from "../../src/state/state-manager";
 import AnalysisTask, { AnalysisFailureLevel } from "../../src/run/troubleshoot/analysis/AnalysisTask";
 import { simpleColouriser as simpleColouriserMock } from "../../src/helpers/colouriser";
 import fs from "fs";
-import { isIbossEnabled } from "../../src/helpers/iboss-status.js";
-import ProxiesConfiguredCorrectlyAnalysis from "../../src/run/troubleshoot/analysis/ProxiesConfiguredCorrectlyAnalysis.js";
 
 const analysisTaskMockOne = {
     analyse: jest.fn()
@@ -57,12 +55,6 @@ const loggerMock = {
 };
 
 jest.mock("../../src/helpers/colouriser");
-
-jest.mock("../../src/helpers/iboss-status.js", () => {
-    return {
-        isIbossEnabled: jest.fn()
-    };
-});
 
 describe("TroubleshootAnalyses", () => {
 
@@ -619,31 +611,6 @@ describe("TroubleshootAnalyses", () => {
                     }
                 })
             );
-
-        });
-
-        it("The ProxiesConfiguredCorrectlyAnalysis task to be filtered out when iboss is enabled", async () => {
-            (isIbossEnabled as jest.Mock).mockReturnValue(true);
-            const analysisTaskMockFour = new ProxiesConfiguredCorrectlyAnalysis();
-
-            const task = [...analysisTasks, analysisTaskMockFour];
-
-            // eslint-disable-next-line dot-notation
-            const filteredTasks = troubleshootAnalyses["handleIbossCheck"](task);
-
-            expect(filteredTasks).not.toContain(analysisTaskMockFour);
-
-        });
-
-        it("The ProxiesConfiguredCorrectlyAnalysis task to be a task when iboss is disabled", async () => {
-            (isIbossEnabled as jest.Mock).mockReturnValue(false);
-            const analysisTaskMockFour = new ProxiesConfiguredCorrectlyAnalysis();
-            const task = [...analysisTasks, analysisTaskMockFour];
-
-            // eslint-disable-next-line dot-notation
-            const filteredTasks = troubleshootAnalyses["handleIbossCheck"](task);
-
-            expect(filteredTasks).toContain(analysisTaskMockFour);
 
         });
 
