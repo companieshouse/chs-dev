@@ -8,6 +8,8 @@ import { confirm } from "../../../helpers/user-input.js";
  */
 export default abstract class BasePrompt<T> {
 
+    private static readonly MAXIMUM_RETRIES_FOR_PROMPT = 5;
+
     // eslint-disable-next-line no-useless-constructor
     constructor (
         /**
@@ -39,7 +41,9 @@ export default abstract class BasePrompt<T> {
             }
         }
 
-        while (true) {
+        let promptAttempts = 1;
+
+        while (promptAttempts <= BasePrompt.MAXIMUM_RETRIES_FOR_PROMPT) {
             if (typeof this.predicate !== "undefined" && !this.predicate(newServiceSpec)) {
                 return newServiceSpec;
             }
@@ -48,10 +52,17 @@ export default abstract class BasePrompt<T> {
 
             if (typeof userInput === "undefined" || userInput === "") {
                 console.error("Please provide a response to the former question");
+
+                promptAttempts++;
+
                 continue;
             }
 
             return applySelector(newServiceSpec, this.selector, userInput);
+        }
+
+        if (promptAttempts > BasePrompt.MAXIMUM_RETRIES_FOR_PROMPT) {
+            throw new Error(`Invalid response to question: failed after ${BasePrompt.MAXIMUM_RETRIES_FOR_PROMPT} attempts`);
         }
     }
 

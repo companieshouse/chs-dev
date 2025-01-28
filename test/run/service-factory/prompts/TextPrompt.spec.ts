@@ -100,4 +100,18 @@ describe("TextPrompt", () => {
 
         expect(inputMock).toHaveBeenCalled();
     });
+
+    it("throws error if user does not provide a response at all after 5 attempts", async () => {
+        (inputMock as jest.Mock).mockResolvedValue("" as never);
+
+        const textPrompt = new TextPrompt("Enter new value for name", ".name");
+
+        const newServiceSpec = {
+        };
+
+        await expect(textPrompt.make(newServiceSpec)).rejects.toThrow("Invalid response to question: failed after 5 attempts");
+
+        expect(inputMock).toHaveBeenCalledTimes(5);
+    });
+
 });
