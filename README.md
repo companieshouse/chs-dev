@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/1.3.0 darwin-arm64 node-v20.12.2
+chs-dev/2.0.0 darwin-arm64 node-v20.18.0
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -193,6 +193,8 @@ USAGE
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
+* [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
+* [`chs-dev troubleshoot report OUTPUTDIRECTORY`](#chs-dev-troubleshoot-report-outputdirectory)
 * [`chs-dev up`](#chs-dev-up)
 
 ## `chs-dev autocomplete [SHELL]`
@@ -232,10 +234,13 @@ Removes a service from development mode
 
 ```
 USAGE
-  $ chs-dev development disable SERVICES...
+  $ chs-dev development disable SERVICES... [-P]
 
 ARGUMENTS
   SERVICES...  names of services to be removed to development mode
+
+FLAGS
+  -P, --noPull  Does not perform a docker compose pull to reset the service to what is stored in ECR
 
 DESCRIPTION
   Removes a service from development mode
@@ -603,6 +608,45 @@ DESCRIPTION
   will prevent >60 unauthenticated requests an hour.
 ```
 
+## `chs-dev troubleshoot analyse [OUTPUTFILE]`
+
+Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user as to how they can resolve the issues encountered.
+
+```
+USAGE
+  $ chs-dev troubleshoot analyse [OUTPUTFILE] [-q]
+
+ARGUMENTS
+  OUTPUTFILE  Path to output the analysis results (if desired)
+
+FLAGS
+  -q, --quiet  Suppresses log output
+
+DESCRIPTION
+  Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user
+  as to how they can resolve the issues encountered.
+```
+
+## `chs-dev troubleshoot report OUTPUTDIRECTORY`
+
+Produces an artifact containing resources to aid others providing assistance
+
+```
+USAGE
+  $ chs-dev troubleshoot report OUTPUTDIRECTORY [-A] [-a <value>]
+
+ARGUMENTS
+  OUTPUTDIRECTORY  Directory to output the produced report to
+
+FLAGS
+  -A, --skipTroubleshootAnalyses      Whether to skip producing the analyses output if not provided as input (Not
+                                      recommended)
+  -a, --troubleshootAnalyses=<value>  Previously generated analyses of the environment
+
+DESCRIPTION
+  Produces an artifact containing resources to aid others providing assistance
+```
+
 ## `chs-dev up`
 
 Brings up the docker-chs-development environment
@@ -650,6 +694,10 @@ within the current working directory.
   with GitHub's API.
 * `CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING` - when set does not show any
   warnings relating to version not being suitable for project.
+* `CHS_DEV_SKIP_PROJECT_STATE_VALIDATION` - when set will not check that the
+  project is valid before running any commands
+* `CHS_DEV_SKIP_ECR_LOGIN_CHECK` - when set will not attempt to login to ECR
+* `CH_IBOSS_TRIAL` - when set will bypass the vpn and proxies checks.
 
 ### Service configuration
 
@@ -696,6 +744,9 @@ are referenced by chs-dev for the given purposes:
   repository locally in order to be run. This is useful where there may not be
   a remote repository to use for the service. The service can define its own
   build configuration referencing its repository/Dockerfile.
+* `chs.deprecated` - when set to `true` the service is deprecated and no longer
+  in use, useful where there are multiple service definitions for the same
+  service and only want to maintain one.
 
 #### Dependencies
 

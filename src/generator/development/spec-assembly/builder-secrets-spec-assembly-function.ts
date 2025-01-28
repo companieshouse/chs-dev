@@ -1,4 +1,4 @@
-import getInitialDockerComposeFile from "../../../helpers/initial-docker-compose-file.js";
+import { getInitialDockerComposeFile } from "../../../helpers/docker-compose-file.js";
 import CONSTANTS from "../../../model/Constants.js";
 import { SpecAssemblyFunction } from "./spec-assembly-function.js";
 
@@ -13,14 +13,14 @@ const builderSecretsSpecAssemblyFunction: SpecAssemblyFunction = (
         const dockerComposeSpec = getInitialDockerComposeFile(projectPath);
 
         if (typeof dockerComposeSpec.secrets !== "undefined") {
+            const serviceSpec = developmentDockerComposeSpec.services[`${service.name}-builder`] || developmentDockerComposeSpec.services[service.name];
+
             for (const secretName of Object.keys(dockerComposeSpec.secrets)) {
-                if (typeof developmentDockerComposeSpec.services[`${service.name}-builder`].secrets === "undefined") {
-                    developmentDockerComposeSpec.services[`${service.name}-builder`].secrets = [];
+                if (typeof serviceSpec.secrets === "undefined") {
+                    serviceSpec.secrets = [];
                 }
 
-                // When it was previously unset is set above
-                // @ts-expect-error
-                developmentDockerComposeSpec.services[`${service.name}-builder`].secrets.push(
+                serviceSpec.secrets.push(
                     secretName
                 );
             }

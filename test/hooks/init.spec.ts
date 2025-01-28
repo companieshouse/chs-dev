@@ -1,13 +1,17 @@
 import { beforeAll, expect, jest } from "@jest/globals";
 import { Hook, Config } from "@oclif/core";
 import { getLatestReleaseVersion as getLatestReleaseVersionMock } from "../../src/helpers/latest-release";
-import { isOnVpn as isOnVpnMock } from "../../src/helpers/vpn-check";
+import { isOnVpn as isOnVpnMock, isWebProxyHostSet as isWebProxyHostSetMock } from "../../src/helpers/vpn-check";
 import configLoaderMock from "../../src/helpers/config-loader";
 import { hookFilter as hookFilterMock } from "../../src/hooks/hook-filter";
+import { spawn as spawnMock } from "../../src/helpers/spawn-promise";
+import { isIbossEnabled } from "../../src/helpers/iboss-status.js";
 
 jest.mock("../../src/helpers/latest-release");
 jest.mock("../../src/helpers/config-loader");
 jest.mock("../../src/helpers/vpn-check");
+jest.mock("../../src/helpers/spawn-promise");
+jest.mock("../../src/hooks/hook-filter");
 jest.mock("../../src/hooks/hook-filter");
 
 const versionCheckRunMock = jest.fn();
@@ -19,6 +23,12 @@ jest.mock("../../src/run/version-check", () => {
                 run: versionCheckRunMock
             })
         }
+    };
+});
+
+jest.mock("../../src/helpers/iboss-status.js", () => {
+    return {
+        isIbossEnabled: jest.fn()
     };
 });
 
@@ -55,6 +65,8 @@ describe("init hook", () => {
         });
         // @ts-expect-error
         hookFilterMock.mockReturnValue(true);
+        // @ts-expect-error
+        spawnMock.mockRejectedValue(1);
     });
 
     it("does nothing when hookFilter returns false", async () => {
@@ -74,8 +86,76 @@ describe("init hook", () => {
 
         expect(versionCheckRunMock).not.toHaveBeenCalled();
         expect(getLatestReleaseVersionMock).not.toHaveBeenCalled();
+        expect(isWebProxyHostSetMock).not.toHaveBeenCalled();
         expect(isOnVpnMock).not.toHaveBeenCalled();
     });
+
+    for (const commandId of ["up", "down"]) {
+        it("checks for other processes when running " + commandId, async () => {
+            const context: unknown = {
+                warn: jest.fn(),
+                error: jest.fn()
+            };
+
+            await initHook.bind(context as Hook.Context)({
+                config: testConfig,
+                id: commandId,
+                argv: [],
+                context: context as unknown as Hook.Context
+            });
+
+            expect(spawnMock).toHaveBeenCalledWith(
+                "pgrep",
+                [
+                    "-fq",
+                    "docker compose .*(watch|up|down)"
+                ],
+                {
+                    logHandler: expect.anything()
+                }
+            );
+        });
+
+        it("errors when there are other processes when running " + commandId, async () => {
+            const context: unknown = {
+                warn: jest.fn(),
+                error: jest.fn()
+            };
+
+            // @ts-expect-error
+            spawnMock.mockResolvedValue();
+
+            await initHook.bind(context as Hook.Context)({
+                config: testConfig,
+                id: commandId,
+                argv: [],
+                context: context as unknown as Hook.Context
+            });
+
+            // @ts-expect-error
+            expect(context.error).toHaveBeenCalledWith(
+                "There are other chs-dev processes running. Wait for them to complete or stop them before retrying"
+            );
+        });
+    }
+
+    for (const commandId of ["reload", "status", "development:enable", "development:disable", "services:enable", "services:disable"]) {
+        it("does not check for other processes running when running command: " + commandId, async () => {
+            const context: unknown = {
+                warn: jest.fn(),
+                error: jest.fn()
+            };
+
+            await initHook.bind(context as Hook.Context)({
+                config: testConfig,
+                id: commandId,
+                argv: [],
+                context: context as unknown as Hook.Context
+            });
+
+            expect(spawnMock).not.toHaveBeenCalled();
+        });
+    }
 
     it("runs version check", async () => {
         const context: unknown = {
@@ -96,6 +176,11 @@ describe("init hook", () => {
         // @ts-expect-error
         getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
 
+        (isIbossEnabled as jest.Mock).mockReturnValue(false);
+
+        // @ts-expect-error
+        isWebProxyHostSetMock.mockReturnValueOnce(true);
+
         process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING = "true";
 
         const context: unknown = {
@@ -109,10 +194,41 @@ describe("init hook", () => {
             context: context as unknown as Hook.Context
         });
 
+        expect(isWebProxyHostSetMock).toHaveBeenCalled();
         expect(isOnVpnMock).toHaveBeenCalled();
     });
 
+    it("logs statement when CH_PROXY_HOST env not set", async () => {
+        (isIbossEnabled as jest.Mock).mockReturnValue(false);
+        // @ts-expect-error
+        isWebProxyHostSetMock.mockReturnValueOnce(false);
+
+        // @ts-expect-error
+        getLatestReleaseVersionMock.mockResolvedValue("0.9.23");
+
+        process.env.CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING = "true";
+
+        const context = {
+            warn: jest.fn()
+        };
+
+        await initHook.bind(context as unknown as Hook.Context)({
+            config: testConfig,
+            id: "",
+            argv: [],
+            context: context as unknown as Hook.Context
+        });
+
+        expect(context.warn).toHaveBeenCalledWith(
+            "CH_PROXY_HOST env not set. Some containers may not build properly."
+        );
+    });
+
     it("logs statement when not on vpn", async () => {
+        (isIbossEnabled as jest.Mock).mockReturnValue(false);
+        // @ts-expect-error
+        isWebProxyHostSetMock.mockReturnValueOnce(true);
+
         // @ts-expect-error
         isOnVpnMock.mockReturnValueOnce(false);
 
@@ -138,6 +254,7 @@ describe("init hook", () => {
     });
 
     it("does not log statement when on vpn", async () => {
+        (isIbossEnabled as jest.Mock).mockReturnValue(false);
         // @ts-expect-error
         isOnVpnMock.mockReturnValue(true);
 
@@ -160,6 +277,13 @@ describe("init hook", () => {
         expect(context.warn).not.toHaveBeenCalledWith(
             `WARNING - not on VPN. Some containers may not build properly.`
         );
+    });
+
+    it("skip VPN and proxies check", async () => {
+        (isIbossEnabled as jest.Mock).mockReturnValue(true);
+
+        expect(isWebProxyHostSetMock).not.toHaveBeenCalled();
+        expect(isOnVpnMock).not.toHaveBeenCalled();
     });
 
     it("runs the validate-project-state hook", async () => {

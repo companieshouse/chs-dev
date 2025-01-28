@@ -30,7 +30,9 @@ jest.mock("../../../src/state/state-manager", () => {
     return {
         StateManager: function () {
             return {
-                snapshot,
+                snapshot: {
+                    excludedServices: ["serviceA", "serviceB"]
+                },
                 includeServiceInLiveUpdate: includeServiceInLiveUpdateMock
             };
         }

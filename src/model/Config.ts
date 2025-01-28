@@ -13,6 +13,17 @@ export type Config = {
      * path to the project repository
      */
     readonly projectPath: string;
+
+    /**
+     * path to the chs-dev local repository
+     */
+    readonly chsDevPath?: string;
+
+    /**
+     * path to the chs-dev data
+     */
+    readonly chsDevDataDir?: string;
+
     /**
      * additional environment variables for running the environment. Values can
      * contain 'file://' prefixes will try to read file in and set as value in
@@ -30,6 +41,11 @@ export type Config = {
      * specifies the supported version of the CLI by the project
      */
     readonly versionSpecification?: string;
+
+    /**
+     * specifies the application version
+     */
+    readonly chsDevVersion?: string;
 
 }
 

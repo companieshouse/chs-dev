@@ -1,45 +1,5 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`DockerComposeFileGenerator generateDockerComposeFile correctly excludes services 1`] = `
-{
-  "include": [
-    "services/modules/module-one/service-one.docker-compose.yaml",
-    "services/modules/module-one/service-two.docker-compose.yaml",
-    "./local/service-three/docker-compose.yaml",
-    "./local/service-four/docker-compose.yaml",
-    "services/modules/module-one/service-nine.docker-compose.yaml",
-    "./local/service-eight/docker-compose.yaml",
-  ],
-  "services": {
-    "ingress-proxy": {
-      "depends_on": {
-        "service-eight": {
-          "condition": "service_healthy",
-          "restart": true,
-        },
-        "service-four": {
-          "condition": "service_healthy",
-          "restart": true,
-        },
-        "service-nine": {
-          "condition": "service_started",
-          "restart": true,
-        },
-        "service-one": {
-          "condition": "service_started",
-          "restart": true,
-        },
-        "service-two": {
-          "condition": "service_started",
-          "restart": true,
-        },
-      },
-      "image": "nginx:latest",
-    },
-  },
-}
-`;
-
 exports[`DockerComposeFileGenerator generateDockerComposeFile correctly generates docker compose file, no exclusions 1`] = `
 {
   "include": [
@@ -77,6 +37,32 @@ exports[`DockerComposeFileGenerator generateDockerComposeFile correctly generate
           "restart": true,
         },
         "service-six": {
+          "condition": "service_started",
+          "restart": true,
+        },
+        "service-two": {
+          "condition": "service_started",
+          "restart": true,
+        },
+      },
+      "image": "nginx:latest",
+    },
+  },
+}
+`;
+
+exports[
+  `DockerComposeFileGenerator generateExclusionServiceDockerComposeFile  correctly generates docker compose file with exclusions 1`
+] = `
+{
+  "include": [
+    "/exclusion-runnable-services/service-three.docker-compose.yaml",
+    "/exclusion-runnable-services/service-two.docker-compose.yaml",
+  ],
+  "services": {
+    "ingress-proxy": {
+      "depends_on": {
+        "service-three": {
           "condition": "service_started",
           "restart": true,
         },

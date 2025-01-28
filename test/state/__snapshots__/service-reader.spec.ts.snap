@@ -1,5 +1,28 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`readServices loads a deprecated service 1`] = `
+[
+  {
+    "builder": "",
+    "dependsOn": [
+      "mongo",
+    ],
+    "description": "simple service",
+    "metadata": {
+      "deprecated": "true",
+      "healthcheck": undefined,
+    },
+    "module": "module-three",
+    "name": "simple-service",
+    "repository": {
+      "branch": undefined,
+      "url": "git@github.com/companieshouse/repo.git",
+    },
+    "source": "./test/data/service-reader/modules/module-three/deprecated-service.docker-compose.yaml",
+  },
+]
+`;
+
 exports[`readServices loads a more complicated 1`] = `
 [
   {
@@ -20,6 +43,29 @@ exports[`readServices loads a more complicated 1`] = `
       "url": "git@github.com/companieshouse/repo2.git",
     },
     "source": "./test/data/service-reader/modules/module-two/more-complex.docker-compose.yaml",
+  },
+]
+`;
+
+exports[`readServices loads a repository builder requiring secrets 1`] = `
+[
+  {
+    "builder": "",
+    "dependsOn": [
+      "mongo",
+    ],
+    "description": "simple service",
+    "metadata": {
+      "healthcheck": undefined,
+      "secretsRequired": "true",
+    },
+    "module": "module-three",
+    "name": "another-atypical",
+    "repository": {
+      "branch": undefined,
+      "url": "git@github.com/companieshouse/reapo.git",
+    },
+    "source": "./test/data/service-reader/modules/module-three/repository-builder-with-secrets.docker-compose.yaml",
   },
 ]
 `;

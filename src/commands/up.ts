@@ -11,6 +11,8 @@ import { Config as ChsDevConfig } from "../model/Config.js";
 import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 import { PermanentRepositories } from "../state/permanent-repositories.js";
 import { Inventory } from "../state/inventory.js";
+import { spawn } from "../helpers/spawn-promise.js";
+import LogEverythingLogHandler from "../run/logs/LogEverythingLogHandler.js";
 
 export default class Up extends Command {
 
@@ -42,7 +44,7 @@ export default class Up extends Command {
 
         this.stateManager = new StateManager(this.chsDevConfig.projectPath);
         this.dependencyCache = new DependencyCache(this.chsDevConfig.projectPath);
-        this.developmentMode = new DevelopmentMode(this.dockerCompose, this.chsDevConfig.projectPath);
+        this.developmentMode = new DevelopmentMode(this.dockerCompose);
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.permanentRepositories = new PermanentRepositories(this.chsDevConfig, this.inventory);
@@ -107,26 +109,7 @@ export default class Up extends Command {
     }
 
     private hasServicesInDevelopmentMode (): boolean {
-        if (this.stateManager.snapshot.servicesWithLiveUpdate.length > 0) {
-            return this.hasServiceEnabledInLiveUpdate() ||
-                this.hasServiceFromEnabledModuleInLiveUpdate();
-        }
-
-        return false;
-    }
-
-    private hasServiceFromEnabledModuleInLiveUpdate (): boolean {
-        return this.inventory.services.filter(service => this.stateManager.snapshot.modules.includes(service.module))
-            .some(service => this.stateManager.snapshot.servicesWithLiveUpdate.includes(service.name));
-    }
-
-    private hasServiceEnabledInLiveUpdate (): boolean {
-        return this.stateManager.snapshot.servicesWithLiveUpdate
-            .some(serviceWithLiveUpdate => {
-                const service = this.stateManager.snapshot.services.find(serviceName => serviceName === serviceWithLiveUpdate);
-
-                return typeof service !== "undefined";
-            });
+        return this.stateManager.snapshot.servicesWithLiveUpdate.length > 0;
     }
 
     private async synchroniseServicesInDevelopmentMode (): Promise<any> {

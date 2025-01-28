@@ -58,7 +58,16 @@ export default abstract class AbstractStateModificationCommand extends Command {
         }
 
         if (runHook) {
-            this.config.runHook("generate-runnable-docker-compose", {});
+            const state = this.stateManager.snapshot;
+            const { excludedServices } = state || [];
+
+            const generateExclusionSpec = this.handleExclusionsAndDevelopmentCommand(this.id, excludedServices);
+
+            await this.config.runHook("generate-runnable-docker-compose", {
+                generateExclusionSpec: generateExclusionSpec ? true : undefined
+            });
+
+            await this.handlePostHookCall(argv as string[]);
         }
     }
 
@@ -69,8 +78,22 @@ export default abstract class AbstractStateModificationCommand extends Command {
         return this.parse(AbstractStateModificationCommand);
     }
 
+    protected async handlePostHookCall (_: string[]): Promise<void> {}
+
     private get properStateModificationObjectType (): string {
         return `${this.stateModificationObjectType.substring(0, 1).toUpperCase()}${this.stateModificationObjectType.substring(1)}`;
+    }
+
+    private handleExclusionsAndDevelopmentCommand (id: string | undefined, excludedServices: string[]): boolean {
+        let result = false;
+        if (id) {
+            const inExclusionMode = (/^exclusions:(add|remove)$/).test(id);
+            const inDevelopmentMode = (/^development:(enable|disable)$/).test(id);
+            const hasExcludedServices = excludedServices.length > 0;
+            result = inExclusionMode || (hasExcludedServices && inDevelopmentMode);
+        }
+        return result;
+
     }
 
 }

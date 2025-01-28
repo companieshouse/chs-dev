@@ -34,6 +34,42 @@ const colourise = (colourMap: ColourMap) => (str: string) => {
     }
 };
 
+type SimpleColour = "cyan" | "red" | "bold-red" | "green" | "bold-green" | "yellow" | "gray" | "grey"
+
+export const simpleColouriser = (str: string, colour: SimpleColour) => {
+    let colouriseFn: (str: string) => string;
+
+    switch (colour) {
+    case "cyan":
+        colouriseFn = cyan;
+        break;
+    case "red":
+        colouriseFn = red;
+        break;
+    case "bold-red":
+        colouriseFn = red.bold;
+        break;
+    case "green":
+        colouriseFn = green;
+        break;
+    case "bold-green":
+        colouriseFn = green.bold;
+        break;
+    case "yellow":
+        colouriseFn = yellow;
+        break;
+    case "gray":
+    case "grey":
+        colouriseFn = gray;
+        break;
+    default:
+        colouriseFn = (strToColourise: string) => strToColourise;
+        break;
+    }
+
+    return colouriseFn(str);
+};
+
 export const statusColouriser = colourise(statusColourMap);
 export const runStatusColouriser = colourise(runStatusColourMap);
 export const stopStatusColouriser = colourise(stopStatusColourMap);
