@@ -36,23 +36,16 @@ export default class ServiceSpecRepository {
         branchName: string,
         serviceSpecPath: string
     ) {
-        if (typeof process.env.CHS_DEV_NEW_SERVICE_LOCAL_DIRECTORY !== "undefined") {
-            return new ServiceSpecRepository(
-                process.env.CHS_DEV_NEW_SERVICE_LOCAL_DIRECTORY,
-                gitHubOrganisationName,
-                repositoryName,
-                branchName,
-                serviceSpecPath,
-                true
-            );
-        }
+
+        const repositoryLocation = process.env.CHS_DEV_NEW_SERVICE_LOCAL_DIRECTORY || localDirectory;
 
         return new ServiceSpecRepository(
-            localDirectory,
+            repositoryLocation,
             gitHubOrganisationName,
             repositoryName,
             branchName,
-            serviceSpecPath
+            serviceSpecPath,
+            typeof process.env.CHS_DEV_NEW_SERVICE_LOCAL_DIRECTORY !== "undefined"
         );
     }
 
