@@ -1,4 +1,4 @@
-import { deduplicate } from "../helpers/array-reducers.js";
+import { collect, deduplicate } from "../helpers/array-reducers.js";
 import Service from "../model/Service.js";
 import State from "../model/State.js";
 import { Inventory } from "../state/inventory.js";
@@ -36,8 +36,7 @@ export class ServiceLoader {
         });
 
         // Collect all services specifed by the state to include
-        const loadedServices = this.inventory.services
-            .filter(service => state.services.includes(service.name) || state.modules.includes(service.module))
+        const loadedServices = this.getActivatedServicesList(state)
             // TODO: Remove after dual running period - RAND-397
             .filter(service => !this.serviceIsDeprecated(service))
             .map(withLiveUpdate);
@@ -61,6 +60,18 @@ export class ServiceLoader {
         ] as LoadedService[];
     }
 
+    /**
+     * Loads sorted and unique list of activated serviceNames from inventory.
+     * @param state of the environment
+     * @returns list of manually and automatically activated services names.
+     */
+    loadServicesNames (state: State): string[] {
+        return this.getActivatedServicesList(state)
+            .reduce(collect<string, Service>(service => [service.name, ...service.dependsOn || []]), [])
+            .reduce(deduplicate, [])
+            .sort();
+    }
+
     private findService (serviceName: string): Service | undefined {
         return this.inventory.services.find(service => service.name === serviceName && !this.serviceIsDeprecated(service));
     }
@@ -70,4 +81,13 @@ export class ServiceLoader {
             service.metadata.deprecated?.toLowerCase() === "true";
     }
 
+    /**
+     * Filters the inventory(all services) by state object(activated service/module names)
+     * @param state of the environment
+     * @returns list of activated services as Service object
+     */
+    private getActivatedServicesList (state: State): Service[] {
+        return this.inventory.services
+            .filter(service => state.services.includes(service.name) || state.modules.includes(service.module));
+    }
 }

@@ -1,15 +1,14 @@
-import { collect, deduplicate } from "../../../helpers/array-reducers.js";
+import os from "os";
 import {
-    fetchDockerSettings,
-    DockerSettings
+    DockerSettings,
+    fetchDockerSettings
 } from "../../../helpers/docker-settings-store.js";
-import Service from "../../../model/Service.js";
 import { Inventory } from "../../../state/inventory.js";
 import { StateManager } from "../../../state/state-manager.js";
+import { ServiceLoader } from "../../service-loader.js";
 import BaseAnalysis from "./AbstractBaseAnalysis.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
 import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "./AnalysisTask.js";
-import os from "os";
 
 const ANALYSIS_HEADLINE = "Check docker's memory allocation size";
 
@@ -84,11 +83,9 @@ export default class DockerMemoryAnalysis extends BaseAnalysis {
 
     private getEnabledServices (inventory: Inventory, stateManager:StateManager): string[] {
         const state = stateManager.snapshot;
-        return inventory.services
-            .filter(service => state.modules.includes(service.module) || state.services.includes(service.name))
-            .reduce(collect<string, Service>(service => [service.name, ...service.dependsOn || []]), [])
-            .reduce(deduplicate, [])
-            .sort();
+        const serviceLoader = new ServiceLoader(inventory);
+        const enabledServiceNames = serviceLoader.loadServicesNames(state);
+        return enabledServiceNames;
     };
 
     private isHalfAboveDeviceMemory (dockerMemoryInGB: number):boolean {
