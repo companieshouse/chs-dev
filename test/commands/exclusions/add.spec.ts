@@ -29,9 +29,12 @@ jest.mock("../../../src/state/state-manager", () => {
 
 describe("exclusions add", () => {
     const runHookMock = jest.fn();
+    const commandArgvMock = ["overseas-entities-api"];
 
     let exclusionsAdd;
     let parseMock;
+    let handlePreHookCheckMock;
+    let handleServiceModuleStateHookMock;
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -44,6 +47,8 @@ describe("exclusions add", () => {
         );
 
         parseMock = jest.spyOn(exclusionsAdd, "parse");
+        handleServiceModuleStateHookMock = jest.spyOn(exclusionsAdd as any, "handleServiceModuleStateHook").mockReturnValue([]);
+        handlePreHookCheckMock = jest.spyOn(exclusionsAdd as any, "handlePreHookCheck").mockReturnValue([]);
     });
 
     for (const invalidService of [null, undefined, "service-not-found"]) {
@@ -91,5 +96,50 @@ describe("exclusions add", () => {
         expect(runHookMock).toHaveBeenCalledWith(
             "generate-runnable-docker-compose", {}
         );
+    });
+
+    it("should call the pre hook check then execute the command if there are no warnings", async () => {
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            argv: [
+                "service-one"
+            ]
+        });
+        const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(exclusionsAdd as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
+
+        // eslint-disable-next-line dot-notation
+        (exclusionsAdd["handlePreHookCheck"] as jest.Mock).mockReturnValue(
+            []
+        );
+        await exclusionsAdd.run();
+
+        // eslint-disable-next-line dot-notation
+        expect(exclusionsAdd["handlePreHookCheck"](commandArgvMock)).toEqual([]);
+        expect(handleExclusionsAndDevelopmentCommandMock).toBeCalled();
+    });
+
+    it("should call the pre hook check and not execute the command if there are warnings", async () => {
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            argv: [
+                "service-one"
+            ]
+        });
+        const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(exclusionsAdd as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
+
+        // eslint-disable-next-line dot-notation
+        (exclusionsAdd["handlePreHookCheck"] as jest.Mock).mockReturnValue(
+            ["Warnings"]
+        );
+
+        await exclusionsAdd.run();
+
+        // eslint-disable-next-line dot-notation
+        expect(exclusionsAdd["handlePreHookCheck"](commandArgvMock)).toEqual(["Warnings"]);
+        expect(handleExclusionsAndDevelopmentCommandMock).not.toBeCalled();
     });
 });

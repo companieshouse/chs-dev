@@ -42,6 +42,9 @@ jest.mock("../../../src/state/state-manager", () => {
 jest.mock("simple-git");
 
 describe("development enable", () => {
+    const commandArgvMock = ["overseas-entities-api"];
+    let handlePreHookCheckMock;
+    let handleServiceModuleStateHookMock;
 
     let developmentEnable: Enable;
 
@@ -69,6 +72,9 @@ describe("development enable", () => {
         // @ts-expect-error
         developmentEnable.error = errorMock;
         cwdSpy.mockReturnValue(projectDir);
+
+        handleServiceModuleStateHookMock = jest.spyOn(developmentEnable as any, "handleServiceModuleStateHook").mockReturnValue([]);
+        handlePreHookCheckMock = jest.spyOn(developmentEnable as any, "handlePreHookCheck").mockReturnValue([]);
 
         // @ts-expect-error
         simpleGitMock.mockReturnValue({
@@ -271,4 +277,51 @@ describe("development enable", () => {
         });
 
     }
+
+    it("should call the pre hook check then execute the command if there are no warnings", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            argv: [
+                "service-one"
+            ]
+        });
+        const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(developmentEnable as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
+
+        // eslint-disable-next-line dot-notation
+        (developmentEnable["handlePreHookCheck"] as jest.Mock).mockReturnValue(
+            []
+        );
+
+        await developmentEnable.run();
+
+        // eslint-disable-next-line dot-notation
+        expect(developmentEnable["handlePreHookCheck"](commandArgvMock)).toEqual([]);
+        expect(handleExclusionsAndDevelopmentCommandMock).toBeCalled();
+    });
+
+    it("should call the pre hook check and not execute the command if there are warnings", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            argv: [
+                "service-one"
+            ]
+        });
+
+        const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(developmentEnable as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
+        // eslint-disable-next-line dot-notation
+        (developmentEnable["handlePreHookCheck"] as jest.Mock).mockReturnValue(
+            ["Warnings"]
+        );
+        await developmentEnable.run();
+
+        // eslint-disable-next-line dot-notation
+        expect(developmentEnable["handlePreHookCheck"](commandArgvMock)).toEqual(["Warnings"]);
+        expect(handleExclusionsAndDevelopmentCommandMock).not.toBeCalled();
+    });
 });

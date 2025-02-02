@@ -21,7 +21,9 @@ jest.mock("../../../src/state/state-manager", () => {
             return {
                 includeModule: includeModuleMock,
                 snapshot: {
-                    excludedServices: ["serviceA", "serviceB"]
+                    services: ["service-one"],
+                    modules: [],
+                    excludedServices: ["service-one", "service-two"]
                 }
             };
         }
@@ -30,9 +32,12 @@ jest.mock("../../../src/state/state-manager", () => {
 
 describe("modules enable", () => {
     const runHookMock = jest.fn();
+    const checkStateHookObjectMock = { topic: "modules" };
 
     let logMock;
     let parseMock;
+    let handlePostHookCallMock;
+    let handleServiceModuleStateHookMock;
 
     let enableModules;
 
@@ -49,6 +54,10 @@ describe("modules enable", () => {
 
         logMock = jest.spyOn(enableModules, "log");
         parseMock = jest.spyOn(enableModules, "parse");
+        handleServiceModuleStateHookMock = jest.spyOn(enableModules as any, "handleServiceModuleStateHook").mockReturnValue([]);
+        handlePostHookCallMock = jest.spyOn(enableModules as any, "handlePostHookCall").mockImplementation(() => {
+            handleServiceModuleStateHookMock(checkStateHookObjectMock);
+        });
 
     });
 
@@ -90,5 +99,24 @@ describe("modules enable", () => {
         ));
 
         expect(runHookMock).not.toHaveBeenCalled();
+    });
+
+    it("should call the post hook check after command execution", async () => {
+        const moduleName = "module-one";
+
+        parseMock.mockResolvedValue({
+            args: {
+                command: "enable",
+                module: moduleName
+            },
+            argv: [
+                moduleName
+            ]
+        });
+
+        await enableModules.run();
+
+        expect(handlePostHookCallMock).toHaveBeenCalled();
+        expect(handleServiceModuleStateHookMock).toHaveBeenCalledWith(checkStateHookObjectMock);
     });
 });
