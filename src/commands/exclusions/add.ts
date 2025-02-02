@@ -23,6 +23,10 @@ export default class Add extends AbstractStateModificationCommand {
         this.validArgumentHandler = this.handleValidService;
     }
 
+    protected async handlePreHookCheck (commandArgv: string[]): Promise<string[]> {
+        return this.handleServiceModuleStateHook({ topic: "exclusions", commandArgv });
+    }
+
     private handleValidService (serviceName: string): Promise<void> {
         this.stateManager.addExclusionForService(serviceName);
 

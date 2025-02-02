@@ -16,9 +16,12 @@ export default class Enable extends AbstractStateModificationCommand {
 
     constructor (argv: string[], config: Config) {
         super(argv, config, "service");
-
         this.argumentValidationPredicate = serviceValidator(this.inventory, this.error);
         this.validArgumentHandler = this.handleValidService;
+    }
+
+    protected async handlePostHookCall (commandArgv: string[]): Promise<void> {
+        this.handleServiceModuleStateHook({ topic: "services" });
     }
 
     private async handleValidService (serviceName: string): Promise<void> {
