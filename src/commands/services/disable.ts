@@ -22,7 +22,7 @@ export default class Disable extends AbstractStateModificationCommand {
     }
 
     protected async handlePostHookCall (commandArgv: string[]): Promise<void> {
-        this.handleServiceModuleStateHook({ topic: "services" });
+        await this.handleServiceModuleStateHook({ topic: "services" });
     }
 
     private async handleValidService (serviceName: string): Promise<void> {

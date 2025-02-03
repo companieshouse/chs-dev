@@ -48,7 +48,7 @@ describe("exclusions add", () => {
 
         parseMock = jest.spyOn(exclusionsAdd, "parse");
         handleServiceModuleStateHookMock = jest.spyOn(exclusionsAdd as any, "handleServiceModuleStateHook").mockReturnValue([]);
-        handlePreHookCheckMock = jest.spyOn(exclusionsAdd as any, "handlePreHookCheck").mockReturnValue([]);
+        handlePreHookCheckMock = jest.spyOn(exclusionsAdd as any, "handlePreHookCheck").mockReturnValue(undefined);
     });
 
     for (const invalidService of [null, undefined, "service-not-found"]) {
@@ -111,12 +111,12 @@ describe("exclusions add", () => {
 
         // eslint-disable-next-line dot-notation
         (exclusionsAdd["handlePreHookCheck"] as jest.Mock).mockReturnValue(
-            []
+            undefined
         );
         await exclusionsAdd.run();
 
         // eslint-disable-next-line dot-notation
-        expect(exclusionsAdd["handlePreHookCheck"](commandArgvMock)).toEqual([]);
+        expect(exclusionsAdd["handlePreHookCheck"](commandArgvMock)).toEqual(undefined);
         expect(handleExclusionsAndDevelopmentCommandMock).toBeCalled();
     });
 
@@ -133,13 +133,13 @@ describe("exclusions add", () => {
 
         // eslint-disable-next-line dot-notation
         (exclusionsAdd["handlePreHookCheck"] as jest.Mock).mockReturnValue(
-            ["Warnings"]
+            "Warnings"
         );
 
         await exclusionsAdd.run();
 
         // eslint-disable-next-line dot-notation
-        expect(exclusionsAdd["handlePreHookCheck"](commandArgvMock)).toEqual(["Warnings"]);
+        expect(exclusionsAdd["handlePreHookCheck"](commandArgvMock)).toEqual("Warnings");
         expect(handleExclusionsAndDevelopmentCommandMock).not.toBeCalled();
     });
 });

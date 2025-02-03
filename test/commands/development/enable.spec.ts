@@ -74,7 +74,7 @@ describe("development enable", () => {
         cwdSpy.mockReturnValue(projectDir);
 
         handleServiceModuleStateHookMock = jest.spyOn(developmentEnable as any, "handleServiceModuleStateHook").mockReturnValue([]);
-        handlePreHookCheckMock = jest.spyOn(developmentEnable as any, "handlePreHookCheck").mockReturnValue([]);
+        handlePreHookCheckMock = jest.spyOn(developmentEnable as any, "handlePreHookCheck").mockReturnValue(undefined);
 
         // @ts-expect-error
         simpleGitMock.mockReturnValue({
@@ -292,13 +292,13 @@ describe("development enable", () => {
 
         // eslint-disable-next-line dot-notation
         (developmentEnable["handlePreHookCheck"] as jest.Mock).mockReturnValue(
-            []
+            undefined
         );
 
         await developmentEnable.run();
 
         // eslint-disable-next-line dot-notation
-        expect(developmentEnable["handlePreHookCheck"](commandArgvMock)).toEqual([]);
+        expect(developmentEnable["handlePreHookCheck"](commandArgvMock)).toEqual(undefined);
         expect(handleExclusionsAndDevelopmentCommandMock).toBeCalled();
     });
 
@@ -316,12 +316,12 @@ describe("development enable", () => {
         const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(developmentEnable as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
         // eslint-disable-next-line dot-notation
         (developmentEnable["handlePreHookCheck"] as jest.Mock).mockReturnValue(
-            ["Warnings"]
+            "Warnings"
         );
         await developmentEnable.run();
 
         // eslint-disable-next-line dot-notation
-        expect(developmentEnable["handlePreHookCheck"](commandArgvMock)).toEqual(["Warnings"]);
+        expect(developmentEnable["handlePreHookCheck"](commandArgvMock)).toEqual("Warnings");
         expect(handleExclusionsAndDevelopmentCommandMock).not.toBeCalled();
     });
 });

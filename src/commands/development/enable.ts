@@ -41,8 +41,8 @@ export default class Enable extends AbstractStateModificationCommand {
         return this.parse(Enable);
     }
 
-    protected async handlePreHookCheck (commandArgv: string[]): Promise<string[]> {
-        return this.handleServiceModuleStateHook({ topic: "development", commandArgv });
+    protected async handlePreHookCheck (commandArgv: string[]): Promise<string|undefined> {
+        return await this.handleServiceModuleStateHook({ topic: "development", commandArgv });
     }
 
     private async handleValidService (serviceName: string): Promise<void> {
