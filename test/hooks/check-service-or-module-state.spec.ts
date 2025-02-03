@@ -6,8 +6,8 @@ import checkServiceModuleStateHook from "../../src/hooks/check-service-or-module
 import { Config } from "@oclif/core";
 import configLoaderMock from "../../src/helpers/config-loader";
 import ChsDevConfig from "../../src/model/Config";
-import { input } from "../../src/helpers/user-input";
-import { findUniqueItems, matchExistInArrays } from "../../src/helpers";
+import { confirm } from "../../src/helpers/user-input";
+import { findUniqueItemsInParentArray, matchExistInArrays } from "../../src/helpers";
 
 const stateManagerMock = {
     snapshot: {
@@ -68,9 +68,9 @@ describe("check-service-or-module-state", () => {
         // @ts-expect-error
         configLoaderMock.mockReturnValue(testConfig);
 
-        (input as jest.Mock).mockImplementation(() => "no");
+        (confirm as jest.Mock).mockResolvedValue(false as never);
         (matchExistInArrays as jest.Mock).mockReturnValue(false);
-        (findUniqueItems as jest.Mock).mockReturnValue([]);
+        (findUniqueItemsInParentArray as jest.Mock).mockReturnValue([]);
     });
 
     afterEach(() => {
@@ -101,7 +101,10 @@ describe("check-service-or-module-state", () => {
         });
 
         expect(context.warn).toHaveBeenCalledWith(
-            "The following LiveUpdate services are currently not activated: \"serviceA\". Remove all LiveUpdate services to prevent chs-dev state disarray."
+            "The following LiveUpdate services are currently not activated: \"serviceA\". Remove all LiveUpdate services to prevent corruption of chs-dev state."
+        );
+        expect(context.warn).toHaveBeenLastCalledWith(
+            "LiveUpdate services that are not activated might cause chs-dev to malfunction."
         );
     });
 
@@ -129,12 +132,15 @@ describe("check-service-or-module-state", () => {
         });
 
         expect(context.warn).toHaveBeenCalledWith(
-            "The following Excluded services are currently not activated: \"serviceA\". Remove all Excluded services to prevent chs-dev state disarray."
+            "The following Excluded services are currently not activated: \"serviceA\". Remove all Excluded services to prevent corruption of chs-dev state."
+        );
+        expect(context.warn).toHaveBeenLastCalledWith(
+            "Excluded services that are not activated might cause chs-dev to malfunction."
         );
     });
 
     it("should warn when enabling development mode but service is not activated", async () => {
-        (findUniqueItems as jest.Mock).mockReturnValue(["serviceX"]);
+        (findUniqueItemsInParentArray as jest.Mock).mockReturnValue(["serviceX"]);
         // @ts-expect-error
         const result = await checkServiceModuleStateHook({
             activatedServices: [],
@@ -152,7 +158,7 @@ describe("check-service-or-module-state", () => {
     });
 
     it("should warn when adding service to exclusion but service is not activated", async () => {
-        (findUniqueItems as jest.Mock).mockReturnValue(["serviceX"]);
+        (findUniqueItemsInParentArray as jest.Mock).mockReturnValue(["serviceX"]);
         // @ts-expect-error
         const result = await checkServiceModuleStateHook({
             activatedServices: [],

@@ -1,10 +1,8 @@
 import { Hook, Config } from "@oclif/core";
 import load from "../helpers/config-loader.js";
 import { StateManager } from "../state/state-manager.js";
-import { input } from "../helpers/user-input.js";
-import { matchExistInArrays, findUniqueItems } from "../helpers/index.js";
-
-const warnings: string[] = [];
+import { confirm } from "../helpers/user-input.js";
+import { matchExistInArrays, findUniqueItemsInParentArray } from "../helpers/index.js";
 
 /**
  *  Hook that checks the state of a service or module before and after command execution.
@@ -26,8 +24,8 @@ export const hook: Hook<"check-service-or-module-state"> = async ({
     commandArgv,
     config,
     context
-}) => {
-    let handler: ((command: string, config: Config, context: any) => void) | undefined;
+}): Promise<string | void> => {
+    let handler: ((command: string, config: Config, context: any) => Promise <void | string>) | undefined;
 
     switch (topic) {
     case "services":
@@ -42,10 +40,8 @@ export const hook: Hook<"check-service-or-module-state"> = async ({
     }
 
     if (typeof handler !== "undefined") {
-        handler(command as string, config as Config, context);
+        return handler(command as string, config as Config, context);
     }
-
-    return warnings;
 
 };
 
@@ -93,21 +89,20 @@ const handleServicesModulesTopic = (activatedServices: string[]) =>
  *
  * @param {string[]} activatedServices - List of currently activated services.
  * @param {string[]} commandArgv - Command arguments.
- * @returns {(command: string, config: Config, context: any) => Promise<void>} - A function that processes the command.
+ * @returns {(command: string, config: Config, context: any) => Promise<void | string>} - A function that processes the command.
  */
 const handleDevelopmentExclusionsTopic = (activatedServices: string[], commandArgv : string[]) =>
     async (command: string, config: Config, context) => {
         if (command === "enable" || command === "add") {
 
-            const liveAndExcludedServicesNotActivated = findUniqueItems(commandArgv, activatedServices);
+            const liveAndExcludedServicesNotActivated = findUniqueItemsInParentArray(commandArgv, activatedServices);
 
             if (liveAndExcludedServicesNotActivated.length) {
                 const message = handleDevelopmentExclusionWarnings(liveAndExcludedServicesNotActivated);
-                warnings.push(message);
                 context.warn(message);
+                return message;
             }
         }
-
     };
 
 /**
@@ -130,11 +125,10 @@ const processServiceGroup = async (serviceGroup, activatedServices, context, sta
         const allServices = serviceGroup.join(",");
         context.warn(
             `The following ${label} services are currently not activated: "${allServices}". ` +
-            `Remove all ${label} services to prevent chs-dev state disarray.`
+            `Remove all ${label} services to prevent corruption of chs-dev state.`
         );
 
-        const response = await handlePrompt();
-        if (response === "yes") {
+        if (await handlePrompt()) {
             serviceGroup.forEach(serviceName => removeServiceFn.call(state, serviceName));
             context.log(`${label} services removed successfully.`);
         } else {
@@ -143,13 +137,12 @@ const processServiceGroup = async (serviceGroup, activatedServices, context, sta
             );
         }
     } else {
-        const notActivatedServiceGroupList = findUniqueItems(serviceGroup, activatedServices);
+        const notActivatedServiceGroupList = findUniqueItemsInParentArray(serviceGroup, activatedServices);
 
         for (const serviceName of notActivatedServiceGroupList) {
             context.warn(`Service: ${serviceName} is currently ${label} but not activated.`);
-            const response = await handlePrompt(serviceName);
 
-            if (response === "yes") {
+            if (await handlePrompt(serviceName)) {
                 removeServiceFn.call(state, serviceName);
                 context.log(`${serviceName} removed successfully.`);
             } else {
@@ -165,10 +158,8 @@ const processServiceGroup = async (serviceGroup, activatedServices, context, sta
  * @param {string} [text="all"] - The name of the service to remove or "all" for multiple services.
  * @returns {Promise<string>} - The user's response ("yes" or "no").
  */
-const handlePrompt = async (text = "all"): Promise<string> => {
-    return await input(
-        `Remove ${text}?`, { options: ["yes", "no"] }
-    );
+const handlePrompt = async (text = "all"): Promise<boolean> => {
+    return await confirm(`Remove ${text}?`);
 };
 
 /**
