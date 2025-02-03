@@ -46,7 +46,7 @@ jest.mock("../../src/state/state-manager");
 jest.mock("../../src/state/inventory");
 jest.mock("../../src/helpers/config-loader");
 jest.mock("../../src/helpers/user-input");
-// jest.mock("../../src/helpers/index");
+jest.mock("../../src/helpers/index");
 
 describe("check-service-or-module-state", () => {
     let context;
@@ -69,8 +69,8 @@ describe("check-service-or-module-state", () => {
         configLoaderMock.mockReturnValue(testConfig);
 
         (input as jest.Mock).mockImplementation(() => "no");
-        // (matchExistInArrays as jest.Mock).mockReturnValue(false);
-        // (findUniqueItems as jest.Mock).mockReturnValue([]);
+        (matchExistInArrays as jest.Mock).mockReturnValue(false);
+        (findUniqueItems as jest.Mock).mockReturnValue([]);
     });
 
     afterEach(() => {
@@ -134,7 +134,7 @@ describe("check-service-or-module-state", () => {
     });
 
     it("should warn when enabling development mode but service is not activated", async () => {
-
+        (findUniqueItems as jest.Mock).mockReturnValue(["serviceX"]);
         // @ts-expect-error
         const result = await checkServiceModuleStateHook({
             activatedServices: [],
@@ -152,7 +152,7 @@ describe("check-service-or-module-state", () => {
     });
 
     it("should warn when adding service to exclusion but service is not activated", async () => {
-
+        (findUniqueItems as jest.Mock).mockReturnValue(["serviceX"]);
         // @ts-expect-error
         const result = await checkServiceModuleStateHook({
             activatedServices: [],
@@ -179,6 +179,7 @@ describe("check-service-or-module-state", () => {
         };
 
         (StateManager as jest.Mock).mockImplementation(() => mockState);
+        (matchExistInArrays as jest.Mock).mockReturnValue(true);
 
         // @ts-expect-error
         await checkServiceModuleStateHook({

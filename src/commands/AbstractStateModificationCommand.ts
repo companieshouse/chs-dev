@@ -93,7 +93,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
     }
 
     /**
-    * Executes pos-hook calls after running a command.
+    * Executes post-hook calls after running a command.
     *
     * @param {string[]} _ - The arguments passed to the command.
     * @returns {Promise< void>} - `void`.
