@@ -29,6 +29,7 @@ export default class Enable extends AbstractStateModificationCommand {
 
     constructor (argv: string[], config: Config) {
         super(argv, config, "service");
+        this.preHookCheckWarnings = this.handlePreHookCheck;
 
         this.argumentValidationPredicate = serviceValidator(this.inventory, this.error, true);
         this.validArgumentHandler = this.handleValidService;
@@ -41,7 +42,7 @@ export default class Enable extends AbstractStateModificationCommand {
         return this.parse(Enable);
     }
 
-    protected async handlePreHookCheck (commandArgv: string[]): Promise<string|undefined> {
+    private async handlePreHookCheck (commandArgv: string[]): Promise<string|undefined> {
         return await this.handleServiceModuleStateHook({ topic: "development", commandArgv });
     }
 

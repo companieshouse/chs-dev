@@ -11,9 +11,11 @@ type ServiceModuleStateHook = {
 }
 type ArgumentValidationPredicate = (argument: string) => boolean;
 type ValidArgumentHandler = (argument: string) => Promise<void>;
+type PreHookCheck = (argument: string[]) => Promise<string | undefined>;
 
 const defaultValidationPredicate = (_: string) => true;
 const defaultValidArgumentHandler = (_: string) => Promise.reject(new Error("Command not configured correctly"));
+const defaultPrehookCheck = async (argument: string[]) => Promise.resolve(undefined);
 
 export default abstract class AbstractStateModificationCommand extends Command {
 
@@ -26,6 +28,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
 
     protected argumentValidationPredicate: ArgumentValidationPredicate = defaultValidationPredicate;
     protected validArgumentHandler: ValidArgumentHandler = defaultValidArgumentHandler;
+    protected preHookCheckWarnings?: PreHookCheck = defaultPrehookCheck;
     protected chsDevConfig: ChsDevConfig;
 
     protected flagValues: Record<string, any> | undefined = undefined;
@@ -57,7 +60,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
         // Perform a pre-hook check on the state for commands that require it,
         // such as enabling dev mode or adding services to the exclusion list.
         // Prevents command execution if the pre-hook check returns an error or warning.
-        const preCheckWarnings = this.handlePreHookCheck ? await this.handlePreHookCheck(argv as string[]) : undefined;
+        const preCheckWarnings = this.preHookCheckWarnings ? await this.preHookCheckWarnings(argv as string[]) : undefined;
 
         const hasNoPreCheckWarnings = typeof preCheckWarnings === "undefined";
 
@@ -100,15 +103,6 @@ export default abstract class AbstractStateModificationCommand extends Command {
     * @returns {Promise< void>} - `void`.
      */
     protected async handlePostHookCall (_: string[]): Promise<void> { }
-
-    /**
-    * Executes pre-hook checks before running a command.
-    *
-    * @param {string[]} _ - The arguments passed to the command.
-    * @returns {Promise<string[] | void>} - Returns an array of warning messages if checks fail,
-    * or `void` if all checks are successfully.
-     */
-    protected async handlePreHookCheck?(_: string[]): Promise<string|undefined>;
 
     /**
      * Handles the execution of the "check-service-or-module-state" hook by passing the activated services,

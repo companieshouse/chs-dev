@@ -42,7 +42,6 @@ jest.mock("../../../src/state/state-manager", () => {
 jest.mock("simple-git");
 
 describe("development enable", () => {
-    const commandArgvMock = ["overseas-entities-api"];
     let handlePreHookCheckMock;
     let handleServiceModuleStateHookMock;
 
@@ -74,7 +73,7 @@ describe("development enable", () => {
         cwdSpy.mockReturnValue(projectDir);
 
         handleServiceModuleStateHookMock = jest.spyOn(developmentEnable as any, "handleServiceModuleStateHook").mockReturnValue([]);
-        handlePreHookCheckMock = jest.spyOn(developmentEnable as any, "handlePreHookCheck").mockReturnValue(undefined);
+        handlePreHookCheckMock = jest.spyOn(developmentEnable as any, "preHookCheckWarnings").mockResolvedValue(undefined);
 
         // @ts-expect-error
         simpleGitMock.mockReturnValue({
@@ -290,15 +289,8 @@ describe("development enable", () => {
         });
         const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(developmentEnable as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
 
-        // eslint-disable-next-line dot-notation
-        (developmentEnable["handlePreHookCheck"] as jest.Mock).mockReturnValue(
-            undefined
-        );
-
         await developmentEnable.run();
 
-        // eslint-disable-next-line dot-notation
-        expect(developmentEnable["handlePreHookCheck"](commandArgvMock)).toEqual(undefined);
         expect(handleExclusionsAndDevelopmentCommandMock).toBeCalled();
     });
 
@@ -314,14 +306,10 @@ describe("development enable", () => {
         });
 
         const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(developmentEnable as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
-        // eslint-disable-next-line dot-notation
-        (developmentEnable["handlePreHookCheck"] as jest.Mock).mockReturnValue(
-            "Warnings"
-        );
+        jest.spyOn(developmentEnable as any, "preHookCheckWarnings").mockResolvedValue("Warnings");
+
         await developmentEnable.run();
 
-        // eslint-disable-next-line dot-notation
-        expect(developmentEnable["handlePreHookCheck"](commandArgvMock)).toEqual("Warnings");
         expect(handleExclusionsAndDevelopmentCommandMock).not.toBeCalled();
     });
 });

@@ -29,7 +29,6 @@ jest.mock("../../../src/state/state-manager", () => {
 
 describe("exclusions add", () => {
     const runHookMock = jest.fn();
-    const commandArgvMock = ["overseas-entities-api"];
 
     let exclusionsAdd;
     let parseMock;
@@ -48,7 +47,7 @@ describe("exclusions add", () => {
 
         parseMock = jest.spyOn(exclusionsAdd, "parse");
         handleServiceModuleStateHookMock = jest.spyOn(exclusionsAdd as any, "handleServiceModuleStateHook").mockReturnValue([]);
-        handlePreHookCheckMock = jest.spyOn(exclusionsAdd as any, "handlePreHookCheck").mockReturnValue(undefined);
+        handlePreHookCheckMock = jest.spyOn(exclusionsAdd as any, "preHookCheckWarnings").mockReturnValue(undefined);
     });
 
     for (const invalidService of [null, undefined, "service-not-found"]) {
@@ -109,14 +108,8 @@ describe("exclusions add", () => {
         });
         const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(exclusionsAdd as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
 
-        // eslint-disable-next-line dot-notation
-        (exclusionsAdd["handlePreHookCheck"] as jest.Mock).mockReturnValue(
-            undefined
-        );
         await exclusionsAdd.run();
 
-        // eslint-disable-next-line dot-notation
-        expect(exclusionsAdd["handlePreHookCheck"](commandArgvMock)).toEqual(undefined);
         expect(handleExclusionsAndDevelopmentCommandMock).toBeCalled();
     });
 
@@ -130,16 +123,10 @@ describe("exclusions add", () => {
             ]
         });
         const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(exclusionsAdd as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
-
-        // eslint-disable-next-line dot-notation
-        (exclusionsAdd["handlePreHookCheck"] as jest.Mock).mockReturnValue(
-            "Warnings"
-        );
+        jest.spyOn(exclusionsAdd as any, "preHookCheckWarnings").mockResolvedValue("Warnings");
 
         await exclusionsAdd.run();
 
-        // eslint-disable-next-line dot-notation
-        expect(exclusionsAdd["handlePreHookCheck"](commandArgvMock)).toEqual("Warnings");
         expect(handleExclusionsAndDevelopmentCommandMock).not.toBeCalled();
     });
 });
