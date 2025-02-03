@@ -57,8 +57,9 @@ export default abstract class AbstractStateModificationCommand extends Command {
         // Perform a pre-hook check on the state for commands that require it,
         // such as enabling dev mode or adding services to the exclusion list.
         // Prevents command execution if the pre-hook check returns an error or warning.
-        const preCheckWarnings = await this.handlePreHookCheck(argv as string[]) ?? [];
-        const hasNoPreCheckWarnings = preCheckWarnings.length === 0;
+        const preCheckWarnings = this.handlePreHookCheck ? await this.handlePreHookCheck(argv as string[]) : undefined;
+
+        const hasNoPreCheckWarnings = typeof preCheckWarnings === "undefined";
 
         if (hasNoPreCheckWarnings) {
             for (const argument of argv as string[]) {
@@ -107,7 +108,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
     * @returns {Promise<string[] | void>} - Returns an array of warning messages if checks fail,
     * or `void` if all checks are successfully.
      */
-    protected async handlePreHookCheck (_: string[]): Promise<string[] | void> { }
+    protected async handlePreHookCheck?(_: string[]): Promise<string|undefined>;
 
     /**
      * Handles the execution of the "check-service-or-module-state" hook by passing the activated services,
@@ -118,7 +119,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
      * @param {string[]} param.commandArgv - The arguments passed to the command.
      * @returns {Promise<string[]>} - Returns a processed array of responses from the executed hook.
      */
-    protected async handleServiceModuleStateHook ({ topic, commandArgv }: ServiceModuleStateHook): Promise<string[]> {
+    protected async handleServiceModuleStateHook ({ topic, commandArgv }: ServiceModuleStateHook): Promise<string | undefined> {
         const activatedServices = this.handleActivatedServicesByName();
         const result = await this.config.runHook("check-service-or-module-state", {
             activatedServices,
@@ -141,8 +142,8 @@ export default abstract class AbstractStateModificationCommand extends Command {
         return enabledServiceNames.loadServicesNames(state);
     }
 
-    private handleHookResponse (result): string[] {
-        return result.successes.flatMap(success => success.result);
+    private handleHookResponse (result): string | undefined {
+        return result.successes[0].result;
     }
 
     private get properStateModificationObjectType (): string {
