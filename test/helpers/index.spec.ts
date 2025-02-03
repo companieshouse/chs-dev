@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { findUniqueItems, isEmptyObject, isObjectFormat, matchExistInArrays } from "../../src/helpers";
+import { findUniqueItemsInParentArray, isEmptyObject, isObjectFormat, matchExistInArrays } from "../../src/helpers";
 
 describe("General Helper Functions", () => {
 
@@ -24,34 +24,34 @@ describe("General Helper Functions", () => {
 
     });
 
-    describe("findUniqueItems", () => {
+    describe("findUniqueItemsInParentArray", () => {
         test("should return unique items from the first array", () => {
             const array1 = [1, 2, 3, 4];
             const array2 = [3, 4, 5, 6];
-            expect(findUniqueItems(array1, array2)).toEqual([1, 2]);
+            expect(findUniqueItemsInParentArray(array1, array2)).toEqual([1, 2]);
         });
 
         test("should return all items when there are no common elements", () => {
             const array1 = ["a", "b", "c"];
             const array2 = ["x", "y", "z"];
-            expect(findUniqueItems(array1, array2)).toEqual(["a", "b", "c"]);
+            expect(findUniqueItemsInParentArray(array1, array2)).toEqual(["a", "b", "c"]);
         });
 
         test("should return an empty array when all items match", () => {
             const array1 = [10, 20, 30];
             const array2 = [10, 20, 30];
-            expect(findUniqueItems(array1, array2)).toEqual([]);
+            expect(findUniqueItemsInParentArray(array1, array2)).toEqual([]);
         });
 
         test("should handle empty arrays correctly", () => {
-            expect(findUniqueItems([], [1, 2, 3])).toEqual([]);
-            expect(findUniqueItems([1, 2, 3], [])).toEqual([1, 2, 3]);
+            expect(findUniqueItemsInParentArray([], [1, 2, 3])).toEqual([]);
+            expect(findUniqueItemsInParentArray([1, 2, 3], [])).toEqual([1, 2, 3]);
         });
 
         test("should handle mixed data types", () => {
             const array1 = [1, "two", true, null];
             const array2 = ["two", false, null];
-            expect(findUniqueItems(array1, array2)).toEqual([1, true]);
+            expect(findUniqueItemsInParentArray(array1, array2)).toEqual([1, true]);
         });
     });
 
