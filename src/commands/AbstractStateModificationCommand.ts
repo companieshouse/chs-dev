@@ -142,12 +142,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
     }
 
     private handleHookResponse (result): string[] {
-        let hookWarnings: string[] = [];
-        for (const success of result.successes) {
-            hookWarnings = success.result;
-        }
-        return hookWarnings;
-
+        return result.successes.flatMap(success => success.result);
     }
 
     private get properStateModificationObjectType (): string {
