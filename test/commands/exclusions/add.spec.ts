@@ -32,6 +32,8 @@ describe("exclusions add", () => {
 
     let exclusionsAdd;
     let parseMock;
+    let handlePreHookCheckMock;
+    let handleServiceModuleStateHookMock;
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -44,6 +46,8 @@ describe("exclusions add", () => {
         );
 
         parseMock = jest.spyOn(exclusionsAdd, "parse");
+        handleServiceModuleStateHookMock = jest.spyOn(exclusionsAdd as any, "handleServiceModuleStateHook").mockReturnValue([]);
+        handlePreHookCheckMock = jest.spyOn(exclusionsAdd as any, "preHookCheckWarnings").mockReturnValue(undefined);
     });
 
     for (const invalidService of [null, undefined, "service-not-found"]) {
@@ -91,5 +95,38 @@ describe("exclusions add", () => {
         expect(runHookMock).toHaveBeenCalledWith(
             "generate-runnable-docker-compose", {}
         );
+    });
+
+    it("should call the pre hook check then execute the command if there are no warnings", async () => {
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            argv: [
+                "service-one"
+            ]
+        });
+        const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(exclusionsAdd as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
+
+        await exclusionsAdd.run();
+
+        expect(handleExclusionsAndDevelopmentCommandMock).toBeCalled();
+    });
+
+    it("should call the pre hook check and not execute the command if there are warnings", async () => {
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            argv: [
+                "service-one"
+            ]
+        });
+        const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(exclusionsAdd as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
+        jest.spyOn(exclusionsAdd as any, "preHookCheckWarnings").mockResolvedValue("Warnings");
+
+        await exclusionsAdd.run();
+
+        expect(handleExclusionsAndDevelopmentCommandMock).not.toBeCalled();
     });
 });

@@ -19,6 +19,7 @@
     "glob": "^7.1.6",
     "semver": "^7.3.2",
     "simple-git": "^3.22.0",
+    "supports-hyperlinks": "^3.1.0",
     "tslib": "^2",
     "yaml": "^1.10.0"
   },
@@ -76,6 +77,7 @@
       "ensure-ecr-logged-in": "./lib/hooks/ensure-ecr-logged-in.js",
       "generate-runnable-docker-compose": "./lib/hooks/generate-runnable-docker-compose.js",
       "generate-development-docker-compose": "./lib/hooks/generate-development-docker-compose.js",
+      "check-service-or-module-state": "./lib/hooks/check-service-or-module-state.js",
       "validate-project-state": "./lib/hooks/validate-project-state.js"
     },
     "bin": "chs-dev",

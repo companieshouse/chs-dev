@@ -42,6 +42,8 @@ jest.mock("../../../src/state/state-manager", () => {
 jest.mock("simple-git");
 
 describe("development enable", () => {
+    let handlePreHookCheckMock;
+    let handleServiceModuleStateHookMock;
 
     let developmentEnable: Enable;
 
@@ -69,6 +71,9 @@ describe("development enable", () => {
         // @ts-expect-error
         developmentEnable.error = errorMock;
         cwdSpy.mockReturnValue(projectDir);
+
+        handleServiceModuleStateHookMock = jest.spyOn(developmentEnable as any, "handleServiceModuleStateHook").mockReturnValue([]);
+        handlePreHookCheckMock = jest.spyOn(developmentEnable as any, "preHookCheckWarnings").mockResolvedValue(undefined);
 
         // @ts-expect-error
         simpleGitMock.mockReturnValue({
@@ -271,4 +276,40 @@ describe("development enable", () => {
         });
 
     }
+
+    it("should call the pre hook check then execute the command if there are no warnings", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            argv: [
+                "service-one"
+            ]
+        });
+        const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(developmentEnable as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
+
+        await developmentEnable.run();
+
+        expect(handleExclusionsAndDevelopmentCommandMock).toBeCalled();
+    });
+
+    it("should call the pre hook check and not execute the command if there are warnings", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            argv: [
+                "service-one"
+            ]
+        });
+
+        const handleExclusionsAndDevelopmentCommandMock = jest.spyOn(developmentEnable as any, "handleExclusionsAndDevelopmentCommand").mockReturnValue(null);
+        jest.spyOn(developmentEnable as any, "preHookCheckWarnings").mockResolvedValue("Warnings");
+
+        await developmentEnable.run();
+
+        expect(handleExclusionsAndDevelopmentCommandMock).not.toBeCalled();
+    });
 });

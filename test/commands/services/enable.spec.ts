@@ -21,7 +21,9 @@ jest.mock("../../../src/state/state-manager", () => {
             return {
                 includeService: enableServiceMock,
                 snapshot: {
-                    excludedServices: ["serviceA", "serviceB"]
+                    services: ["service-one"],
+                    modules: [],
+                    excludedServices: ["service-one", "service-two"]
                 }
             };
         }
@@ -29,8 +31,11 @@ jest.mock("../../../src/state/state-manager", () => {
 });
 
 describe("services enable", () => {
+    const checkStateHookObjectMock = { topic: "services" };
     let parseMock;
     let logMock;
+    let handlePostHookCallMock;
+    let handleServiceModuleStateHookMock;
 
     const runHookMock = jest.fn();
 
@@ -50,6 +55,10 @@ describe("services enable", () => {
         logMock = jest.spyOn(servicesEnable, "log");
         // @ts-expect-error
         parseMock = jest.spyOn(servicesEnable, "parse");
+        handleServiceModuleStateHookMock = jest.spyOn(servicesEnable as any, "handleServiceModuleStateHook").mockReturnValue([]);
+        handlePostHookCallMock = jest.spyOn(servicesEnable as any, "handlePostHookCall").mockImplementation(() => {
+            handleServiceModuleStateHookMock(checkStateHookObjectMock);
+        });
     });
 
     it("should enable a valid module", async () => {
@@ -92,4 +101,22 @@ describe("services enable", () => {
         expect(runHookMock).not.toHaveBeenCalled();
     });
 
+    it("should call the post hook check after command execution", async () => {
+        const serviceName = "service-one";
+
+        parseMock.mockResolvedValue({
+            args: {
+                command: "enable",
+                services: serviceName
+            },
+            argv: [
+                serviceName
+            ]
+        });
+
+        await servicesEnable.run();
+
+        expect(handlePostHookCallMock).toHaveBeenCalled();
+        expect(handleServiceModuleStateHookMock).toHaveBeenCalledWith(checkStateHookObjectMock);
+    });
 });

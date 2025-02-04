@@ -698,6 +698,9 @@ within the current working directory.
   project is valid before running any commands
 * `CHS_DEV_SKIP_ECR_LOGIN_CHECK` - when set will not attempt to login to ECR
 * `CH_IBOSS_TRIAL` - when set will bypass the vpn and proxies checks.
+* `CHS_DEV_NEW_SERVICE_LOCAL_DIRECTORY` - when set will use the specified
+  directory as local directory for the service specs repository, used when
+  requesting new services.
 
 ### Service configuration
 
