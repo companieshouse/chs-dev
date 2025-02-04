@@ -72,7 +72,27 @@ export const CONSTANTS = {
         "Get Company Information",
         "Filing Service",
         "Intelligence And Enforcement"
-    ]
+    ],
+
+    /**
+     * The name of the GitHub organisation for Companies House
+     */
+    COMPANIES_HOUSE_GITHUB_ORGANISATION_NAME: "companieshouse",
+
+    /**
+     * The name of the repository for new service specs
+     */
+    NEW_SERVICE_SPECS_REPOSITORY_NAME: "new-service-requests",
+
+    /**
+     * The branch of the repository for new service specs
+     */
+    NEW_SERVICE_SPECS_REPOSITORY_BRANCH: "main",
+
+    /**
+     * The path to the new service specs in the repository
+     */
+    NEW_SERVICE_SPECS_PATH: "specifications/"
 };
 
 export default CONSTANTS;
