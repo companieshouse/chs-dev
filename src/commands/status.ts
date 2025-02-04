@@ -1,14 +1,13 @@
 import { Command, Config, Flags } from "@oclif/core";
 
-import { Inventory } from "../state/inventory.js";
-import { Service } from "../model/Service.js";
-import { StateManager } from "../state/state-manager.js";
-import { collect, deduplicate } from "../helpers/array-reducers.js";
-import { DockerCompose } from "../run/docker-compose.js";
-import loadConfig from "../helpers/config-loader.js";
-import State from "../model/State.js";
-import ChsDevConfig from "../model/Config.js";
 import { statusColouriser } from "../helpers/colouriser.js";
+import loadConfig from "../helpers/config-loader.js";
+import ChsDevConfig from "../model/Config.js";
+import State from "../model/State.js";
+import { DockerCompose } from "../run/docker-compose.js";
+import { ServiceLoader } from "../run/service-loader.js";
+import { Inventory } from "../state/inventory.js";
+import { StateManager } from "../state/state-manager.js";
 
 export default class Status extends Command {
     static description = "print status of an environment";
@@ -62,11 +61,8 @@ export default class Status extends Command {
         };
         const { flags } = await this.parse(Status);
 
-        const enabledServiceNames = this.inventory.services
-            .filter(service => state.modules.includes(service.module) || state.services.includes(service.name))
-            .reduce(collect<string, Service>(service => [service.name, ...service.dependsOn || []]), [])
-            .reduce(deduplicate, [])
-            .sort();
+        const serviceLoader = new ServiceLoader(this.inventory);
+        const enabledServiceNames = serviceLoader.loadServicesNames(state);
 
         if (flags.json) {
             const jsonRepresentation = this.constructJsonRepresentation(

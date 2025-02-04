@@ -21,7 +21,9 @@ jest.mock("../../../src/state/state-manager", () => {
             return {
                 excludeService: disableServiceMock,
                 snapshot: {
-                    excludedServices: ["serviceA", "serviceB"]
+                    services: ["service-one"],
+                    modules: [],
+                    excludedServices: ["service-one", "service-two"]
                 }
             };
         }
@@ -29,8 +31,11 @@ jest.mock("../../../src/state/state-manager", () => {
 });
 
 describe("services disable", () => {
+    const checkStateHookObjectMock = { topic: "services" };
     let parseMock;
     let logMock;
+    let handlePostHookCallMock;
+    let handleServiceModuleStateHookMock;
 
     const runHookMock = jest.fn();
 
@@ -50,6 +55,11 @@ describe("services disable", () => {
         logMock = jest.spyOn(servicesDisable, "log");
         // @ts-expect-error
         parseMock = jest.spyOn(servicesDisable, "parse");
+        handleServiceModuleStateHookMock = jest.spyOn(servicesDisable as any, "handleServiceModuleStateHook").mockReturnValue([]);
+        handlePostHookCallMock = jest.spyOn(servicesDisable as any, "handlePostHookCall").mockImplementation(() => {
+            handleServiceModuleStateHookMock(checkStateHookObjectMock);
+        });
+
     });
 
     it("should disable a valid module", async () => {
@@ -57,7 +67,7 @@ describe("services disable", () => {
 
         parseMock.mockResolvedValue({
             args: {
-                command: "disable",
+                command: `disable:${serviceName}`,
                 services: serviceName
             },
             argv: [
@@ -90,6 +100,26 @@ describe("services disable", () => {
         ));
 
         expect(runHookMock).not.toHaveBeenCalled();
+    });
+
+    it("should call the post hook check after command execution", async () => {
+        const serviceName = "service-one";
+
+        parseMock.mockResolvedValue({
+            args: {
+                command: `disable:${serviceName}`,
+                services: serviceName
+            },
+            argv: [
+                serviceName
+            ]
+        });
+
+        await servicesDisable.run();
+
+        expect(handlePostHookCallMock).toHaveBeenCalled();
+        expect(handleServiceModuleStateHookMock).toHaveBeenCalledWith(checkStateHookObjectMock);
+
     });
 
 });

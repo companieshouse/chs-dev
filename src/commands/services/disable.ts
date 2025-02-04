@@ -21,6 +21,10 @@ export default class Disable extends AbstractStateModificationCommand {
         this.validArgumentHandler = this.handleValidService;
     }
 
+    protected async handlePostHookCall (commandArgv: string[]): Promise<void> {
+        await this.handleServiceModuleStateHook({ topic: "services" });
+    }
+
     private async handleValidService (serviceName: string): Promise<void> {
         this.stateManager.excludeService(serviceName);
 

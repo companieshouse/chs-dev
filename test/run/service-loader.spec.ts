@@ -235,4 +235,20 @@ describe("ServiceLoader", () => {
 
         expect(result).toMatchSnapshot();
     });
+
+    it("should return activated servicesNames", () => {
+        state = {
+            services: ["service-three"],
+            modules: [],
+            servicesWithLiveUpdate: [],
+            excludedServices: []
+        };
+
+        const result = serviceLoader.loadServicesNames(state);
+
+        expect(result).toEqual([
+            "service-one",
+            "service-three"
+        ]);
+    });
 });

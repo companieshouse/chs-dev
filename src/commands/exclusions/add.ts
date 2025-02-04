@@ -19,8 +19,14 @@ export default class Add extends AbstractStateModificationCommand {
     constructor (argv: string[], config: Config) {
         super(argv, config, "service");
 
+        this.preHookCheckWarnings = this.handlePreHookCheck;
+
         this.argumentValidationPredicate = serviceValidator(this.inventory, this.error);
         this.validArgumentHandler = this.handleValidService;
+    }
+
+    private async handlePreHookCheck (commandArgv: string[]): Promise<string|undefined> {
+        return await this.handleServiceModuleStateHook({ topic: "exclusions", commandArgv });
     }
 
     private handleValidService (serviceName: string): Promise<void> {
