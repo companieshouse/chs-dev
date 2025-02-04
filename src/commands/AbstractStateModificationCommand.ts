@@ -4,11 +4,25 @@ import { StateManager } from "../state/state-manager.js";
 import ChsDevConfig from "../model/Config.js";
 import loadConfig from "../helpers/config-loader.js";
 import { ServiceLoader } from "../run/service-loader.js";
+import { Plugin } from "@oclif/core/lib/interfaces/plugin.js";
 
 type ServiceModuleStateHook = {
     topic: string
     commandArgv?: string[]
 }
+type Failure = {
+    plugin: Plugin;
+    error: Error;
+};
+
+type Success = {
+    plugin: Plugin;
+    result: string;
+};
+type HookResult = {
+    failures: Failure[];
+    successes: Success[];
+};
 type ArgumentValidationPredicate = (argument: string) => boolean;
 type ValidArgumentHandler = (argument: string) => Promise<void>;
 type PreHookCheck = (argument: string[]) => Promise<string | undefined>;
@@ -136,7 +150,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
         return enabledServiceNames.loadServicesNames(state);
     }
 
-    private handleHookResponse (result): string | undefined {
+    private handleHookResponse (result: HookResult): string | undefined {
         return result.successes[0].result;
     }
 
