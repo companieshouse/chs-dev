@@ -5,5 +5,6 @@
  */
 export const isIbossEnabled: () => boolean = () => {
     const env = process.env.CH_IBOSS_TRIAL?.toLowerCase();
-    return !!(env && env !== "false" && env !== "no" && env !== "0");
+    const invalidValues = new Set(["false", "no", "0"]);
+    return !!(env && !invalidValues.has(env));
 };
