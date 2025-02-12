@@ -1,4 +1,4 @@
-# Correctly modify conflicting services docker compose ports number to unique values.
+# Correctly modify docker compose conflict ports to unique values.
 
 ## Problem Summary
 
@@ -15,11 +15,9 @@ If the `chs-dev troubleshoot analyse` command suggests changing the docker compo
 
 ## Rationale
 
-Port conflicts might exist in enabled services which will fail the `chs-dev up` command.
-To rectify this, change the conflicting port numbers to unique values.
+Port conflicts may occur in enabled services, causing the chs-dev up command to fail.
+To resolve this, update the conflicting port numbers to unique values.
 
-## Related issues
 
-<!-- Provide links to any related troubleshooting remedies which may help the user -->
 
 

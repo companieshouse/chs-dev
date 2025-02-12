@@ -13,7 +13,7 @@ type PortsMapper = Record<string, {serviceName:string, source:string}[]>;
 
 const ANALYSIS_HEADLINE = "Checks the ports for conflicts in enabled services";
 
-const DOCUMENTATION_LINKS = ["troubleshooting-remedies/correctly-change-docker-compose-conflict-ports.md"];
+const DOCUMENTATION_LINKS = ["troubleshooting-remedies/correctly-modify-docker-compose-conflict-ports.md"];
 
 /**
  * An analysis task that evaluates whether the enabled services assigned ports overlaps.
@@ -35,7 +35,7 @@ export default class PortAnalysis extends BaseAnalysis {
     }
 
     /**
-     * Identifies and reports port conflicts in enabled services.
+     * Identifies and reports host port conflicts in enabled services.
      *
      * @param inventory - The inventory of services.
      * @param stateManager - The state manager containing service snapshots.
@@ -53,12 +53,12 @@ export default class PortAnalysis extends BaseAnalysis {
             const serviceInfo = services
                 .map((item, index) => `${index + 1}. Service: ${item.serviceName},\n   Source: ${item.source}`)
                 .join("\n   ");
-            return `Change port ${port} in these services to a unique number:\n   ${serviceInfo}`;
+            return `Change port ${port} in these services to a unique number. Refer to documentation:\n   ${serviceInfo}`;
         });
 
         return this.createIssue(
             "Some of the enabled services assigned port are in conflict",
-            "Follow the suggestions and documentation links for a local fix.",
+            "Change the conflicted services ports.",
             suggestions,
             DOCUMENTATION_LINKS
         );
@@ -147,13 +147,20 @@ export default class PortAnalysis extends BaseAnalysis {
         hostPortMapper: PortsMapper,
         clashedPortsMapper: PortsMapper
     ): void {
+        let serviceDetails: {serviceName:string, source: string}[] = [];
+
         hostPorts.forEach(hostPort => {
             if (!hostPortMapper[hostPort]) {
                 hostPortMapper[hostPort] = [];
             }
 
-            hostPortMapper[hostPort] = [...hostPortMapper[hostPort], { serviceName, source: serviceSource }].filter((item, index, self) => self.findIndex(entry => entry.serviceName === item.serviceName) === index);
+            serviceDetails = [...hostPortMapper[hostPort], { serviceName, source: serviceSource }];
 
+            // remove duplicated serviceDetails by serviceName
+            hostPortMapper[hostPort] = serviceDetails.filter(
+                (item, index, self) => self.findIndex(entry => entry.serviceName === item.serviceName) === index);
+
+            // hostPort object array is > 1, there is a conflict
             if (hostPortMapper[hostPort].length > 1) {
                 clashedPortsMapper[hostPort] = hostPortMapper[hostPort];
             }
