@@ -21,7 +21,7 @@ const DOCUMENTATION_LINKS = ["troubleshooting-remedies/correctly-modify-docker-c
 export default class PortAnalysis extends BaseAnalysis {
 
     /**
-     * Analyzes the port numbers assigned to host machine in the docker compose file of enabled services are not in contention.
+     * Analyzes the port numbers assigned to the host machine in the Docker Compose files of enabled services to ensure there are no conflicts.
      *
      * This method evalutes the docker compose configuration of the enabled services for potential issues resulting from port conflicts or clashes. It generates a "Fail" outcome in an event of a clash.
      *
@@ -105,7 +105,6 @@ export default class PortAnalysis extends BaseAnalysis {
             if (servicePorts) {
                 const hostPorts = this.extractHostPorts(servicePorts);
 
-                // Track clashed ports
                 this.trackClashedPorts(serviceName, service.source, hostPorts, hostPortsMapper, clashedPortsMapper);
 
             }
