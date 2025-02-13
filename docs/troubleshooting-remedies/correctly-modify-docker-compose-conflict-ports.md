@@ -17,7 +17,3 @@ If the `chs-dev troubleshoot analyse` command suggests changing the docker compo
 
 Port conflicts may occur in enabled services, causing the chs-dev up command to fail.
 To resolve this, update the conflicting port numbers to unique values.
-
-
-
-
