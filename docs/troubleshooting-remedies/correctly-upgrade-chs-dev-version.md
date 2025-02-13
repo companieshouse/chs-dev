@@ -6,7 +6,7 @@ If the `chs-dev troubleshoot analyse` command suggests upgrading your chs-dev ap
 
 ## Resolution Summary
 
-1. Open the your terminal.
+1. Open your terminal.
 2. Run:`chs-dev sync` to update chs-dev to a suitable version.
 
 The `chs-dev sync` command takes the following arguments. `chs-dev sync [-v <value>] [-f]`:
