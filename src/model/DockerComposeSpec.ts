@@ -16,7 +16,8 @@ export type DockerComposeSpec = {
             build?: Record<string, any>,
             env_file?: string | string[],
             depends_on?: string[] | Record<string, Record<string, any>>
-            secrets?: string[] | Record<string, any>
+            secrets?: string[] | Record<string, any>,
+            ports?: string | string[]
         } & Record<string, any>
     },
     secrets?: Record<string, Secret>,
