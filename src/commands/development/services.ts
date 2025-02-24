@@ -33,7 +33,10 @@ export default class Services extends Command {
     async run (): Promise<any> {
         const { flags } = await this.parse(Services);
 
-        const availableServices = this.inventory.services.filter(item => item.repository !== null && item.repository !== undefined);
+        const availableServices = this.inventory.services
+            .filter(item => item.repository !== null && item.repository !== undefined)
+            .sort((a, b) => a.name.localeCompare(b.name));
+
         if (flags.json) {
             this.logJson({
                 services: [
