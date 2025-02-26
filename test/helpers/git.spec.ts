@@ -1,5 +1,5 @@
 import { expect, jest } from "@jest/globals";
-import { cloneRepo, updateRepo, checkoutNewBranch, addToStage, commit, push, checkoutExistingBranch } from "../../src/helpers/git";
+import { cloneRepo, updateRepo, checkoutNewBranch, addToStage, commit, push, checkoutExistingBranch, getCommitCountAheadOfRemote } from "../../src/helpers/git";
 import { simpleGit } from "simple-git";
 
 const gitCloneMock = jest.fn();
@@ -10,6 +10,7 @@ const gitAddMock = jest.fn();
 const gitCommitMock = jest.fn();
 const gitPushMock = jest.fn();
 const gitRevParseMock = jest.fn();
+const gitRaw = jest.fn();
 
 const simpleGitMock = {
     clone: gitCloneMock,
@@ -19,7 +20,8 @@ const simpleGitMock = {
     add: gitAddMock,
     commit: gitCommitMock,
     push: gitPushMock,
-    revparse: gitRevParseMock
+    revparse: gitRevParseMock,
+    raw: gitRaw
 };
 
 jest.mock("simple-git");
@@ -175,5 +177,24 @@ describe("push", () => {
         );
 
         expect(gitPushMock).toBeCalledWith("origin", "feature/local-branch-12345");
+    });
+});
+
+describe("getCommitCountAheadOfRemote", () => {
+    beforeEach(() => {
+        jest.resetAllMocks();
+
+        (simpleGit as jest.MockedFunction<typeof simpleGit>).mockReturnValue(
+            simpleGitMock as never
+        );
+    });
+
+    it("get the local commits count ahead of remote", async () => {
+
+        (simpleGitMock.raw as jest.Mock).mockReturnValue(0);
+        await getCommitCountAheadOfRemote("/tmp/12repo");
+
+        expect(gitRaw).toBeCalledWith(["rev-list", "HEAD..@{upstream}", "--count"]);
+        expect(gitRaw).toHaveReturnedWith(0);
     });
 });

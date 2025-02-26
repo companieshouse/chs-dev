@@ -1,10 +1,9 @@
 import { expect, jest } from "@jest/globals";
-import { getLatestReleaseSatisfying, getLatestReleaseVersion } from "../../src/helpers/latest-release";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { getLatestReleaseSatisfying, getLatestReleaseVersion } from "../../src/helpers/latest-release";
 
 const fetchMock = jest.fn();
-
 // @ts-expect-error
 global.fetch = fetchMock;
 
@@ -32,12 +31,16 @@ describe("getLatestReleaseVersion", () => {
     });
 
     it("calls fetch to retrieve latest release", async () => {
-
+        process.env.GITHUB_PAT = "ghp_123456789";
         await getLatestReleaseVersion();
 
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases/latest",
-            {}
+            {
+                headers: {
+                    Authorization: "Bearer ghp_123456789"
+                }
+            }
         );
     });
 
@@ -88,6 +91,7 @@ describe("getLatestReleaseSatisfying", () => {
     });
 
     it("calls fetch to retrieve page of versions", async () => {
+        process.env.GITHUB_PAT = "ghp_123456789";
         fetchMockReturnsPages([
             ["2.2.0", "2.0.0", "1.9.9", "1.9.8", "1.9.0", "1.1.0", "1.0.1", "1.0.0", "0.5.0", "0.1.0"]
         ]);
@@ -97,7 +101,11 @@ describe("getLatestReleaseSatisfying", () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases",
-            {}
+            {
+                headers: {
+                    Authorization: "Bearer ghp_123456789"
+                }
+            }
         );
     });
 
@@ -112,7 +120,7 @@ describe("getLatestReleaseSatisfying", () => {
     });
 
     it("calls fetch several times until finds correct version", async () => {
-
+        process.env.GITHUB_PAT = "ghp_123456789";
         fetchMockReturnsPages([
             ["2.2.0"], ["2.0.0"], ["1.9.9"], ["1.9.8"], ["1.9.0"], ["1.5.0", "1.1.0", "1.0.1", "1.0.0", "0.5.0", "0.1.0"]
         ]);
@@ -122,27 +130,51 @@ describe("getLatestReleaseSatisfying", () => {
         expect(fetchMock).toHaveBeenCalledTimes(6);
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases",
-            {}
+            {
+                headers: {
+                    Authorization: "Bearer ghp_123456789"
+                }
+            }
         );
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases?page=2",
-            {}
+            {
+                headers: {
+                    Authorization: "Bearer ghp_123456789"
+                }
+            }
         );
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases?page=3",
-            {}
+            {
+                headers: {
+                    Authorization: "Bearer ghp_123456789"
+                }
+            }
         );
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases?page=4",
-            {}
+            {
+                headers: {
+                    Authorization: "Bearer ghp_123456789"
+                }
+            }
         );
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases?page=5",
-            {}
+            {
+                headers: {
+                    Authorization: "Bearer ghp_123456789"
+                }
+            }
         );
         expect(fetchMock).toHaveBeenCalledWith(
             "https://api.github.com/repos/companieshouse/chs-dev/releases?page=6",
-            {}
+            {
+                headers: {
+                    Authorization: "Bearer ghp_123456789"
+                }
+            }
         );
     });
 
@@ -175,8 +207,7 @@ describe("getLatestReleaseSatisfying", () => {
     });
 
     it("uses PAT when in environment variables", async () => {
-        const githubPat = "ghp_2384t6";
-        process.env.GITHUB_PAT = githubPat;
+        process.env.GITHUB_PAT = "ghp_123456789";
 
         fetchMockReturnsPages([
             ["2.2.0", "2.0.0", "1.9.9", "1.9.8", "1.9.0", "1.1.0", "1.0.1", "1.0.0", "0.5.0", "0.1.0"]
@@ -189,7 +220,7 @@ describe("getLatestReleaseSatisfying", () => {
             "https://api.github.com/repos/companieshouse/chs-dev/releases",
             {
                 headers: {
-                    Authorization: "Bearer " + githubPat
+                    Authorization: "Bearer ghp_123456789"
                 }
             }
         );

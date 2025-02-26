@@ -114,3 +114,19 @@ export const push = async (repoPath: string, remoteBranchName?: string) => {
         );
     }
 };
+
+/**
+ * Get the number of commits in the remote branch that are not in the local (checkout) branch.
+ *
+ * This function compares the current local (checkout) branch to its associated upstream remote branch
+ * and returns the number of commits that exist in the remote branch but not in the local branch.
+ * This tells you how many commits are **ahead** on the remote branch.
+ *
+ * @param {string} repoPath - The path to the local Git repository.
+ * @returns {Promise<number>} The number of commits in the remote branch but not in the local branch.
+ */
+export const getCommitCountAheadOfRemote = async (repoPath: string): Promise<number> => {
+    const git = simpleGit(repoPath);
+
+    return Number(await git.raw(["rev-list", "HEAD..@{upstream}", "--count"]));
+};
