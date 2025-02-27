@@ -6,9 +6,13 @@ import { AnalysisIssue, TroubleshootAnalysisTaskContext } from "./AnalysisTask.j
 
 const ANALYSIS_HEADLINE = "Checks docker-chs-development version";
 
-const VERSION_SUGGESTIONS = [
+const UPDATE_SUGGESTIONS = [
+    "To reset local branch to remote and discard local changes.",
     "Run: git checkout master && git fetch origin && git reset --hard origin/master.",
-    "Note: All local changes will be discarded. Stash or commit changes before command execution."
+    "To reset local branch to remote but keep local changes.",
+    "Run: git checkout master && git fetch origin && git reset --soft origin/master.",
+    "To fast-forward local branch to remote if local branch has no diverging changes.",
+    "Run: git checkout master && git pull --ff-only origin master."
 ];
 
 const DOCKER_CHS_DEVELOPMENT_LATEST_RELEASE_URL = "https://api.github.com/repos/companieshouse/docker-chs-development/releases/latest";
@@ -39,8 +43,7 @@ export default class DockerChsDevelopmentVersionAnalysis extends BaseAnalysis {
             return this.createIssue(
                 "docker-chs-development version is not up to date",
                 `A newer version (${latestVersion}) is available. Update your local 'master' branch.`,
-                VERSION_SUGGESTIONS,
-                []
+                UPDATE_SUGGESTIONS
             );
         }
 

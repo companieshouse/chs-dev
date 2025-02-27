@@ -1,4 +1,5 @@
 import AnalysisTask from "./AnalysisTask.js";
+import DockerChsDevelopmentVersionAnalysis from "./DockerChsDevelopmentVersionAnalysis.js";
 import DockerMemoryAnalysis from "./DockerMemoryAnalysis.js";
 import EcrLoginAnalysis from "./ECRLoginAnalysis.js";
 import PortAnalysis from "./PortAnalysis.js";
@@ -12,7 +13,8 @@ const analysisTasks: AnalysisTask[] = [
     new DockerMemoryAnalysis(),
     new EcrLoginAnalysis(),
     new VersionAnalysis(),
-    new PortAnalysis()
+    new PortAnalysis(),
+    new DockerChsDevelopmentVersionAnalysis()
 ];
 
 export default analysisTasks;
