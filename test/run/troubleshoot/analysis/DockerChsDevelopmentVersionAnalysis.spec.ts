@@ -16,9 +16,13 @@ jest.mock("../../../../src/helpers/git", () => ({
 describe("VersionAnalysis", () => {
     let analysis: DockerChsDevelopmentVersionAnalysis;
 
-    const VERSION_SUGGESTIONS = [
+    const UPDATE_SUGGESTIONS = [
+        "To reset local branch to remote and discard local changes.",
         "Run: git checkout master && git fetch origin && git reset --hard origin/master.",
-        "Note: All local changes will be discarded. Stash or commit changes before command execution."
+        "To reset local branch to remote but keep local changes.",
+        "Run: git checkout master && git fetch origin && git reset --soft origin/master.",
+        "To fast-forward local branch to remote if local branch has no diverging changes.",
+        "Run: git checkout master && git pull --ff-only origin master."
     ];
 
     beforeEach(async () => {
@@ -46,7 +50,7 @@ describe("VersionAnalysis", () => {
             {
                 title: "docker-chs-development version is not up to date",
                 description: `A newer version (2.0.140) is available. Update your local 'master' branch.`,
-                suggestions: VERSION_SUGGESTIONS,
+                suggestions: UPDATE_SUGGESTIONS,
                 documentationLinks: []
             }
         ]);
