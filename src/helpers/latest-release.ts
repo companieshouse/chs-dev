@@ -1,4 +1,5 @@
 import { satisfies } from "semver";
+import { getPersonalAccessToken } from "./github.js";
 
 const githubReleasesApiUrl = "https://api.github.com/repos/companieshouse/chs-dev/releases";
 const latestReleaseUrl = `${githubReleasesApiUrl}/latest`;
@@ -7,12 +8,13 @@ const latestReleaseUrl = `${githubReleasesApiUrl}/latest`;
  * fetches the latest version name from GitHub
  * @returns latest version name
  */
-export const getLatestReleaseVersion: () => Promise<string> = async () => {
+export const getLatestReleaseVersion: (gitRepoUrl?: string) => Promise<string> =
+    async (gitRepoUrl = latestReleaseUrl) => {
+        const parameters = await githubRequestParameters();
+        const response = await fetch(gitRepoUrl, parameters);
 
-    const response = await fetch(latestReleaseUrl, githubRequestParameters());
-
-    return (await response.json()).name;
-};
+        return (await response.json()).name;
+    };
 
 /**
  * Finds out the latest version which matches the specification specified.
@@ -45,7 +47,8 @@ async function * githubReleaseGenerator (): AsyncGenerator<string, undefined, un
 
     while (releasesLink) {
         // Fetch page of releases
-        const releasesResponse = await fetch(releasesLink, githubRequestParameters());
+        const parameters = await githubRequestParameters();
+        const releasesResponse = await fetch(releasesLink, parameters);
 
         // Load body and link header
         const body = await releasesResponse.json();
@@ -76,14 +79,16 @@ async function * githubReleaseGenerator (): AsyncGenerator<string, undefined, un
     }
 }
 
-const githubRequestParameters = () => {
+const githubRequestParameters = async () => {
     const parameters: {
         headers?: Record<string, string>
     } = {};
 
-    if ("GITHUB_PAT" in process.env && typeof process.env.GITHUB_PAT !== "undefined") {
+    const githubApiToken = await getPersonalAccessToken();
+
+    if (githubApiToken) {
         parameters.headers = {
-            Authorization: `Bearer ${process.env.GITHUB_PAT}`
+            Authorization: `Bearer ${githubApiToken}`
         };
     }
 
