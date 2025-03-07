@@ -1,8 +1,19 @@
-import { satisfies } from "semver";
+import { diff, satisfies } from "semver";
 import { getPersonalAccessToken } from "./github.js";
 
 const githubReleasesApiUrl = "https://api.github.com/repos/companieshouse/chs-dev/releases";
 const latestReleaseUrl = `${githubReleasesApiUrl}/latest`;
+
+/**
+ * fetches the all releases from GitHub
+ * @returns an array of releases
+ */
+export const getReleaseFromGitHub: (gitRepoReleaseUrl?: string) => Promise<any[]> =
+    async (gitRepoReleaseUrl = githubReleasesApiUrl) => {
+        const parameters = await githubRequestParameters();
+        const response = await fetch(gitRepoReleaseUrl, parameters);
+        return (await response.json());
+    };
 
 /**
  * fetches the latest version name from GitHub
@@ -37,6 +48,11 @@ export const getLatestReleaseSatisfying = async (versionSpec: string): Promise<s
     return undefined;
 };
 
+export const getLatestVersionAndsemverDifference = async (applicationVersion: string): Promise<{latestVersion:string, semverDifference:string |null }> => {
+    const latestVersion = await getLatestReleaseVersion();
+    const semverDifference = diff(latestVersion, applicationVersion);
+    return { latestVersion, semverDifference };
+};
 /**
  * Generator function which will generate/yield version names handling Github API
  * pagination

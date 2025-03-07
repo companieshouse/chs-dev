@@ -4,6 +4,7 @@ import Reload from "./reload.js";
 import Status from "./status.js";
 import Sync from "./sync.js";
 import Up from "./up.js";
+import VersionHistory from "./version-history.js";
 import ExclusionsList from "./exclusions/list.js";
 import ExclusionsAdd from "./exclusions/add.js";
 import ExclusionsRemove from "./exclusions/remove.js";
@@ -28,6 +29,7 @@ export const commands = {
     up: Up,
     sync: Sync,
     logs: Logs,
+    "version-history": VersionHistory,
     "compose-logs": ComposeLogs,
     "exclusions:list": ExclusionsList,
     "exclusions:add": ExclusionsAdd,

@@ -196,6 +196,7 @@ USAGE
 * [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
 * [`chs-dev troubleshoot report OUTPUTDIRECTORY`](#chs-dev-troubleshoot-report-outputdirectory)
 * [`chs-dev up`](#chs-dev-up)
+* [`chs-dev version-history`](#chs-dev-version-history)
 
 ## `chs-dev autocomplete [SHELL]`
 
@@ -660,6 +661,28 @@ DESCRIPTION
 
 EXAMPLES
   $ chs-dev up
+```
+
+## `chs-dev version-history`
+
+Synchronises the local version to the version specifed
+
+```
+USAGE
+  $ chs-dev version-history [-v <value>] [-f]
+
+FLAGS
+  -f, --force            Forces all changes without prompting the user.
+  -v, --version=<value>  Specifies the version/version range to sync to. When a range is specified it will select the
+                         most recent that satisfies the range
+
+DESCRIPTION
+  Synchronises the local version to the version specifed
+
+  Calls the GitHub API to resolve the version depending on whether the version specified
+  will depend on the number of calls to the GitHub API, the CLI may require the environment
+  variable 'GITHUB_PAT' set with a PAT capable of calling GitHub. GitHub rate limiting
+  will prevent >60 unauthenticated requests an hour.
 ```
 <!-- commandsstop -->
 

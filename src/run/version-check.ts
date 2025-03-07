@@ -1,9 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import Config from "../model/Config.js";
-import { diff, satisfies } from "semver";
-import { getLatestReleaseVersion } from "../helpers/latest-release.js";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
+import { satisfies } from "semver";
+import { getLatestVersionAndsemverDifference, getReleaseFromGitHub } from "../helpers/latest-release.js";
 import { ThresholdUnit, timeWithinThreshold } from "../helpers/time-within-threshold.js";
+import Config from "../model/Config.js";
 
 type VersionCheckLogger = {
     warn: (msg: string) => void;
@@ -15,6 +15,7 @@ type CreateArguments = {
     runThresholdDays: number;
     logger: VersionCheckLogger;
     config: Config;
+    chsDevPath: string;
 }
 
 /**
@@ -27,7 +28,8 @@ export class VersionCheck {
     private constructor (private readonly dataDirectory: string,
         private readonly runThresholdDays: number,
         private readonly logger: VersionCheckLogger,
-        private readonly config: Config
+        private readonly config: Config,
+        private readonly chsDevPath: string
     ) {
 
     }
@@ -50,11 +52,16 @@ export class VersionCheck {
             return;
         }
 
+        const filePath = join(this.chsDevPath, "changelog.log");
+        if (!existsSync(filePath)) {
+            await VersionCheck.handleVersionHistoryFile(filePath);
+        }
+
         const runTimeFile = join(this.dataDirectory, "last-version-run-time");
         const executionTime = Date.now();
-
         if (!timeWithinThreshold(runTimeFile, executionTime, this.runThresholdDays, ThresholdUnit.DAYS)) {
-            await this.checkCurrentVersionOfCliIsLatest(applicationVersion);
+            await this.checkCurrentVersionOfCliIsLatest(applicationVersion, filePath);
+            console.log(this.runThresholdDays, "fs");
 
             writeFileSync(
                 runTimeFile,
@@ -76,15 +83,25 @@ export class VersionCheck {
             dataDirectory,
             runThresholdDays,
             logger,
-            config
+            config,
+            chsDevPath
         }: CreateArguments
     ): VersionCheck {
         if (!existsSync(dataDirectory)) {
             mkdirSync(dataDirectory, { recursive: true });
         }
 
-        return new VersionCheck(dataDirectory, runThresholdDays, logger, config);
+        return new VersionCheck(dataDirectory, runThresholdDays, logger, config, chsDevPath);
     }
+
+    static async handleVersionHistoryFile (filePath:string) {
+        const githubReleasesApiUrl = "https://api.github.com/repos/companieshouse/chs-dev/releases";
+        const releaseObj = await getReleaseFromGitHub(githubReleasesApiUrl);
+        const logEntries = releaseObj.map((release, i) => {
+            return `Version: ${release.tag_name} ${i === 0 ? ": latest" : ""}\nAuthor: ${release.author.login}\nCommitID: ${release.commitish}\nRelease Date: ${new Date(release.published_at).toLocaleString("en-GB")}\nUrl: https://github.com/companieshouse/chs-dev/releases/tag/${release.tag_name}\n -------------------------------`;
+        }).join("\n");
+        writeFileSync(filePath, logEntries, "utf8");
+    };
 
     private logUnsuitableVersion (actualVersion: string, requiredVersionSpecification: string) {
         const sepLine = "-".repeat(80);
@@ -106,13 +123,12 @@ ${sepLine}
         return !this.config.versionSpecification || satisfies(applicationVersion, this.config.versionSpecification); ;
     }
 
-    private async checkCurrentVersionOfCliIsLatest (applicationVersion) {
-        const latestVersion = await getLatestReleaseVersion();
-
-        const semverDifference = diff(latestVersion, applicationVersion);
+    private async checkCurrentVersionOfCliIsLatest (applicationVersion:string, filePath: string) {
+        const { latestVersion, semverDifference } = await getLatestVersionAndsemverDifference(applicationVersion);
 
         if (semverDifference !== null) {
             this.logVersionDifference(latestVersion, applicationVersion, semverDifference);
+            await VersionCheck.handleVersionHistoryFile(filePath);
         }
     };
 

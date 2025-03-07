@@ -6,8 +6,9 @@ import ChsDevConfig from "../model/Config.js";
 import { load } from "../helpers/config-loader.js";
 import { VersionCheck } from "../run/version-check.js";
 import { join } from "path";
+import { existsSync, readFileSync } from "fs";
 
-export class Sync extends Command {
+export default class VersionHistory extends Command {
     static description = `Synchronises the local version to the version specifed
 
 Calls the GitHub API to resolve the version depending on whether the version specified
@@ -40,33 +41,15 @@ will prevent >60 unauthenticated requests an hour.
     }
 
     async run (): Promise<any> {
-        const { flags } = await this.parse(Sync);
-
-        let comparisonVersion = flags.version || this.projectConfig.versionSpecification || "latest";
-
-        let synchroniseVersions: boolean;
-
-        if (comparisonVersion === "latest") {
-            comparisonVersion = await getLatestReleaseVersion();
-            synchroniseVersions = comparisonVersion !== this.config.version;
-        } else {
-            synchroniseVersions = !satisfies(this.config.version, comparisonVersion);
-        }
-
-        if (synchroniseVersions) {
-            const synchronization = new SynchronizeChsDevVersion();
-
-            const installedVersion = await synchronization.run(flags.force, comparisonVersion);
-
-            this.log(`Synchronisation complete. Version ${installedVersion} installed.`);
-        } else {
-            this.log(`Synchronisation complete. Version: ${comparisonVersion} already installed`);
-        }
+        const { flags } = await this.parse(VersionHistory);
 
         const filePath = join(this.config.root, "changelog.log");
-        await VersionCheck.handleVersionHistoryFile(filePath);
+        if (!existsSync(filePath)) {
+            this.log(`Version history file not found. Run chs-dev sync first.`);
+        }
+        const versionHistorycontent = readFileSync(filePath, "utf8").trim();
+        this.log(versionHistorycontent);
+
     }
 
 }
-
-export default Sync;

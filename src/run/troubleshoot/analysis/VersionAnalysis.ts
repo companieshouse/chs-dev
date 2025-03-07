@@ -1,5 +1,5 @@
-import { diff, satisfies } from "semver";
-import { getLatestReleaseVersion } from "../../../helpers/latest-release.js";
+import { satisfies } from "semver";
+import { getLatestVersionAndsemverDifference } from "../../../helpers/latest-release.js";
 import Config from "../../../model/Config.js";
 import BaseAnalysis from "./AbstractBaseAnalysis.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
@@ -107,9 +107,7 @@ export default class VersionAnalysis extends BaseAnalysis {
      * @returns { Promise<AnalysisIssue | undefined> } -  returns a single issue or undefined as promise
      */
     private async checkIfVersionIsLatest (appVersion: string): Promise<AnalysisIssue | undefined> {
-
-        const latestVersion = await getLatestReleaseVersion();
-        const semverDifference = diff(latestVersion, appVersion);
+        const { latestVersion, semverDifference } = await getLatestVersionAndsemverDifference(appVersion);
 
         if (semverDifference !== null) {
             return this.createIssue(

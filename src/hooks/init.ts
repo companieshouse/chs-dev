@@ -43,6 +43,7 @@ export const hook: Hook<"init"> = async function (options) {
         dataDirectory: options.config.dataDir,
         runThresholdDays: parseInt(options.config.pjson["chs-dev"]["version-check-schedule"]["number-of-days"]),
         config: projectConfig,
+        chsDevPath: options.config.root,
         logger: {
             warn: (msg) => this.warn(msg),
             info: (msg) => this.log(msg)

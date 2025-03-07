@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 
 export enum ThresholdUnit {
     MINUTES = 1000 * 60,
@@ -27,21 +27,29 @@ export const timeWithinThreshold = (
 ) => {
     let withinThreshold: boolean = true;
 
-    const lastRun = readFileSync(comparisonFile).toString("utf8");
+    try {
+        if (!existsSync(comparisonFile)) {
+            return false;
+        }
+        const lastRun = readFileSync(comparisonFile).toString("utf8");
 
-    if (executionTime instanceof Date) {
-        executionTime = executionTime.getTime();
+        if (executionTime instanceof Date) {
+            executionTime = executionTime.getTime();
+        }
+
+        const difference = executionTime - Date.parse(lastRun);
+
+        const numberOfUnitsLapsed = Math.floor(
+            difference / thresholdUnit
+        );
+
+        if (numberOfUnitsLapsed >= thresholdValue) {
+            withinThreshold = false;
+        }
+
+        return withinThreshold;
+    } catch (error) {
+        return false;
     }
 
-    const difference = executionTime - Date.parse(lastRun);
-
-    const numberOfUnitsLapsed = Math.floor(
-        difference / thresholdUnit
-    );
-
-    if (numberOfUnitsLapsed >= thresholdValue) {
-        withinThreshold = false;
-    }
-
-    return withinThreshold;
 };
