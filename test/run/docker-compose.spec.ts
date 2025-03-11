@@ -69,6 +69,14 @@ describe("DockerCompose", () => {
     // 2024-02-14T00:00:00.000Z
     const testDateTime = new Date(2024, 1, 14, 0, 0, 0);
 
+    // Mock AWS Credentials
+    const mockAwsCredentialsCmdOutput = `export AWS_ACCESS_KEY_ID=mockAccessKeyId\nexport AWS_SECRET_ACCESS_KEY=mockSecretAccessKey\nexport AWS_SESSION_TOKEN=mockSessionToken\n`;
+    const mockAwsCredentialsObject = {
+        AWS_ACCESS_KEY_ID: "mockAccessKeyId",
+        AWS_SECRET_ACCESS_KEY: "mockSecretAccessKey",
+        AWS_SESSION_TOKEN: "mockSessionToken"
+    };
+
     beforeAll(async () => {
 
         tmpDir = mkdtempSync(join(tmpdir(), "docker-compose"));
@@ -151,19 +159,25 @@ describe("DockerCompose", () => {
 
         it("calls docker compose when docker-compose.yaml file exists", () => {
             existsSyncMock.mockReturnValue(true);
-            execSyncMock.mockReturnValue(Buffer.from("", "utf8"));
+            (execSyncMock as jest.Mock).mockImplementationOnce(() =>
+                mockAwsCredentialsCmdOutput
+            );
+            (execSyncMock as jest.Mock).mockImplementationOnce(() => Buffer.from("", "utf8"));
 
             dockerCompose.getServiceStatuses();
 
             expect(execSyncMock).toHaveBeenCalledWith(
                 "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"",
-                { cwd: config.projectPath }
+                { cwd: config.projectPath, env: mockAwsCredentialsObject }
             );
         });
 
         it("returns undefined when docker compose errored", () => {
             existsSyncMock.mockReturnValue(true);
-            execSyncMock.mockReturnValue(Buffer.from("", "utf8"));
+            (execSyncMock as jest.Mock).mockImplementationOnce(() =>
+                mockAwsCredentialsCmdOutput
+            );
+            (execSyncMock as jest.Mock).mockImplementationOnce(() => Buffer.from("", "utf8"));
 
             const result = dockerCompose.getServiceStatuses();
 
@@ -178,7 +192,10 @@ describe("DockerCompose", () => {
             };
 
             existsSyncMock.mockReturnValue(true);
-            execSyncMock.mockReturnValue(Buffer.from(Object.entries(expected).map(([name, value]) => `${name},${value}`).join("\n"), "utf8"));
+            (execSyncMock as jest.Mock).mockImplementationOnce(() =>
+                mockAwsCredentialsCmdOutput
+            );
+            (execSyncMock as jest.Mock).mockImplementationOnce(() => Buffer.from(Object.entries(expected).map(([name, value]) => `${name},${value}`).join("\n"), "utf8"));
 
             const result = dockerCompose.getServiceStatuses();
 
@@ -196,6 +213,7 @@ describe("DockerCompose", () => {
         beforeEach(() => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
+            (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
 
@@ -219,7 +237,8 @@ describe("DockerCompose", () => {
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
-                        ANOTHER_VALUE: "another-value"
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -298,7 +317,9 @@ describe("DockerCompose", () => {
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
-                        ANOTHER_VALUE: "another-value"
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
+
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -331,7 +352,8 @@ describe("DockerCompose", () => {
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
-                        ANOTHER_VALUE: "another-value"
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -354,6 +376,7 @@ describe("DockerCompose", () => {
         beforeEach(() => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
+            (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
 
@@ -370,7 +393,8 @@ describe("DockerCompose", () => {
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
-                        ANOTHER_VALUE: "another-value"
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -402,6 +426,7 @@ describe("DockerCompose", () => {
         beforeEach(() => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
+            (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
 
@@ -418,7 +443,8 @@ describe("DockerCompose", () => {
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
-                        ANOTHER_VALUE: "another-value"
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -448,6 +474,7 @@ describe("DockerCompose", () => {
         beforeEach(() => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
+            (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
 
@@ -463,7 +490,8 @@ describe("DockerCompose", () => {
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
-                        ANOTHER_VALUE: "another-value"
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -492,7 +520,8 @@ describe("DockerCompose", () => {
                     env: {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
-                        ANOTHER_VALUE: "another-value"
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -563,6 +592,7 @@ describe("DockerCompose", () => {
         beforeEach(() => {
             jest.resetAllMocks();
             dockerCompose = new DockerCompose(config, logger);
+            (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
 

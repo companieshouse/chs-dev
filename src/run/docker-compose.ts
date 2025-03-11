@@ -79,9 +79,13 @@ export class DockerCompose {
 
         // Call docker compose and output the services and their status as a CSV
         // each service on an individual line
+        const execOptions = {
+            cwd: this.config.projectPath,
+            env: this.getAwsCredentials
+        };
         const dockerComposePsOutput = execSync(
             "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"",
-            { cwd: this.config.projectPath }
+            execOptions
         ).toString("utf-8");
 
         // Parse the compose output and load into a Record i.e. service name to
@@ -151,7 +155,8 @@ export class DockerCompose {
             // @ts-expect-error
             spawnOptions.env = {
                 ...(process.env),
-                ...(dockerComposeEnv)
+                ...(dockerComposeEnv),
+                ...(this.getAwsCredentials)
             };
         }
 
@@ -170,6 +175,30 @@ export class DockerCompose {
             );
         } catch (error) {
             throw new Error(`Docker compose failed with status code: ${error}`);
+        }
+    }
+
+    /**
+     * Retrieves AWS credentials by executing the AWS CLI command and parsing the output.
+     * @returns {Record<string, string>} An object containing AWS credentials.
+     * @throws {Error} If the AWS CLI command fails or credentials cannot be retrieved.
+    */
+    private get getAwsCredentials (): Record<string, string> {
+        try {
+            const output = execSync("aws configure export-credentials --format env", { encoding: "utf-8" });
+
+            // parse output into an object
+            const awsCredentials = output
+                .split("\n")
+                .filter(line => line.startsWith("export "))
+                .map(line => line.replace("export ", "").split("="))
+                .reduce((acc, [key, value]) => {
+                    acc[key] = value;
+                    return acc;
+                }, {});
+            return awsCredentials;
+        } catch (error: any) {
+            throw new Error(`Fetch AWS credentials failed: ${error}`);
         }
     }
 
