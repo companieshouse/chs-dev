@@ -1,14 +1,14 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import { LogHandler } from "./logs/logs-handler.js";
-import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
-import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
-import Config from "../model/Config.js";
-import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
-import { spawn } from "../helpers/spawn-promise.js";
 import { runStatusColouriser, stopStatusColouriser } from "../helpers/colouriser.js";
+import { spawn } from "../helpers/spawn-promise.js";
+import Config from "../model/Config.js";
+import DockerComposeWatchLogHandler from "./logs/DockerComposeWatchLogHandler.js";
+import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
 import LogNothingLogHandler from "./logs/LogNothingLogHandler.js";
+import { LogHandler } from "./logs/logs-handler.js";
+import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
 
 interface Logger {
     log: (msg: string) => void;
@@ -154,9 +154,9 @@ export class DockerCompose {
         if (dockerComposeEnv && Object.keys(dockerComposeEnv).length > 0) {
             // @ts-expect-error
             spawnOptions.env = {
-                ...(process.env),
-                ...(dockerComposeEnv),
-                ...(this.getAwsCredentials)
+                ...process.env,
+                ...dockerComposeEnv,
+                ...this.getAwsCredentials
             };
         }
 
@@ -197,8 +197,8 @@ export class DockerCompose {
                     return acc;
                 }, {});
             return awsCredentials;
-        } catch (error: any) {
-            throw new Error(`Fetch AWS credentials failed: ${error}`);
+        } catch (error:any) {
+            throw new Error(`Fetch AWS credentials failed: ${error}. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
         }
     }
 

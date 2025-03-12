@@ -53,6 +53,16 @@ export default class Down extends Command {
     }
 
     async run (): Promise<any> {
+        try {
+            await this.config.runHook("ensure-ecr-logged-in", {});
+        } catch (error) {
+            return this.error(error as Error, {
+                suggestions: [
+                    "Login to ECR manually and try again"
+                ]
+            });
+        }
+
         ux.action.start(`Stopping chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
 
         const { flags } = await this.parse(Down);
