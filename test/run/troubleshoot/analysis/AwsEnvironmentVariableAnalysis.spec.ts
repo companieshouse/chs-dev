@@ -14,7 +14,7 @@ describe("AwsEnvironmentVariableAnalysis", () => {
         "`export AWS_PROFILE=development-eu-west-2` or `export _AWS_REGION=eu-west-2`"
     ];
     const DOCUMENTATION_LINKS = [
-        "troubleshooting-remedies/correctly-add-aws-environment-variables.md"
+        "troubleshooting-remedies/correctly-set-aws-environment-variables.md"
     ];
 
     beforeEach(async () => {
