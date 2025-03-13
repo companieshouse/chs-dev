@@ -46,6 +46,16 @@ export default class Status extends Command {
     }
 
     async run (): Promise<void> {
+        try {
+            await this.config.runHook("ensure-ecr-logged-in", {});
+        } catch (error) {
+            return this.error(error as Error, {
+                suggestions: [
+                    "Login to ECR manually and try again"
+                ]
+            });
+        }
+
         const state = this.stateManager.snapshot;
         const dockerComposeState = this.dockerCompose.getServiceStatuses();
 
