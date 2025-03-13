@@ -9,7 +9,7 @@ describe("AwsEnvironmentVariableAnalysis", () => {
     const execSyncMock = jest.spyOn(childProcess, "execSync");
     const mockAwsListProfiles = `development-eu-west-1\ndevelopment-eu-west-2\nshared-services-ecr-eu-west-1-ro\nshared-services-ecr-eu-west-2-ro\nDevelopment-169942020521\n`;
     const SUGGESTIONS = [
-        "Run the below command to set the AWS profile:",
+        "Run the below command to set the AWS_PROFILE:",
         "`export AWS_PROFILE=development-eu-west-2`"
     ];
     const DOCUMENTATION_LINKS = [
