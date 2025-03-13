@@ -11,7 +11,7 @@ const SUGGESTIONS = [
 ];
 
 const DOCUMENTATION_LINKS = [
-    "troubleshooting-remedies/correctly-add-aws-environment-variables.md"
+    "troubleshooting-remedies/correctly-set-aws-environment-variables.md"
 ];
 
 /**
