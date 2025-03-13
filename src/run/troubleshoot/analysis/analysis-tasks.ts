@@ -1,4 +1,5 @@
 import AnalysisTask from "./AnalysisTask.js";
+import AwsEnvironmentVariableAnalysis from "./AwsEnvironmentVariableAnalysis.js";
 import DockerChsDevelopmentVersionAnalysis from "./DockerChsDevelopmentVersionAnalysis.js";
 import DockerMemoryAnalysis from "./DockerMemoryAnalysis.js";
 import EcrLoginAnalysis from "./ECRLoginAnalysis.js";
@@ -14,7 +15,8 @@ const analysisTasks: AnalysisTask[] = [
     new EcrLoginAnalysis(),
     new VersionAnalysis(),
     new PortAnalysis(),
-    new DockerChsDevelopmentVersionAnalysis()
+    new DockerChsDevelopmentVersionAnalysis(),
+    new AwsEnvironmentVariableAnalysis()
 ];
 
 export default analysisTasks;
