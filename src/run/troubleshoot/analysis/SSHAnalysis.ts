@@ -15,7 +15,7 @@ const SUGGESTIONS = [
 export default class SSHAnalysis extends BaseAnalysis {
 
     async analyse ({ config: { projectPath } }: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
-        const sshIssue = this.isSSHInitialised(projectPath);
+        const sshIssue = this.checkSSHKey(projectPath);
 
         return this.createOutcomeFrom(ANALYSIS_HEADLINE, sshIssue, "Fail");
     }
@@ -25,7 +25,7 @@ export default class SSHAnalysis extends BaseAnalysis {
      * @param {string} projectPath - Path to the project repository
      * @returns { Promise<AnalysisIssue | undefined> } - Returns an issue if SSH Keys are missing , otherwise undefined
      */
-    private isSSHInitialised (projectPath: string): AnalysisIssue | undefined {
+    private checkSSHKey (projectPath: string): AnalysisIssue | undefined {
         const fullpath = `${projectPath}/.ssh/initiated`;
         if (existsSync(fullpath)) {
             return undefined;
