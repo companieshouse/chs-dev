@@ -9,10 +9,6 @@ const SUGGESTIONS = [
     "Run: 'bin/init' command in the local project directory to initialise SSH keys."
 ];
 
-const DOCUMENTATION_LINKS = [
-    "troubleshooting-remedies/correctly-set-aws-environment-variables.md"
-];
-
 /**
  * An analysis task that evaluates whether the SSH Keys are created and stored in the project local directory.
  */
