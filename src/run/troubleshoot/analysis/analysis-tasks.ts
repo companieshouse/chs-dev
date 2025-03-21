@@ -6,6 +6,7 @@ import EcrLoginAnalysis from "./ECRLoginAnalysis.js";
 import PortAnalysis from "./PortAnalysis.js";
 import ProxiesConfiguredCorrectlyAnalysis from "./ProxiesConfiguredCorrectlyAnalysis.js";
 import ServicesInLiveUpdateConfiguredCorrectlyAnalysis from "./ServicesInLiveUpdateConfiguredCorrectlyAnalysis.js";
+import SSHAnalysis from "./SSHAnalysis.js";
 import VersionAnalysis from "./VersionAnalysis.js";
 
 const analysisTasks: AnalysisTask[] = [
@@ -16,7 +17,8 @@ const analysisTasks: AnalysisTask[] = [
     new VersionAnalysis(),
     new PortAnalysis(),
     new DockerChsDevelopmentVersionAnalysis(),
-    new AwsEnvironmentVariableAnalysis()
+    new AwsEnvironmentVariableAnalysis(),
+    new SSHAnalysis()
 ];
 
 export default analysisTasks;
