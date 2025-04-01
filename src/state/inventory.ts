@@ -9,6 +9,8 @@ import { Service } from "../model/Service.js";
 import { Module } from "../model/Module.js";
 import { readServices } from "./service-reader.js";
 import { DependencyNameResolver } from "./dependency-name-resolver.js";
+import { DependencyTreeBuilder } from "./dependency-tree-builder.js";
+import DependencyNode from "../model/DependencyNode.js";
 
 interface InventoryCache {
   hash: string;
@@ -23,7 +25,6 @@ export class Inventory {
     constructor (private path: string, cacheDir: string) {
         this.path = path;
         this.inventoryCacheFile = join(cacheDir, `${basename(path)}.inventory.yaml`);
-
         if (!existsSync(cacheDir)) {
             mkdirSync(cacheDir, {
                 recursive: true
@@ -75,15 +76,67 @@ export class Inventory {
 
     private loadServices (): Service[] {
         const partialServices: Partial<Service>[] = this.serviceFiles.flatMap(readServices);
-
         const dependencyNameResolver = new DependencyNameResolver(partialServices);
 
-        return partialServices.map(service => ({
+        const dependencyTreeBuilder = new DependencyTreeBuilder(partialServices);
+        
+        const services: Service[] =  partialServices.map(service => ({
             ...service,
-            dependsOn: dependencyNameResolver.fullDependencyListIncludingTransitive(service.dependsOn as string[])
+            dependencyTree: dependencyTreeBuilder.dependencyTree(service.name as string),
+            dependsOn: dependencyNameResolver.fullDependencyListIncludingTransitive(service.dependsOn as string[]),
         } as Service));
+
+        services.forEach(dependency => { 
+            let count = 0;
+            services.forEach(service => {
+                if (service.name != dependency.name){
+                    count = count + this.addTimesReferenced(service.dependencyTree, dependency.name);                    
+                }
+            });
+            dependency.timesUsedByOtherServices = count;
+        });
+
+        services.forEach(service => { 
+            let count = 0;
+        
+            function traverse(node: DependencyNode){
+                count ++;
+                node.dependencies.forEach(childNode => traverse(childNode));
+            }
+        
+            traverse(service.dependencyTree);
+        
+            service.numberOfDependencies = count - 1;
+        });
+
+        services.forEach(dependency => { 
+            let count = 0;
+            services.forEach(service => {
+                if (service.name != dependency.name){
+                    count = count + this.addTimesReferenced(service.dependencyTree, dependency.name);                    
+                }
+            });
+            dependency.timesUsedByOtherServices = count;
+        });
+
+        return services;
     }
 
+    private addTimesReferenced(dependencyTree: DependencyNode, dependencyName: String){
+        let count = 0;
+
+        function traverse(node: DependencyNode){           
+            if (node.name  == dependencyName){ 
+                count ++;
+            }
+            node.dependencies.forEach(childNode => traverse(childNode));
+        }
+    
+        traverse(dependencyTree);
+    
+        return count;
+    }
+    
     private hashServiceFiles () {
         const sha256Hash = createHash("sha256");
 

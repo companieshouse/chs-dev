@@ -183,6 +183,9 @@ USAGE
 * [`chs-dev exclusions remove SERVICE`](#chs-dev-exclusions-remove-service)
 * [`chs-dev help [COMMAND]`](#chs-dev-help-command)
 * [`chs-dev include SERVICE`](#chs-dev-include-service)
+* [`chs-dev information repositories report`](#chs-dev-information-repositories-report)
+* [`chs-dev information service SERVICES`](#chs-dev-information-service-services)
+* [`chs-dev information system`](#chs-dev-information-system)
 * [`chs-dev logs [SERVICENAME]`](#chs-dev-logs-servicename)
 * [`chs-dev modules available`](#chs-dev-modules-available)
 * [`chs-dev modules disable MODULES`](#chs-dev-modules-disable-modules)
@@ -409,6 +412,48 @@ DESCRIPTION
 
 ALIASES
   $ chs-dev include
+```
+
+## `chs-dev information repositories report`
+
+Generates a report documenting key information about repositories
+
+```
+USAGE
+  $ chs-dev information repositories report
+
+DESCRIPTION
+  Generates a report documenting key information about repositories
+```
+
+## `chs-dev information service SERVICES`
+
+Generates a dependency diagram / tree for the specified service(s)
+
+```
+USAGE
+  $ chs-dev information service SERVICES... -t <value>
+
+ARGUMENTS
+  SERVICES...  names of services to be graphed
+
+FLAGS
+  -t, --type=<value>  (required) diagram / tree
+
+DESCRIPTION
+  Generates a dependency diagram / tree for the specified service(s)
+```
+
+## `chs-dev information system`
+
+Generates a System dependency Diagram
+
+```
+USAGE
+  $ chs-dev information system
+
+DESCRIPTION
+  Generates a System dependency Diagram
 ```
 
 ## `chs-dev logs [SERVICENAME]`

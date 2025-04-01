@@ -9,14 +9,16 @@ import ExclusionsAdd from "./exclusions/add.js";
 import ExclusionsRemove from "./exclusions/remove.js";
 import DevelopmentServices from "./development/services.js";
 import DevelopmentEnable from "./development/enable.js";
+import InformationService from "./information/generateServiceDependencies.js"
+import InformationSystem from "./information/generateSystemDependencies.js"
 import DevelopmentDisable from "./development/disable.js";
+import RepositoriesReport from "./information/repositories/generateReport.js";
 import ServicesAvailable from "./services/available.js";
 import ServiceEnable from "./services/enable.js";
 import ServiceDisable from "./services/disable.js";
 import ModulesAvailable from "./modules/available.js";
 import ModulesEnable from "./modules/enable.js";
 import ModulesDisable from "./modules/disable.js";
-import ComposeLogs from "./deprecated/compose-logs.js";
 import ServiceLogs from "./deprecated/service-logs.js";
 import TroubleshootAnalysis from "./troubleshoot/analyse.js";
 import TroubleshootReport from "./troubleshoot/report.js";
@@ -28,7 +30,6 @@ export const commands = {
     up: Up,
     sync: Sync,
     logs: Logs,
-    "compose-logs": ComposeLogs,
     "exclusions:list": ExclusionsList,
     "exclusions:add": ExclusionsAdd,
     "exclusions:remove": ExclusionsRemove,
@@ -38,6 +39,9 @@ export const commands = {
     "services:available": ServicesAvailable,
     "services:enable": ServiceEnable,
     "services:disable": ServiceDisable,
+    "information:service": InformationService,
+    "information:system": InformationSystem,
+    "information:repositories:report": RepositoriesReport,
     "modules:available": ModulesAvailable,
     "modules:enable": ModulesEnable,
     "modules:disable": ModulesDisable,
