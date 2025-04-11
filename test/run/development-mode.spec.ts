@@ -20,7 +20,13 @@ describe("DevelopmentMode", () => {
         // @ts-expect-error
         down: jest.fn(),
         // @ts-expect-error
-        watch: jest.fn()
+        logs: jest.fn()
+    };
+
+    const logsArgs = {
+        serviceNames: ["service-one", "service-two"],
+        tail: "10",
+        follow: true
     };
 
     const controllerMock = {
@@ -37,7 +43,7 @@ describe("DevelopmentMode", () => {
     beforeEach(async () => {
         jest.resetAllMocks();
 
-        developmentMode = new DevelopmentMode(dockerComposeMock);
+        developmentMode = new DevelopmentMode(dockerComposeMock, logsArgs);
 
         // @ts-expect-error
         dockerComposeMock.down.mockResolvedValue(undefined as never);

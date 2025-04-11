@@ -14,6 +14,8 @@ interface Logger {
     log: (msg: string) => void;
 }
 
+type LogCoverage = "Watch" | "Log";
+
 const CONTAINER_STOPPED_STATUS_PATTERN =
     /Container\s([\dA-Za-z-]+)\s*(Stopped|Removed)/;
 
@@ -103,23 +105,36 @@ export class DockerCompose {
         );
     }
 
-    watch (signal?: AbortSignal): Promise<void> {
-        return this.runDockerCompose([
-            "watch"
-        ],
-        new DockerComposeWatchLogHandler(this.logFile, this.logger),
-        signal
+    async build (serviceName: string, signal?: AbortSignal): Promise<void> {
+        return this.runDockerCompose(["up", "--build", "--exit-code-from", serviceName, serviceName],
+            new LogNothingLogHandler(this.logFile, this.logger),
+            signal
         );
     }
 
-    logs ({ serviceNames, signal, tail, follow }: LogsArgs): Promise<void> {
-        return this.runDockerCompose([
+    restart (serviceName: string, signal?: AbortSignal): Promise<void> {
+        return this.runDockerCompose(["restart", serviceName],
+            new LogNothingLogHandler(this.logFile, this.logger),
+            signal
+        );
+    }
+
+    logs (
+        { serviceNames = [], signal, tail = "all", follow = false }: LogsArgs,
+        coverage: LogCoverage = "Log"
+    ): Promise<void> {
+        const args = [
             "logs",
-            ...(tail && tail !== "all" ? ["--tail", tail] : []),
-            ...(follow && follow === true ? ["--follow"] : []),
-            ...(serviceNames && serviceNames.length > 0 ? ["--", ...serviceNames] : [])
-        ], new LogEverythingLogHandler(this.logger),
-        signal);
+            ...(tail !== "all" ? ["--tail", tail] : []),
+            ...(follow ? ["--follow"] : []),
+            ...(serviceNames.length > 0 ? ["--", ...serviceNames] : [])
+        ];
+
+        const logHandler = coverage === "Log"
+            ? new LogEverythingLogHandler(this.logger)
+            : new DockerComposeWatchLogHandler(this.logger);
+
+        return this.runDockerCompose(args, logHandler, signal);
     }
 
     pull (serviceName: string, abortSignal?: AbortSignal): Promise<void> {

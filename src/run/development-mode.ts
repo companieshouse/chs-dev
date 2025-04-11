@@ -3,25 +3,26 @@ import { ux } from "@oclif/core";
 import { DockerCompose } from "./docker-compose.js";
 
 type Prompter = (prompt: string) => Promise<boolean>
+type WatchLogsArgs = { serviceNames, tail, follow }
 
 export class DevelopmentMode {
 
     // eslint-disable-next-line no-useless-constructor
-    constructor (private readonly dockerCompose: DockerCompose) {}
+    constructor (
+        private readonly dockerCompose: DockerCompose,
+        private readonly logsArgs: WatchLogsArgs) { }
 
-    async start (prompter?: Prompter): Promise<void> {
+    async start (prompter: Prompter): Promise<void> {
         const controller = new AbortController();
         const { signal } = controller;
 
-        // eslint-disable-next-line no-async-promise-executor
         return new Promise((resolve, reject) => {
             process.once("SIGINT", () => {
                 this.sigintHandler(controller, prompter)
                     .then(resolve)
                     .catch(reject);
             });
-
-            return this.dockerCompose.watch(signal).catch(reject);
+            return this.dockerCompose.logs({ ...this.logsArgs, signal }, "Watch").catch(reject);
         });
     }
 

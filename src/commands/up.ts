@@ -1,18 +1,16 @@
 import confirm from "@inquirer/confirm";
 import { Command, Config, ux } from "@oclif/core";
 
+import { basename } from "path";
+import loadConfig from "../helpers/config-loader.js";
+import { Config as ChsDevConfig } from "../model/Config.js";
+import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 import { DependencyCache } from "../run/dependency-cache.js";
 import { DevelopmentMode } from "../run/development-mode.js";
 import { DockerCompose } from "../run/docker-compose.js";
-import { StateManager } from "../state/state-manager.js";
-import loadConfig from "../helpers/config-loader.js";
-import { basename } from "path";
-import { Config as ChsDevConfig } from "../model/Config.js";
-import { ComposeLogViewer } from "../run/compose-log-viewer.js";
-import { PermanentRepositories } from "../state/permanent-repositories.js";
 import { Inventory } from "../state/inventory.js";
-import { spawn } from "../helpers/spawn-promise.js";
-import LogEverythingLogHandler from "../run/logs/LogEverythingLogHandler.js";
+import { PermanentRepositories } from "../state/permanent-repositories.js";
+import { StateManager } from "../state/state-manager.js";
 
 export default class Up extends Command {
 
@@ -23,7 +21,6 @@ export default class Up extends Command {
     ];
 
     private readonly dependencyCache: DependencyCache;
-    private readonly developmentMode: DevelopmentMode;
     private readonly dockerCompose: DockerCompose;
     private readonly stateManager: StateManager;
     private readonly chsDevConfig: ChsDevConfig;
@@ -44,7 +41,6 @@ export default class Up extends Command {
 
         this.stateManager = new StateManager(this.chsDevConfig.projectPath);
         this.dependencyCache = new DependencyCache(this.chsDevConfig.projectPath);
-        this.developmentMode = new DevelopmentMode(this.dockerCompose);
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.permanentRepositories = new PermanentRepositories(this.chsDevConfig, this.inventory);
@@ -86,11 +82,28 @@ export default class Up extends Command {
             await this.dockerCompose.up();
 
             if (this.hasServicesInDevelopmentMode()) {
-                this.log("Waiting for Development Mode to be ready (this can take a moment or two)...");
+                this.log(
+                    "Running services in development mode - watching for changes.\n"
+                );
+                this.log(
+                    "Node applications will automatically sync changes.\n"
+                );
+                this.log(
+                    "Trigger a manual sync by running:\n"
+                );
+                this.log(
+                    "$ chs-dev reload <serviceName>\n"
+                );
 
                 this.dependencyCache.update();
+                const logsArgs = {
+                    serviceNames: this.servicesInDevelopmentMode,
+                    tail: "10",
+                    follow: true
+                };
 
-                await this.developmentMode.start((prompt) => confirm({
+                const developmentMode = new DevelopmentMode(this.dockerCompose, logsArgs);
+                await developmentMode.start((prompt) => confirm({
                     message: prompt
                 }));
             }
@@ -109,7 +122,11 @@ export default class Up extends Command {
     }
 
     private hasServicesInDevelopmentMode (): boolean {
-        return this.stateManager.snapshot.servicesWithLiveUpdate.length > 0;
+        return this.servicesInDevelopmentMode.length > 0;
+    }
+
+    private get servicesInDevelopmentMode (): string[] {
+        return this.stateManager.snapshot.servicesWithLiveUpdate;
     }
 
     private async synchroniseServicesInDevelopmentMode (): Promise<any> {
