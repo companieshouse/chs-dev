@@ -7,12 +7,12 @@ import { LogHandler, Logger } from "./logs-handler.js";
  */
 export class DevelopmentWatchLogNodeHandler implements LogHandler {
     // Regular expressions for matching log patterns
+    private static readonly STARTED_REGEX = /"?([\w-]+)"?\s+\|\s+.*Application Started!/;
     private static readonly READY_REGEX = /"?([\w-]+)"?\s+\|\s+.*Application Ready\./;
     private static readonly RESTART_REGEX = /"?([\w-]+)"?\s+\|\s+.*Application Restarting.../;
     private static readonly CRASHED_REGEX = /"?([\w-]+)"?\s+\|\s+.*Application Crashed!/;
     private static readonly BUILT_STATUS_REGEX = /"?([\w-]+)"?\s+exited with code 0/;
     private static readonly NPM_INSTALL_COMPLETE_REGEX = /"?([\w-]+)"?\s+\|\s+.*npm install commencing\./;
-
     /**
      * Constructor to initialize the logger.
      * @param logger - Logger instance for logging messages.
@@ -29,11 +29,18 @@ export class DevelopmentWatchLogNodeHandler implements LogHandler {
         for (const logEntry of logEntries.toString().split("\n")) {
             if (!logEntry) continue; // Skip empty lines
 
-            // Match and log service start events
+            // Match and log service install events
             this.matchAndLog(
                 logEntry,
                 DevelopmentWatchLogNodeHandler.NPM_INSTALL_COMPLETE_REGEX,
                 (serviceName) => this.logger.log(grey(`Nodemon: ${serviceName} installing dependencies!`))
+            );
+
+            // Match and log service start events
+            this.matchAndLog(
+                logEntry,
+                DevelopmentWatchLogNodeHandler.STARTED_REGEX,
+                (serviceName) => this.logger.log(greenBright(`Nodemon: ${serviceName} started!`))
             );
 
             // Match and log service ready events
