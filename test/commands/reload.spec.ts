@@ -124,7 +124,7 @@ describe("reload spec", () => {
 
         await reload.run();
 
-        expect(logMock).toHaveBeenCalledWith("Reloading node service: service-one");
+        expect(logMock).toHaveBeenCalledWith("Reloading Node Service: service-one");
         expect(restartMock).toHaveBeenCalledWith("service-one");
     });
 

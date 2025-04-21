@@ -68,7 +68,7 @@ export default class Reload extends Command {
 
         try {
             if (serviceBuilder === "node") {
-                this.log(`Reloading node service: ${serviceName}`);
+                this.log(`Reloading Node Service: ${serviceName}`);
                 await this.dockerCompose.restart(serviceName);
             } else {
                 this.reloadNonNodeService(serviceName);
@@ -88,13 +88,15 @@ export default class Reload extends Command {
 
     private checkServicesBuilder (serviceName: string): string | undefined {
         let serviceBuilder;
-        const developmentServiceSource = `${this.chsDevConfig.projectPath}/local/${serviceName}/docker-compose.yaml`;
-        const dockerCompose = yaml.parse(readFileSync(developmentServiceSource).toString("utf-8"));
-        dockerCompose.services[serviceName].labels.forEach((label) => {
-            if (/^chs\.local\.builder=/.test(label)) {
-                serviceBuilder = label.split("=")[1].toString().toLowerCase();
-            }
-        });
+        const developmentService = this.inventory.services.find(s => s.name === serviceName && !s.source.includes("tilt/"));
+        if (developmentService && developmentService.source) {
+            const dockerCompose = yaml.parse(readFileSync(developmentService.source).toString("utf-8"));
+            dockerCompose.services[serviceName].labels.forEach((label: string) => {
+                if (/^chs\.local\.builder=/.test(label)) {
+                    serviceBuilder = label.split("=")[1].toString().toLowerCase();
+                }
+            });
+        }
         return serviceBuilder;
     }
 

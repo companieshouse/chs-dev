@@ -1,0 +1,88 @@
+# Configuring Nodemon for Development in Node.js Projects
+
+## Problem Summary
+
+To enable efficient development with automatic restarts on file changes, Node.js projects should be configured with **Nodemon**. This guide outlines how to properly set up `nodemon`, define its configuration, create an appropriate entry point, and ensure compatibility with `chs-dev`.
+
+## Resolution Summary
+
+Follow these steps to set up Nodemon in your project:
+
+### 1. Install Nodemon
+
+Install `nodemon` as a development dependency at the specified version:
+
+```bash
+npm install --save-dev nodemon@3.0.1
+
+```
+
+### 2. Define the Nodemon Entry Point
+
+Create a file at this location `src/bin/nodemon-entry.ts`, import the appropriate
+express server from its location file. Example configuration:
+
+```ts
+import app from "../app";
+
+const PORT = 3000;
+
+app.set("port", PORT);
+
+app.listen(PORT, () => {
+  console.log(`✅  Application Ready. Running on port ${PORT}`);
+});
+
+```
+It is important the listen event is configured exactly as described above:
+This output is used to verify the application is up and running.
+Example File Location: `local/builders/node/v3/bin/config/nodemon-entry.ts`
+
+### 3. Create nodemon.json configuration
+In the root of your project, add a `nodemon.json` file with the following configuration:
+
+```json
+{
+  "exec": "ts-node ./src/bin/nodemon-entry.ts",
+  "ext": "ts,html",
+  "watch": ["./src", "./views"],
+  "events": {
+    "restart": "echo '🔄 '  Nodemon Restarting...",
+    "crash": "echo '💥 '  Nodemon Crashed!"
+  }
+}
+
+```
+Configure the watch and exec properties as above. Other properties can be ammended
+as appropriate. This configuration does the following:
+
+Runs the app through nodemon via ts-node at `./src/bin/nodemon-entry.ts`
+
+Watches the `src` and `views` directory for changes.
+
+
+### 4. Update the package.json Scripts
+
+In your project's package.json, add the following to the scripts section:
+
+```json
+"scripts": {
+  "chs-dev": "nodemon --legacy-watch"
+}
+```
+
+
+## Rationale
+Using Nodemon in development allows you to:
+
+Work more efficiently without manually restarting your app
+
+Monitor multiple file types for changes
+
+Receive meaningful feedback when your app starts, restarts, or crashes
+
+Maintain a standardized development experience across environments
+
+By following this setup, your development workflow will be faster,
+more stable.
+

@@ -11,7 +11,9 @@ import { DockerCompose } from "../run/docker-compose.js";
 import { Inventory } from "../state/inventory.js";
 import { PermanentRepositories } from "../state/permanent-repositories.js";
 import { StateManager } from "../state/state-manager.js";
+import Service from "../model/Service.js";
 
+type ServicesByBuilder = {[builder: string]: Service[]};
 export default class Up extends Command {
 
     static description: string = "Brings up the docker-chs-development environment";
@@ -20,6 +22,7 @@ export default class Up extends Command {
         "$ chs-dev up"
     ];
 
+    private servicesByBuilder!: ServicesByBuilder;
     private readonly dependencyCache: DependencyCache;
     private readonly dockerCompose: DockerCompose;
     private readonly stateManager: StateManager;
@@ -69,6 +72,28 @@ export default class Up extends Command {
             });
         }
 
+        if (this.hasServicesInDevelopmentMode) {
+            try {
+                this.servicesByBuilder = this.servicesInDevelopmentMode.reduce((builderMap, serviceName) => {
+                    const service = this.inventory.services.find(
+                        s => s.name === serviceName && !s.source.includes("tilt/")
+                    );
+                    if (service) {
+                        const builder = service.builder || "undefined";
+                        if (!builderMap[builder]) {
+                            builderMap[builder] = [];
+                        }
+                        builderMap[builder].push(service);
+                    }
+                    return builderMap;
+                }, {} as Record<string, Service[]>);
+                const hookOptions: Record<string, ServicesByBuilder> = { servicesByBuilder: this.servicesByBuilder };
+                await this.config.runHook("check-development-service-config", hookOptions);
+            } catch (error) {
+                return this.error(error as Error);
+            }
+        }
+
         ux.action.start("Synchronising current services in development mode with inventory");
         await this.synchroniseServicesInDevelopmentMode();
         ux.action.stop();
@@ -81,19 +106,24 @@ export default class Up extends Command {
         try {
             await this.dockerCompose.up();
 
-            if (this.hasServicesInDevelopmentMode()) {
+            if (this.hasServicesInDevelopmentMode) {
                 this.log(
                     "Running services in development mode - watching for changes.\n"
                 );
                 this.log(
-                    "Node applications will automatically sync changes.\n"
+                    "Non-Node Applications: Sync changes, Run: '$ chs-dev reload <serviceName>'\n"
                 );
-                this.log(
-                    "Trigger a manual sync by running:\n"
-                );
-                this.log(
-                    "$ chs-dev reload <serviceName>\n"
-                );
+
+                for (const [builder, services] of Object.entries(this.servicesByBuilder)) {
+                    if (builder === "node") {
+                        this.log(
+                            "Node Applications: Automatically sync changes.\n"
+                        );
+                        for (const service of services) {
+                            this.log(`Waiting for Service: ${service.name} to be ready (this can take a moment or two)...`);
+                        }
+                    }
+                }
 
                 this.dependencyCache.update();
                 const logsArgs = {
@@ -121,7 +151,7 @@ export default class Up extends Command {
         ux.action.stop();
     }
 
-    private hasServicesInDevelopmentMode (): boolean {
+    private get hasServicesInDevelopmentMode (): boolean {
         return this.servicesInDevelopmentMode.length > 0;
     }
 
