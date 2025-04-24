@@ -6,11 +6,12 @@ To enable efficient development with automatic restarts on file changes, Node.js
 
 ## Resolution Summary
 
-Follow these steps to set up Nodemon in your project:
+Follow these steps to set up Nodemon in the service local repository:
+Example location: `./docker-chs-development/repositories/overseas-entities-web`
 
 ### 1. Install Nodemon
 
-Install `nodemon` as a development dependency at the specified version:
+Install `nodemon` in the service local repository as a development dependency:
 
 ```bash
 npm install --save-dev nodemon@3.0.1
@@ -36,7 +37,7 @@ app.listen(PORT, () => {
 ```
 It is important the listen event is configured exactly as described above:
 This output is used to verify the application is up and running.
-Example File Location: `local/builders/node/v3/bin/config/nodemon-entry.ts`
+Example File Location: `local/builders/node/v3/bin/config/nodemon-entry`
 
 ### 3. Create nodemon.json configuration
 In the root of your project, add a `nodemon.json` file with the following configuration:
@@ -70,6 +71,19 @@ In your project's package.json, add the following to the scripts section:
   "chs-dev": "nodemon --legacy-watch"
 }
 ```
+
+### 5. Start your Development Environment
+
+To start your local environment, run:
+
+```bash
+chs-dev up
+
+```
+Begin local development once you see this message:
+
+Example Message:`Service: officer-filing-web ready!`
+
 
 
 ## Rationale
