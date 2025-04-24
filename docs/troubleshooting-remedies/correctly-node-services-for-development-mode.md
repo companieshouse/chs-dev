@@ -82,7 +82,7 @@ chs-dev up
 ```
 Begin local development once you see this message:
 
-Example Message:`Service: officer-filing-web ready!`
+Example Message:`Service: overseas-entities-web ready!`
 
 
 
