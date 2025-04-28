@@ -26,7 +26,10 @@ const checkNodeServiceConfig = (service: Service, projectPath: string, context) 
     const servicePath = join(projectPath, "repositories", service.name);
     const nodemonConfigPath = join(servicePath, "nodemon.json");
     const packageJsonPath = join(servicePath, "package.json");
-    const nodemonEntryFilePath = join(servicePath, "src/bin/nodemon-entry.ts");
+
+    const nodemonEntryFilePathSrc = join(servicePath, "src/bin/nodemon-entry.ts");
+    const nodemonEntryFilePathServer = join(servicePath, "server/bin/nodemon-entry.ts");
+
     if (existsSync(servicePath)) {
         validateLabelForSubmodulesIntegration(servicePath, service, context);
 
@@ -37,11 +40,13 @@ const checkNodeServiceConfig = (service: Service, projectPath: string, context) 
             return;
         }
 
-        if (existsSync(nodemonEntryFilePath)) {
-            validateNodemonEntryContent(nodemonEntryFilePath, service.name, context);
-        } else {
-            logMissingFile(context, service.name, "nodemon entry file in location: ./src/bin/nodemon-entry.ts");
+        if (existsSync(nodemonEntryFilePathSrc)) {
+            validateNodemonEntryContent(nodemonEntryFilePathSrc, service.name, context);
+        } else if (existsSync(nodemonEntryFilePathServer)) {
+            validateNodemonEntryContent(nodemonEntryFilePathServer, service.name, context);
             return;
+        } else {
+            logMissingFile(context, service.name, "nodemon entry file in location: ./src/bin/nodemon-entry.ts or ./server/bin/nodemon-entry.ts");
         }
 
         if (existsSync(nodemonConfigPath)) {
