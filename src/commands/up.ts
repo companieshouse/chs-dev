@@ -119,9 +119,12 @@ export default class Up extends Command {
                         this.log(
                             "Node Applications: Automatically sync changes.\n"
                         );
-                        for (const service of services) {
-                            this.log(`Waiting for Service: ${service.name} to be ready (this can take a moment or two)...`);
-                        }
+                    }
+                    for (const service of services) {
+                        this.log(`Waiting for Service: ${service.name} to be ready (this can take a moment or two)...`);
+                    }
+                    if (builder !== "undefined" && builder !== "node") {
+                        this.dockerCompose.healthStatus(services.map(service => service.name));
                     }
                 }
 

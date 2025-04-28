@@ -8,97 +8,97 @@ import stripAnsi from "strip-ansi";
  */
 export class DevelopmentWatchLogNodeHandler implements LogHandler {
     // Regular expressions for matching log patterns
-    private static readonly RESTART_REGEX = /"?([\w-]+)"?\s+\|\s+.*Nodemon Restarting.../;
-    private static readonly CRASHED_REGEX = /"?([\w-]+)"?\s+\|\s+.*Nodemon Crashed!/;
-    private static readonly READY_REGEX = /"?([\w-]+)"?\s+\|\s+.*Application Ready\./;
-    private static readonly BUILT_STATUS_REGEX = /"?([\w-]+)"?\s+.*exited with code 0/;
-    private static readonly NPM_INSTALL_COMPLETE_REGEX = /"?([\w-]+)"?\s+\|\s+.*npm install commencing\./;
-    private static readonly NPM_INSTALL_FAILED_REGEX = /"?([\w-]+)"?\s+\|\s+.*npm install failed!\./;
-    // npm install complete. Running Build. add for builds
+    private static readonly LOG_PATTERNS = {
+        RESTART: /"?([\w-]+)"?\s+\|\s+.*Nodemon Restarting.../,
+        CRASHED: /"?([\w-]+)"?\s+\|\s+.*Nodemon Crashed!/,
+        READY: /"?([\w-]+)"?\s+\|\s+.*Application Ready\./,
+        HEALTHY_STATUS: /Container\s+([\w-]+)\s+healthy/,
+        UNHEALTHY_STATUS: /Container\s+([\w-]+)\s+unhealthy/,
+        NPM_INSTALL_COMPLETE: /"?([\w-]+)"?\s+\|\s+.*npm install commencing\./,
+        NPM_INSTALL_FAILED: /"?([\w-]+)"?\s+\|\s+.*npm install failed!\./
+    };
+
+    private static readonly LOG_ACTIONS = {
+        NPM_INSTALL_COMPLETE: (
+            logger: Logger,
+            serviceName: string,
+            timestamp: string
+        ) =>
+            logger.log(
+                grey(`${timestamp} - Service: ${serviceName} installing dependencies!`)
+            ),
+        READY: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(greenBright(`${timestamp} - Service: ${serviceName} ready!`)),
+        HEALTHY_STATUS: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(greenBright(`${timestamp} - Service: ${serviceName} ready!`)),
+        RESTART: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(
+                yellowBright(`${timestamp} - Nodemon: ${serviceName} restarting...`)
+            ),
+        NPM_INSTALL_FAILED: (
+            logger: Logger,
+            serviceName: string,
+            timestamp: string
+        ) =>
+            logger.log(
+                red(
+                    `${timestamp} - Service: ${serviceName} installing dependencies failed!`
+                )
+            ),
+        CRASHED: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(redBright(`${timestamp} - Nodemon: ${serviceName} crashed!`)),
+        UNHEALTHY_STATUS: (
+            logger: Logger,
+            serviceName: string,
+            timestamp: string
+        ) =>
+            logger.log(redBright(`${timestamp} - Service: ${serviceName} crashed!`))
+    };
 
     /**
-     * Constructor to initialize the logger.
-     * @param logger - Logger instance for logging messages.
-     */
+   * Constructor to initialize the logger.
+   * @param logger - Logger instance for logging messages.
+   */
     // eslint-disable-next-line no-useless-constructor
     constructor (private readonly logger: Logger) {}
 
     /**
-     * Handles log entries by parsing and logging specific events.
-     * @param logEntries - Raw log entries as a string.
-     */
+   * Handles log entries by parsing and logging specific events.
+   * @param logEntries - Raw log entries as a string.
+   */
     handle (logEntries: string): void {
         for (const logEntry of logEntries.toString().split("\n")) {
             if (!logEntry) continue;
 
-            // Match and log service install events
-            this.matchAndLog(
-                logEntry,
-                DevelopmentWatchLogNodeHandler.NPM_INSTALL_COMPLETE_REGEX,
-                (serviceName) => this.logger.log(grey(`Service: ${serviceName} installing dependencies!`))
-            );
+            const cleanLog = this.cleanLogString(logEntry);
 
-            // Match and log service install events failed
-            this.matchAndLog(
-                logEntry,
-                DevelopmentWatchLogNodeHandler.NPM_INSTALL_FAILED_REGEX,
-                (serviceName) => this.logger.log(red(`Service: ${serviceName} installing dependencies failed!`))
-            );
-
-            // Match and log service ready events
-            this.matchAndLog(
-                logEntry,
-                DevelopmentWatchLogNodeHandler.READY_REGEX,
-                (serviceName) => this.logger.log(greenBright(`Service: ${serviceName} ready!`))
-            );
-
-            // Match and log service restart events
-            this.matchAndLog(
-                logEntry,
-                DevelopmentWatchLogNodeHandler.RESTART_REGEX,
-                (serviceName) => this.logger.log(yellowBright(`Nodemon: ${serviceName} restarting...`))
-            );
-
-            // Match and log service crash events
-            this.matchAndLog(
-                logEntry,
-                DevelopmentWatchLogNodeHandler.CRASHED_REGEX,
-                (serviceName) => this.logger.log(redBright(`Nodemon: ${serviceName} crashed!`))
-            );
-
-            // Match and log service reload events
-            this.matchAndLog(
-                logEntry,
-                DevelopmentWatchLogNodeHandler.BUILT_STATUS_REGEX,
-                (serviceName) => this.logger.log(greenBright(`Service: ${serviceName} reloaded!`))
-            );
+            for (const [key, regex] of Object.entries(
+                DevelopmentWatchLogNodeHandler.LOG_PATTERNS
+            )) {
+                const match = cleanLog.match(regex);
+                if (match) {
+                    const [, serviceName] = match;
+                    const action =
+            DevelopmentWatchLogNodeHandler.LOG_ACTIONS[
+              key as keyof typeof DevelopmentWatchLogNodeHandler.LOG_ACTIONS
+            ];
+                    const timestamp = new Date().toISOString();
+                    action(this.logger, serviceName, timestamp);
+                    break; // Exit loop once a match is found
+                }
+            }
         }
     }
 
     /**
-     * Matches a log entry against a regex and executes a callback if matched.
-     * @param logEntry - The log entry to match.
-     * @param regex - The regular expression to match against.
-     * @param callback - The callback to execute if a match is found.
-     */
-    private matchAndLog (
-        logEntry: string,
-        regex: RegExp,
-        callback: (serviceName: string) => void
-    ): void {
-        const cleanLog = this.cleanLogString(logEntry);
-        const match = cleanLog.match(regex);
-        if (match) {
-            const [, serviceName] = match;
-            callback(serviceName);
-        }
-    }
-
-    private cleanLogString (str: string) {
-        // eslint-disable-next-line no-control-regex
+   * Cleans a log string by removing ANSI escape codes and control characters.
+   * @param str - The log string to clean.
+   * @returns The cleaned log string.
+   */
+    private cleanLogString (str: string): string {
+    // eslint-disable-next-line no-control-regex
         return stripAnsi(str).replace(/[\x00-\x1F\x7F]/g, "");
     }
-
 }
 
 export default DevelopmentWatchLogNodeHandler;

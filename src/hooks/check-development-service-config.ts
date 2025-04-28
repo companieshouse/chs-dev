@@ -14,11 +14,23 @@ export const hook: Hook<"check-development-service-config"> = async ({ servicesB
     const projectPath = loadConfig().projectPath;
 
     for (const [builder, services] of Object.entries(servicesByBuilder)) {
-        if (builder === "node") {
-            for (const service of services) {
+        for (const service of services) {
+            if (builder === "node") {
                 checkNodeServiceConfig(service, projectPath, context);
+            } else if (builder !== "undefined") {
+                checkServiceHealthCheckConfig(service, context);
+
             }
         }
+    }
+};
+
+const checkServiceHealthCheckConfig = (service: Service, context) => {
+    const dockerCompose = yaml.parse(readFileSync(service.source, "utf-8"));
+    const healthCheckProperty = dockerCompose.services?.[service.name]?.healthcheck || "undefined";
+    if (healthCheckProperty === "undefined") {
+        context.warn(`Service ${service.name} is missing the healthcheck property in its docker-compose.yaml file.\n`);
+        logDocumentationLink(context);
     }
 };
 

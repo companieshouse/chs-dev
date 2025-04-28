@@ -137,6 +137,30 @@ export class DockerCompose {
         return this.runDockerCompose(args, logHandler, signal);
     }
 
+    healthStatus (serviceNames:string[]): void {
+        const servicesNotReady: string[] = [];
+        const containersInspection = JSON.parse(execSync(`docker inspect ${serviceNames}`).toString("utf8"));
+
+        if (containersInspection.length > 0) {
+            for (const container of containersInspection) {
+                const containerName = container.Name.replace("/", "");
+                const containerStatus = container.State.Health?.Status || "Unknown";
+
+                if (containerStatus === "starting") {
+                    servicesNotReady.push(containerName);
+                }
+                const logMessage = `Container ${containerName} ${containerStatus}`;
+                const watch = new DockerComposeWatchLogHandler(this.logger).handle(logMessage);
+            }
+        }
+
+        if (servicesNotReady.length > 0) {
+            setTimeout(() => {
+                this.healthStatus(servicesNotReady);
+            }, 3000);
+        }
+    }
+
     pull (serviceName: string, abortSignal?: AbortSignal): Promise<void> {
         return this.runDockerCompose(
             [

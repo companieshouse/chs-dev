@@ -106,6 +106,7 @@ export default class Reload extends Command {
         await this.dockerCompose.build(`${serviceName}-builder`);
         this.log(`Service: ${serviceName} restarting...`);
         await this.dockerCompose.restart(serviceName);
+        this.dockerCompose.healthStatus([serviceName]);
     }
 
     private async handleError (error: unknown): Promise<void> {
