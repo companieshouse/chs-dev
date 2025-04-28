@@ -54,12 +54,28 @@ In the root of your project, add a `nodemon.json` file with the following config
 }
 
 ```
-Configure the watch and exec properties as above. Other properties can be ammended
-as appropriate. This configuration does the following:
+Configure the event properties exactly as above. If the root directory is not `src`,
+change the base directory accordingly in the `exec` and `watch` properties.
+Ensure the `exec` property contains `/bin/nodemon-entry.ts`. Other properties can be
+ammended as appropriate. Example:
 
-Runs the app through nodemon via ts-node at `./src/bin/nodemon-entry.ts`
+```json
+{
+  "exec": "ts-node ./server/bin/nodemon-entry.ts",
+  "ext": "ts,html",
+  "watch": ["./server", "./views"],
+  "events": {
+    "restart": "echo '🔄 '  Nodemon Restarting...",
+    "crash": "echo '💥 '  Nodemon Crashed!"
+  }
+}
 
-Watches the `src` and `views` directory for changes.
+```
+This configuration does the following:
+
+Runs the app through nodemon via ts-node at `./server/bin/nodemon-entry.ts`
+
+Watches the `server` and `views` directory for changes.
 
 
 ### 4. Update the package.json Scripts
