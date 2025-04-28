@@ -8,7 +8,6 @@ import Service from "../model/Service.js";
 type ServicesByBuilder = { [builder: string]: Service[] };
 
 const DOCUMENTATION_LINKS = "troubleshooting-remedies/correctly-node-services-for-development-mode.md";
-
 // @ts-ignore
 export const hook: Hook<"check-development-service-config"> = async ({ servicesByBuilder, context }: { servicesByBuilder: ServicesByBuilder }) => {
     const projectPath = loadConfig().projectPath;
@@ -22,6 +21,13 @@ export const hook: Hook<"check-development-service-config"> = async ({ servicesB
     }
 };
 
+/**
+ * Validates the configuration of a Node.js service
+ * @param service - Service object.
+ * @param projectPath - Path to the project root directory.
+ * @param context - Context for logging messages.
+ * @returns {void}
+*/
 const checkNodeServiceConfig = (service: Service, projectPath: string, context) => {
     const servicePath = join(projectPath, "repositories", service.name);
     const nodemonConfigPath = join(servicePath, "nodemon.json");
@@ -31,8 +37,10 @@ const checkNodeServiceConfig = (service: Service, projectPath: string, context) 
     const nodemonEntryFilePathServer = join(servicePath, "server/bin/nodemon-entry.ts");
 
     if (existsSync(servicePath)) {
+    // Validate submodule integration labels
         validateLabelForSubmodulesIntegration(servicePath, service, context);
 
+        // Validate package.json file
         if (existsSync(packageJsonPath)) {
             validatePackageJson(packageJsonPath, service.name, context);
         } else {
@@ -40,6 +48,7 @@ const checkNodeServiceConfig = (service: Service, projectPath: string, context) 
             return;
         }
 
+        // Validate nodemon entry file
         if (existsSync(nodemonEntryFilePathSrc)) {
             validateNodemonEntryContent(nodemonEntryFilePathSrc, service.name, context);
         } else if (existsSync(nodemonEntryFilePathServer)) {
@@ -49,19 +58,24 @@ const checkNodeServiceConfig = (service: Service, projectPath: string, context) 
             logMissingFile(context, service.name, "nodemon entry file in location: ./src/bin/nodemon-entry.ts or ./server/bin/nodemon-entry.ts");
         }
 
+        // Validate nodemon.json configuration
         if (existsSync(nodemonConfigPath)) {
             validateNodemonJsonContent(projectPath, nodemonConfigPath, service.name, context);
-
         } else {
             logMissingFile(context, service.name, "nodemon.json");
         }
-
     } else {
         logMissingFile(context, service.name, "directory");
     }
-
 };
 
+/**
+ * Validates the presence of required labels for submodule integration
+ * @param servicePath - Path to the local service directory.
+ * @param service - Service object.
+ * @param context - Context for logging messages.
+ * @returns {void}
+*/
 const validateLabelForSubmodulesIntegration = (servicePath, service: Service, context) => {
     const gitModulesPath = join(servicePath, ".gitmodules");
     if (existsSync(gitModulesPath)) {
@@ -74,9 +88,15 @@ const validateLabelForSubmodulesIntegration = (servicePath, service: Service, co
             logDocumentationLink(context);
         }
     }
-
 };
 
+/**
+ * Validates the package.json file for required scripts and dependencies
+ * @param packageJsonPath - Path to the package.json file in the service.
+ * @param serviceName - Service name.
+ * @param context - Context for logging messages.
+ * @returns {void}
+*/
 const validatePackageJson = (packageJsonPath: any, serviceName: string, context) => {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
 
@@ -93,6 +113,13 @@ const validatePackageJson = (packageJsonPath: any, serviceName: string, context)
     }
 };
 
+/**
+ * Validates the content of the nodemon entry file
+ * @param actualNodemonEntryPath - Path to the nodemon-entry.ts file in the service.
+ * @param serviceName - Service name.
+ * @param context - Context for logging messages.
+ * @returns {void}
+*/
 const validateNodemonEntryContent = (actualNodemonEntryPath, serviceName: string, context) => {
     const actualFileContent = readFileSync(actualNodemonEntryPath, "utf-8");
 
@@ -108,6 +135,14 @@ const validateNodemonEntryContent = (actualNodemonEntryPath, serviceName: string
     }
 };
 
+/**
+ * Validates the content of the nodemon.json configuration file
+ * @param projectPath - Project root path.
+ * @param actualNodemonConfigPath - Path to the actual nodemon.json file in the service.
+ * @param serviceName - Service name.
+ * @param context - Context for logging messages.
+ * @returns {void}
+*/
 const validateNodemonJsonContent = (projectPath: string, actualNodemonConfigPath, serviceName: string, context) => {
     const expectedConfigPath = join(projectPath, "local/builders/node/v3/bin/config/nodemon.json");
 
@@ -121,8 +156,8 @@ const validateNodemonJsonContent = (projectPath: string, actualNodemonConfigPath
     const actualConfig = JSON.parse(readFileSync(actualNodemonConfigPath, "utf-8"));
 
     if (JSON.stringify(expectedConfig.events) !== JSON.stringify(actualConfig.events) ||
-        !JSON.stringify(actualConfig.exec).includes("/bin/nodemon-entry.ts") ||
-        actualConfig.watch.length === 0) {
+    !JSON.stringify(actualConfig.exec).includes("/bin/nodemon-entry.ts") ||
+    actualConfig.watch.length === 0) {
         context.warn(`Service ${serviceName} has an incorrect nodemon.json configuration.\n`);
         logDocumentationLink(context);
     }

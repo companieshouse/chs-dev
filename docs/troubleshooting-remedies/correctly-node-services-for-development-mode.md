@@ -1,6 +1,6 @@
 # Configuring Nodemon for Development in Node.js Projects
 
-## Problem Summary
+## Summary
 
 To enable efficient development with automatic restarts on file changes, Node.js projects should be configured with **Nodemon**. This guide outlines how to properly set up `nodemon`, define its configuration, create an appropriate entry point, and ensure compatibility with `chs-dev`.
 
@@ -20,8 +20,11 @@ npm install --save-dev nodemon@3.0.1
 
 ### 2. Define the Nodemon Entry Point
 
-Create a file at this location `src/bin/nodemon-entry.ts`, import the appropriate
-express server from its location file. Example configuration:
+Create the `nodemon-entry.ts` in express server parent directory.
+E.g: `src/bin/nodemon-entry.ts` or `server/bin/nodemon-entry.ts`
+
+Import the appropriate express server from its location file.
+Example configuration:
 
 ```ts
 import app from "../app";
@@ -37,7 +40,8 @@ app.listen(PORT, () => {
 ```
 It is important the listen event is configured exactly as described above:
 This output is used to verify the application is up and running.
-Example File Location: `local/builders/node/v3/bin/config/nodemon-entry`
+Sample `nodemon.entry` file: `/local/builders/node/v3/bin/config/nodemon-entry`.
+
 
 ### 3. Create nodemon.json configuration
 In the root of your project, add a `nodemon.json` file with the following configuration:
@@ -54,10 +58,11 @@ In the root of your project, add a `nodemon.json` file with the following config
 }
 
 ```
-Configure the event properties exactly as above. If the root directory is not `src`,
-change the base directory accordingly in the `exec` and `watch` properties.
-Ensure the `exec` property contains `/bin/nodemon-entry.ts`. Other properties can be
-ammended as appropriate. Example:
+Configure the event properties exactly as above. If the express server parent
+directory is not `src`, change the base directory accordingly in the `exec`
+and `watch` properties. Ensure the `exec` property contains relative path to `nodemon-entry.ts` file.
+Other properties can be ammended as appropriate.
+Sample `nodemon.json` where express server parent directory is `server`:
 
 ```json
 {
@@ -80,10 +85,11 @@ Watches the `server` and `views` directory for changes.
 
 ### 4. Update the package.json Scripts
 
-In your project's package.json, add the following to the scripts section:
+In your project's `package.json`, add the following to the scripts section.
 
 ```json
 "scripts": {
+  ...other scripts
   "chs-dev": "nodemon --legacy-watch"
 }
 ```

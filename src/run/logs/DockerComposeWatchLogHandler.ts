@@ -3,23 +3,17 @@ import { LogHandler, Logger } from "./logs-handler.js";
 import stripAnsi from "strip-ansi";
 
 /**
- * Handles log entries for development watch logs, parsing and logging
- * specific events such as service start, restart, exit, and crash.
+ * Handles log entries for development mode, parsing and logging
+ * specific events such as service ready, healthy, restart, and crash.
  */
 export class DevelopmentWatchLogNodeHandler implements LogHandler {
-    // Regular expressions for matching log patterns
     private static readonly RESTART_REGEX = /"?([\w-]+)"?\s+\|\s+.*Nodemon Restarting.../;
     private static readonly CRASHED_REGEX = /"?([\w-]+)"?\s+\|\s+.*Nodemon Crashed!/;
     private static readonly READY_REGEX = /"?([\w-]+)"?\s+\|\s+.*Application Ready\./;
     private static readonly BUILT_STATUS_REGEX = /"?([\w-]+)"?\s+.*exited with code 0/;
     private static readonly NPM_INSTALL_COMPLETE_REGEX = /"?([\w-]+)"?\s+\|\s+.*npm install commencing\./;
     private static readonly NPM_INSTALL_FAILED_REGEX = /"?([\w-]+)"?\s+\|\s+.*npm install failed!\./;
-    // npm install complete. Running Build. add for builds
 
-    /**
-     * Constructor to initialize the logger.
-     * @param logger - Logger instance for logging messages.
-     */
     // eslint-disable-next-line no-useless-constructor
     constructor (private readonly logger: Logger) {}
 

@@ -7,8 +7,12 @@ import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 import { DependencyCache } from "../run/dependency-cache.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import { Inventory } from "../state/inventory.js";
-import { StateManager } from "../state/state-manager.js";
 
+/**
+ * The Reload command is responsible for rebuilding and restarting a specified service
+ * running in development mode. This allows developers to load any changes made to the
+ * source code without restarting the entire environment.
+ */
 export default class Reload extends Command {
 
     static description = "Rebuilds and restarts the supplied service running " +
@@ -36,7 +40,6 @@ export default class Reload extends Command {
     private readonly inventory: Inventory;
     private readonly dependencyCache: DependencyCache;
     private readonly chsDevConfig: ChsDevConfig;
-    private readonly stateManager: StateManager;
     private readonly dockerCompose: DockerCompose;
     private readonly composeLogViewer: ComposeLogViewer;
 
@@ -49,7 +52,6 @@ export default class Reload extends Command {
         this.chsDevConfig = loadConfig();
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
         this.dockerCompose = new DockerCompose(this.chsDevConfig, logger);
-        this.stateManager = new StateManager(this.chsDevConfig.projectPath);
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.dependencyCache = new DependencyCache(this.chsDevConfig.projectPath);
     }
@@ -67,6 +69,7 @@ export default class Reload extends Command {
         }
 
         try {
+            // Reload the service based on its builder type
             if (serviceBuilder === "node") {
                 this.log(`Reloading Node Service: ${serviceName}`);
                 await this.dockerCompose.restart(serviceName);
@@ -76,9 +79,13 @@ export default class Reload extends Command {
         } catch (error) {
             await this.handleError(error);
         }
-
     }
 
+    /**
+     * Validates if the service exists in the inventory.
+     * @param serviceName - Name of the service to validate
+     * @returns True if the service is valid, otherwise throws an error
+     */
     private isServiceValid (serviceName?: string): boolean {
         if (!this.inventory.services.some(service => service.name === serviceName)) {
             this.error(`Service ${serviceName} is not found in inventory`);
@@ -86,6 +93,11 @@ export default class Reload extends Command {
         return true;
     }
 
+    /**
+     * Checks the builder type of the specified service from its docker-compose file.
+     * @param serviceName - Name of the service
+     * @returns The builder type (e.g., "node") or undefined if not found
+     */
     private checkServicesBuilder (serviceName: string): string | undefined {
         let serviceBuilder;
         const developmentService = this.inventory.services.find(s => s.name === serviceName && !s.source.includes("tilt/"));
@@ -100,6 +112,10 @@ export default class Reload extends Command {
         return serviceBuilder;
     }
 
+    /**
+     * Reloads a non-Node.js service by rebuilding and restarting it.
+     * @param serviceName - Name of the service to reload
+     */
     private async reloadNonNodeService (serviceName: string): Promise<void> {
         this.dependencyCache.update();
         this.log(`Service: ${serviceName} building...`);
@@ -108,6 +124,11 @@ export default class Reload extends Command {
         await this.dockerCompose.restart(serviceName);
     }
 
+    /**
+     * Handles errors that occur during the reload process.
+     * Logs recent Docker Compose logs and throws the error.
+     * @param error - The error object
+     */
     private async handleError (error: unknown): Promise<void> {
         this.log(`\n${"-".repeat(80)}`);
         this.log("Recent Docker Compose Logs:");
