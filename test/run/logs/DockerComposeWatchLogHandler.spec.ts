@@ -1,15 +1,8 @@
 import { expect, jest } from "@jest/globals";
-import fs from "fs";
+import { gray, greenBright, red, redBright, yellowBright } from "ansis";
 import DockerComposeWatchLogHandler from "../../../src/run/logs/DockerComposeWatchLogHandler";
-import { greenBright } from "ansis";
 
 describe("DockerComposeWatchLogHandler", () => {
-    const mockWriteFileSync = jest.spyOn(fs, "writeFileSync");
-    const testTime = new Date(2024, 1, 2, 1, 1, 0);
-    const logFile = "/tmp/log-file.txt";
-
-    const spyNow = jest.spyOn(Date, "now");
-
     const mockLogger = {
         log: jest.fn()
     };
@@ -18,137 +11,88 @@ describe("DockerComposeWatchLogHandler", () => {
 
     beforeEach(() => {
         jest.resetAllMocks();
-        dockerComposeWatchLogHandler = new DockerComposeWatchLogHandler(
-            logFile, mockLogger
-        );
-        // @ts-expect-error This is creating a spied version and is valid
-        spyNow.mockReturnValue(testTime);
+        dockerComposeWatchLogHandler = new DockerComposeWatchLogHandler(mockLogger);
     });
 
-    beforeEach(async () => {
-    });
+    const applicationLogTestCases = [
+        {
+            description: "logs npm install commencing events",
+            logMessage: `"my-service" | npm install commencing.`,
+            expectedLog: gray("Service: my-service installing dependencies!")
+        },
+        {
+            description: "logs npm install failed events",
+            logMessage: `"my-service" | npm install failed!.`,
+            expectedLog: red("Service: my-service installing dependencies failed!")
+        },
+        {
+            description: "logs application ready events",
+            logMessage: `"my-service" | Application Ready.`,
+            expectedLog: greenBright("Service: my-service ready!")
+        },
+        {
+            description: "logs application restarting events",
+            logMessage: `"my-service" | Nodemon Restarting...`,
+            expectedLog: yellowBright("Nodemon: my-service restarting...")
+        },
+        {
+            description: "logs application crashed events",
+            logMessage: `"my-service" | Nodemon Crashed!`,
+            expectedLog: redBright("Nodemon: my-service crashed!")
+        },
+        {
+            description: "logs service reload events",
+            logMessage: `"my-service" exited with code 0`,
+            expectedLog: greenBright("Service: my-service reloaded!")
+        }
+    ];
 
-    it("logs messages when ready (previous docker compose version)", () => {
-        const logMessage = [
-            "Watch configuration for service \"overseas-application\"",
-            "- Action rebuild for path \"/do\""
+    test.each(applicationLogTestCases)(
+        "$description",
+        ({ logMessage, expectedLog }) => {
+            dockerComposeWatchLogHandler.handle(logMessage);
+            expect(mockLogger.log).toHaveBeenCalledWith(expectedLog);
+        }
+    );
+
+    it("handles multiple log entries", () => {
+        const logMessages = [
+            `"service-one" | npm install commencing.`,
+            `"service-two" | npm install failed!.`,
+            `"service-three" | Application Ready.`,
+            `"service-four" | Nodemon Restarting...`,
+            `"service-five" | Nodemon Crashed!`,
+            `"service-six" exited with code 0`
         ].join("\n");
 
-        dockerComposeWatchLogHandler.handle(logMessage);
+        dockerComposeWatchLogHandler.handle(logMessages);
 
         expect(mockLogger.log).toHaveBeenCalledWith(
-            "Running services in development mode - watching for changes."
+            gray("Service: service-one installing dependencies!")
         );
-        expect(mockLogger.log).toHaveBeenCalledTimes(3);
-    });
-
-    it("logs messages when ready", () => {
-        const logMessage = [
-            "Watch enabled"
-        ].join("\n");
-
-        dockerComposeWatchLogHandler.handle(logMessage);
-
         expect(mockLogger.log).toHaveBeenCalledWith(
-            "Running services in development mode - watching for changes."
+            red("Service: service-two installing dependencies failed!")
         );
-        expect(mockLogger.log).toHaveBeenCalledTimes(3);
+        expect(mockLogger.log).toHaveBeenCalledWith(
+            greenBright("Service: service-three ready!")
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+            yellowBright("Nodemon: service-four restarting...")
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+            redBright("Nodemon: service-five crashed!")
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+            greenBright("Service: service-six reloaded!")
+        );
+        expect(mockLogger.log).toHaveBeenCalledTimes(6);
     });
 
-    it("writes log statements to file", () => {
+    it("ignores empty log entries", () => {
+        const logMessages = "\n\n";
 
-        const logLines = [
-            "Watch configuration for service \"overseas-application\"",
-            "- Action rebuild for path \"/do\"",
-            "another log entry"
-        ];
-        const logMessage = logLines.join("\n");
-
-        dockerComposeWatchLogHandler.handle(logMessage);
-
-        expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
-
-        const call = mockWriteFileSync.mock.calls[0];
-
-        expect(call[0]).toBe(logFile);
-        expect(call[2]).toEqual({
-            flag: "a"
-        });
-
-        const contentsWrittenToFile = call[1];
-
-        for (const expectedLine of logLines) {
-            // eslint-disable-next-line no-useless-escape
-            const pattern = new RegExp(`\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\.\\d{3}Z\\s-\\s${expectedLine}`, "g");
-
-            expect(pattern.test(contentsWrittenToFile.toString())).toBe(true);
-        }
-    });
-
-    it("writes cruft to file but not to console", () => {
-        const logLines = [
-            "A log line that was not expected",
-            "Another log line that was not expected"
-        ];
-        const logMessage = logLines.join("\n");
-
-        dockerComposeWatchLogHandler.handle(logMessage);
-
-        expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
-
-        const call = mockWriteFileSync.mock.calls[0];
-
-        const contentsWrittenToFile = call[1];
-
-        for (const expectedLine of logLines) {
-            // eslint-disable-next-line no-useless-escape
-            const pattern = new RegExp(`\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\.\\d{3}Z\\s-\\s${expectedLine}`, "g");
-
-            expect(pattern.test(contentsWrittenToFile.toString())).toBe(true);
-        }
+        dockerComposeWatchLogHandler.handle(logMessages);
 
         expect(mockLogger.log).not.toHaveBeenCalled();
-    });
-
-    it("notifies console when service is being reloaded", () => {
-
-        const logLines = [
-            "Rebuilding service \"my-awesome-service\""
-        ];
-        const logMessage = logLines.join("\n");
-
-        dockerComposeWatchLogHandler.handle(logMessage);
-
-        expect(mockLogger.log).toHaveBeenCalledWith("Reloading service: my-awesome-service");
-    });
-
-    it("notifies console when service has been reloaded (previous docker compose version)", () => {
-        const logLines = [
-            "Rebuilding service \"my-awesome-service\"",
-            "Another inconsequential log entry",
-            "Container my-awesome-service Started"
-        ];
-        const logMessage = logLines.join("\n");
-
-        dockerComposeWatchLogHandler.handle(logMessage);
-
-        expect(mockLogger.log).toHaveBeenCalledWith(
-            greenBright("Service: my-awesome-service reloaded")
-        );
-    });
-
-    it("notifies console when service has been reloaded", () => {
-        const logLines = [
-            "Rebuilding service \"my-awesome-service\"",
-            "Another inconsequential log entry",
-            "service \"my-awesome-service\" successfully built"
-        ];
-        const logMessage = logLines.join("\n");
-
-        dockerComposeWatchLogHandler.handle(logMessage);
-
-        expect(mockLogger.log).toHaveBeenCalledWith(
-            greenBright("Service: my-awesome-service reloaded")
-        );
     });
 });

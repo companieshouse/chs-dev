@@ -415,13 +415,10 @@ describe("DockerCompose", () => {
         });
     });
 
-    describe("watch", () => {
+    describe("build", () => {
 
         let dockerCompose;
-        const mockStdout = jest.fn();
-
-        const mockSterr = jest.fn();
-        const mockOnce = jest.fn();
+        const serviceName = "my-awesome-service";
 
         beforeEach(() => {
             jest.resetAllMocks();
@@ -432,9 +429,9 @@ describe("DockerCompose", () => {
 
         });
 
-        it("runs docker compose watch", async () => {
+        it("runs docker compose build", async () => {
 
-            await dockerCompose.watch();
+            await dockerCompose.build(serviceName);
 
             const expectedSpawnOptions = {
                 logHandler: { handle: mockWatchLogHandle },
@@ -452,14 +449,50 @@ describe("DockerCompose", () => {
 
             expect(spawnMock).toHaveBeenCalledWith("docker", [
                 "compose",
-                "watch"
-            ], expectedSpawnOptions);
+                "up",
+                "--build",
+                "--exit-code-from",
+                serviceName,
+                serviceName
+            ], expect.anything());
         });
 
         it("rejects when code is not 0 or 130", async () => {
             spawnMock.mockRejectedValue(1 as never);
 
-            await expect(dockerCompose.watch()).rejects.toBeInstanceOf(Error);
+            await expect(dockerCompose.build(serviceName)).rejects.toBeInstanceOf(Error);
+        });
+    });
+
+    describe("restart", () => {
+
+        let dockerCompose;
+        const serviceName = "my-awesome-service";
+
+        beforeEach(() => {
+            jest.resetAllMocks();
+            dockerCompose = new DockerCompose(config, logger);
+            (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
+
+            spawnMock.mockResolvedValue(undefined as never);
+
+        });
+
+        it("runs docker compose restart container", async () => {
+
+            await dockerCompose.restart(serviceName);
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "restart",
+                serviceName
+            ], expect.anything());
+        });
+
+        it("rejects when code is not 0 or 130", async () => {
+            spawnMock.mockRejectedValue(1 as never);
+
+            await expect(dockerCompose.restart(serviceName)).rejects.toBeInstanceOf(Error);
         });
     });
 

@@ -1,75 +1,98 @@
-import { greenBright } from "ansis";
-import { AbstractLogHandler } from "./logs-handler.js";
+import { greenBright, grey, red, redBright, yellowBright } from "ansis";
+import { LogHandler, Logger } from "./logs-handler.js";
+import stripAnsi from "strip-ansi";
 
-export class DockerComposeWatchLogHandler extends AbstractLogHandler {
+/**
+ * Handles log entries for development mode, parsing and logging
+ * specific events such as service ready, healthy, restart, and crash.
+ */
+export class DevelopmentWatchLogNodeHandler implements LogHandler {
+    private static readonly RESTART_REGEX = /"?([\w-]+)"?\s+\|\s+.*Nodemon Restarting.../;
+    private static readonly CRASHED_REGEX = /"?([\w-]+)"?\s+\|\s+.*Nodemon Crashed!/;
+    private static readonly READY_REGEX = /"?([\w-]+)"?\s+\|\s+.*Application Ready\./;
+    private static readonly BUILT_STATUS_REGEX = /"?([\w-]+)"?\s+.*exited with code 0/;
+    private static readonly NPM_INSTALL_COMPLETE_REGEX = /"?([\w-]+)"?\s+\|\s+.*npm install commencing\./;
+    private static readonly NPM_INSTALL_FAILED_REGEX = /"?([\w-]+)"?\s+\|\s+.*npm install failed!\./;
 
-    private static readonly READY_TO_RELOAD_REGEX = /Watch enabled|configuration for service/;
-    private static readonly REBUILD_SERVICE_REGEX = /Rebuilding\sservice\s+"([^"]*)"/;
-    private static readonly SERVICE_RELOADED_OLD_REGEX = /Container\s+([\dA-Za-z-]+)\s+(Healthy|Started)/;
-    private static readonly SERVICE_RELOADED_REGEX = /service\s+"([\dA-Za-z-]+)"\s+successfully\s+built/;
-    private servicesBeingReloaded: string[] = [];
+    // eslint-disable-next-line no-useless-constructor
+    constructor (private readonly logger: Logger) {}
 
-    protected logToConsole (logEntries: string[]): void {
-        logEntries.forEach((logEntry: string) => {
-            if (this.verbose) {
-                this.logger.log(logEntry);
-            }
+    /**
+     * Handles log entries by parsing and logging specific events.
+     * @param logEntries - Raw log entries as a string.
+     */
+    handle (logEntries: string): void {
+        for (const logEntry of logEntries.toString().split("\n")) {
+            if (!logEntry) continue;
 
-            if (logEntry.match(DockerComposeWatchLogHandler.READY_TO_RELOAD_REGEX)) {
-                this.logger.log(
-                    "Running services in development mode - watching for changes."
-                );
-                this.logger.log(
-                    "Trigger an update to a service by running:\n\n"
-                );
-                this.logger.log(
-                    "$ chs-dev reload <service>\n\n"
-                );
-                return;
-            }
+            // Match and log service install events
+            this.matchAndLog(
+                logEntry,
+                DevelopmentWatchLogNodeHandler.NPM_INSTALL_COMPLETE_REGEX,
+                (serviceName) => this.logger.log(grey(`Service: ${serviceName} installing dependencies!`))
+            );
 
-            const rebuildServiceMatch = logEntry.match(DockerComposeWatchLogHandler.REBUILD_SERVICE_REGEX);
+            // Match and log service install events failed
+            this.matchAndLog(
+                logEntry,
+                DevelopmentWatchLogNodeHandler.NPM_INSTALL_FAILED_REGEX,
+                (serviceName) => this.logger.log(red(`Service: ${serviceName} installing dependencies failed!`))
+            );
 
-            if (rebuildServiceMatch !== null) {
-                const [_, serviceName] = rebuildServiceMatch;
+            // Match and log service ready events
+            this.matchAndLog(
+                logEntry,
+                DevelopmentWatchLogNodeHandler.READY_REGEX,
+                (serviceName) => this.logger.log(greenBright(`Service: ${serviceName} ready!`))
+            );
 
-                this.servicesBeingReloaded = [
-                    ...this.servicesBeingReloaded,
-                    serviceName
-                ];
+            // Match and log service restart events
+            this.matchAndLog(
+                logEntry,
+                DevelopmentWatchLogNodeHandler.RESTART_REGEX,
+                (serviceName) => this.logger.log(yellowBright(`Nodemon: ${serviceName} restarting...`))
+            );
 
-                this.logger.log(`Reloading service: ${serviceName}`);
+            // Match and log service crash events
+            this.matchAndLog(
+                logEntry,
+                DevelopmentWatchLogNodeHandler.CRASHED_REGEX,
+                (serviceName) => this.logger.log(redBright(`Nodemon: ${serviceName} crashed!`))
+            );
 
-                return;
-            }
-
-            if (this.logRebuiltService(DockerComposeWatchLogHandler.SERVICE_RELOADED_REGEX, logEntry)) {
-                return;
-            }
-
-            this.logRebuiltService(DockerComposeWatchLogHandler.SERVICE_RELOADED_OLD_REGEX, logEntry);
-        });
+            // Match and log service reload events
+            this.matchAndLog(
+                logEntry,
+                DevelopmentWatchLogNodeHandler.BUILT_STATUS_REGEX,
+                (serviceName) => this.logger.log(greenBright(`Service: ${serviceName} reloaded!`))
+            );
+        }
     }
 
-    private logRebuiltService (regex: RegExp, logEntry: string): boolean {
-
-        let loggedUpdate = false;
-        const rebuiltServiceMatch = logEntry.match(regex);
-
-        if (rebuiltServiceMatch !== null) {
-            const [_, rebuiltServiceName] = rebuiltServiceMatch;
-
-            if (this.servicesBeingReloaded.includes(rebuiltServiceName)) {
-                this.servicesBeingReloaded = this.servicesBeingReloaded.filter(name => name !== rebuiltServiceName);
-
-                this.logger.log(greenBright(`Service: ${rebuiltServiceName} reloaded`));
-                loggedUpdate = true;
-            }
+    /**
+     * Matches a log entry against a regex and executes a callback if matched.
+     * @param logEntry - The log entry to match.
+     * @param regex - The regular expression to match against.
+     * @param callback - The callback to execute if a match is found.
+     */
+    private matchAndLog (
+        logEntry: string,
+        regex: RegExp,
+        callback: (serviceName: string) => void
+    ): void {
+        const cleanLog = this.cleanLogString(logEntry);
+        const match = cleanLog.match(regex);
+        if (match) {
+            const [, serviceName] = match;
+            callback(serviceName);
         }
+    }
 
-        return loggedUpdate;
+    private cleanLogString (str: string) {
+        // eslint-disable-next-line no-control-regex
+        return stripAnsi(str).replace(/[\x00-\x1F\x7F]/g, "");
     }
 
 }
 
-export default DockerComposeWatchLogHandler;
+export default DevelopmentWatchLogNodeHandler;
