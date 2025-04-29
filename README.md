@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/2.0.0 darwin-arm64 node-v20.18.0
+chs-dev/3.0.0 darwin-arm64 node-v20.18.0
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
