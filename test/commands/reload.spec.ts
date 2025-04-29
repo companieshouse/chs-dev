@@ -108,7 +108,27 @@ describe("reload spec", () => {
         expect(errorMock).toHaveBeenCalledWith("Service not-found is not found in inventory");
     });
 
-    it("should reload a valid node service", async () => {
+    it("should reload a valid node service when the force flag is present", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            flags: {
+                force: true
+            }
+        });
+
+        jest.spyOn(reload as any, "checkServicesBuilder").mockReturnValue("node");
+        const restartMock = jest.spyOn(reload["dockerCompose"], "restart");
+
+        await reload.run();
+
+        expect(logMock).toHaveBeenCalledWith("Reloading Node Container: service-one");
+        expect(restartMock).toHaveBeenCalledWith("service-one");
+    });
+
+    it("should return a log message when the force flag is not present for a valid node service", async () => {
         // @ts-expect-error
         parseMock.mockResolvedValue({
             args: {
@@ -124,8 +144,8 @@ describe("reload spec", () => {
 
         await reload.run();
 
-        expect(logMock).toHaveBeenCalledWith("Reloading Node Service: service-one");
-        expect(restartMock).toHaveBeenCalledWith("service-one");
+        expect(logMock).toHaveBeenCalledWith("Node services automatically sync changes. Reloading is not required.");
+        expect(logMock).toHaveBeenCalledWith("Use the --force flag (-f) to restart the container if necessary.");
     });
 
     it("should reload a valid non-node service", async () => {
@@ -168,7 +188,7 @@ describe("reload spec", () => {
 
         await reload.run();
 
-        expect(errorMock).toHaveBeenCalledWith("Service 'service-one' builder property missing in docker-compose");
+        expect(errorMock).toHaveBeenCalledWith("Service 'service-one' builder property missing in service definition");
     });
 
     it("should handle errors during reload", async () => {
@@ -178,7 +198,7 @@ describe("reload spec", () => {
                 service: "service-one"
             },
             flags: {
-                force: false
+                force: true
             }
         });
 
