@@ -138,3 +138,5 @@ version
 
 !src/run/logs
 !test/run/logs
+
+.DS_Store

@@ -1,16 +1,21 @@
 import { Args, Command, Config, Flags } from "@oclif/core";
-import { readFileSync } from "fs";
-import yaml from "yaml";
 import loadConfig from "../helpers/config-loader.js";
 import ChsDevConfig from "../model/Config.js";
 import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 import { DependencyCache } from "../run/dependency-cache.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import { Inventory } from "../state/inventory.js";
-import { StateManager } from "../state/state-manager.js";
 
+type ReloadFunc = (serviceName: string, flags: any) => Promise<void>
+
+const NODE_BUILDER = "node";
+
+/**
+ * The Reload command is responsible for rebuilding and restarting a specified service
+ * running in development mode. This allows developers to load any changes made to the
+ * source code without restarting the entire environment.
+ */
 export default class Reload extends Command {
-
     static description = "Rebuilds and restarts the supplied service running " +
         "in development mode to load in any changes to source code";
 
@@ -36,9 +41,9 @@ export default class Reload extends Command {
     private readonly inventory: Inventory;
     private readonly dependencyCache: DependencyCache;
     private readonly chsDevConfig: ChsDevConfig;
-    private readonly stateManager: StateManager;
     private readonly dockerCompose: DockerCompose;
     private readonly composeLogViewer: ComposeLogViewer;
+    private readonly reloadStrategies: Map<string, ReloadFunc>;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
@@ -49,9 +54,12 @@ export default class Reload extends Command {
         this.chsDevConfig = loadConfig();
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
         this.dockerCompose = new DockerCompose(this.chsDevConfig, logger);
-        this.stateManager = new StateManager(this.chsDevConfig.projectPath);
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.dependencyCache = new DependencyCache(this.chsDevConfig.projectPath);
+        this.reloadStrategies = new Map<string, ReloadFunc>([
+            [NODE_BUILDER, this.reloadNodeService.bind(this)],
+            ["default", this.reloadNonNodeService.bind(this)]
+        ]);
     }
 
     async run (): Promise<any> {
@@ -63,22 +71,24 @@ export default class Reload extends Command {
         const serviceBuilder = this.checkServicesBuilder(serviceName);
 
         if (!serviceBuilder) {
-            return this.error(`Service '${serviceName}' builder property missing in docker-compose`);
+            return this.error(`Service '${serviceName}' builder property missing in service definition`);
         }
 
+        const reloadStrategy = (this.reloadStrategies.get(serviceBuilder) || this.reloadStrategies.get("default")) as ReloadFunc;
+
         try {
-            if (serviceBuilder === "node") {
-                this.log(`Reloading Node Service: ${serviceName}`);
-                await this.dockerCompose.restart(serviceName);
-            } else {
-                this.reloadNonNodeService(serviceName);
-            }
+            await reloadStrategy(serviceName, flags);
         } catch (error) {
             await this.handleError(error);
         }
 
     }
 
+    /**
+     * Validates if the service exists in the inventory.
+     * @param serviceName - Name of the service to validate
+     * @returns True if the service is valid, otherwise throws an error
+     */
     private isServiceValid (serviceName?: string): boolean {
         if (!this.inventory.services.some(service => service.name === serviceName)) {
             this.error(`Service ${serviceName} is not found in inventory`);
@@ -86,20 +96,39 @@ export default class Reload extends Command {
         return true;
     }
 
+    /**
+     * Checks the builder type of the specified service from its docker-compose file.
+     * @param serviceName - Name of the service
+     * @returns The builder type (e.g., "node") or undefined if not found
+     */
     private checkServicesBuilder (serviceName: string): string | undefined {
         let serviceBuilder;
         const developmentService = this.inventory.services.find(s => s.name === serviceName && !s.source.includes("tilt/"));
-        if (developmentService && developmentService.source) {
-            const dockerCompose = yaml.parse(readFileSync(developmentService.source).toString("utf-8"));
-            dockerCompose.services[serviceName].labels.forEach((label: string) => {
-                if (/^chs\.local\.builder=/.test(label)) {
-                    serviceBuilder = label.split("=")[1].toString().toLowerCase();
-                }
-            });
+        if (developmentService && developmentService.builder) {
+            serviceBuilder = developmentService.builder;
         }
         return serviceBuilder;
     }
 
+    /**
+     * Reloads a Node.js service by restarting container.
+     * @param serviceName - Name of the service to reload
+     * @param flags - Flags passed to the command
+     */
+    private async reloadNodeService (serviceName: string, flags: any): Promise<void> {
+        if (flags.force) {
+            this.log(`Reloading Node Container: ${serviceName}`);
+            await this.dockerCompose.restart(serviceName);
+        } else {
+            this.log(`Node services automatically sync changes. Reloading is not required.`);
+            this.log(`Use the --force flag (-f) to restart the container if necessary.`);
+        }
+    }
+
+    /**
+     * Reloads a non-Node.js service by rebuilding and restarting it.
+     * @param serviceName - Name of the service to reload
+     */
     private async reloadNonNodeService (serviceName: string): Promise<void> {
         this.dependencyCache.update();
         this.log(`Service: ${serviceName} building...`);

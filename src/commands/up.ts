@@ -22,7 +22,6 @@ export default class Up extends Command {
         "$ chs-dev up"
     ];
 
-    private servicesByBuilder!: ServicesByBuilder;
     private readonly dependencyCache: DependencyCache;
     private readonly dockerCompose: DockerCompose;
     private readonly stateManager: StateManager;
@@ -30,6 +29,7 @@ export default class Up extends Command {
     private readonly composeLogViewer: ComposeLogViewer;
     private readonly inventory: Inventory;
     private readonly permanentRepositories: PermanentRepositories;
+    private servicesByBuilder!: ServicesByBuilder;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
@@ -74,20 +74,10 @@ export default class Up extends Command {
 
         if (this.hasServicesInDevelopmentMode) {
             try {
-                this.servicesByBuilder = this.servicesInDevelopmentMode.reduce((builderMap, serviceName) => {
-                    const service = this.inventory.services.find(
-                        s => s.name === serviceName && !s.source.includes("tilt/")
-                    );
-                    if (service) {
-                        const builder = service.builder || "undefined";
-                        if (!builderMap[builder]) {
-                            builderMap[builder] = [];
-                        }
-                        builderMap[builder].push(service);
-                    }
-                    return builderMap;
-                }, {} as Record<string, Service[]>);
-                const hookOptions: Record<string, ServicesByBuilder> = { servicesByBuilder: this.servicesByBuilder };
+                this.servicesByBuilder = this.getServicesByBuilders(this.servicesInDevelopmentMode);
+                const hookOptions: Record<string, ServicesByBuilder> = {
+                    servicesByBuilder: this.servicesByBuilder
+                };
                 await this.config.runHook("check-development-service-config", hookOptions);
             } catch (error) {
                 return this.error(error as Error);
@@ -160,6 +150,23 @@ export default class Up extends Command {
 
     private get servicesInDevelopmentMode (): string[] {
         return this.stateManager.snapshot.servicesWithLiveUpdate;
+    }
+
+    private getServicesByBuilders (services: string[]): Record<string, Service[]> {
+        return services.reduce((builderMap, serviceName) => {
+            const service = this.inventory.services.find(
+                s => s.name === serviceName && !s.source.includes("tilt/")
+            );
+            if (service) {
+                const builder = service.builder || "undefined";
+                if (!builderMap[builder]) {
+                    builderMap[builder] = [];
+                }
+                builderMap[builder].push(service);
+            }
+            return builderMap;
+        }, {} as Record<string, Service[]>);
+
     }
 
     private async synchroniseServicesInDevelopmentMode (): Promise<any> {

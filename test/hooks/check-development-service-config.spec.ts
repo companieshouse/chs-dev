@@ -1,10 +1,8 @@
 import { expect, jest } from "@jest/globals";
-import { existsSync, readFileSync } from "fs";
+import { existsSync } from "fs";
+import * as validators from "../../src/helpers/development-mode-validators.js";
 import { hook as checkDevelopmentServiceConfigHook } from "../../src/hooks/check-development-service-config";
 import loadConfig from "./../../src/helpers/config-loader.js";
-// import { join } from "path";
-import path from "path";
-import * as yaml from "yaml";
 
 jest.mock("fs");
 jest.mock("yaml");
@@ -22,11 +20,6 @@ describe("check-development-service-config hook", () => {
         source: "/mock/source/path",
         builder: "node"
     };
-
-    const mockServicesByBuilder = {
-        node: [mockService]
-    };
-    const servicePath = path.join(mockProjectPath, "repositories", mockService.name);
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -48,33 +41,12 @@ describe("check-development-service-config hook", () => {
         );
     });
 
-    it("should validate submodule integration and warn if label is missing", async () => {
-        (existsSync as jest.Mock).mockImplementationOnce(() => true);
-        (existsSync as jest.Mock).mockImplementationOnce((path: any) => {
-            if (path.includes(".gitmodules")) {
-                return true;
-            }
-        });
-        const mockYaml = { services: { "service-one": { label: [] } } };
-        (yaml.parse as jest.Mock).mockReturnValue(
-            mockYaml
-        );
-
-        // @ts-expect-error
-        await checkDevelopmentServiceConfigHook({
-            servicesByBuilder: mockServicesByBuilder,
-            context: mockContext
-        });
-
-        expect(mockContext.warn).toHaveBeenCalledWith(
-            expect.stringContaining("Service mock-service is missing the label \"chs.local.builder.requiresSecrets=true\" in its docker-compose configuration as it depends on a submodule."));
-
-    });
-
     it("should warn if package.json is missing", async () => {
-        (existsSync as jest.Mock).mockImplementation((p) =>
-            p === servicePath
-        );
+        (existsSync as jest.Mock).mockImplementationOnce((p) => true);
+
+        jest.spyOn(validators, "validateLabelForSubmodulesIntegration").mockReturnThis();
+
+        (existsSync as jest.Mock).mockImplementationOnce((p) => false);
 
         // @ts-expect-error
         await checkDevelopmentServiceConfigHook({ servicesByBuilder: { node: [mockService] }, context: mockContext });
@@ -84,30 +56,40 @@ describe("check-development-service-config hook", () => {
         );
     });
 
-    it("should warn if chs-dev script or nodemon devDependency is missing", async () => {
-        (existsSync as jest.Mock).mockImplementationOnce(() => true);
-        (existsSync as jest.Mock).mockImplementationOnce((p:any) => {
-            if (p.includes(".gitmodules")) {
-                return false;
-            }
-        });
-        (existsSync as jest.Mock).mockImplementationOnce(() => true);
+    it("should warn if nodemon-entry.ts is missing", async () => {
+        (existsSync as jest.Mock).mockImplementationOnce((p) => true);
+        jest.spyOn(validators, "validateLabelForSubmodulesIntegration").mockReturnThis();
 
-        (readFileSync as jest.Mock).mockImplementationOnce((p:any) => {
-            if (p.includes("package.json")) {
-                return JSON.stringify({ scripts: {}, devDependencies: {} });
-            }
-            return "";
-        });
+        (existsSync as jest.Mock).mockImplementationOnce((p) => true);
+        jest.spyOn(validators, "validateNodePackageJson").mockReturnThis();
+
+        (existsSync as jest.Mock).mockImplementation((p) => false);
 
         // @ts-expect-error
         await checkDevelopmentServiceConfigHook({ servicesByBuilder: { node: [mockService] }, context: mockContext });
 
-        expect(mockContext.warn).toHaveBeenCalledWith(
-            expect.stringContaining("chs-dev")
+        expect(mockContext.error).toHaveBeenCalledWith(
+            expect.stringContaining("nodemon entry file in location: ./src/bin/nodemon-entry.ts or ./server/bin/nodemon-entry.ts")
         );
-        expect(mockContext.warn).toHaveBeenCalledWith(
-            expect.stringContaining("nodemon package")
+    });
+
+    it("should warn if nodemon.json.ts is missing", async () => {
+        (existsSync as jest.Mock).mockImplementationOnce((p) => true);
+        jest.spyOn(validators, "validateLabelForSubmodulesIntegration").mockReturnThis();
+
+        (existsSync as jest.Mock).mockImplementationOnce((p) => true);
+        jest.spyOn(validators, "validateNodePackageJson").mockReturnThis();
+
+        (existsSync as jest.Mock).mockImplementationOnce((p) => true);
+        jest.spyOn(validators, "validateNodemonJsonContent").mockReturnThis();
+
+        (existsSync as jest.Mock).mockImplementation((p) => false);
+
+        // @ts-expect-error
+        await checkDevelopmentServiceConfigHook({ servicesByBuilder: { node: [mockService] }, context: mockContext });
+
+        expect(mockContext.error).toHaveBeenCalledWith(
+            expect.stringContaining("nodemon.json")
         );
     });
 
