@@ -100,18 +100,19 @@ export default class Up extends Command {
                 this.log(
                     "Running services in development mode - watching for changes.\n"
                 );
-                this.log(
-                    "Non-Node Applications: Sync changes, Run: '$ chs-dev reload <serviceName>'\n"
-                );
 
                 for (const [builder, services] of Object.entries(this.servicesByBuilder)) {
                     if (builder === "node") {
                         this.log(
                             "Node Applications: Automatically sync changes.\n"
                         );
+                    } else if (builder !== "undefined") {
+                        this.log(
+                            "Non-Node Applications: To Sync changes, Run: '$ chs-dev reload <serviceName>' in a new shell session.\n"
+                        );
                     }
                     for (const service of services) {
-                        this.log(`Waiting for Service: ${service.name} to be ready (this can take a moment or two)...`);
+                        this.log(`Waiting for Service: ${service.name} to be ready (this can take a moment or two)...\n`);
                     }
                     if (builder !== "undefined" && builder !== "node") {
                         this.dockerCompose.healthStatus(services.map(service => service.name));

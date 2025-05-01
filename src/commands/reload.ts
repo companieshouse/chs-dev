@@ -81,7 +81,6 @@ export default class Reload extends Command {
         } catch (error) {
             await this.handleError(error);
         }
-
     }
 
     /**
@@ -138,6 +137,11 @@ export default class Reload extends Command {
         this.dockerCompose.healthStatus([serviceName]);
     }
 
+    /**
+     * Handles errors that occur during the reload process.
+     * Logs recent Docker Compose logs and throws the error.
+     * @param error - The error object
+     */
     private async handleError (error: unknown): Promise<void> {
         this.log(`\n${"-".repeat(80)}`);
         this.log("Recent Docker Compose Logs:");

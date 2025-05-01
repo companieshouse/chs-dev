@@ -29,15 +29,28 @@ export const hook: Hook<"check-development-service-config"> = async ({ servicesB
     }
 };
 
+/**
+* Checks the health status for Non Node Applications
+* @param service - Service object.
+* @param context - Context for logging messages.
+* @returns {void}
+*/
 const checkServiceHealthCheckConfig = (service: Service, context) => {
     const dockerCompose = yaml.parse(readFileSync(service.source, "utf-8"));
     const healthCheckProperty = dockerCompose.services?.[service.name]?.healthcheck || "undefined";
     if (healthCheckProperty === "undefined") {
         context.warn(`Service ${service.name} is missing the healthcheck property in its docker-compose.yaml file.\n`);
-        logDocumentationLink(context);
+        logDocumentationLink(context, "healthcheck");
     }
 };
 
+/**
+* Validates the configuration of a Node.js service
+* @param service - Service object.
+* @param projectPath - Path to the project root directory.
+* @param context - Context for logging messages.
+* @returns {void}
+*/
 const checkNodeServiceConfig = (service: Service, projectPath: string, context) => {
     const servicePath = join(projectPath, "repositories", service.name);
     const nodemonConfigPath = join(servicePath, "nodemon.json");

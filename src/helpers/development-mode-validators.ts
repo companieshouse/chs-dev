@@ -3,7 +3,10 @@ import { join } from "path";
 import Service from "../model/Service.js";
 import yaml from "yaml";
 
-const DOCUMENTATION_LINKS = "troubleshooting-remedies/correctly-node-services-for-development-mode.md";
+const DOCUMENTATION_LINKS = {
+    node: "troubleshooting-remedies/correctly-node-services-for-development-mode.md",
+    healthcheck: "troubleshooting-remedies/correctly-add-healthcheck-to-service-docker-compose.md"
+};
 
 const documentationLink = (documentationFileName: string) => {
     return `https://www.github.com/companieshouse/chs-dev/blob/main/docs/${documentationFileName}`;
@@ -102,6 +105,6 @@ export const validateNodemonJsonContent = (projectPath: string, actualNodemonCon
     }
 };
 
-export const logDocumentationLink = (context) => {
-    context.error(`Use as setup guide:- ${documentationLink(DOCUMENTATION_LINKS)}`);
+export const logDocumentationLink = (context, doctype = "node") => {
+    context.error(`Use as setup guide:- ${documentationLink(DOCUMENTATION_LINKS[doctype])}\n`);
 };

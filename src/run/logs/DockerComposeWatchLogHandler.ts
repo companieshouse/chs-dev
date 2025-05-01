@@ -4,7 +4,7 @@ import stripAnsi from "strip-ansi";
 
 /**
  * Handles log entries for development watch logs, parsing and logging
- * specific events such as service start, restart, exit, and crash.
+ * specific events such as service ready, healthy, restart, and crash.
  */
 export class DevelopmentWatchLogNodeHandler implements LogHandler {
     // Regular expressions for matching log patterns
