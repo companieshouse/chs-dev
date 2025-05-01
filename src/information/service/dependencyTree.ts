@@ -22,6 +22,16 @@ export default class DependencyTree {
         }
     };
 
+    generateFlatTree = (serviceName : string) => {
+
+        const service: Service | undefined = this.inventory.services.find(item => item.name === serviceName);
+        if (service !== undefined) {
+            var services = this.getHumanReadableTree(service.dependencyTree);
+            services = Array.from(new Set(services.split("\n").filter(line => line.trim() !== "").map((line, index) => (index === 0 ? line.trim() : "\t" + line.trim())))).join("\n");
+            console.log(services);
+        }
+    };
+
     getHumanReadableTree (dependencyTree: DependencyNode): string {
         let output = "";
         const space = "";

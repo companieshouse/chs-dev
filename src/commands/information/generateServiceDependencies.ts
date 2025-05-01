@@ -55,6 +55,9 @@ export default class GenerateServiceDependencyDiagrams extends AbstractStateModi
             if (type === "tree" ){
                 this.tree.generateTree(serviceName);
             }
+            if (type === "flattree" ){
+                this.tree.generateFlatTree(serviceName);
+            }
             else if (type === "diagram" ){
                 this.diagram.createDependencyDiagrams(serviceName);
             }else {
