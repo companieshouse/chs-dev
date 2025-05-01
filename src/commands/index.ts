@@ -12,7 +12,6 @@ import DevelopmentEnable from "./development/enable.js";
 import InformationService from "./information/generateServiceDependencies.js"
 import InformationSystem from "./information/generateSystemDependencies.js"
 import DevelopmentDisable from "./development/disable.js";
-import RepositoriesReport from "./information/repositories/generateReport.js";
 import ServicesAvailable from "./services/available.js";
 import ServiceEnable from "./services/enable.js";
 import ServiceDisable from "./services/disable.js";
@@ -41,7 +40,6 @@ export const commands = {
     "services:disable": ServiceDisable,
     "information:service": InformationService,
     "information:system": InformationSystem,
-    "information:repositories:report": RepositoriesReport,
     "modules:available": ModulesAvailable,
     "modules:enable": ModulesEnable,
     "modules:disable": ModulesDisable,

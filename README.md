@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/2.0.0 darwin-arm64 node-v20.18.0
+chs-dev/2.0.0 darwin-arm64 node-v23.7.0
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -183,7 +183,6 @@ USAGE
 * [`chs-dev exclusions remove SERVICE`](#chs-dev-exclusions-remove-service)
 * [`chs-dev help [COMMAND]`](#chs-dev-help-command)
 * [`chs-dev include SERVICE`](#chs-dev-include-service)
-* [`chs-dev information repositories report`](#chs-dev-information-repositories-report)
 * [`chs-dev information service SERVICES`](#chs-dev-information-service-services)
 * [`chs-dev information system`](#chs-dev-information-system)
 * [`chs-dev logs [SERVICENAME]`](#chs-dev-logs-servicename)
@@ -412,18 +411,6 @@ DESCRIPTION
 
 ALIASES
   $ chs-dev include
-```
-
-## `chs-dev information repositories report`
-
-Generates a report documenting key information about repositories
-
-```
-USAGE
-  $ chs-dev information repositories report
-
-DESCRIPTION
-  Generates a report documenting key information about repositories
 ```
 
 ## `chs-dev information service SERVICES`
