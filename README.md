@@ -191,6 +191,7 @@ USAGE
 * [`chs-dev services available`](#chs-dev-services-available)
 * [`chs-dev services disable SERVICES`](#chs-dev-services-disable-services)
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
+* [`chs-dev state clean`](#chs-dev-state-clean)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
 * [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
@@ -566,6 +567,18 @@ ARGUMENTS
 
 DESCRIPTION
   Enables the services and any dependencies for use within the Docker environment
+```
+
+## `chs-dev state clean`
+
+Wipes the state of chs-dev and revert to a default state
+
+```
+USAGE
+  $ chs-dev state clean
+
+DESCRIPTION
+  Wipes the state of chs-dev and revert to a default state
 ```
 
 ## `chs-dev status`
