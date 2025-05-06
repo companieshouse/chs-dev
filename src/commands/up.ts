@@ -115,7 +115,7 @@ export default class Up extends Command {
                         this.log(`Waiting for Service: ${service.name} to be ready (this can take a moment or two)...\n`);
                     }
                     if (builder !== "undefined" && builder !== "node") {
-                        this.dockerCompose.healthStatus(services.map(service => service.name));
+                        this.dockerCompose.healthCheck(services.map(service => service.name));
                     }
                 }
 

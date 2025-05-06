@@ -105,11 +105,19 @@ export class DockerCompose {
         );
     }
 
-    async build (serviceName: string, signal?: AbortSignal): Promise<void> {
-        return this.runDockerCompose(["up", "--build", "--exit-code-from", serviceName, serviceName],
-            new LogNothingLogHandler(this.logFile, this.logger),
+    async build (serviceName: string, regxPattern?: RegExp, signal?: AbortSignal): Promise<boolean | void> {
+        const logHandler = regxPattern
+            ? new PatternMatchingConsoleLogHandler(
+                regxPattern, this.logFile, this.logger
+            )
+            : new LogNothingLogHandler(this.logFile, this.logger);
+
+        await this.runDockerCompose(
+            ["up", "--build", "--exit-code-from", serviceName, serviceName],
+            logHandler,
             signal
         );
+        return regxPattern ? (logHandler as { matchFoundByPattern: boolean }).matchFoundByPattern : undefined;
     }
 
     restart (serviceName: string, signal?: AbortSignal): Promise<void> {
@@ -137,7 +145,7 @@ export class DockerCompose {
         return this.runDockerCompose(args, logHandler, signal);
     }
 
-    healthStatus (serviceNames:string[]): void {
+    healthCheck (serviceNames:string[]): void {
         const servicesNotReady: string[] = [];
         const containersInspection = JSON.parse(execSync(`docker inspect ${serviceNames}`).toString("utf8"));
 
@@ -156,7 +164,7 @@ export class DockerCompose {
 
         if (servicesNotReady.length > 0) {
             setTimeout(() => {
-                this.healthStatus(servicesNotReady);
+                this.healthCheck(servicesNotReady);
             }, 3000);
         }
     }

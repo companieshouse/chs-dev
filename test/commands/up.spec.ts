@@ -49,7 +49,8 @@ const MODULE_WITH_SERVICE_IN_DEV_MODE = {
 };
 
 const dockerComposeMock = {
-    up: jest.fn()
+    up: jest.fn(),
+    healthCheck: jest.fn()
 };
 
 const developmentModeMock = {
@@ -173,15 +174,26 @@ describe("Up command", () => {
     });
 
     describe("services in development mode", () => {
+
         beforeEach(() => {
             jest.resetAllMocks();
-
+            Object.defineProperty(up, "hasServicesInDevelopmentMode", {
+                get: jest.fn(() => true)
+            });
             setUpCommand(SERVICES_IN_DEV_MODE);
         });
 
-        it("should call up", async () => {
+        it("should call up and check-development-service-config hook", async () => {
+            const mockBuilders = {
+                node: [{ name: "service-one", builder: "node" }]
+            };
+            const mockHookOptions = {
+                servicesByBuilder: mockBuilders
+            };
+            jest.spyOn(up as any, "getServicesByBuilders").mockReturnValue(mockBuilders);
             await up.run();
 
+            expect(runHookMock).toHaveBeenCalledWith("check-development-service-config", mockHookOptions);
             expect(dockerComposeMock.up).toHaveBeenCalledTimes(1);
         });
 
@@ -197,6 +209,17 @@ describe("Up command", () => {
             await up.run();
 
             expect(developmentModeMock.start).toHaveBeenCalled();
+        });
+
+        it("should call health check ", async () => {
+            const mockBuildersJava = {
+                java: [{ name: "service-one", builder: "java" }]
+            };
+
+            jest.spyOn(up as any, "getServicesByBuilders").mockReturnValue(mockBuildersJava);
+            await up.run();
+
+            expect(dockerComposeMock.healthCheck).toHaveBeenCalled();
         });
 
         it("should update dependency cache", async () => {

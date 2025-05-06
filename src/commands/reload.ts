@@ -5,10 +5,13 @@ import { ComposeLogViewer } from "../run/compose-log-viewer.js";
 import { DependencyCache } from "../run/dependency-cache.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import { Inventory } from "../state/inventory.js";
+import { join } from "path";
+import { existsSync, unlinkSync } from "fs";
 
 type ReloadFunc = (serviceName: string, flags: any) => Promise<void>
 
 const NODE_BUILDER = "node";
+const NO_CHANGES_PATTERN = /"?([\w-]+)"?\s+\|\s+.*No changes\./;
 
 /**
  * The Reload command is responsible for rebuilding and restarting a specified service
@@ -127,14 +130,25 @@ export default class Reload extends Command {
     /**
      * Reloads a non-Node.js service by rebuilding and restarting it.
      * @param serviceName - Name of the service to reload
+     *  @param flags - Flags passed to the command
      */
-    private async reloadNonNodeService (serviceName: string): Promise<void> {
+    private async reloadNonNodeService (serviceName: string, flags: any): Promise<void> {
+        const codeHashFile = this.getCodeHashFile(serviceName);
+        if (flags.force && codeHashFile) {
+            unlinkSync(codeHashFile);
+        }
         this.dependencyCache.update();
         this.log(`Service: ${serviceName} building...`);
-        await this.dockerCompose.build(`${serviceName}-builder`);
-        this.log(`Service: ${serviceName} restarting...`);
-        await this.dockerCompose.restart(serviceName);
-        this.dockerCompose.healthStatus([serviceName]);
+
+        const noChangesFound = await this.dockerCompose.build(`${serviceName}-builder`, NO_CHANGES_PATTERN);
+        if (noChangesFound) {
+            this.log(`No changes found in code. Terminating reload.`);
+            this.log(`Use the --force flag (-f) to rebuild if necessary.`);
+        } else {
+            this.log(`Service: ${serviceName} restarting...`);
+            await this.dockerCompose.restart(serviceName);
+            this.dockerCompose.healthCheck([serviceName]);
+        }
     }
 
     /**
@@ -150,5 +164,19 @@ export default class Reload extends Command {
             follow: false
         });
         this.error(error as Error);
+    }
+
+    /**
+     * Gets the codeHash file and returns undefined if it doesnt exist.
+     * @param serviceName - Name of the service
+     */
+    private getCodeHashFile (serviceName: string): string | undefined {
+        const codeHashFile = join(
+            this.chsDevConfig.projectPath,
+            "local",
+            serviceName,
+            "out/.code.hash"
+        );
+        return existsSync(codeHashFile) ? codeHashFile : undefined;
     }
 }

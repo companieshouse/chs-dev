@@ -19,6 +19,14 @@ export class DevelopmentWatchLogNodeHandler implements LogHandler {
     };
 
     private static readonly LOG_ACTIONS = {
+        READY: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(greenBright(`${timestamp} - Service: ${serviceName} ready!`)),
+        HEALTHY_STATUS: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(greenBright(`${timestamp} - Service: ${serviceName} ready!`)),
+        RESTART: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(yellowBright(`${timestamp} - Nodemon: ${serviceName} restarting...`)),
+        CRASHED: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(redBright(`${timestamp} - Nodemon: ${serviceName} crashed!`)),
         NPM_INSTALL_COMPLETE: (
             logger: Logger,
             serviceName: string,
@@ -27,26 +35,14 @@ export class DevelopmentWatchLogNodeHandler implements LogHandler {
             logger.log(
                 grey(`${timestamp} - Service: ${serviceName} installing dependencies!`)
             ),
-        READY: (logger: Logger, serviceName: string, timestamp: string) =>
-            logger.log(greenBright(`${timestamp} - Service: ${serviceName} ready!`)),
-        HEALTHY_STATUS: (logger: Logger, serviceName: string, timestamp: string) =>
-            logger.log(greenBright(`${timestamp} - Service: ${serviceName} ready!`)),
-        RESTART: (logger: Logger, serviceName: string, timestamp: string) =>
-            logger.log(
-                yellowBright(`${timestamp} - Nodemon: ${serviceName} restarting...`)
-            ),
         NPM_INSTALL_FAILED: (
             logger: Logger,
             serviceName: string,
             timestamp: string
         ) =>
             logger.log(
-                red(
-                    `${timestamp} - Service: ${serviceName} installing dependencies failed!`
-                )
+                red(`${timestamp} - Service: ${serviceName} installing dependencies failed!`)
             ),
-        CRASHED: (logger: Logger, serviceName: string, timestamp: string) =>
-            logger.log(redBright(`${timestamp} - Nodemon: ${serviceName} crashed!`)),
         UNHEALTHY_STATUS: (
             logger: Logger,
             serviceName: string,
@@ -55,10 +51,6 @@ export class DevelopmentWatchLogNodeHandler implements LogHandler {
             logger.log(redBright(`${timestamp} - Service: ${serviceName} crashed!`))
     };
 
-    /**
-   * Constructor to initialize the logger.
-   * @param logger - Logger instance for logging messages.
-   */
     // eslint-disable-next-line no-useless-constructor
     constructor (private readonly logger: Logger) {}
 
@@ -84,7 +76,7 @@ export class DevelopmentWatchLogNodeHandler implements LogHandler {
             ];
                     const timestamp = new Date().toISOString();
                     action(this.logger, serviceName, timestamp);
-                    break; // Exit loop once a match is found
+                    break;
                 }
             }
         }
