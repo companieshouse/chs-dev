@@ -12,19 +12,15 @@ import {
 } from "../helpers/development-mode-validators.js";
 import Service from "../model/Service.js";
 
-type ServicesByBuilder = { [builder: string]: Service[] };
-
 // @ts-ignore
-export const hook: Hook<"check-development-service-config"> = async ({ servicesByBuilder, context }: { servicesByBuilder: ServicesByBuilder }) => {
+export const hook: Hook<"check-development-service-config"> = async ({ services, context }: { services: Service[] }) => {
     const projectPath = loadConfig().projectPath;
 
-    for (const [builder, services] of Object.entries(servicesByBuilder)) {
-        for (const service of services) {
-            if (builder === "node") {
-                checkNodeServiceConfig(service, projectPath, context);
-            } else if (builder !== "undefined") {
-                checkServiceHealthCheckConfig(service, context);
-            }
+    for (const service of services) {
+        if (service.builder === "node") {
+            checkNodeServiceConfig(service, projectPath, context);
+        } else if (service.builder === "java" || !service.builder) {
+            checkServiceHealthCheckConfig(service, context);
         }
     }
 };

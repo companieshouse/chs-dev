@@ -13,7 +13,11 @@ import { PermanentRepositories } from "../state/permanent-repositories.js";
 import { StateManager } from "../state/state-manager.js";
 import Service from "../model/Service.js";
 
-type ServicesByBuilder = {[builder: string]: Service[]};
+type ServicesBuildContext = {
+    services: Service[];
+    isNodePresent?: boolean;
+    isJavaPresent?: boolean;
+};
 export default class Up extends Command {
 
     static description: string = "Brings up the docker-chs-development environment";
@@ -29,7 +33,7 @@ export default class Up extends Command {
     private readonly composeLogViewer: ComposeLogViewer;
     private readonly inventory: Inventory;
     private readonly permanentRepositories: PermanentRepositories;
-    private servicesByBuilder!: ServicesByBuilder;
+    private servicesBuildContext!: ServicesBuildContext;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
@@ -74,9 +78,9 @@ export default class Up extends Command {
 
         if (this.hasServicesInDevelopmentMode) {
             try {
-                this.servicesByBuilder = this.getServicesByBuilders(this.servicesInDevelopmentMode);
-                const hookOptions: Record<string, ServicesByBuilder> = {
-                    servicesByBuilder: this.servicesByBuilder
+                this.servicesBuildContext = this.getServicesBuildContext(this.servicesInDevelopmentMode);
+                const hookOptions: Record<string, Service[]> = {
+                    services: this.servicesBuildContext.services
                 };
                 await this.config.runHook("check-development-service-config", hookOptions);
             } catch (error) {
@@ -100,23 +104,29 @@ export default class Up extends Command {
                 this.log(
                     "Running services in development mode - watching for changes.\n"
                 );
+                const { services, isJavaPresent, isNodePresent } = this.servicesBuildContext;
 
-                for (const [builder, services] of Object.entries(this.servicesByBuilder)) {
-                    if (builder === "node") {
-                        this.log(
-                            "Node Applications: Automatically sync changes.\n"
-                        );
-                    } else if (builder !== "undefined") {
-                        this.log(
-                            "Non-Node Applications: To Sync changes, Run: '$ chs-dev reload <serviceName>' in a new shell session.\n"
-                        );
-                    }
-                    for (const service of services) {
-                        this.log(`Waiting for Service: ${service.name} to be ready (this can take a moment or two)...\n`);
-                    }
-                    if (builder !== "undefined" && builder !== "node") {
-                        this.dockerCompose.healthCheck(services.map(service => service.name));
-                    }
+                if (isNodePresent) {
+                    this.log(
+                        "Node Applications: Automatically sync changes.\n"
+                    );
+                }
+                if (isJavaPresent) {
+                    this.log(
+                        "Non-Node Applications: To Sync changes, Run: '$ chs-dev reload <serviceName>' in a new shell session.\n"
+                    );
+                }
+
+                const serviceNames = services.map(service => service.name).join(", ");
+                this.log(`Waiting for Services: ${serviceNames} to be ready...\n`);
+
+                if (isJavaPresent) {
+                    const javaServicesNames = services.length > 1
+                        ? services.filter(service => {
+                            return service.builder === "java";
+                        }).map(service => service.name)
+                        : [services[0].name];
+                    this.dockerCompose.healthCheck(javaServicesNames);
                 }
 
                 this.dependencyCache.update();
@@ -153,21 +163,25 @@ export default class Up extends Command {
         return this.stateManager.snapshot.servicesWithLiveUpdate;
     }
 
-    private getServicesByBuilders (services: string[]): Record<string, Service[]> {
+    private getServicesBuildContext (services: string[]): ServicesBuildContext {
         return services.reduce((builderMap, serviceName) => {
             const service = this.inventory.services.find(
                 s => s.name === serviceName && !s.source.includes("tilt/")
             );
             if (service) {
                 const builder = service.builder || "undefined";
-                if (!builderMap[builder]) {
-                    builderMap[builder] = [];
+                if (builder === "node") {
+                    builderMap.isNodePresent = true;
+                } else if (builder === "java") {
+                    builderMap.isJavaPresent = true;
                 }
-                builderMap[builder].push(service);
+                if (!Array.isArray(builderMap.services)) {
+                    builderMap.services = [];
+                }
+                builderMap.services.push(service);
             }
             return builderMap;
-        }, {} as Record<string, Service[]>);
-
+        }, {} as ServicesBuildContext);
     }
 
     private async synchroniseServicesInDevelopmentMode (): Promise<any> {

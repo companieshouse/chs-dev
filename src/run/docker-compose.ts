@@ -147,7 +147,8 @@ export class DockerCompose {
 
     healthCheck (serviceNames:string[]): void {
         const servicesNotReady: string[] = [];
-        const containersInspection = JSON.parse(execSync(`docker inspect ${serviceNames}`).toString("utf8"));
+        const serviceNamesToString = serviceNames.join(" ");
+        const containersInspection = JSON.parse(execSync(`docker inspect ${serviceNamesToString}`).toString("utf8"));
 
         if (containersInspection.length > 0) {
             for (const container of containersInspection) {

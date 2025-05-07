@@ -185,12 +185,12 @@ describe("Up command", () => {
 
         it("should call up and check-development-service-config hook", async () => {
             const mockBuilders = {
-                node: [{ name: "service-one", builder: "node" }]
+                services: [{ name: "service-one", builder: "node" }]
             };
             const mockHookOptions = {
-                servicesByBuilder: mockBuilders
+                services: mockBuilders.services
             };
-            jest.spyOn(up as any, "getServicesByBuilders").mockReturnValue(mockBuilders);
+            jest.spyOn(up as any, "getServicesBuildContext").mockReturnValue(mockBuilders);
             await up.run();
 
             expect(runHookMock).toHaveBeenCalledWith("check-development-service-config", mockHookOptions);
@@ -213,10 +213,11 @@ describe("Up command", () => {
 
         it("should call health check ", async () => {
             const mockBuildersJava = {
-                java: [{ name: "service-one", builder: "java" }]
+                services: [{ name: "service-two", builder: "java" }],
+                isJavaPresent: true
             };
 
-            jest.spyOn(up as any, "getServicesByBuilders").mockReturnValue(mockBuildersJava);
+            jest.spyOn(up as any, "getServicesBuildContext").mockReturnValue(mockBuildersJava);
             await up.run();
 
             expect(dockerComposeMock.healthCheck).toHaveBeenCalled();
