@@ -97,9 +97,11 @@ export const validateNodemonJsonContent = (projectPath: string, actualNodemonCon
     const expectedConfig = JSON.parse(readFileSync(expectedConfigPath, "utf-8"));
     const actualConfig = JSON.parse(readFileSync(actualNodemonConfigPath, "utf-8"));
 
-    if (JSON.stringify(expectedConfig.events) !== JSON.stringify(actualConfig.events) ||
-    !JSON.stringify(actualConfig.exec).includes("/bin/nodemon-entry.ts") ||
-    actualConfig.watch.length === 0) {
+    const isEventsMismatch = JSON.stringify(expectedConfig.events) !== JSON.stringify(actualConfig.events);
+    const isWatchEmpty = actualConfig.watch.length === 0;
+    const isExecInvalid = !actualConfig.exec?.includes("/bin/nodemon-entry.ts") && !actualConfig.exec?.includes("/dist");
+
+    if (isEventsMismatch || isWatchEmpty || isExecInvalid) {
         context.warn(`Service ${serviceName} has an incorrect nodemon.json configuration.\n`);
         logDocumentationLink(context);
     }
