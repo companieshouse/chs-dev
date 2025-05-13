@@ -22,6 +22,8 @@ const CONTAINER_STOPPED_STATUS_PATTERN =
 const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
     /(?:Container\s)?([\dA-Za-z-]+)\s*(Started|Healthy|Stopped|Pulling|Pulled)/;
 
+const AWS_PROFILE = process.env.AWS_PROFILE || "undefined";
+
 type LogsArgs = {
     serviceNames: string[] | undefined,
     tail: string | undefined,
@@ -200,7 +202,7 @@ export class DockerCompose {
     */
     private get getAwsCredentials (): Record<string, string> {
         try {
-            const output = execSync("aws configure export-credentials --format env", { encoding: "utf-8" });
+            const output = execSync(`aws configure export-credentials --profile ${AWS_PROFILE} --format env`, { encoding: "utf-8" });
 
             // parse output into an object
             const awsCredentials = output
