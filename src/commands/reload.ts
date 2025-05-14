@@ -11,6 +11,7 @@ import { existsSync, unlinkSync } from "fs";
 type ReloadFunc = (serviceName: string, flags: any) => Promise<void>
 
 const NODE_BUILDER = "node";
+const NGINX_BUILDER = "nginx";
 const NO_CHANGES_PATTERN = /"?([\w-]+)"?\s+\|\s+.*No changes\./;
 
 /**
@@ -61,7 +62,8 @@ export default class Reload extends Command {
         this.dependencyCache = new DependencyCache(this.chsDevConfig.projectPath);
         this.reloadStrategies = new Map<string, ReloadFunc>([
             [NODE_BUILDER, this.reloadNodeService.bind(this)],
-            ["default", this.reloadNonNodeService.bind(this)]
+            [NGINX_BUILDER, this.reloadNginxService.bind(this)],
+            ["default", this.reloadOtherService.bind(this)]
         ]);
     }
 
@@ -128,11 +130,20 @@ export default class Reload extends Command {
     }
 
     /**
+     * Reloads a Nginx service by restarting container.
+     * @param serviceName - Name of the service to reload
+     */
+    private async reloadNginxService (serviceName: string): Promise<void> {
+        this.log(`Service: ${serviceName} restarting...`);
+        await this.dockerCompose.restart(serviceName);
+    }
+
+    /**
      * Reloads a non-Node.js service by rebuilding and restarting it.
      * @param serviceName - Name of the service to reload
      *  @param flags - Flags passed to the command
      */
-    private async reloadNonNodeService (serviceName: string, flags: any): Promise<void> {
+    private async reloadOtherService (serviceName: string, flags: any): Promise<void> {
         const codeHashFile = this.getCodeHashFile(serviceName);
         if (flags.force && codeHashFile) {
             unlinkSync(codeHashFile);

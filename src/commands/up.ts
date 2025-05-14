@@ -15,8 +15,10 @@ import Service from "../model/Service.js";
 
 type ServicesBuildContext = {
     services: Service[];
-    isNodePresent?: boolean;
-    isJavaPresent?: boolean;
+    hasNodeBuilder?: boolean;
+    hasJavaBuilder?: boolean;
+    hasNginxBuilder?: boolean;
+    hasNoBuilder?: boolean;
 };
 export default class Up extends Command {
 
@@ -104,29 +106,24 @@ export default class Up extends Command {
                 this.log(
                     "Running services in development mode - watching for changes.\n"
                 );
-                const { services, isJavaPresent, isNodePresent } = this.servicesBuildContext;
+                const { services, hasJavaBuilder, hasNodeBuilder, hasNginxBuilder, hasNoBuilder } = this.servicesBuildContext;
 
-                if (isNodePresent) {
-                    this.log(
-                        "Node Applications: Automatically sync changes.\n"
-                    );
-                }
-                if (isJavaPresent) {
-                    this.log(
-                        "Non-Node Applications: To Sync changes, Run: '$ chs-dev reload <serviceName>' in a new shell session.\n"
-                    );
-                }
+                this.logReloadInstructions(hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasNoBuilder);
 
                 const serviceNames = services.map(service => service.name).join(", ");
                 this.log(`Waiting for Services: ${serviceNames} to be ready...\n`);
 
-                if (isJavaPresent) {
+                if (hasJavaBuilder) {
                     const javaServicesNames = services.length > 1
                         ? services.filter(service => {
                             return service.builder === "java";
                         }).map(service => service.name)
                         : [services[0].name];
                     this.dockerCompose.healthCheck(javaServicesNames);
+                }
+
+                if (hasNginxBuilder) {
+                    this.log(`Service: ${serviceNames} is ready!`);
                 }
 
                 this.dependencyCache.update();
@@ -171,9 +168,13 @@ export default class Up extends Command {
             if (service) {
                 const builder = service.builder || "undefined";
                 if (builder === "node") {
-                    builderMap.isNodePresent = true;
+                    builderMap.hasNodeBuilder = true;
                 } else if (builder === "java") {
-                    builderMap.isJavaPresent = true;
+                    builderMap.hasJavaBuilder = true;
+                } else if (builder === "nginx") {
+                    builderMap.hasNginxBuilder = true;
+                } else if (!builder || builder === "undefined") {
+                    builderMap.hasNoBuilder = true;
                 }
                 if (!Array.isArray(builderMap.services)) {
                     builderMap.services = [];
@@ -189,6 +190,21 @@ export default class Up extends Command {
             await this.config.runHook("generate-development-docker-compose", {
                 serviceName: serviceInDevelopmentMode
             });
+        }
+    }
+
+    private logReloadInstructions (hasNodeBuilder: boolean | undefined, hasJavaBuilder: boolean | undefined, hasNginxBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
+        const instructions: string[] = [];
+
+        if (hasNodeBuilder) {
+            instructions.push("Node Applications: Automatically sync changes.");
+        }
+        if (hasJavaBuilder || hasNoBuilder || hasNginxBuilder) {
+            instructions.push("Non-Node Applications: To sync changes, run: '$ chs-dev reload <serviceName>' in a new shell session.");
+        }
+
+        if (instructions.length > 0) {
+            this.log(instructions.join("\n"));
         }
     }
 }
