@@ -201,21 +201,23 @@ export class DockerCompose {
      * @throws {Error} If the AWS CLI command fails or credentials cannot be retrieved.
     */
     private get getAwsCredentials (): Record<string, string> {
+        if (AWS_PROFILE === "undefined") {
+            throw new Error(`Fetch AWS credentials failed: Invalid profile '${AWS_PROFILE}' detected. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
+        }
+
         try {
             const output = execSync(`aws configure export-credentials --profile ${AWS_PROFILE} --format env`, { encoding: "utf-8" });
 
-            // parse output into an object
-            const awsCredentials = output
+            return output
                 .split("\n")
                 .filter(line => line.startsWith("export "))
-                .map(line => line.replace("export ", "").split("="))
-                .reduce((acc, [key, value]) => {
+                .reduce((acc, line) => {
+                    const [key, value] = line.replace("export ", "").split("=");
                     acc[key] = value;
                     return acc;
-                }, {});
-            return awsCredentials;
-        } catch (error:any) {
-            throw new Error(`Fetch AWS credentials failed: ${error}. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
+                }, {} as Record<string, string>);
+        } catch (error: any) {
+            throw new Error(`Fetch AWS credentials failed: ${error.message || error}. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
         }
     }
 
