@@ -149,19 +149,18 @@ export class DockerCompose {
         );
     }
 
-    prune (commandArg: Prune, signal?: AbortSignal): void {
-        const logMsg = execSync(`docker ${commandArg} prune -f`, { encoding: "utf-8" });
-        // Log-: Total reclaimed space:
-        const watch = new LogEverythingLogHandler(this.logger).handle(logMsg);
-        // return this.runDockerCommands(
-        //     [
-        //         commandArg,
-        //         "prune",
-        //         "-f"
-        //     ],
-        //     new LogEverythingLogHandler(this.logger),
-        //     signal
-        // );
+    prune (commandArg: Prune): void {
+        try {
+            let logMsg: string;
+            if (commandArg === "volume") {
+                logMsg = execSync(`docker volume rm $(docker volume ls -qf dangling=true)`, { encoding: "utf-8" });
+            } else {
+                logMsg = execSync(`docker ${commandArg} prune -f`, { encoding: "utf-8" });
+            }
+            const log = new LogNothingLogHandler(logMsg, this.logger);
+        } catch (error) {
+            throw new Error(`Docker prune command failed: ${error}`);
+        }
     }
 
     private createStatusMatchLogHandler (pattern: RegExp, colouriser?: (status: string) => string) {
