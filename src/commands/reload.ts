@@ -63,7 +63,7 @@ export default class Reload extends Command {
         this.reloadStrategies = new Map<string, ReloadFunc>([
             [NODE_BUILDER, this.reloadNodeService.bind(this)],
             [NGINX_BUILDER, this.reloadNginxService.bind(this)],
-            ["default", this.reloadOtherService.bind(this)]
+            ["default", this.reloadJavaService.bind(this)]
         ]);
     }
 
@@ -134,16 +134,16 @@ export default class Reload extends Command {
      * @param serviceName - Name of the service to reload
      */
     private async reloadNginxService (serviceName: string): Promise<void> {
-        this.log(`Service: ${serviceName} restarting...`);
+        this.log(`Service: ${serviceName} restarted`);
         await this.dockerCompose.restart(serviceName);
     }
 
     /**
-     * Reloads a non-Node.js service by rebuilding and restarting it.
+     * Reloads a Java service by rebuilding and restarting it.
      * @param serviceName - Name of the service to reload
      *  @param flags - Flags passed to the command
      */
-    private async reloadOtherService (serviceName: string, flags: any): Promise<void> {
+    private async reloadJavaService (serviceName: string, flags: any): Promise<void> {
         const codeHashFile = this.getCodeHashFile(serviceName);
         if (flags.force && codeHashFile) {
             unlinkSync(codeHashFile);

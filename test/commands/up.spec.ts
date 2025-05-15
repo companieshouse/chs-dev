@@ -214,7 +214,7 @@ describe("Up command", () => {
         it("should call health check ", async () => {
             const mockBuildersJava = {
                 services: [{ name: "service-two", builder: "java" }],
-                isJavaPresent: true
+                hasJavaBuilder: true
             };
 
             jest.spyOn(up as any, "getServicesBuildContext").mockReturnValue(mockBuildersJava);

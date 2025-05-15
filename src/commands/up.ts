@@ -12,6 +12,7 @@ import { Inventory } from "../state/inventory.js";
 import { PermanentRepositories } from "../state/permanent-repositories.js";
 import { StateManager } from "../state/state-manager.js";
 import Service from "../model/Service.js";
+import { greenBright } from "ansis";
 
 type ServicesBuildContext = {
     services: Service[];
@@ -110,21 +111,9 @@ export default class Up extends Command {
 
                 this.logReloadInstructions(hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasNoBuilder);
 
-                const serviceNames = services.map(service => service.name).join(", ");
-                this.log(`Waiting for Services: ${serviceNames} to be ready...\n`);
+                this.logWaitReadyInstructions(services, hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasNoBuilder);
 
-                if (hasJavaBuilder) {
-                    const javaServicesNames = services.length > 1
-                        ? services.filter(service => {
-                            return service.builder === "java";
-                        }).map(service => service.name)
-                        : [services[0].name];
-                    this.dockerCompose.healthCheck(javaServicesNames);
-                }
-
-                if (hasNginxBuilder) {
-                    this.log(`Service: ${serviceNames} is ready!`);
-                }
+                this.runHealthCheck(services, hasJavaBuilder, hasNoBuilder);
 
                 this.dependencyCache.update();
                 const logsArgs = {
@@ -169,7 +158,7 @@ export default class Up extends Command {
                 const builder = service.builder || "undefined";
                 if (builder === "node") {
                     builderMap.hasNodeBuilder = true;
-                } else if (builder === "java") {
+                } else if (builder.includes("java")) {
                     builderMap.hasJavaBuilder = true;
                 } else if (builder === "nginx") {
                     builderMap.hasNginxBuilder = true;
@@ -197,14 +186,46 @@ export default class Up extends Command {
         const instructions: string[] = [];
 
         if (hasNodeBuilder) {
-            instructions.push("Node Applications: Automatically sync changes.");
+            instructions.push("Node Applications: Automatically sync changes.\n");
         }
-        if (hasJavaBuilder || hasNoBuilder || hasNginxBuilder) {
-            instructions.push("Non-Node Applications: To sync changes, run: '$ chs-dev reload <serviceName>' in a new shell session.");
+
+        if (hasJavaBuilder || hasNginxBuilder) {
+            instructions.push("Java and Nginx Applications: To sync changes, run: '$ chs-dev reload <serviceName>' in a new shell session.\n");
+        }
+
+        if (hasNoBuilder) {
+            instructions.push("Repository Applications[Go and Perl]: Build and sync procedure remains the same.\n");
         }
 
         if (instructions.length > 0) {
             this.log(instructions.join("\n"));
+        }
+    }
+
+    private logWaitReadyInstructions (services: Service[], hasNodeBuilder: boolean | undefined, hasJavaBuilder: boolean | undefined, hasNginxBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
+        const serviceNames = services.map(service => service.name).join(", ");
+
+        if (hasNodeBuilder || hasJavaBuilder || hasNoBuilder) {
+            this.log(`Waiting for Services: ${serviceNames} to be ready...\n`);
+        }
+
+        // Logic to be moved to dockerComposeWatchLogHandler once there is a way to track nginx logs
+        if (hasNginxBuilder) {
+            const serviceNames = services.filter(service => service.builder === "nginx").map(service => service.name).join(", ");
+            const timestamp = new Date().toISOString();
+            this.log((greenBright(`${timestamp} - Service: ${serviceNames} ready!`)));
+        }
+
+    }
+
+    private runHealthCheck (services: Service[], hasJavaBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
+        if (hasJavaBuilder || hasNoBuilder) {
+            const javaAndNoBuilderServicesNames = services.length > 1
+                ? services.filter(service => {
+                    return service.builder.includes("java") || !service.builder;
+                }).map(service => service.name)
+                : [services[0].name];
+            this.dockerCompose.healthCheck(javaAndNoBuilderServicesNames);
         }
     }
 }

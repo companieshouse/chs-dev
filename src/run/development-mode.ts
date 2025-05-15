@@ -34,9 +34,8 @@ export class DevelopmentMode {
             : Promise.resolve(true);
 
         return stopEnvironment.then((stop) => {
-
-            ux.action.start("Stopping chs-dev environment");
             if (stop) {
+                ux.action.start("Stopping chs-dev environment");
                 return this.dockerCompose.down({
                     removeVolumes: false,
                     removeImages: false
