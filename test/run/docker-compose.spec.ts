@@ -76,7 +76,7 @@ describe("DockerCompose", () => {
         AWS_SECRET_ACCESS_KEY: "mockSecretAccessKey",
         AWS_SESSION_TOKEN: "mockSessionToken"
     };
-
+    process.env.AWS_PROFILE = "development-eu-west-2";
     beforeAll(async () => {
 
         tmpDir = mkdtempSync(join(tmpdir(), "docker-compose"));
