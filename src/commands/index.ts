@@ -10,6 +10,7 @@ import ExclusionsRemove from "./exclusions/remove.js";
 import DevelopmentServices from "./development/services.js";
 import DevelopmentEnable from "./development/enable.js";
 import StateClean from "./state/clean.js";
+import StateCache from "./state/cache.js";
 import DevelopmentDisable from "./development/disable.js";
 import ServicesAvailable from "./services/available.js";
 import ServiceEnable from "./services/enable.js";
@@ -30,6 +31,7 @@ export const commands = {
     sync: Sync,
     logs: Logs,
     "state:clean": StateClean,
+    "state:cache": StateCache,
     "compose-logs": ComposeLogs,
     "exclusions:list": ExclusionsList,
     "exclusions:add": ExclusionsAdd,

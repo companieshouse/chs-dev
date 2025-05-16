@@ -191,6 +191,7 @@ USAGE
 * [`chs-dev services available`](#chs-dev-services-available)
 * [`chs-dev services disable SERVICES`](#chs-dev-services-disable-services)
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
+* [`chs-dev state cache [NAME]`](#chs-dev-state-cache-name)
 * [`chs-dev state clean`](#chs-dev-state-clean)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
@@ -567,6 +568,21 @@ ARGUMENTS
 
 DESCRIPTION
   Enables the services and any dependencies for use within the Docker environment
+```
+
+## `chs-dev state cache [NAME]`
+
+Cache the state of chs-dev into a saved file
+
+```
+USAGE
+  $ chs-dev state cache [NAME]
+
+ARGUMENTS
+  NAME  Name of the cache
+
+DESCRIPTION
+  Cache the state of chs-dev into a saved file
 ```
 
 ## `chs-dev state clean`
