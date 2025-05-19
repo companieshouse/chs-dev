@@ -1,7 +1,8 @@
 import { Hook } from "@oclif/core";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import loadConfig from "../helpers/config-loader.js";
+import yaml from "yaml";
 import {
     logDocumentationLink,
     validateLabelForSubmodulesIntegration,
@@ -11,27 +12,40 @@ import {
 } from "../helpers/development-mode-validators.js";
 import Service from "../model/Service.js";
 
-type ServicesByBuilder = { [builder: string]: Service[] };
-
 // @ts-ignore
-export const hook: Hook<"check-development-service-config"> = async ({ servicesByBuilder, context }: { servicesByBuilder: ServicesByBuilder }) => {
+export const hook: Hook<"check-development-service-config"> = async ({ services, context }: { services: Service[] }) => {
     const projectPath = loadConfig().projectPath;
 
-    for (const [builder, services] of Object.entries(servicesByBuilder)) {
-        if (builder === "node") {
-            for (const service of services) {
-                checkNodeServiceConfig(service, projectPath, context);
-            }
+    for (const service of services) {
+        if (service.builder === "node") {
+            checkNodeServiceConfig(service, projectPath, context);
+        } else if (service.builder.includes("java") || !service.builder) {
+            checkServiceHealthCheckConfig(service, context);
         }
     }
 };
 
 /**
- * Validates the configuration of a Node.js service
- * @param service - Service object.
- * @param projectPath - Path to the project root directory.
- * @param context - Context for logging messages.
- * @returns {void}
+* Checks the health status for Non Node Applications
+* @param service - Service object.
+* @param context - Context for logging messages.
+* @returns {void}
+*/
+const checkServiceHealthCheckConfig = (service: Service, context) => {
+    const dockerCompose = yaml.parse(readFileSync(service.source, "utf-8"));
+    const healthCheckProperty = dockerCompose.services?.[service.name]?.healthcheck || "undefined";
+    if (healthCheckProperty === "undefined") {
+        context.warn(`Service ${service.name} is missing the healthcheck property in its docker-compose.yaml file.\n`);
+        logDocumentationLink(context, "healthcheck");
+    }
+};
+
+/**
+* Validates the configuration of a Node.js service
+* @param service - Service object.
+* @param projectPath - Path to the project root directory.
+* @param context - Context for logging messages.
+* @returns {void}
 */
 const checkNodeServiceConfig = (service: Service, projectPath: string, context) => {
     const servicePath = join(projectPath, "repositories", service.name);

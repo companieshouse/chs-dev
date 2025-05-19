@@ -4,6 +4,8 @@ export default class PatternMatchingConsoleLogHandler extends AbstractLogHandler
 
     private readonly colouriser: ((status: string) => string) | undefined;
 
+    public matchFoundByPattern: boolean = false;
+
     constructor (private readonly pattern: RegExp, readonly logFile: string, readonly logger: Logger, colouriser?: (status: string) => string) {
         super(logFile, logger);
         this.colouriser = colouriser;
@@ -17,9 +19,12 @@ export default class PatternMatchingConsoleLogHandler extends AbstractLogHandler
                 const matches = logEntry.match(this.pattern);
 
                 if (matches) {
+                    this.matchFoundByPattern = true;
                     const [_, serviceName, serviceStatus] = matches;
                     const colourisedStatus = this.colouriser ? this.colouriser(serviceStatus) : serviceStatus;
-                    logger.log(`Service ${serviceName} ${colourisedStatus}`);
+                    if (serviceName && colourisedStatus) {
+                        logger.log(`Service ${serviceName} ${colourisedStatus}`);
+                    }
                 } else if (verbose) {
                     logger.log(logEntry);
                 }
