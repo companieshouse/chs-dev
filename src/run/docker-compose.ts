@@ -105,11 +105,19 @@ export class DockerCompose {
         );
     }
 
-    async build (serviceName: string, signal?: AbortSignal): Promise<void> {
-        return this.runDockerCompose(["up", "--build", "--exit-code-from", serviceName, serviceName],
-            new LogNothingLogHandler(this.logFile, this.logger),
+    async build (serviceName: string, regxPattern?: RegExp, signal?: AbortSignal): Promise<boolean | void> {
+        const logHandler = regxPattern
+            ? new PatternMatchingConsoleLogHandler(
+                regxPattern, this.logFile, this.logger
+            )
+            : new LogNothingLogHandler(this.logFile, this.logger);
+
+        await this.runDockerCompose(
+            ["up", "--build", "--exit-code-from", serviceName, serviceName],
+            logHandler,
             signal
         );
+        return regxPattern ? (logHandler as { matchFoundByPattern: boolean }).matchFoundByPattern : undefined;
     }
 
     restart (serviceName: string, signal?: AbortSignal): Promise<void> {
@@ -135,6 +143,31 @@ export class DockerCompose {
             : new DockerComposeWatchLogHandler(this.logger);
 
         return this.runDockerCompose(args, logHandler, signal);
+    }
+
+    healthCheck (serviceNames:string[]): void {
+        const servicesNotReady: string[] = [];
+        const serviceNamesToString = serviceNames.join(" ");
+        const containersInspection = JSON.parse(execSync(`docker inspect ${serviceNamesToString}`).toString("utf8"));
+
+        if (containersInspection.length > 0) {
+            for (const container of containersInspection) {
+                const containerName = container.Name.replace("/", "");
+                const containerStatus = container.State.Health?.Status || "Unknown";
+
+                if (containerStatus === "starting") {
+                    servicesNotReady.push(containerName);
+                }
+                const logMessage = `Container ${containerName} ${containerStatus}`;
+                const watch = new DockerComposeWatchLogHandler(this.logger).handle(logMessage);
+            }
+        }
+
+        if (servicesNotReady.length > 0) {
+            setTimeout(() => {
+                this.healthCheck(servicesNotReady);
+            }, 3000);
+        }
     }
 
     pull (serviceName: string, abortSignal?: AbortSignal): Promise<void> {

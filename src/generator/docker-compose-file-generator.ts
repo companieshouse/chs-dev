@@ -57,8 +57,6 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         }
 
         const developmentComposeFile = join("local", service.name, "docker-compose.yaml");
-        const touchFileName = ".touch";
-        const touchFile = join("local", service.name, touchFileName);
 
         const builderDockerComposeSpec = getBuilder(this.path, service.builder, builderVersion);
         const dockerComposeSpecFactory = new DevelopmentDockerComposeSpecFactory(
@@ -81,14 +79,6 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             yaml.stringify(developmentDockerComposeSpec).split(EOL),
             EOL,
             developmentComposeFile
-        );
-
-        this.writeFile(
-            [
-                "Touching this file will trigger a rebuild of your service"
-            ],
-            EOL,
-            touchFile
         );
     }
 
