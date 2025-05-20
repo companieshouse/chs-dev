@@ -22,6 +22,9 @@ const CONTAINER_STOPPED_STATUS_PATTERN =
 const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
     /(?:Container\s)?([\dA-Za-z-]+)\s*(Started|Healthy|Stopped|Pulling|Pulled)/;
 
+const AWS_PROFILE = process.env.AWS_PROFILE;
+const INVALID_PROFILE_NAMES = ["undefined"];
+
 type LogsArgs = {
     serviceNames: string[] | undefined,
     tail: string | undefined,
@@ -232,21 +235,23 @@ export class DockerCompose {
      * @throws {Error} If the AWS CLI command fails or credentials cannot be retrieved.
     */
     private get getAwsCredentials (): Record<string, string> {
-        try {
-            const output = execSync("aws configure export-credentials --format env", { encoding: "utf-8" });
+        if (!AWS_PROFILE || INVALID_PROFILE_NAMES.includes(AWS_PROFILE)) {
+            throw new Error("Fetch AWS credentials failed: invalid profile detected. Run:'chs-dev troubleshoot analyse' command to troubleshoot.");
+        }
 
-            // parse output into an object
-            const awsCredentials = output
+        try {
+            const output = execSync(`aws configure export-credentials --profile ${AWS_PROFILE} --format env`, { encoding: "utf-8" });
+
+            return output
                 .split("\n")
                 .filter(line => line.startsWith("export "))
-                .map(line => line.replace("export ", "").split("="))
-                .reduce((acc, [key, value]) => {
+                .reduce((acc, line) => {
+                    const [key, value] = line.replace("export ", "").split("=");
                     acc[key] = value;
                     return acc;
-                }, {});
-            return awsCredentials;
-        } catch (error:any) {
-            throw new Error(`Fetch AWS credentials failed: ${error}. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
+                }, {} as Record<string, string>);
+        } catch (error: any) {
+            throw new Error(`Fetch AWS credentials failed: ${error.message || error}. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
         }
     }
 
