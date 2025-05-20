@@ -23,6 +23,7 @@ const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
     /(?:Container\s)?([\dA-Za-z-]+)\s*(Started|Healthy|Stopped|Pulling|Pulled)/;
 
 const AWS_PROFILE = process.env.AWS_PROFILE;
+const INVALID_PROFILE_NAMES = ["undefined"];
 
 type LogsArgs = {
     serviceNames: string[] | undefined,
@@ -234,7 +235,7 @@ export class DockerCompose {
      * @throws {Error} If the AWS CLI command fails or credentials cannot be retrieved.
     */
     private get getAwsCredentials (): Record<string, string> {
-        if (!AWS_PROFILE || AWS_PROFILE === "undefined") {
+        if (!AWS_PROFILE || INVALID_PROFILE_NAMES.includes(AWS_PROFILE)) {
             throw new Error("Fetch AWS credentials failed: invalid profile detected. Run:'chs-dev troubleshoot analyse' command to troubleshoot.");
         }
 
