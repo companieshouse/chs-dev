@@ -576,10 +576,15 @@ Cache the state of chs-dev into a saved file
 
 ```
 USAGE
-  $ chs-dev state cache [NAME]
+  $ chs-dev state cache [NAME] [-w] [-r] [-a]
 
 ARGUMENTS
   NAME  Name of the cache
+
+FLAGS
+  -a, --available  Show the name of the saved states in a available
+  -r, --remove     Remove a specific saved cache
+  -w, --wipe       Delete all saved caches
 
 DESCRIPTION
   Cache the state of chs-dev into a saved file
