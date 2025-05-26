@@ -11,6 +11,8 @@ import DevelopmentServices from "./development/services.js";
 import DevelopmentEnable from "./development/enable.js";
 import StateClean from "./state/clean.js";
 import StateCache from "./state/cache.js";
+import StateExport from "./state/export.js";
+import StateRestore from "./state/restore.js";
 import DevelopmentDisable from "./development/disable.js";
 import ServicesAvailable from "./services/available.js";
 import ServiceEnable from "./services/enable.js";
@@ -32,6 +34,8 @@ export const commands = {
     logs: Logs,
     "state:clean": StateClean,
     "state:cache": StateCache,
+    "state:export": StateExport,
+    "state:restore": StateRestore,
     "compose-logs": ComposeLogs,
     "exclusions:list": ExclusionsList,
     "exclusions:add": ExclusionsAdd,

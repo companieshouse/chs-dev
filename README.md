@@ -193,6 +193,8 @@ USAGE
 * [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
 * [`chs-dev state cache [NAME]`](#chs-dev-state-cache-name)
 * [`chs-dev state clean`](#chs-dev-state-clean)
+* [`chs-dev state export NAME`](#chs-dev-state-export-name)
+* [`chs-dev state restore [NAME]`](#chs-dev-state-restore-name)
 * [`chs-dev status`](#chs-dev-status)
 * [`chs-dev sync`](#chs-dev-sync)
 * [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
@@ -576,15 +578,16 @@ Cache the state of chs-dev into a saved file
 
 ```
 USAGE
-  $ chs-dev state cache [NAME] [-w] [-r] [-a]
+  $ chs-dev state cache [NAME] [-w] [-r] [-a] [-e]
 
 ARGUMENTS
   NAME  Name of the cache
 
 FLAGS
-  -a, --available  Show the name of the saved states in a available
-  -r, --remove     Remove a specific saved cache
-  -w, --wipe       Delete all saved caches
+  -a, --available    List of saved states.
+  -e, --exportCache  Export a named cache to a file
+  -r, --remove       Remove a specific saved cache
+  -w, --wipe         Delete all saved caches
 
 DESCRIPTION
   Cache the state of chs-dev into a saved file
@@ -596,10 +599,46 @@ Wipes the state of chs-dev and revert to a default state
 
 ```
 USAGE
-  $ chs-dev state clean
+  $ chs-dev state clean [-p]
+
+FLAGS
+  -p, --purge  Wipe state, volumes and images
 
 DESCRIPTION
   Wipes the state of chs-dev and revert to a default state
+```
+
+## `chs-dev state export NAME`
+
+Export current state of chs-dev into a saved file
+
+```
+USAGE
+  $ chs-dev state export NAME
+
+ARGUMENTS
+  NAME  Name of the exported file
+
+DESCRIPTION
+  Export current state of chs-dev into a saved file
+```
+
+## `chs-dev state restore [NAME]`
+
+Restore and update the state files from saved cache or imported cache.
+
+```
+USAGE
+  $ chs-dev state restore [NAME] [-i <value>]
+
+ARGUMENTS
+  NAME  Name of the cache
+
+FLAGS
+  -i, --importCacheFrom=<value>  Path to the exported cache
+
+DESCRIPTION
+  Restore and update the state files from saved cache or imported cache.
 ```
 
 ## `chs-dev status`

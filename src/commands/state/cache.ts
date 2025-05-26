@@ -1,14 +1,14 @@
 import { Args, Command, Config, Flags } from "@oclif/core";
-import { StateManager } from "../../state/state-manager.js";
-import ChsDevConfig from "../../model/Config.js";
-import loadConfig from "../../helpers/config-loader.js";
-import { DockerCompose } from "../../run/docker-compose.js";
-import { confirm } from "../../helpers/user-input.js";
 import { createHash } from "crypto";
-import yaml from "yaml";
-import { basename, join } from "path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { basename, join } from "path";
+import yaml from "yaml";
+import loadConfig from "../../helpers/config-loader.js";
+import { confirm } from "../../helpers/user-input.js";
+import ChsDevConfig from "../../model/Config.js";
+import { StateManager } from "../../state/state-manager.js";
 
+const EXPORT_STATE_DIR = ".exported_state_cache";
 export default class Cache extends Command {
     static description = "Cache the state of chs-dev into a saved file";
 
@@ -30,13 +30,16 @@ export default class Cache extends Command {
         }),
         available: Flags.boolean({
             char: "a",
-            description: "Show the name of the saved states in a available"
+            description: "List of saved states."
+        }),
+        exportCache: Flags.boolean({
+            char: "e",
+            description: "Export a named cache to a file"
         })
     };
 
     private readonly stateManager: StateManager;
     private readonly chsDevConfig: ChsDevConfig;
-    private readonly dockerCompose: DockerCompose;
     private readonly stateCacheFile: string;
 
     constructor (argv: string[], config: Config) {
@@ -44,20 +47,23 @@ export default class Cache extends Command {
 
         this.chsDevConfig = loadConfig();
         const cacheDir = config.cacheDir;
-        this.stateCacheFile = join(cacheDir, `${basename(this.chsDevConfig.projectName)}.state.yaml`);
+        this.stateCacheFile = join(
+            cacheDir,
+            `${basename(this.chsDevConfig.projectName)}.state.yaml`
+        );
 
         if (!existsSync(cacheDir)) {
             mkdirSync(cacheDir, { recursive: true });
         }
 
-        const logger = { log: (msg: string) => this.log(msg) };
-
         this.stateManager = new StateManager(this.chsDevConfig.projectPath);
-        this.dockerCompose = new DockerCompose(this.chsDevConfig, logger);
     }
 
     async run (): Promise<void> {
-        const { args, flags: { available, remove, wipe } } = await this.parse(Cache);
+        const {
+            args,
+            flags: { available, remove, wipe, exportCache }
+        } = await this.parse(Cache);
 
         if (wipe) {
             await this.handleAction("Wipe", "wipe", "Wiped all caches");
@@ -70,21 +76,34 @@ export default class Cache extends Command {
         const cacheName = args.name || this.error("Cache name is required");
 
         if (remove) {
-            await this.handleAction(cacheName, "remove", `Removed cache ${cacheName}`);
+            await this.handleAction(
+                cacheName,
+                "remove",
+                `Removed cache ${cacheName}`
+            );
+        } else if (exportCache) {
+            this.cacheActions(cacheName, "export");
         } else {
-            await this.handleAction(cacheName, "add", `Saved cache ${cacheName}`);
+            await this.handleAction(cacheName, "add", `Saved cache as '${cacheName}'`);
         }
     }
 
-    private async handleAction (cacheName: string, action: "add" | "remove" | "wipe", successMessage: string): Promise<void> {
+    private async handleAction (
+        cacheName: string,
+        action: "add" | "remove" | "wipe",
+        successMessage: string
+    ): Promise<void> {
         if (await this.handlePrompt(cacheName, action)) {
             this.cacheActions(cacheName, action);
             this.log(successMessage);
         }
     }
 
-    private cacheActions (cacheName: string, action: "add" | "remove" | "wipe" | "available"): void {
-        let cacheData: Record<string, any> = this.loadCacheData();
+    private cacheActions (
+        cacheName: string,
+        action: "add" | "remove" | "wipe" | "available" | "export"
+    ): void {
+        let cacheData: Record<string, any> = this.loadSavedCacheData();
 
         switch (action) {
         case "add": {
@@ -92,14 +111,13 @@ export default class Cache extends Command {
             const dockerComposeSnapshot = this.getDockerFile();
             cacheData[cacheName] = {
                 state: {
-                    hash: this.hash(JSON.stringify(stateSnapshot)),
+                    hash: this.hash(yaml.stringify(stateSnapshot)),
                     snapshot: stateSnapshot
                 },
                 dockerCompose: {
-                    hash: this.hash(dockerComposeSnapshot.toString("utf-8")),
+                    hash: this.hash(yaml.stringify(dockerComposeSnapshot)),
                     snapshot: dockerComposeSnapshot
                 }
-
             };
             break;
         }
@@ -112,21 +130,32 @@ export default class Cache extends Command {
         case "available":
             this.availableCaches(cacheData);
             return;
+        case "export": {
+            this.exportCache(cacheData, cacheName);
+            return;
+        }
         }
 
         this.saveCacheData(cacheData);
     }
 
-    private loadCacheData (): Record<string, any> {
+    private loadSavedCacheData (): Record<string, any> {
         if (existsSync(this.stateCacheFile)) {
-            const fileContent = yaml.parse(readFileSync(this.stateCacheFile, "utf-8"));
+            const fileContent = yaml.parse(
+                readFileSync(this.stateCacheFile, "utf-8")
+            );
             return fileContent || {};
         }
         return {};
     }
 
     private saveCacheData (cacheData: Record<string, any>): void {
-        writeFileSync(this.stateCacheFile, yaml.stringify(cacheData));
+        const lines = [
+            "# DO NOT MODIFY MANUALLY",
+            yaml.stringify(cacheData)
+        ];
+
+        writeFileSync(this.stateCacheFile, lines.join("\n\n"));
     }
 
     private availableCaches (cacheData: Record<string, any>): void {
@@ -139,6 +168,27 @@ export default class Cache extends Command {
         }
     }
 
+    private exportCache (cacheData: Record<string, any>, cacheName: string): void {
+        if (!cacheData[cacheName]) {
+            this.error(`Cache named ${cacheName} does not exist.`);
+        }
+
+        const exportDir = join(this.chsDevConfig.projectPath, EXPORT_STATE_DIR);
+        if (!existsSync(exportDir)) {
+            mkdirSync(exportDir, { recursive: true });
+        }
+
+        const exportedFilename = join(exportDir, `${cacheName}.yaml`);
+
+        const exportData = [
+            "# DO NOT MODIFY MANUALLY",
+            yaml.stringify(cacheData[cacheName])
+        ];
+
+        writeFileSync(exportedFilename, exportData.join("\n\n"));
+        this.log(`Exported cache ${cacheName} destination: '${exportedFilename}'`);
+    }
+
     private hash (data: string): string {
         const sha256Hash = createHash("sha256");
         sha256Hash.update(data);
@@ -146,11 +196,17 @@ export default class Cache extends Command {
     }
 
     private getDockerFile (): Buffer {
-        const dockerComposeFilePath = join(this.chsDevConfig.projectPath, "docker-compose.yaml");
+        const dockerComposeFilePath = join(
+            this.chsDevConfig.projectPath,
+            "docker-compose.yaml"
+        );
         return yaml.parse(readFileSync(dockerComposeFilePath).toString("utf-8"));
     }
 
-    private async handlePrompt (cacheName: string, action: "add" | "remove" | "wipe"): Promise<boolean> {
+    private async handlePrompt (
+        cacheName: string,
+        action: "add" | "remove" | "wipe"
+    ): Promise<boolean> {
         const messages: Record<string, string> = {
             add: `This will save the cache or overwrite it if it already exists. Proceed?`,
             remove: `Do you want to delete the cache named ${cacheName}?`,

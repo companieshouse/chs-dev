@@ -153,6 +153,10 @@ export class DockerCompose {
         try {
             let logMsg: string;
             if (commandArg === "volume") {
+                const volumes = execSync(`docker volume ls -qf dangling=true`, { encoding: "utf-8" });
+                if (volumes.length === 0) {
+                    return;
+                }
                 logMsg = execSync(`docker volume rm $(docker volume ls -qf dangling=true)`, { encoding: "utf-8" });
             } else {
                 logMsg = execSync(`docker ${commandArg} prune -f`, { encoding: "utf-8" });

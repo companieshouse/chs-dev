@@ -9,6 +9,14 @@ export default class Clean extends Command {
 
     static description = "Wipes the state of chs-dev and revert to a default state";
 
+    static flags = {
+        purge: Flags.boolean({
+            char: "p",
+            description: "Wipe state, volumes and images",
+            default: false
+        })
+    };
+
     private readonly stateManager: StateManager;
     private readonly chsDevConfig: ChsDevConfig;
     private readonly dockerCompose: DockerCompose;
@@ -26,10 +34,10 @@ export default class Clean extends Command {
     }
 
     async run (): Promise<any> {
-        await this.parse(Clean);
+        const { flags: { purge } } = await this.parse(Clean);
 
         const handlePrompt = async (): Promise<boolean> => {
-            return await confirm(`This will reset your chs-dev state and delete all unused docker volumes. Do you want to proceed?`);
+            return await confirm(`This will reset your chs-dev state and delete all unused docker volumes${purge ? " including images." : "."} Do you want to proceed?`);
         };
 
         if (await handlePrompt()) {
@@ -44,6 +52,9 @@ export default class Clean extends Command {
             });
 
             this.dockerCompose.prune("volume");
+            if (purge) {
+                this.dockerCompose.prune("image");
+            }
 
         }
     }
