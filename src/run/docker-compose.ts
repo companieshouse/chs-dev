@@ -251,7 +251,11 @@ export class DockerCompose {
                     return acc;
                 }, {} as Record<string, string>);
         } catch (error: any) {
-            throw new Error(`Fetch AWS credentials failed: ${error.message || error}. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
+            const msg = error?.message || String(error);
+            if (msg.includes("loading SSO Token") || msg.includes("retrieving token from sso")) {
+                throw new Error(`Fetch AWS credentials failed. Run: aws sso login.`);
+            }
+            throw new Error(`Fetch AWS credentials failed. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
         }
     }
 
