@@ -305,7 +305,7 @@ install() {
       log WARN "chs-dev already installed"
     fi
 
-    if user_confirm_action "Do you want to reinstall chs-dev?"; then
+    if user_confirm_action "Do you want to upgrade to ${VERSION}?"; then
       FORCE=1 uninstall
     else
       panic "chs-dev cli not installed"
