@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
-import { getInitialDockerComposeFile } from "../../src/helpers/docker-compose-file"; // A
+import { getInitialDockerComposeFile, getGeneratedDockerComposeFile } from "../../src/helpers/docker-compose-file"; // A
 
 jest.mock("fs");
 
@@ -28,10 +28,16 @@ describe("docker-compose-file", () => {
         rmSync(MOCK_DIR, { recursive: true, force: true });
     });
 
-    describe("getInitialDockerComposeFile", () => {
-        it("should parse a Docker Compose YAML file correctly", () => {
+    describe("get Initial or Generated DockerComposeFile", () => {
+        it("should parse Initial Docker Compose YAML file correctly", () => {
             (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(MOCK_FILE_CONTENT));
             const result = getInitialDockerComposeFile(MOCK_DIR);
+            expect(result).toEqual(MOCK_FILE_CONTENT);
+        });
+
+        it("should parse Generated Docker Compose YAML file correctly", () => {
+            (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(MOCK_FILE_CONTENT));
+            const result = getGeneratedDockerComposeFile(MOCK_DIR);
             expect(result).toEqual(MOCK_FILE_CONTENT);
         });
     });

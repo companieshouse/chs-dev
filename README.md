@@ -653,13 +653,21 @@ Brings up the docker-chs-development environment
 
 ```
 USAGE
-  $ chs-dev up
+  $ chs-dev up [--otel] [--no-otel]
+
+FLAGS
+  --no-otel  Disable OpenTelemetry for tracing
+  --otel     Enable OpenTelemetry for tracing
 
 DESCRIPTION
   Brings up the docker-chs-development environment
 
 EXAMPLES
   $ chs-dev up
+
+  $ chs-dev up --otel
+
+  $ chs-dev up --no-otel
 ```
 <!-- commandsstop -->
 
