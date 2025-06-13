@@ -15,3 +15,16 @@ export const getInitialDockerComposeFile = (path: string): DockerComposeSpec => 
         readFileSync(join(path, CONSTANTS.BASE_DOCKER_COMPOSE_FILE), "utf8").toString()
     );
 };
+
+/**
+ * Get the generated main compose file content
+ *
+ * @param path - default compose file path location
+ * @returns a yaml format of the compose file
+ */
+export const getGeneratedDockerComposeFile = (path: string): DockerComposeSpec => {
+    const generatedDockerComposePath = join(path, `docker-compose.yaml`);
+    return yaml.parse(
+        readFileSync(generatedDockerComposePath, "utf8").toString()
+    );
+};

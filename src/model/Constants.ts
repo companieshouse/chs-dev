@@ -9,6 +9,11 @@ export const CONSTANTS = {
     BASE_DOCKER_COMPOSE_FILE: "services/infrastructure/docker-compose.yaml",
 
     /**
+     * The otel Docker Compose Spec
+     */
+    OTEL_DOCKER_COMPOSE_FILE: "services/infrastructure/open-telemetry/open-telemetry.docker-compose.yaml",
+
+    /**
      * Value for a boolean label to be considered true
      */
     BOOLEAN_LABEL_TRUE_VALUE: "true",

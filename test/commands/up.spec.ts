@@ -10,6 +10,7 @@ import { DockerCompose } from "../../src/run/docker-compose";
 import { DevelopmentMode } from "../../src/run/development-mode";
 import { ComposeLogViewer } from "../../src/run/compose-log-viewer";
 import { PermanentRepositories } from "../../src/state/permanent-repositories";
+import { OtelGenerator } from "../../src/generator/otel-generator";
 
 const dependencyCacheUpdateMock = jest.fn();
 const composeLogViewerViewMock = jest.fn();
@@ -57,6 +58,10 @@ const developmentModeMock = {
     start: jest.fn()
 };
 
+const otelGeneratorMock = {
+    modifyGeneratedDockerCompose: jest.fn()
+};
+
 jest.mock("../../src/state/state-manager");
 
 jest.mock("../../src/state/inventory");
@@ -71,11 +76,14 @@ jest.mock("../../src/run/compose-log-viewer");
 
 jest.mock("../../src/state/permanent-repositories");
 
+jest.mock("../../src/generator/otel-generator");
+
 describe("Up command", () => {
     let up: Up;
     let testConfig: Config;
 
     let runHookMock;
+    let parseMock;
 
     const setUpCommand = (snapshot: State) => {
         const cwdSpy = jest.spyOn(process, "cwd");
@@ -113,7 +121,20 @@ describe("Up command", () => {
             ensureAllExistAndAreUpToDate: permanentRepositoriesEnsureAllExistAndAreUpToDateMock
         });
 
+        // @ts-expect-error
+        OtelGenerator.mockReturnValue(otelGeneratorMock);
+
         up = new Up([], testConfig);
+
+        // @ts-expect-error
+        parseMock = jest.spyOn(up, "parse");
+
+        parseMock.mockResolvedValue({
+            flags: {
+                otel: false,
+                "no-otel": false
+            }
+        });
     };
 
     beforeEach(() => {
@@ -145,9 +166,14 @@ describe("Up command", () => {
     });
 
     it("should call up", async () => {
+        const flagsMock = {
+            otel: false,
+            "no-otel": false
+        };
         await up.run();
 
         expect(dockerComposeMock.up).toHaveBeenCalledTimes(1);
+        expect(otelGeneratorMock.modifyGeneratedDockerCompose).toHaveBeenCalledWith(flagsMock);
     });
 
     it("should not call developmentMode start when no services in dev", async () => {

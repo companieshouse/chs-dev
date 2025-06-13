@@ -19,7 +19,7 @@ export const hook: Hook<"check-development-service-config"> = async ({ services,
     for (const service of services) {
         if (service.builder === "node") {
             checkNodeServiceConfig(service, projectPath, context);
-        } else if (service.builder.includes("java") || !service.builder) {
+        } else if (service.builder.includes("java") || service.builder.includes("repository")) {
             checkServiceHealthCheckConfig(service, context);
         }
     }

@@ -48,7 +48,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
      * @param builderVersion - Optional builder version.
      * @param excludedServices - List of excluded service names.
      */
-    // Create the development compose file and touch files
+    // Create the development compose file
     generateDevelopmentServiceDockerComposeFile (service: Service, builderVersion: string | undefined, excludedServices: string[] = []) {
         const developmentServicePath = join(this.path, "local", service.name);
 
@@ -74,7 +74,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
             dockerComposeConfig, service
         );
 
-        // Create the development compose file and touch files
+        // Create the development compose file
         this.writeFile(
             yaml.stringify(developmentDockerComposeSpec).split(EOL),
             EOL,

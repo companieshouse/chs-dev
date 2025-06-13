@@ -26,6 +26,7 @@ const snapshot: State = {
 };
 
 const getServiceStatusesMock = jest.fn();
+const otelServiceNamesMock = ["otel-collector", "loki", "tempo"];
 
 jest.mock("../../src/state/inventory", () => {
     return {
@@ -51,6 +52,16 @@ jest.mock("../../src/run/docker-compose", () => {
         DockerCompose: function () {
             return {
                 getServiceStatuses: getServiceStatusesMock
+            };
+        }
+    };
+});
+
+jest.mock("../../src/generator/otel-generator", () => {
+    return {
+        OtelGenerator: function () {
+            return {
+                otelServiceNames: otelServiceNamesMock
             };
         }
     };
@@ -97,7 +108,8 @@ describe("Status command", () => {
         expect(logJsonMock).not.toHaveBeenCalled();
     });
 
-    it("should log with their docker compose statuses correctly", async () => {
+    it("should log with their docker compose statuses without otel services", async () => {
+
         getServiceStatusesMock.mockReturnValue({
             "service-one": "Up 3 seconds (unhealthy)",
             "service-two": "Up 2 minutes (healthy)",
@@ -107,6 +119,27 @@ describe("Status command", () => {
             "service-seven": "Up 33 minutes",
             "service-three": "Up About an hour (healthy)",
             "service-eight": "Up About an hour"
+        });
+
+        await status.run();
+
+        expect(logMock.mock.calls).toMatchSnapshot();
+    });
+
+    it("should log with their docker compose statuses with otel services", async () => {
+
+        getServiceStatusesMock.mockReturnValue({
+            "service-one": "Up 3 seconds (unhealthy)",
+            "service-two": "Up 2 minutes (healthy)",
+            "service-four": "Up 1 minute (health: starting)",
+            "service-five": "Exited (0)",
+            "service-six": "Exited (137)",
+            "service-seven": "Up 33 minutes",
+            "service-three": "Up About an hour (healthy)",
+            "service-eight": "Up About an hour",
+            "otel-collector": "Up About an hour",
+            loki: "Up About an hour",
+            tempo: "Up About an hour"
         });
 
         await status.run();

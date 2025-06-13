@@ -60,7 +60,87 @@ exports[`Status command should log json correctly 1`] = `
 ]
 `;
 
-exports[`Status command should log with their docker compose statuses correctly 1`] = `
+exports[`Status command should log with their docker compose statuses with otel services 1`] = `
+[
+  [
+    "Manually activated modules:",
+  ],
+  [
+    " - module-one",
+  ],
+  [
+    "
+Manually activated services:",
+  ],
+  [
+    " - service-one ([31m[1mUp 3 seconds (unhealthy)[22m[39m)",
+  ],
+  [
+    " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m)",
+  ],
+  [
+    " - service-five ([33mExited (0)[39m)",
+  ],
+  [
+    " - service-six ([31mExited (137)[39m)",
+  ],
+  [
+    " - service-seven ([32mUp 33 minutes[39m)",
+  ],
+  [
+    " - service-eight ([32mUp About an hour[39m)",
+  ],
+  [
+    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m)",
+  ],
+  [
+    "
+Automatically activated services:",
+  ],
+  [
+    " - loki ([32mUp About an hour[39m) ",
+  ],
+  [
+    " - otel-collector ([32mUp About an hour[39m) ",
+  ],
+  [
+    " - service-eight ([32mUp About an hour[39m) ",
+  ],
+  [
+    " - service-five ([33mExited (0)[39m) ",
+  ],
+  [
+    " - service-four ([36mUp 1 minute (health: starting)[39m) ",
+  ],
+  [
+    " - service-one ([31m[1mUp 3 seconds (unhealthy)[22m[39m) ",
+  ],
+  [
+    " - service-seven ([32mUp 33 minutes[39m) ",
+  ],
+  [
+    " - service-six ([31mExited (137)[39m) ",
+  ],
+  [
+    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m) ",
+  ],
+  [
+    " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m) [LIVE UPDATE]",
+  ],
+  [
+    " - tempo ([32mUp About an hour[39m) ",
+  ],
+  [
+    "
+Manually deactivated services:",
+  ],
+  [
+    " - service-three",
+  ],
+]
+`;
+
+exports[`Status command should log with their docker compose statuses without otel services 1`] = `
 [
   [
     "Manually activated modules:",
