@@ -22,15 +22,14 @@ export class OtelGenerator extends AbstractFileGenerator {
      *
      * @param flag - An object containing the OTEL flag and its negation.
      */
-    modifyGeneratedDockerCompose (flag: Record<string, boolean> | undefined): void {
-        const flagOption = Object.keys(flag || {});
+    modifyGeneratedDockerCompose (flag: Record<string, boolean>): void {
 
         let generatedDockerCompose: DockerComposeSpec | undefined;
 
-        if (flagOption.includes("otel")) {
+        if (flag.otel) {
             generatedDockerCompose = this.modifyIncludeProperties("add");
             generatedDockerCompose = this.modifyDependencies(generatedDockerCompose, "add");
-        } else if (flagOption.includes("no-otel") || flagOption.length === 0) {
+        } else if (flag["no-otel"] || !flag.otel) {
             generatedDockerCompose = this.modifyIncludeProperties("remove");
             generatedDockerCompose = this.modifyDependencies(generatedDockerCompose, "remove");
         }

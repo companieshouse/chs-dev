@@ -85,7 +85,7 @@ describe("OtelGenerator", () => {
         (otelGenerator as any).writeFile = jest.fn();
         (yaml.stringify as jest.Mock).mockReturnValue("mock-yaml-content");
 
-        otelGenerator.modifyGeneratedDockerCompose(undefined);
+        otelGenerator.modifyGeneratedDockerCompose({});
 
         expect((otelGenerator as any).modifyIncludeProperties).toHaveBeenCalledWith("remove");
         expect((otelGenerator as any).modifyDependencies).toHaveBeenCalledWith(mockDockerCompose, "remove");
