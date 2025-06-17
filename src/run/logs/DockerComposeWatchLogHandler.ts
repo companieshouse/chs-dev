@@ -1,75 +1,96 @@
-import { greenBright } from "ansis";
-import { AbstractLogHandler } from "./logs-handler.js";
+import { greenBright, grey, red, redBright, yellowBright } from "ansis";
+import { LogHandler, Logger } from "./logs-handler.js";
+import stripAnsi from "strip-ansi";
 
-export class DockerComposeWatchLogHandler extends AbstractLogHandler {
+/**
+ * Handles log entries for development watch logs, parsing and logging
+ * specific events such as service ready, healthy, restart, and crash.
+ */
+export class DevelopmentWatchLogNodeHandler implements LogHandler {
+    // Regular expressions for matching log patterns
+    private static readonly LOG_PATTERNS = {
+        RESTART: /"?([\w-]+)"?\s+\|\s+.*Nodemon Restarting.../,
+        CRASHED: /"?([\w-]+)"?\s+\|\s+.*Nodemon Crashed!/,
+        READY: /"?([\w-]+)"?\s+\|\s+.*Application Ready\./,
+        HEALTHY_STATUS: /Container\s+([\w-]+)\s+healthy/,
+        UNHEALTHY_STATUS: /Container\s+([\w-]+)\s+unhealthy/,
+        NPM_INSTALL_COMPLETE: /"?([\w-]+)"?\s+\|\s+.*npm install commencing\./,
+        NPM_INSTALL_FAILED: /"?([\w-]+)"?\s+\|\s+.*npm install failed!\./
+    };
 
-    private static readonly READY_TO_RELOAD_REGEX = /Watch enabled|configuration for service/;
-    private static readonly REBUILD_SERVICE_REGEX = /Rebuilding\sservice\s+"([^"]*)"/;
-    private static readonly SERVICE_RELOADED_OLD_REGEX = /Container\s+([\dA-Za-z-]+)\s+(Healthy|Started)/;
-    private static readonly SERVICE_RELOADED_REGEX = /service\s+"([\dA-Za-z-]+)"\s+successfully\s+built/;
-    private servicesBeingReloaded: string[] = [];
+    private static readonly LOG_ACTIONS = {
+        READY: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(greenBright(`${timestamp} - Service: ${serviceName} ready!`)),
+        HEALTHY_STATUS: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(greenBright(`${timestamp} - Service: ${serviceName} ready!`)),
+        RESTART: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(yellowBright(`${timestamp} - Nodemon: ${serviceName} restarting...`)),
+        CRASHED: (logger: Logger, serviceName: string, timestamp: string) =>
+            logger.log(redBright(`${timestamp} - Nodemon: ${serviceName} crashed!`)),
+        NPM_INSTALL_COMPLETE: (
+            logger: Logger,
+            serviceName: string,
+            timestamp: string
+        ) =>
+            logger.log(
+                grey(`${timestamp} - Service: ${serviceName} installing dependencies!`)
+            ),
+        NPM_INSTALL_FAILED: (
+            logger: Logger,
+            serviceName: string,
+            timestamp: string
+        ) =>
+            logger.log(
+                red(`${timestamp} - Service: ${serviceName} installing dependencies failed!`)
+            ),
+        UNHEALTHY_STATUS: (
+            logger: Logger,
+            serviceName: string,
+            timestamp: string
+        ) =>
+            logger.log(redBright(`${timestamp} - Service: ${serviceName} crashed!`))
+    };
 
-    protected logToConsole (logEntries: string[]): void {
-        logEntries.forEach((logEntry: string) => {
-            if (this.verbose) {
-                this.logger.log(logEntry);
-            }
+    // eslint-disable-next-line no-useless-constructor
+    constructor (private readonly logger: Logger) {}
 
-            if (logEntry.match(DockerComposeWatchLogHandler.READY_TO_RELOAD_REGEX)) {
-                this.logger.log(
-                    "Running services in development mode - watching for changes."
-                );
-                this.logger.log(
-                    "Trigger an update to a service by running:\n\n"
-                );
-                this.logger.log(
-                    "$ chs-dev reload <service>\n\n"
-                );
-                return;
-            }
+    /**
+   * Handles log entries by parsing and logging specific events.
+   * @param logEntries - Raw log entries as a string.
+   */
+    handle (logEntries: string): void {
+        for (const logEntry of logEntries.toString().split("\n")) {
+            if (!logEntry) continue;
 
-            const rebuildServiceMatch = logEntry.match(DockerComposeWatchLogHandler.REBUILD_SERVICE_REGEX);
+            const cleanLog = this.cleanLogString(logEntry);
 
-            if (rebuildServiceMatch !== null) {
-                const [_, serviceName] = rebuildServiceMatch;
-
-                this.servicesBeingReloaded = [
-                    ...this.servicesBeingReloaded,
-                    serviceName
-                ];
-
-                this.logger.log(`Reloading service: ${serviceName}`);
-
-                return;
-            }
-
-            if (this.logRebuiltService(DockerComposeWatchLogHandler.SERVICE_RELOADED_REGEX, logEntry)) {
-                return;
-            }
-
-            this.logRebuiltService(DockerComposeWatchLogHandler.SERVICE_RELOADED_OLD_REGEX, logEntry);
-        });
-    }
-
-    private logRebuiltService (regex: RegExp, logEntry: string): boolean {
-
-        let loggedUpdate = false;
-        const rebuiltServiceMatch = logEntry.match(regex);
-
-        if (rebuiltServiceMatch !== null) {
-            const [_, rebuiltServiceName] = rebuiltServiceMatch;
-
-            if (this.servicesBeingReloaded.includes(rebuiltServiceName)) {
-                this.servicesBeingReloaded = this.servicesBeingReloaded.filter(name => name !== rebuiltServiceName);
-
-                this.logger.log(greenBright(`Service: ${rebuiltServiceName} reloaded`));
-                loggedUpdate = true;
+            for (const [key, regex] of Object.entries(
+                DevelopmentWatchLogNodeHandler.LOG_PATTERNS
+            )) {
+                const match = cleanLog.match(regex);
+                if (match) {
+                    const [, serviceName] = match;
+                    const action =
+            DevelopmentWatchLogNodeHandler.LOG_ACTIONS[
+              key as keyof typeof DevelopmentWatchLogNodeHandler.LOG_ACTIONS
+            ];
+                    const timestamp = new Date().toISOString();
+                    action(this.logger, serviceName, timestamp);
+                    break;
+                }
             }
         }
-
-        return loggedUpdate;
     }
 
+    /**
+   * Cleans a log string by removing ANSI escape codes and control characters.
+   * @param str - The log string to clean.
+   * @returns The cleaned log string.
+   */
+    private cleanLogString (str: string): string {
+    // eslint-disable-next-line no-control-regex
+        return stripAnsi(str).replace(/[\x00-\x1F\x7F]/g, "");
+    }
 }
 
-export default DockerComposeWatchLogHandler;
+export default DevelopmentWatchLogNodeHandler;

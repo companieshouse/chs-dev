@@ -1,14 +1,9 @@
 import { expect, jest } from "@jest/globals";
-import { hook as generateDevelopmentDockerComposeHook } from "./../../src/hooks/generate-development-docker-compose";
-import { Hook } from "@oclif/core";
-import { Service } from "../../src/model/Service";
 import { Inventory } from "../../src/state/inventory";
 import { StateManager } from "../../src/state/state-manager";
 import { DockerComposeFileGenerator } from "./../../src/generator/docker-compose-file-generator";
 import loadConfig from "./../../src/helpers/config-loader.js";
-import { ServiceLoader } from "./../../src/run/service-loader";
-import { modules } from "../utils/data";
-import { Config, IConfig } from "@oclif/config";
+import { hook as generateDevelopmentDockerComposeHook } from "./../../src/hooks/generate-development-docker-compose";
 
 jest.mock("../../src/state/state-manager");
 jest.mock("../../src/state/inventory");
@@ -28,7 +23,8 @@ describe("generate-development-docker-compose hook", () => {
     const mockExcludedServices = ["excluded-service"];
     const mockService = {
         name: mockServiceName,
-        source: "/mock/source/path"
+        source: "/mock/source/path",
+        builder: "node"
     };
 
     let generateDevelopmentServiceDockerComposeFileMock: jest.Mock;
@@ -109,5 +105,34 @@ describe("generate-development-docker-compose hook", () => {
         expect(errorMock).toHaveBeenCalledWith(
             "Cannot create development compose file for the service: non-existent-service since it does not exist."
         );
+    });
+
+    it("should throw a warning if the service does not have a builder", async () => {
+        const mockServiceWithoutBuilder = {
+            name: mockServiceName,
+            source: "/mock/source/path"
+        };
+
+        (Inventory as jest.Mock).mockImplementation(() => ({
+            services: [mockServiceWithoutBuilder]
+        }));
+
+        const warnMock = jest.fn();
+        const testContext = {
+            warn: warnMock
+        };
+
+        // @ts-expect-error
+        await generateDevelopmentDockerComposeHook({
+            serviceName: mockServiceName,
+            builderVersion: mockBuilderVersion,
+            config: mockConfig,
+            context: testContext
+        });
+
+        expect(testContext.warn).toHaveBeenCalledTimes(3);
+        expect(warnMock).toHaveBeenCalledWith("Ignore this message if this service is not a Node or Java service.");
+        expect(warnMock).toHaveBeenCalledWith(`${mockServiceName}: Builder not found.`);
+        expect(warnMock).toHaveBeenCalledWith(`Run: 'bin/migration/set_builder_label ${mockServiceName}' in the root directory`);
     });
 });

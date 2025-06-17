@@ -14,11 +14,16 @@ interface Logger {
     log: (msg: string) => void;
 }
 
+type LogCoverage = "Watch" | "Log";
+
 const CONTAINER_STOPPED_STATUS_PATTERN =
     /Container\s([\dA-Za-z-]+)\s*(Stopped|Removed)/;
 
 const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
     /(?:Container\s)?([\dA-Za-z-]+)\s*(Started|Healthy|Stopped|Pulling|Pulled)/;
+
+const AWS_PROFILE = process.env.AWS_PROFILE;
+const INVALID_PROFILE_NAMES = ["undefined"];
 
 type LogsArgs = {
     serviceNames: string[] | undefined,
@@ -103,23 +108,69 @@ export class DockerCompose {
         );
     }
 
-    watch (signal?: AbortSignal): Promise<void> {
-        return this.runDockerCompose([
-            "watch"
-        ],
-        new DockerComposeWatchLogHandler(this.logFile, this.logger),
-        signal
+    async build (serviceName: string, regxPattern?: RegExp, signal?: AbortSignal): Promise<boolean | void> {
+        const logHandler = regxPattern
+            ? new PatternMatchingConsoleLogHandler(
+                regxPattern, this.logFile, this.logger
+            )
+            : new LogNothingLogHandler(this.logFile, this.logger);
+
+        await this.runDockerCompose(
+            ["up", "--build", "--exit-code-from", serviceName, serviceName],
+            logHandler,
+            signal
+        );
+        return regxPattern ? (logHandler as { matchFoundByPattern: boolean }).matchFoundByPattern : undefined;
+    }
+
+    restart (serviceName: string, signal?: AbortSignal): Promise<void> {
+        return this.runDockerCompose(["restart", serviceName],
+            new LogNothingLogHandler(this.logFile, this.logger),
+            signal
         );
     }
 
-    logs ({ serviceNames, signal, tail, follow }: LogsArgs): Promise<void> {
-        return this.runDockerCompose([
+    logs (
+        { serviceNames = [], signal, tail = "all", follow = false }: LogsArgs,
+        coverage: LogCoverage = "Log"
+    ): Promise<void> {
+        const args = [
             "logs",
-            ...(tail && tail !== "all" ? ["--tail", tail] : []),
-            ...(follow && follow === true ? ["--follow"] : []),
-            ...(serviceNames && serviceNames.length > 0 ? ["--", ...serviceNames] : [])
-        ], new LogEverythingLogHandler(this.logger),
-        signal);
+            ...(tail !== "all" ? ["--tail", tail] : []),
+            ...(follow ? ["--follow"] : []),
+            ...(serviceNames.length > 0 ? ["--", ...serviceNames] : [])
+        ];
+
+        const logHandler = coverage === "Log"
+            ? new LogEverythingLogHandler(this.logger)
+            : new DockerComposeWatchLogHandler(this.logger);
+
+        return this.runDockerCompose(args, logHandler, signal);
+    }
+
+    healthCheck (serviceNames:string[]): void {
+        const servicesNotReady: string[] = [];
+        const serviceNamesToString = serviceNames.join(" ");
+        const containersInspection = JSON.parse(execSync(`docker inspect ${serviceNamesToString}`).toString("utf8"));
+
+        if (containersInspection.length > 0) {
+            for (const container of containersInspection) {
+                const containerName = container.Name.replace("/", "");
+                const containerStatus = container.State.Health?.Status || "Unknown";
+
+                if (containerStatus === "starting") {
+                    servicesNotReady.push(containerName);
+                }
+                const logMessage = `Container ${containerName} ${containerStatus}`;
+                const watch = new DockerComposeWatchLogHandler(this.logger).handle(logMessage);
+            }
+        }
+
+        if (servicesNotReady.length > 0) {
+            setTimeout(() => {
+                this.healthCheck(servicesNotReady);
+            }, 3000);
+        }
     }
 
     pull (serviceName: string, abortSignal?: AbortSignal): Promise<void> {
@@ -184,21 +235,27 @@ export class DockerCompose {
      * @throws {Error} If the AWS CLI command fails or credentials cannot be retrieved.
     */
     private get getAwsCredentials (): Record<string, string> {
-        try {
-            const output = execSync("aws configure export-credentials --format env", { encoding: "utf-8" });
+        if (!AWS_PROFILE || INVALID_PROFILE_NAMES.includes(AWS_PROFILE)) {
+            throw new Error("Fetch AWS credentials failed: invalid profile detected. Run:'chs-dev troubleshoot analyse' command to troubleshoot.");
+        }
 
-            // parse output into an object
-            const awsCredentials = output
+        try {
+            const output = execSync(`aws configure export-credentials --profile ${AWS_PROFILE} --format env`, { encoding: "utf-8" });
+
+            return output
                 .split("\n")
                 .filter(line => line.startsWith("export "))
-                .map(line => line.replace("export ", "").split("="))
-                .reduce((acc, [key, value]) => {
+                .reduce((acc, line) => {
+                    const [key, value] = line.replace("export ", "").split("=");
                     acc[key] = value;
                     return acc;
-                }, {});
-            return awsCredentials;
-        } catch (error:any) {
-            throw new Error(`Fetch AWS credentials failed: ${error}. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
+                }, {} as Record<string, string>);
+        } catch (error: any) {
+            const msg = error?.message || String(error);
+            if (msg.includes("loading SSO Token") || msg.includes("retrieving token from sso")) {
+                throw new Error(`Fetch AWS credentials failed. Run: aws sso login.`);
+            }
+            throw new Error(`Fetch AWS credentials failed. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.`);
         }
     }
 

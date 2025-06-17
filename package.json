@@ -1,6 +1,6 @@
 {
   "name": "chs-dev",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "author": "Companies House",
   "bin": {
     "chs-dev": "./bin/run.js"
@@ -37,6 +37,7 @@
     "@tsconfig/node20": "^20.1.4",
     "@types/chai": "^4.2.11",
     "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^29.5.14",
     "@types/mocha": "^5.2.7",
     "@types/node": "^22.4.1",
     "@typescript-eslint/eslint-plugin": "^7.11.0",
@@ -86,6 +87,7 @@
       "generate-runnable-docker-compose": "./lib/hooks/generate-runnable-docker-compose.js",
       "generate-development-docker-compose": "./lib/hooks/generate-development-docker-compose.js",
       "check-service-or-module-state": "./lib/hooks/check-service-or-module-state.js",
+      "check-development-service-config": "./lib/hooks/check-development-service-config.js",
       "validate-project-state": "./lib/hooks/validate-project-state.js"
     },
     "bin": "chs-dev",

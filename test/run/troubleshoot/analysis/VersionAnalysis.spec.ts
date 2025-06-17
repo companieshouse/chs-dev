@@ -57,7 +57,7 @@ describe("VersionAnalysis", () => {
                 projectPath: "/home/user/docker",
                 projectName: "docker",
                 performEcrLoginHoursThreshold: 7,
-                versionSpecification: ">=2.0.0 <3.0.0",
+                versionSpecification: ">=3.0.0 <4.0.0",
                 chsDevVersion: "2.0.0",
                 env: {}
             }
@@ -78,7 +78,7 @@ describe("VersionAnalysis", () => {
                 projectPath: "/home/user/docker",
                 projectName: "docker",
                 performEcrLoginHoursThreshold: 7,
-                versionSpecification: ">=2.0.0 <3.0.0",
+                versionSpecification: ">=3.0.0 <4.0.0",
                 chsDevVersion: "2.0.0",
                 env: {}
             }
