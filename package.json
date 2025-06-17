@@ -22,6 +22,7 @@
     "glob": "^7.1.6",
     "graphology": "^0.25.4",
     "node-graphviz": "^0.1.1",
+    "octokit": "^5.0.3",
     "open": "^10.1.0",
     "semver": "^7.3.2",
     "sigma": "^3.0.0-beta.33",
