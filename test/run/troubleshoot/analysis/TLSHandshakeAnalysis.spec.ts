@@ -27,12 +27,7 @@ describe("TLSHandshakeAnalysis", () => {
     );
 
     beforeEach(async () => {
-        jest.spyOn(global, "Date").mockImplementation(() =>
-            ({
-                toISOString: () => `${mockDate}T12:00:00.000Z`
-            } as unknown as Date)
-        );
-
+        jest.useFakeTimers().setSystemTime(new Date(`${mockDate}T12:00:00.000Z`));
         analysis = new TLSHandshakeAnalysis();
         jest.resetAllMocks();
     });
@@ -65,36 +60,33 @@ describe("TLSHandshakeAnalysis", () => {
         );
     });
 
-    // it("should return an AnalysisOutcome with no issues if TLS handshake timeout is not found", async () => {
-    //     const logContent = [
-    //         "Some log line",
-    //         "Another log line",
-    //         "No handshake error here",
-    //         "Yet another log line",
-    //         "Final log line"
-    //     ].join("\n");
+    it("should return an AnalysisOutcome with no issues if TLS handshake timeout is not found", async () => {
+        const logContent = [
+            "Some log line",
+            "Another log line",
+            "No handshake error here",
+            "Yet another log line",
+            "Final log line"
+        ].join("\n");
 
-    //     (fs.readFileSync as jest.Mock).mockReturnValue(logContent);
+        (fs.readFileSync as jest.Mock).mockReturnValue(logContent);
 
-    //     const tlsHandshake = new TLSHandshake();
-    //     const outcome = await tlsHandshake.analyse({
-    //         config: { projectPath: mockProjectPath }
-    //     } as any);
+        const outcome = await analysis.analyse({
+            config: { projectPath: mockProjectPath }
+        } as any);
 
-    //     expect(fs.readFileSync).toHaveBeenCalledWith(mockLogPath, "utf-8");
-    //     expect(outcome.headline).toContain("TLS Handshake Timeout Errors");
-    //     expect(outcome.issues).toHaveLength(0);
-    //     expect(outcome.status).toBe("Fail");
-    // });
+        expect(fs.readFileSync).toHaveBeenCalledWith(mockLogPath, "utf-8");
+        expect(outcome.headline).toContain("TLS Handshake Timeout Errors");
+        expect(outcome.issues).toHaveLength(0);
+    });
 
-    // it("should handle empty log files gracefully", async () => {
-    //     (fs.readFileSync as jest.Mock).mockReturnValue("");
+    it("should handle empty log files gracefully", async () => {
+        (fs.readFileSync as jest.Mock).mockReturnValue("");
 
-    //     const tlsHandshake = new TLSHandshake();
-    //     const outcome = await tlsHandshake.analyse({
-    //         config: { projectPath: mockProjectPath }
-    //     } as any);
+        const outcome = await analysis.analyse({
+            config: { projectPath: mockProjectPath }
+        } as any);
 
-    //     expect(outcome.issues).toHaveLength(0);
-    // });
+        expect(outcome.issues).toHaveLength(0);
+    });
 });
