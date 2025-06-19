@@ -1,5 +1,5 @@
 import confirm from "@inquirer/confirm";
-import { Command, Config, ux } from "@oclif/core";
+import { Command, Config, Flags, ux } from "@oclif/core";
 
 import { basename } from "path";
 import loadConfig from "../helpers/config-loader.js";
@@ -13,6 +13,7 @@ import { PermanentRepositories } from "../state/permanent-repositories.js";
 import { StateManager } from "../state/state-manager.js";
 import Service from "../model/Service.js";
 import { greenBright } from "ansis";
+import { OtelGenerator } from "../generator/otel-generator.js";
 
 type ServicesBuildContext = {
     services: Service[];
@@ -25,8 +26,22 @@ export default class Up extends Command {
 
     static description: string = "Brings up the docker-chs-development environment";
 
+    static flags = {
+        otel: Flags.boolean({
+            aliases: ["otel"],
+            default: false,
+            description: "Enable OpenTelemetry for tracing"
+        }),
+        "no-otel": Flags.boolean({
+            aliases: ["no-otel"],
+            description: "Disable OpenTelemetry for tracing"
+        })
+    };
+
     static examples = [
-        "$ chs-dev up"
+        "$ chs-dev up",
+        "$ chs-dev up --otel",
+        "$ chs-dev up --no-otel"
     ];
 
     private readonly dependencyCache: DependencyCache;
@@ -36,6 +51,7 @@ export default class Up extends Command {
     private readonly composeLogViewer: ComposeLogViewer;
     private readonly inventory: Inventory;
     private readonly permanentRepositories: PermanentRepositories;
+    private readonly otelGenerator: OtelGenerator;
     private servicesBuildContext!: ServicesBuildContext;
 
     constructor (argv: string[], config: Config) {
@@ -54,9 +70,12 @@ export default class Up extends Command {
         this.composeLogViewer = new ComposeLogViewer(this.chsDevConfig, logger);
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.permanentRepositories = new PermanentRepositories(this.chsDevConfig, this.inventory);
+        this.otelGenerator = new OtelGenerator(this.chsDevConfig.projectPath);
     }
 
     async run (): Promise<any> {
+        const { flags } = await this.parse(Up);
+
         await this.config.runHook(
             "validate-project-state", {
                 requiredFiles: [
@@ -78,6 +97,8 @@ export default class Up extends Command {
                 ]
             });
         }
+
+        this.otelGenerator.modifyGeneratedDockerCompose(flags);
 
         if (this.hasServicesInDevelopmentMode) {
             try {
