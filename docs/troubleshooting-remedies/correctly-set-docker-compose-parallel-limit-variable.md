@@ -16,5 +16,5 @@ Setting: `COMPOSE_PARALLEL_LIMIT=1`  forces Docker Compose to start services one
 
 ## Rationale
 
-This prevent resource contention which happens when there are too many processes competing for network access through the vpn.
+This prevents resource contention which happens when there are too many processes competing for network access through the vpn.
 
