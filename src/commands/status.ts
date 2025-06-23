@@ -8,6 +8,7 @@ import { DockerCompose } from "../run/docker-compose.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import { Inventory } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
+import { OtelGenerator } from "../generator/otel-generator.js";
 
 export default class Status extends Command {
     static description = "print status of an environment";
@@ -35,6 +36,8 @@ export default class Status extends Command {
 
     private chsDevConfig: ChsDevConfig;
 
+    private readonly otelGenerator: OtelGenerator;
+
     constructor (argv: string[], config: Config) {
         super(argv, config);
         this.chsDevConfig = loadConfig();
@@ -43,6 +46,7 @@ export default class Status extends Command {
         this.dockerCompose = new DockerCompose(this.chsDevConfig, {
             log: (msg: string) => this.log(msg)
         });
+        this.otelGenerator = new OtelGenerator(this.chsDevConfig.projectPath);
     }
 
     async run (): Promise<void> {
@@ -72,7 +76,13 @@ export default class Status extends Command {
         const { flags } = await this.parse(Status);
 
         const serviceLoader = new ServiceLoader(this.inventory);
-        const enabledServiceNames = serviceLoader.loadServicesNames(state);
+        let enabledServiceNames = serviceLoader.loadServicesNames(state);
+
+        const enabledOtelServiceNames = dockerComposeState
+            ? this.otelGenerator.otelServiceNames.filter(serviceName => serviceName in dockerComposeState)
+            : [];
+
+        enabledServiceNames = [...enabledServiceNames, ...enabledOtelServiceNames].sort();
 
         if (flags.json) {
             const jsonRepresentation = this.constructJsonRepresentation(
