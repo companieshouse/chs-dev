@@ -58,7 +58,7 @@ will prevent >60 unauthenticated requests an hour.
 
             if (upgradeType.includes("major")) {
                 const type = upgradeType.split("-")[1];
-                this.log(`Major ${type} detected. Potential breaking changes — refer to the setup guide: ${documentationLink(DOCUMENTATION_LINK)}.`);
+                this.log(`Major ${type} detected. Potential breaking changes — refer to the guide: ${documentationLink(DOCUMENTATION_LINK)}.`);
             }
             const synchronization = new SynchronizeChsDevVersion();
 
