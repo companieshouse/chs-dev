@@ -207,7 +207,7 @@ describe("Sync command", () => {
         await sync.run();
 
         expect(runSynchronisationMock).toHaveBeenCalledWith(true, "2.1.2");
-        expect(logSpy).toHaveBeenCalledWith(`Major upgrade detected. Potential breaking changes — refer to the setup guide: ${DOCUMENTATION_LINK}.`);
+        expect(logSpy).toHaveBeenCalledWith(`Major upgrade detected. Potential breaking changes — refer to the guide: ${DOCUMENTATION_LINK}.`);
 
     });
 
