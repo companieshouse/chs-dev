@@ -59,3 +59,7 @@ export const displayLink = (linkUrl: string, title: string) => {
 
     console.log(logText);
 };
+
+export const documentationLink = (documentationFileName: string) => {
+    return `https://www.github.com/companieshouse/chs-dev/blob/main/docs/${documentationFileName}`;
+};
