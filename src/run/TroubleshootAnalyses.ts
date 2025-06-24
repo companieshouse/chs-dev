@@ -6,6 +6,7 @@ import { StateManager } from "../state/state-manager.js";
 import { Logger } from "./logs/logs-handler.js";
 import analysisTasks from "./troubleshoot/analysis/analysis-tasks.js";
 import AnalysisTask, { AnalysisFailureLevel, AnalysisIssue, AnalysisTaskOutcome } from "./troubleshoot/analysis/AnalysisTask.js";
+import { documentationLink } from "../helpers/link.js";
 
 export type AnalysesOutome = {
     success: boolean
@@ -154,11 +155,8 @@ export default class TroubleshootAnalyses {
         logFn("\t\tSuggestions:");
         issue.suggestions.forEach(suggestion => logFn(`\t\t\t- ${suggestion}`));
         logFn("\n\t\tDocumentation Links:");
-        issue.documentationLinks.forEach(docLink => logFn(`\t\t\t- ${this.documentationLink(docLink)}`));
+        issue.documentationLinks.forEach(docLink => logFn(`\t\t\t- ${documentationLink(docLink)}`));
 
     }
 
-    private documentationLink (documentationFileName: string) {
-        return `https://www.github.com/companieshouse/chs-dev/blob/main/docs/${documentationFileName}`;
-    }
 }

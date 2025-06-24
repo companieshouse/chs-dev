@@ -14,6 +14,8 @@ const chsDevConfig: ChsDevConfig = {
     versionSpecification: "<=0.1.16"
 };
 
+const DOCUMENTATION_LINK = "https://www.github.com/companieshouse/chs-dev/blob/main/docs/troubleshooting-remedies/correctly-resolve-breaking-changes-from-version-migrations.md";
+
 jest.mock("../../src/run/sync-versions", function () {
     return {
         SynchronizeChsDevVersion: function () {
@@ -38,7 +40,20 @@ jest.mock("../../src/helpers/config-loader", () => {
 
 jest.mock("semver", () => {
     return {
-        satisfies: satisfiesMock
+        satisfies: satisfiesMock,
+        eq: (a: string, b: string) => a === b,
+        gt: (a: string, b: string) => {
+            const pa = a.split(".").map(Number);
+            const pb = b.split(".").map(Number);
+            for (let i = 0; i < 3; i++) {
+                if (pa[i] > pb[i]) return true;
+                if (pa[i] < pb[i]) return false;
+            }
+            return false;
+        },
+        major: (v: string) => Number(v.split(".")[0]),
+        minor: (v: string) => Number(v.split(".")[1]),
+        patch: (v: string) => Number(v.split(".")[2])
     };
 });
 
@@ -177,5 +192,53 @@ describe("Sync command", () => {
         expect(runSynchronisationMock).not.toHaveBeenCalled();
 
         expect(logSpy).toHaveBeenCalledWith("Synchronisation complete. Version: 0.1.13 already installed");
+    });
+
+    it("runs synchronisation and notify user when version is a major upgrade or downgrade ", async () => {
+        const logSpy = jest.spyOn(sync, "log");
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            flags: {
+                version: "2.1.2",
+                force: true
+            }
+        });
+
+        await sync.run();
+
+        expect(runSynchronisationMock).toHaveBeenCalledWith(true, "2.1.2");
+        expect(logSpy).toHaveBeenCalledWith(`Major upgrade detected. Potential breaking changes — refer to the guide: ${DOCUMENTATION_LINK}.`);
+
+    });
+
+    describe("getVersionChangeType", () => {
+        it("returns 'same' for identical versions", () => {
+
+            expect((sync as any).getVersionChangeType("1.2.3", "1.2.3")).toBe("same");
+        });
+
+        it("detects major upgrade", () => {
+            expect((sync as any).getVersionChangeType("1.2.3", "2.0.0")).toBe("major-upgrade");
+        });
+
+        it("detects major downgrade", () => {
+            expect((sync as any).getVersionChangeType("2.0.0", "1.2.3")).toBe("major-downgrade");
+        });
+
+        it("detects minor upgrade", () => {
+            expect((sync as any).getVersionChangeType("1.2.3", "1.3.0")).toBe("minor-upgrade");
+        });
+
+        it("detects minor downgrade", () => {
+            expect((sync as any).getVersionChangeType("1.3.0", "1.2.3")).toBe("minor-downgrade");
+        });
+
+        it("detects patch upgrade", () => {
+            expect((sync as any).getVersionChangeType("1.2.3", "1.2.4")).toBe("patch-upgrade");
+        });
+
+        it("detects patch downgrade", () => {
+            expect((sync as any).getVersionChangeType("1.2.4", "1.2.3")).toBe("patch-downgrade");
+        });
     });
 });
