@@ -2,15 +2,13 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import Service from "../model/Service.js";
 import yaml from "yaml";
+import { documentationLink } from "./link.js";
 
 const DOCUMENTATION_LINKS = {
     node: "troubleshooting-remedies/correctly-node-services-for-development-mode.md",
     healthcheck: "troubleshooting-remedies/correctly-add-healthcheck-to-service-docker-compose.md"
 };
 
-const documentationLink = (documentationFileName: string) => {
-    return `https://www.github.com/companieshouse/chs-dev/blob/main/docs/${documentationFileName}`;
-};
 /**
  * Validates the presence of required labels for submodule integration
  * @param servicePath - Path to the local service directory.

@@ -89,7 +89,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
 
             if (runHook) {
                 const state = this.stateManager.snapshot;
-                const { excludedServices } = state || [];
+                const { excludedServices = [] } = state || {};
 
                 const generateExclusionSpec = this.handleExclusionsAndDevelopmentCommand(this.id, excludedServices);
 
