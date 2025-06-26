@@ -33,6 +33,7 @@ describe("check-development-service-config hook", () => {
 
     it("should warn if service directory is missing", async () => {
         (existsSync as jest.Mock).mockImplementation((p) => false);
+        jest.spyOn(validators, "isTypescriptProject").mockReturnValue(true);
 
         // @ts-expect-error
         await checkDevelopmentServiceConfigHook({ services: [mockService], context: mockContext });
@@ -44,7 +45,7 @@ describe("check-development-service-config hook", () => {
 
     it("should warn if package.json is missing", async () => {
         (existsSync as jest.Mock).mockImplementationOnce((p) => true);
-
+        jest.spyOn(validators, "isTypescriptProject").mockReturnValue(true);
         jest.spyOn(validators, "validateLabelForSubmodulesIntegration").mockReturnThis();
 
         (existsSync as jest.Mock).mockImplementationOnce((p) => false);
@@ -59,6 +60,7 @@ describe("check-development-service-config hook", () => {
 
     it("should warn if nodemon-entry.ts is missing", async () => {
         (existsSync as jest.Mock).mockImplementationOnce((p) => true);
+        jest.spyOn(validators, "isTypescriptProject").mockReturnValue(true);
         jest.spyOn(validators, "validateLabelForSubmodulesIntegration").mockReturnThis();
 
         (existsSync as jest.Mock).mockImplementationOnce((p) => true);
@@ -76,6 +78,7 @@ describe("check-development-service-config hook", () => {
 
     it("should warn if nodemon.json.ts is missing", async () => {
         (existsSync as jest.Mock).mockImplementationOnce((p) => true);
+        jest.spyOn(validators, "isTypescriptProject").mockReturnValue(true);
         jest.spyOn(validators, "validateLabelForSubmodulesIntegration").mockReturnThis();
 
         (existsSync as jest.Mock).mockImplementationOnce((p) => true);

@@ -4,6 +4,9 @@
 
 To enable efficient development with automatic restarts on file changes, Node.js projects should be configured with **Nodemon**. This guide outlines how to properly set up `nodemon`, define its configuration, create an appropriate entry point, and ensure compatibility with `chs-dev`.
 
+Note: The resolution steps covers both `Typescript` and `Javascript` setup. Change the file extension accordingly.
+E.g `filename.js` or `filename.ts`
+
 ## Resolution Summary
 
 Follow these steps to set up Nodemon in the service local repository:
@@ -46,6 +49,7 @@ Sample `nodemon.entry` file: `/local/builders/node/v3/bin/config/nodemon-entry`.
 ### 3. Create nodemon.json configuration
 In the root of your project, add a `nodemon.json` file with the following configuration:
 
+For Typescript setup:
 ```json
 {
   "exec": "ts-node ./src/bin/nodemon-entry.ts",
@@ -76,18 +80,39 @@ Sample `nodemon.json` where express server parent directory is `server`:
 }
 
 ```
+
+For Javascript setup:
+```json
+{
+ "exec": "node ./server/bin/nodemon-entry.js",
+  "ext": "ts,html",
+  "watch": ["./server", "./views"],
+  "events": {
+    "restart": "echo '🔄 '  Nodemon Restarting...",
+    "crash": "echo '💥 '  Nodemon Crashed!"
+  }
+}
+
+```
 This configuration does the following:
 
-Runs the app through nodemon via ts-node at `./server/bin/nodemon-entry.ts`
+Runs the app through nodemon via `ts-node` at `./server/bin/nodemon-entry.ts` or via `node` at `./server/bin/nodemon-entry.js`
 
 Watches the `server` and `views` directory for changes.
 
 #### To Add a VScode debugger support
 1. Configure the `exec` property in the nodemon.json file as follows:
 
+Typescript:
 ```json
 {
   "exec": "node --inspect=0.0.0.0:9229 -r ts-node/register src/bin/nodemon-entry.ts",
+}
+```
+Javascript:
+```json
+{
+  "exec": "node --inspect=0.0.0.0:9229 src/bin/nodemon-entry.js"
 }
 ```
 2. Create a vscode configuration file in the codebase root dir: `.vscode/launch.json`

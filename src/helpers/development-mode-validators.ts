@@ -83,7 +83,7 @@ export const validateNodemonEntryContent = (actualNodemonEntryPath, serviceName:
  * @param context - Context for logging messages.
  * @returns {void}
 */
-export const validateNodemonJsonContent = (projectPath: string, actualNodemonConfigPath, serviceName: string, context) => {
+export const validateNodemonJsonContent = (projectPath: string, actualNodemonConfigPath, serviceName: string, ext:string, context) => {
     const expectedConfigPath = join(projectPath, "local/builders/node/v3/bin/config/nodemon.json");
 
     if (!existsSync(expectedConfigPath)) {
@@ -97,12 +97,28 @@ export const validateNodemonJsonContent = (projectPath: string, actualNodemonCon
 
     const isEventsMismatch = JSON.stringify(expectedConfig.events) !== JSON.stringify(actualConfig.events);
     const isWatchEmpty = actualConfig.watch.length === 0;
-    const isExecInvalid = !actualConfig.exec?.includes("/bin/nodemon-entry.ts") && !actualConfig.exec?.includes("/dist");
+    const isExecInvalid = !actualConfig.exec?.includes(`/bin/nodemon-entry.${ext}`) && !actualConfig.exec?.includes("/dist");
 
     if (isEventsMismatch || isWatchEmpty || isExecInvalid) {
         context.warn(`Service ${serviceName} has an incorrect nodemon.json configuration.\n`);
         logDocumentationLink(context);
     }
+};
+
+/**
+ * Determines if a service is a TypeScript project by checking for TypeScript dependencies or a tsconfig.json file.
+ * @param servicePath - Path to the local service directory.
+ * @param packageJsonPath - Path to the package.json file in the service.
+ * @returns {boolean} True if the project uses TypeScript, otherwise false.
+ */
+export const isTypescriptProject = (servicePath: string, packageJsonPath: string): boolean => {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+
+    const hasTsConfig = existsSync(join(servicePath, "tsconfig.json"));
+    const hasTypeScriptDependencies = typeof packageJson.devDependencies?.typescript === "string" ||
+        typeof packageJson.dependencies?.typescript === "string";
+
+    return hasTypeScriptDependencies || hasTsConfig;
 };
 
 export const logDocumentationLink = (context, doctype = "node") => {

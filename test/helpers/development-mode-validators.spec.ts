@@ -2,6 +2,7 @@ import { expect, jest } from "@jest/globals";
 import { existsSync, readFileSync } from "fs";
 import * as yaml from "yaml";
 import {
+    isTypescriptProject,
     validateLabelForSubmodulesIntegration,
     validateNodePackageJson,
     validateNodemonEntryContent,
@@ -17,6 +18,7 @@ describe("development-mode-validators", () => {
         warn: jest.fn(),
         error: jest.fn()
     };
+    const ext = "ts";
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -142,6 +144,7 @@ describe("development-mode-validators", () => {
                 "/mock/project/path",
                 "/mock/nodemon.json",
                 "mock-service",
+                ext,
                 mockContext
             );
 
@@ -171,6 +174,7 @@ describe("development-mode-validators", () => {
                 "/mock/project/path",
                 "/mock/nodemon.json",
                 "mock-service",
+                ext,
                 mockContext
             );
 
@@ -193,10 +197,49 @@ describe("development-mode-validators", () => {
                 "/mock/project/path",
                 "/mock/nodemon.json",
                 "mock-service",
+                ext,
                 mockContext
             );
 
             expect(mockContext.warn).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("isTypescriptProject", () => {
+
+        it("should return true if the service is Typescript supported", () => {
+            (readFileSync as jest.Mock).mockReturnValue(
+                JSON.stringify({
+                    dependencies: {
+                        "@types/node": "^14.0.0"
+                    },
+                    devDependencies: {
+                        typescript: "^4.0.0"
+                    }
+                })
+            );
+            (existsSync as jest.Mock).mockReturnValue(true);
+
+            const result = isTypescriptProject("/mock/service/path", "/mock/package.json");
+
+            expect(result).toBe(true);
+
+        });
+        it("should return false if the service is not Typescript supported", () => {
+            (readFileSync as jest.Mock).mockReturnValue(
+                JSON.stringify({
+                    dependencies: {
+                        "@types/node": "^14.0.0"
+                    },
+                    devDependencies: {}
+                })
+            );
+            (existsSync as jest.Mock).mockReturnValue(false);
+
+            const result = isTypescriptProject("/mock/service/path", "/mock/package.json");
+
+            expect(result).toBe(false);
+
         });
     });
 });
