@@ -1,5 +1,4 @@
 import { Args, Command, Config, Flags } from "@oclif/core";
-import { StateManager } from "../../state/state-manager.js";
 import ChsDevConfig from "../../model/Config.js";
 import loadConfig from "../../helpers/config-loader.js";
 import { DockerCompose } from "../../run/docker-compose.js";
@@ -66,7 +65,7 @@ export default class Restore extends Command {
         if (!cacheName || typeof cacheName === "undefined") {
             this.error("Please provide a valid cache name or use the --importCacheFrom or -i flag to restore from an imported cache.");
         }
-
+        console.log(`Restoring state from cache: ${cacheName}`);
         if (importCacheFrom) {
             if (await this.handlePrompt(cacheName)) {
                 this.restoreFromImport(importCacheFrom);
