@@ -32,7 +32,7 @@ export default class AwsEnvironmentVariableAnalysis extends BaseAnalysis {
      */
     private checkAwsProfileEnvVariable (): AnalysisIssue | undefined {
         const AWS_PROFILE = process.env.AWS_PROFILE;
-        const profiles = this.fetchAwsProfiles();
+        const profiles = this.fetchAwsProfiles().filter(profile => profile !== "undefined");
 
         if (!AWS_PROFILE || !profiles.includes(AWS_PROFILE)) {
             return this.createIssue(

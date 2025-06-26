@@ -82,6 +82,41 @@ Runs the app through nodemon via ts-node at `./server/bin/nodemon-entry.ts`
 
 Watches the `server` and `views` directory for changes.
 
+#### To Add a VScode debugger support
+1. Configure the `exec` property in the nodemon.json file as follows:
+
+```json
+{
+  "exec": "node --inspect=0.0.0.0:9229 -r ts-node/register src/bin/nodemon-entry.ts",
+}
+```
+2. Create a vscode configuration file in the codebase root dir: `.vscode/launch.json`
+
+```json
+  {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node",
+        "request": "attach",
+        "name": "attach - remote",
+        "address": "localhost",
+        "port": 9229,
+        "restart": false,
+        "sourceMaps": true,
+        "remoteRoot": "/app",
+        "localRoot": "${workspaceFolder}",
+        "resolveSourceMapLocations": [
+          "${workspaceFolder}/**",
+          "!**/node_modules/**"
+        ]
+      }
+    ]
+}
+
+```
+More information on usage: https://code.visualstudio.com/docs/debugtest/debugging
+
 
 ### 4. Update the package.json Scripts
 

@@ -298,14 +298,28 @@ install() {
   if [ -L "${SYMLINK_DIRECTORY}"/"${SYMLINK_NAME}" ] ||
     [ -d "${INSTALLATION_DIRECTORY}" ]; then
     chs_dev_version_installed="$("${SYMLINK_NAME}" --version || : "")"
+    upgrade_downgrade="upgrade"
 
     if [ -n "${chs_dev_version_installed}" ]; then
+      chs_dev_version_number_installed="$(grep -oE 'chs-dev/[0-9]+\.[0-9]+\.[0-9]+' <<< "${chs_dev_version_installed}" | cut -d'/' -f2)"
+
+      if [[ -n "${VERSION}" && "${VERSION}" != 'latest' ]]; then
+
+        # Compare versions to determine upgrade or downgrade
+        if [[ $(sort -V <<< "${chs_dev_version_number_installed}"$'\n'"${VERSION}" | head -n1) = "${VERSION}" && "${chs_dev_version_number_installed}" != "${VERSION}" ]]; then
+          upgrade_downgrade="downgrade"
+        else
+          upgrade_downgrade="upgrade"
+        fi
+
+      fi
+
       log WARN "chs-dev (version ${chs_dev_version_installed}) already installed"
     else
       log WARN "chs-dev already installed"
     fi
 
-    if user_confirm_action "Do you want to reinstall chs-dev?"; then
+    if user_confirm_action "Do you want to ${upgrade_downgrade} to ${VERSION}?"; then
       FORCE=1 uninstall
     else
       panic "chs-dev cli not installed"

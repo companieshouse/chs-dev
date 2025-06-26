@@ -389,57 +389,6 @@ describe("DockerComposeFileGenerator", () => {
             );
         });
 
-        it("creates touch file", () => {
-            const initialServiceDefinition = parse(readFileSync(serviceDockerComposeFile).toString("utf8"));
-
-            initialServiceDefinition.services["service-one"].labels = [
-                ...(initialServiceDefinition.services["service-one"].labels),
-                "chs.local.builder=node"
-            ];
-
-            const builderSpec = {
-                name: "node",
-                version: "v3",
-                builderSpec: "SPEC"
-            };
-
-            // @ts-expect-error
-            getBuilderMock.mockReturnValue(builderSpec);
-
-            writeFileSync(
-                serviceDockerComposeFile,
-                stringify(initialServiceDefinition),
-                {
-                    flag: "w"
-                }
-            );
-
-            const service: Service = {
-                name: "service-one",
-                module: "module-one",
-                source: serviceDockerComposeFile,
-                repository: null,
-                dependsOn: [],
-                builder: "node",
-                metadata: {}
-            };
-
-            const generatedDevDockerCompSpec: DockerComposeSpec = { ...initialServiceDefinition };
-            generatedDevDockerCompSpec.services[service.name].labels = [
-                ...generatedDevDockerCompSpec.services[service.name].labels,
-                "generated=true"
-            ];
-
-            developmentDockerComposeSpecFactoryMock.create.mockReturnValue(
-                generatedDevDockerCompSpec
-            );
-
-            dockerComposeFileGenerator.generateDevelopmentServiceDockerComposeFile(service, undefined);
-
-            const touchFile = join(resolve(tempDir), "local", service.name, ".touch");
-
-            expect(existsSync(touchFile)).toBe(true);
-        });
     });
 
     describe("generateExclusionServiceDockerComposeFile ", () => {

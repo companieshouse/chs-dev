@@ -2,12 +2,13 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import Service from "../model/Service.js";
 import yaml from "yaml";
+import { documentationLink } from "./link.js";
 
-const DOCUMENTATION_LINKS = "troubleshooting-remedies/correctly-node-services-for-development-mode.md";
-
-const documentationLink = (documentationFileName: string) => {
-    return `https://www.github.com/companieshouse/chs-dev/blob/main/docs/${documentationFileName}`;
+const DOCUMENTATION_LINKS = {
+    node: "troubleshooting-remedies/correctly-node-services-for-development-mode.md",
+    healthcheck: "troubleshooting-remedies/correctly-add-healthcheck-to-service-docker-compose.md"
 };
+
 /**
  * Validates the presence of required labels for submodule integration
  * @param servicePath - Path to the local service directory.
@@ -94,14 +95,16 @@ export const validateNodemonJsonContent = (projectPath: string, actualNodemonCon
     const expectedConfig = JSON.parse(readFileSync(expectedConfigPath, "utf-8"));
     const actualConfig = JSON.parse(readFileSync(actualNodemonConfigPath, "utf-8"));
 
-    if (JSON.stringify(expectedConfig.events) !== JSON.stringify(actualConfig.events) ||
-    !JSON.stringify(actualConfig.exec).includes("/bin/nodemon-entry.ts") ||
-    actualConfig.watch.length === 0) {
+    const isEventsMismatch = JSON.stringify(expectedConfig.events) !== JSON.stringify(actualConfig.events);
+    const isWatchEmpty = actualConfig.watch.length === 0;
+    const isExecInvalid = !actualConfig.exec?.includes("/bin/nodemon-entry.ts") && !actualConfig.exec?.includes("/dist");
+
+    if (isEventsMismatch || isWatchEmpty || isExecInvalid) {
         context.warn(`Service ${serviceName} has an incorrect nodemon.json configuration.\n`);
         logDocumentationLink(context);
     }
 };
 
-export const logDocumentationLink = (context) => {
-    context.error(`Use as setup guide:- ${documentationLink(DOCUMENTATION_LINKS)}`);
+export const logDocumentationLink = (context, doctype = "node") => {
+    context.error(`Use as setup guide:- ${documentationLink(DOCUMENTATION_LINKS[doctype])}\n`);
 };

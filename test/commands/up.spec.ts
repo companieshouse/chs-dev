@@ -10,6 +10,7 @@ import { DockerCompose } from "../../src/run/docker-compose";
 import { DevelopmentMode } from "../../src/run/development-mode";
 import { ComposeLogViewer } from "../../src/run/compose-log-viewer";
 import { PermanentRepositories } from "../../src/state/permanent-repositories";
+import { OtelGenerator } from "../../src/generator/otel-generator";
 
 const dependencyCacheUpdateMock = jest.fn();
 const composeLogViewerViewMock = jest.fn();
@@ -49,11 +50,16 @@ const MODULE_WITH_SERVICE_IN_DEV_MODE = {
 };
 
 const dockerComposeMock = {
-    up: jest.fn()
+    up: jest.fn(),
+    healthCheck: jest.fn()
 };
 
 const developmentModeMock = {
     start: jest.fn()
+};
+
+const otelGeneratorMock = {
+    modifyGeneratedDockerCompose: jest.fn()
 };
 
 jest.mock("../../src/state/state-manager");
@@ -70,11 +76,14 @@ jest.mock("../../src/run/compose-log-viewer");
 
 jest.mock("../../src/state/permanent-repositories");
 
+jest.mock("../../src/generator/otel-generator");
+
 describe("Up command", () => {
     let up: Up;
     let testConfig: Config;
 
     let runHookMock;
+    let parseMock;
 
     const setUpCommand = (snapshot: State) => {
         const cwdSpy = jest.spyOn(process, "cwd");
@@ -112,7 +121,20 @@ describe("Up command", () => {
             ensureAllExistAndAreUpToDate: permanentRepositoriesEnsureAllExistAndAreUpToDateMock
         });
 
+        // @ts-expect-error
+        OtelGenerator.mockReturnValue(otelGeneratorMock);
+
         up = new Up([], testConfig);
+
+        // @ts-expect-error
+        parseMock = jest.spyOn(up, "parse");
+
+        parseMock.mockResolvedValue({
+            flags: {
+                otel: false,
+                "no-otel": false
+            }
+        });
     };
 
     beforeEach(() => {
@@ -144,9 +166,14 @@ describe("Up command", () => {
     });
 
     it("should call up", async () => {
+        const flagsMock = {
+            otel: false,
+            "no-otel": false
+        };
         await up.run();
 
         expect(dockerComposeMock.up).toHaveBeenCalledTimes(1);
+        expect(otelGeneratorMock.modifyGeneratedDockerCompose).toHaveBeenCalledWith(flagsMock);
     });
 
     it("should not call developmentMode start when no services in dev", async () => {
@@ -173,15 +200,26 @@ describe("Up command", () => {
     });
 
     describe("services in development mode", () => {
+
         beforeEach(() => {
             jest.resetAllMocks();
-
+            Object.defineProperty(up, "hasServicesInDevelopmentMode", {
+                get: jest.fn(() => true)
+            });
             setUpCommand(SERVICES_IN_DEV_MODE);
         });
 
-        it("should call up", async () => {
+        it("should call up and check-development-service-config hook", async () => {
+            const mockBuilders = {
+                services: [{ name: "service-one", builder: "node" }]
+            };
+            const mockHookOptions = {
+                services: mockBuilders.services
+            };
+            jest.spyOn(up as any, "getServicesBuildContext").mockReturnValue(mockBuilders);
             await up.run();
 
+            expect(runHookMock).toHaveBeenCalledWith("check-development-service-config", mockHookOptions);
             expect(dockerComposeMock.up).toHaveBeenCalledTimes(1);
         });
 
@@ -197,6 +235,18 @@ describe("Up command", () => {
             await up.run();
 
             expect(developmentModeMock.start).toHaveBeenCalled();
+        });
+
+        it("should call health check ", async () => {
+            const mockBuildersJava = {
+                services: [{ name: "service-two", builder: "java" }],
+                hasJavaBuilder: true
+            };
+
+            jest.spyOn(up as any, "getServicesBuildContext").mockReturnValue(mockBuildersJava);
+            await up.run();
+
+            expect(dockerComposeMock.healthCheck).toHaveBeenCalled();
         });
 
         it("should update dependency cache", async () => {

@@ -726,14 +726,26 @@ Brings up the docker-chs-development environment
 
 ```
 USAGE
-  $ chs-dev up
+  $ chs-dev up [--otel] [--no-otel]
+
+FLAGS
+  --no-otel  Disable OpenTelemetry for tracing
+  --otel     Enable OpenTelemetry for tracing
 
 DESCRIPTION
   Brings up the docker-chs-development environment
 
 EXAMPLES
   $ chs-dev up
+
+  $ chs-dev up --otel
+
+  $ chs-dev up --no-otel
 ```
+
+DOCUMENTATION
+OpenTelemetry is a framework for collecting and exporting traces, metrics, and logs to observe services in chs-dev. When enabled, service logs and metrics can be processed and viewed in the [Grafana interface](http://api.chs.local/grafana).
+[Link to the Opentelemetry documentation](https://companieshouse.atlassian.net/wiki/spaces/TP/pages/5369659489/OpenTelemetry+Instrumenting+Services+with+docker-chs-development)
 <!-- commandsstop -->
 
 ## chs-dev Configuration
