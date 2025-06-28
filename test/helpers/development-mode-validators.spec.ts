@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "fs";
 import * as yaml from "yaml";
 import {
     isTypescriptProject,
-    validateLabelForSubmodulesIntegration,
+    validateLabelForSubmodulesAndPrivateRepositoriesIntegration,
     validateNodePackageJson,
     validateNodemonEntryContent,
     validateNodemonJsonContent
@@ -24,16 +24,25 @@ describe("development-mode-validators", () => {
         jest.resetAllMocks();
     });
 
-    describe("validateLabelForSubmodulesIntegration", () => {
+    describe("validateLabelForSubmodulesAndPrivateRepositoriesIntegration", () => {
         it("should warn if required label is missing in docker-compose configuration", () => {
             (existsSync as jest.Mock).mockReturnValue(true);
             const mockYaml = { services: { "mock-service": { label: [] } } };
             (yaml.parse as jest.Mock).mockReturnValue(
                 mockYaml
             );
+            (readFileSync as jest.Mock).mockReturnValue(
+                JSON.stringify({
+                    dependencies: {
+                        testDependency: "github:companieshouse/test-dependency#v1.0.0"
+                    },
+                    devDependencies: {}
+                })
+            );
 
-            validateLabelForSubmodulesIntegration(
+            validateLabelForSubmodulesAndPrivateRepositoriesIntegration(
                 "/mock/service/path",
+                "/mock/service/packageJsonpath",
                 {
                     name: "mock-service",
                     source: "/mock/source/path"
@@ -50,14 +59,21 @@ describe("development-mode-validators", () => {
 
         it("should not warn if required label is present", () => {
             (existsSync as jest.Mock).mockReturnValue(true);
+            (readFileSync as jest.Mock).mockReturnValue(
+                JSON.stringify({
+                    dependencies: {},
+                    devDependencies: {}
+                })
+            );
 
             const mockYaml = { services: { "mock-service": { labels: ["chs.local.builder.requiresSecrets=true"] } } };
             (yaml.parse as jest.Mock).mockReturnValue(
                 mockYaml
             );
 
-            validateLabelForSubmodulesIntegration(
+            validateLabelForSubmodulesAndPrivateRepositoriesIntegration(
                 "/mock/service/path",
+                "/mock/service/packageJsonpath",
                 {
                     name: "mock-service",
                     source: "/mock/source/path"
