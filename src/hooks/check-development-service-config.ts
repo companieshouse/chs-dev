@@ -6,7 +6,7 @@ import yaml from "yaml";
 import {
     isTypescriptProject,
     logDocumentationLink,
-    validateLabelForSubmodulesIntegration,
+    validateLabelForSubmodulesAndPrivateRepositoriesIntegration,
     validateNodemonEntryContent,
     validateNodemonJsonContent,
     validateNodePackageJson
@@ -60,8 +60,8 @@ const checkNodeServiceConfig = (service: Service, projectPath: string, context) 
     const nodemonEntryFilePathServer = join(servicePath, `server/bin/nodemon-entry.${ext}`);
 
     if (existsSync(servicePath)) {
-        // Validate submodule integration labels
-        validateLabelForSubmodulesIntegration(servicePath, service, context);
+        // Validate submodule integration and private repository labels
+        validateLabelForSubmodulesAndPrivateRepositoriesIntegration(servicePath, packageJsonPath, service, context);
 
         // Validate package.json file
         if (existsSync(packageJsonPath)) {
