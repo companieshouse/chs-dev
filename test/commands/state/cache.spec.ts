@@ -80,7 +80,7 @@ describe("Cache Command", () => {
             }
         });
 
-        const handleActionSpy = jest.spyOn(cache as any, "handleAction").mockResolvedValue(undefined);
+        const handleActionSpy = jest.spyOn(cache as any, "handleActionWithPrompt").mockResolvedValue(undefined);
 
         await cache.run();
 
@@ -107,7 +107,7 @@ describe("Cache Command", () => {
                 remove: true
             }
         });
-        const handleActionSpy = jest.spyOn(cache as any, "handleAction").mockResolvedValue(undefined);
+        const handleActionSpy = jest.spyOn(cache as any, "handleActionWithPrompt").mockResolvedValue(undefined);
 
         await cache.run();
 
@@ -150,29 +150,29 @@ describe("Cache Command", () => {
             args: { name: "mycache" },
             flags: {}
         });
-        const handleActionSpy = jest.spyOn(cache as any, "handleAction").mockResolvedValue(undefined);
+        const handleActionSpy = jest.spyOn(cache as any, "handleActionWithPrompt").mockResolvedValue(undefined);
 
         await cache.run();
 
         expect(handleActionSpy).toHaveBeenCalledWith("mycache", "add", "Saved cache as 'mycache'");
     });
 
-    it("handleAction calls cacheActions and logs on confirm", async () => {
+    it("handleActionWithPrompt calls cacheActions and logs on confirm", async () => {
         const cacheActionsSpy = jest.spyOn(cache as any, "cacheActions").mockImplementation(() => {});
         const logSpy = jest.spyOn(cache, "log").mockImplementation(() => {});
         jest.spyOn(cache as any, "handlePrompt").mockResolvedValue(true);
 
-        await (cache as any).handleAction("mycache", "add", "Saved cache as 'mycache'");
+        await (cache as any).handleActionWithPrompt("mycache", "add", "Saved cache as 'mycache'");
 
         expect(cacheActionsSpy).toHaveBeenCalledWith("mycache", "add");
         expect(logSpy).toHaveBeenCalledWith("Saved cache as 'mycache'");
     });
 
-    it("handleAction does not call cacheActions if prompt is false", async () => {
+    it("handleActionWithPrompt does not call cacheActions if prompt is false", async () => {
         const cacheActionsSpy = jest.spyOn(cache as any, "cacheActions").mockImplementation(() => {});
         jest.spyOn(cache as any, "handlePrompt").mockResolvedValue(false);
 
-        await (cache as any).handleAction("mycache", "add", "Saved cache as 'mycache'");
+        await (cache as any).handleActionWithPrompt("mycache", "add", "Saved cache as 'mycache'");
 
         expect(cacheActionsSpy).not.toHaveBeenCalled();
     });
@@ -220,11 +220,11 @@ describe("Cache Command", () => {
         );
     });
 
-    it("exportCache throws error if cache does not exist", () => {
+    it("cacheByNameExists throws error if cache does not exist", () => {
 
         const errorSpy = jest.spyOn(cache, "error").mockImplementation((msg: any) => { throw new Error(msg); });
 
-        expect(() => (cache as any).exportCache({}, "bar")).toThrow("Cache named bar does not exist.");
+        expect(() => (cache as any).cacheByNameExists({}, "bar")).toThrow("Cache named bar does not exist.");
         errorSpy.mockRestore();
     });
 

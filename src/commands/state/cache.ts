@@ -66,7 +66,7 @@ export default class Cache extends Command {
         } = await this.parse(Cache);
 
         if (wipe) {
-            await this.handleAction("Wipe", "wipe", "Wiped all caches");
+            await this.handleActionWithPrompt("Wipe", "wipe", "Wiped all caches");
             return;
         } else if (available) {
             this.cacheActions("Available", "available");
@@ -76,7 +76,7 @@ export default class Cache extends Command {
         const cacheName = args.name || this.error("Cache name is required");
 
         if (remove) {
-            await this.handleAction(
+            await this.handleActionWithPrompt(
                 cacheName,
                 "remove",
                 `Removed cache ${cacheName}`
@@ -84,11 +84,11 @@ export default class Cache extends Command {
         } else if (exportCache) {
             this.cacheActions(cacheName, "export");
         } else {
-            await this.handleAction(cacheName, "add", `Saved cache as '${cacheName}'`);
+            await this.handleActionWithPrompt(cacheName, "add", `Saved cache as '${cacheName}'`);
         }
     }
 
-    private async handleAction (
+    private async handleActionWithPrompt (
         cacheName: string,
         action: "add" | "remove" | "wipe",
         successMessage: string
@@ -121,9 +121,11 @@ export default class Cache extends Command {
             };
             break;
         }
-        case "remove":
+        case "remove": {
+            this.cacheByNameExists(cacheData, cacheName);
             delete cacheData[cacheName];
             break;
+        }
         case "wipe":
             cacheData = {};
             break;
@@ -131,6 +133,7 @@ export default class Cache extends Command {
             this.availableCaches(cacheData);
             return;
         case "export": {
+            this.cacheByNameExists(cacheData, cacheName);
             this.exportCache(cacheData, cacheName);
             return;
         }
@@ -169,10 +172,6 @@ export default class Cache extends Command {
     }
 
     private exportCache (cacheData: Record<string, any>, cacheName: string): void {
-        if (!cacheData[cacheName]) {
-            this.error(`Cache named ${cacheName} does not exist.`);
-        }
-
         const exportDir = join(this.chsDevConfig.projectPath, EXPORT_STATE_DIR);
         if (!existsSync(exportDir)) {
             mkdirSync(exportDir, { recursive: true });
@@ -187,6 +186,12 @@ export default class Cache extends Command {
 
         writeFileSync(exportedFilename, exportData.join("\n\n"));
         this.log(`Exported cache ${cacheName} destination: '${exportedFilename}'`);
+    }
+
+    private cacheByNameExists (cacheData: Record<string, any>, cacheName: string): void {
+        if (!cacheData[cacheName]) {
+            this.error(`Cache named ${cacheName} does not exist.`);
+        }
     }
 
     private hash (data: string): string {

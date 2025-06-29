@@ -47,9 +47,7 @@ export default class Clean extends Command {
             }
             this.stateManager.cleanState();
 
-            await this.config.runHook("generate-runnable-docker-compose", {
-                generateExclusionSpec: false
-            });
+            await this.config.runHook("generate-runnable-docker-compose", {});
 
             this.dockerCompose.prune("volume");
             if (purge) {

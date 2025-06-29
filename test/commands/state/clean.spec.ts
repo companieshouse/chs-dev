@@ -113,7 +113,7 @@ describe("Clean Command", () => {
         await clean.run();
 
         expect(cleanStateMock).toHaveBeenCalled();
-        expect(runHookMock).toHaveBeenCalledWith("generate-runnable-docker-compose", { generateExclusionSpec: false });
+        expect(runHookMock).toHaveBeenCalledWith("generate-runnable-docker-compose", { });
         expect(dockerComposeMock.prune).toHaveBeenCalledWith("volume");
         expect(dockerComposeMock.prune).toHaveBeenCalledTimes(1);
     });
