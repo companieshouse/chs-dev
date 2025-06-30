@@ -9,13 +9,13 @@ import stripAnsi from "strip-ansi";
 export class DevelopmentWatchLogNodeHandler implements LogHandler {
     // Regular expressions for matching log patterns
     private static readonly LOG_PATTERNS = {
-        RESTART: /"?([\w-]+)"?\s+\|\s+.*Nodemon Restarting.../,
-        CRASHED: /"?([\w-]+)"?\s+\|\s+.*Nodemon Crashed!/,
-        READY: /"?([\w-]+)"?\s+\|\s+.*Application Ready\./,
-        HEALTHY_STATUS: /Container\s+([\w-]+)\s+healthy/,
-        UNHEALTHY_STATUS: /Container\s+([\w-]+)\s+unhealthy/,
-        NPM_INSTALL_COMPLETE: /"?([\w-]+)"?\s+\|\s+.*npm install commencing\./,
-        NPM_INSTALL_FAILED: /"?([\w-]+)"?\s+\|\s+.*npm install failed!\./
+        RESTART: /"?([\w.-]+)"?\s+\|\s+.*Nodemon Restarting.../,
+        CRASHED: /"?([\w.-]+)"?\s+\|\s+.*Nodemon Crashed!/,
+        READY: /"?([\w.-]+)"?\s+\|\s+.*Application Ready\./,
+        HEALTHY_STATUS: /Container\s+([\w.-]+)\s+healthy/,
+        UNHEALTHY_STATUS: /Container\s+([\w.-]+)\s+unhealthy/,
+        NPM_INSTALL_STARTED: /"?([\w.-]+)"?\s+\|\s+.*npm install commencing\./,
+        NPM_INSTALL_FAILED: /"?([\w.-]+)"?\s+\|\s+.*npm install failed!/
     };
 
     private static readonly LOG_ACTIONS = {
@@ -27,7 +27,7 @@ export class DevelopmentWatchLogNodeHandler implements LogHandler {
             logger.log(yellowBright(`${timestamp} - Nodemon: ${serviceName} restarting...`)),
         CRASHED: (logger: Logger, serviceName: string, timestamp: string) =>
             logger.log(redBright(`${timestamp} - Nodemon: ${serviceName} crashed!`)),
-        NPM_INSTALL_COMPLETE: (
+        NPM_INSTALL_STARTED: (
             logger: Logger,
             serviceName: string,
             timestamp: string

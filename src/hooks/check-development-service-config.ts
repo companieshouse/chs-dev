@@ -4,8 +4,9 @@ import { join } from "path";
 import loadConfig from "../helpers/config-loader.js";
 import yaml from "yaml";
 import {
+    isTypescriptProject,
     logDocumentationLink,
-    validateLabelForSubmodulesIntegration,
+    validateLabelForSubmodulesAndPrivateRepositoriesIntegration,
     validateNodemonEntryContent,
     validateNodemonJsonContent,
     validateNodePackageJson
@@ -52,12 +53,15 @@ const checkNodeServiceConfig = (service: Service, projectPath: string, context) 
     const nodemonConfigPath = join(servicePath, "nodemon.json");
     const packageJsonPath = join(servicePath, "package.json");
 
-    const nodemonEntryFilePathSrc = join(servicePath, "src/bin/nodemon-entry.ts");
-    const nodemonEntryFilePathServer = join(servicePath, "server/bin/nodemon-entry.ts");
+    // Check if service is Typescript Supported or Javascript
+    const ext = isTypescriptProject(servicePath, packageJsonPath) ? "ts" : "js";
+
+    const nodemonEntryFilePathSrc = join(servicePath, `src/bin/nodemon-entry.${ext}`);
+    const nodemonEntryFilePathServer = join(servicePath, `server/bin/nodemon-entry.${ext}`);
 
     if (existsSync(servicePath)) {
-        // Validate submodule integration labels
-        validateLabelForSubmodulesIntegration(servicePath, service, context);
+        // Validate submodule integration and private repository labels
+        validateLabelForSubmodulesAndPrivateRepositoriesIntegration(servicePath, packageJsonPath, service, context);
 
         // Validate package.json file
         if (existsSync(packageJsonPath)) {
@@ -74,12 +78,12 @@ const checkNodeServiceConfig = (service: Service, projectPath: string, context) 
             validateNodemonEntryContent(nodemonEntryFilePathServer, service.name, context);
             return;
         } else {
-            logMissingFile(context, service.name, "nodemon entry file in location: ./src/bin/nodemon-entry.ts or ./server/bin/nodemon-entry.ts");
+            logMissingFile(context, service.name, `nodemon entry file in location: ./src/bin/nodemon-entry.${ext} or ./server/bin/nodemon-entry.${ext}`);
         }
 
         // Validate nodemon.json configuration
         if (existsSync(nodemonConfigPath)) {
-            validateNodemonJsonContent(projectPath, nodemonConfigPath, service.name, context);
+            validateNodemonJsonContent(projectPath, nodemonConfigPath, service.name, ext, context);
         } else {
             logMissingFile(context, service.name, "nodemon.json");
         }
