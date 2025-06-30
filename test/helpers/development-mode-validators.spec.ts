@@ -2,7 +2,8 @@ import { expect, jest } from "@jest/globals";
 import { existsSync, readFileSync } from "fs";
 import * as yaml from "yaml";
 import {
-    validateLabelForSubmodulesIntegration,
+    isTypescriptProject,
+    validateLabelForSubmodulesAndPrivateRepositoriesIntegration,
     validateNodePackageJson,
     validateNodemonEntryContent,
     validateNodemonJsonContent
@@ -17,21 +18,31 @@ describe("development-mode-validators", () => {
         warn: jest.fn(),
         error: jest.fn()
     };
+    const ext = "ts";
 
     beforeEach(() => {
         jest.resetAllMocks();
     });
 
-    describe("validateLabelForSubmodulesIntegration", () => {
+    describe("validateLabelForSubmodulesAndPrivateRepositoriesIntegration", () => {
         it("should warn if required label is missing in docker-compose configuration", () => {
             (existsSync as jest.Mock).mockReturnValue(true);
             const mockYaml = { services: { "mock-service": { label: [] } } };
             (yaml.parse as jest.Mock).mockReturnValue(
                 mockYaml
             );
+            (readFileSync as jest.Mock).mockReturnValue(
+                JSON.stringify({
+                    dependencies: {
+                        testDependency: "github:companieshouse/test-dependency#v1.0.0"
+                    },
+                    devDependencies: {}
+                })
+            );
 
-            validateLabelForSubmodulesIntegration(
+            validateLabelForSubmodulesAndPrivateRepositoriesIntegration(
                 "/mock/service/path",
+                "/mock/service/packageJsonpath",
                 {
                     name: "mock-service",
                     source: "/mock/source/path"
@@ -48,14 +59,21 @@ describe("development-mode-validators", () => {
 
         it("should not warn if required label is present", () => {
             (existsSync as jest.Mock).mockReturnValue(true);
+            (readFileSync as jest.Mock).mockReturnValue(
+                JSON.stringify({
+                    dependencies: {},
+                    devDependencies: {}
+                })
+            );
 
             const mockYaml = { services: { "mock-service": { labels: ["chs.local.builder.requiresSecrets=true"] } } };
             (yaml.parse as jest.Mock).mockReturnValue(
                 mockYaml
             );
 
-            validateLabelForSubmodulesIntegration(
+            validateLabelForSubmodulesAndPrivateRepositoriesIntegration(
                 "/mock/service/path",
+                "/mock/service/packageJsonpath",
                 {
                     name: "mock-service",
                     source: "/mock/source/path"
@@ -142,6 +160,7 @@ describe("development-mode-validators", () => {
                 "/mock/project/path",
                 "/mock/nodemon.json",
                 "mock-service",
+                ext,
                 mockContext
             );
 
@@ -171,6 +190,7 @@ describe("development-mode-validators", () => {
                 "/mock/project/path",
                 "/mock/nodemon.json",
                 "mock-service",
+                ext,
                 mockContext
             );
 
@@ -193,10 +213,49 @@ describe("development-mode-validators", () => {
                 "/mock/project/path",
                 "/mock/nodemon.json",
                 "mock-service",
+                ext,
                 mockContext
             );
 
             expect(mockContext.warn).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("isTypescriptProject", () => {
+
+        it("should return true if the service is Typescript supported", () => {
+            (readFileSync as jest.Mock).mockReturnValue(
+                JSON.stringify({
+                    dependencies: {
+                        "@types/node": "^14.0.0"
+                    },
+                    devDependencies: {
+                        typescript: "^4.0.0"
+                    }
+                })
+            );
+            (existsSync as jest.Mock).mockReturnValue(true);
+
+            const result = isTypescriptProject("/mock/service/path", "/mock/package.json");
+
+            expect(result).toBe(true);
+
+        });
+        it("should return false if the service is not Typescript supported", () => {
+            (readFileSync as jest.Mock).mockReturnValue(
+                JSON.stringify({
+                    dependencies: {
+                        "@types/node": "^14.0.0"
+                    },
+                    devDependencies: {}
+                })
+            );
+            (existsSync as jest.Mock).mockReturnValue(false);
+
+            const result = isTypescriptProject("/mock/service/path", "/mock/package.json");
+
+            expect(result).toBe(false);
+
         });
     });
 });
