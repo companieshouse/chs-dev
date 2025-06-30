@@ -97,6 +97,15 @@ export class StateManager {
         }
     }
 
+    cleanState (): void {
+        this.dumpState({
+            modules: [],
+            services: [],
+            servicesWithLiveUpdate: [],
+            excludedServices: []
+        });
+    }
+
     private dumpState (state: State): void {
         const lines = [
             "# DO NOT MODIFY MANUALLY",

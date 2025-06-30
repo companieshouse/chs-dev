@@ -15,6 +15,7 @@ interface Logger {
 }
 
 type LogCoverage = "Watch" | "Log";
+type Prune = "volume" | "network" | "image" | "container" | "builder";
 
 const CONTAINER_STOPPED_STATUS_PATTERN =
     /Container\s([\dA-Za-z-]+)\s*(Stopped|Removed)/;
@@ -184,6 +185,24 @@ export class DockerCompose {
         );
     }
 
+    prune (commandArg: Prune): void {
+        try {
+            let logMsg: string;
+            if (commandArg === "volume") {
+                const volumes = execSync(`docker volume ls -qf dangling=true`, { encoding: "utf-8" });
+                if (volumes.length === 0) {
+                    return;
+                }
+                logMsg = execSync(`docker volume rm $(docker volume ls -qf dangling=true)`, { encoding: "utf-8" });
+            } else {
+                logMsg = execSync(`docker ${commandArg} prune -f`, { encoding: "utf-8" });
+            }
+            const log = new LogNothingLogHandler(logMsg, this.logger);
+        } catch (error) {
+            throw new Error(`Docker prune command failed: ${error}`);
+        }
+    }
+
     private createStatusMatchLogHandler (pattern: RegExp, colouriser?: (status: string) => string) {
         return new PatternMatchingConsoleLogHandler(
             pattern, this.logFile, this.logger, colouriser
@@ -226,6 +245,43 @@ export class DockerCompose {
             );
         } catch (error) {
             throw new Error(`Docker compose failed with status code: ${error}`);
+        }
+    }
+
+    private async runDockerCommands (commandArgs: string[], logHandler: LogHandler, signal?: AbortSignal): Promise<void> {
+        // Spawn docker compose process
+        const dockerComposeEnv = this.config.env;
+        const spawnOptions: {
+            cwd: string,
+            signal?: AbortSignal,
+            env?: Record<string, string>
+        } = {
+            cwd: this.config.projectPath,
+            signal
+        };
+
+        if (dockerComposeEnv && Object.keys(dockerComposeEnv).length > 0) {
+            // @ts-expect-error
+            spawnOptions.env = {
+                ...process.env,
+                ...dockerComposeEnv
+            };
+        }
+
+        try {
+            await spawn(
+                "docker",
+                [
+                    ...commandArgs
+                ],
+                {
+                    logHandler,
+                    spawnOptions,
+                    acceptableExitCodes: [0, 130]
+                }
+            );
+        } catch (error) {
+            throw new Error(`Docker command failed with status code: ${error}`);
         }
     }
 
