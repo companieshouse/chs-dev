@@ -118,23 +118,26 @@ export default class Status extends Command {
         serviceState: (serviceName: string, colourise: boolean) => string,
         enabledServiceNames: string[]
     ) {
+        const { modules, services, excludedServices } = state;
         this.log("Manually activated modules:");
-        for (const module of state.modules) {
+        for (const module of modules) {
             this.log(` - ${module}`);
         }
 
         this.log("\nManually activated services:");
-        for (const service of state.services) {
+        for (const service of services) {
             this.log(` - ${service} ${serviceState(service, true)}`);
         }
 
         this.log("\nAutomatically activated services:");
+        enabledServiceNames = enabledServiceNames.filter(serviceName => !excludedServices.includes(serviceName));
+
         for (const serviceName of enabledServiceNames) {
             this.log(` - ${serviceName} ${serviceState(serviceName, true)} ${state.servicesWithLiveUpdate.includes(serviceName) ? "[LIVE UPDATE]" : ""}`);
         }
 
         this.log("\nManually deactivated services:");
-        for (const file of state.excludedServices || []) {
+        for (const file of excludedServices || []) {
             this.log(` - ${file}`);
         }
     }

@@ -9,6 +9,7 @@ import { Service } from "../model/Service.js";
 import { Module } from "../model/Module.js";
 import { readServices } from "./service-reader.js";
 import { DependencyNameResolver } from "./dependency-name-resolver.js";
+import { DockerComposeSpec } from "../model/DockerComposeSpec.js";
 
 interface InventoryCache {
   hash: string;
@@ -37,6 +38,28 @@ export class Inventory {
 
     get services (): Service[] {
         return this.getFromCache(inventoryCache => inventoryCache.services);
+    }
+
+    getServiceDependencies (serviceName: string): string[] {
+        return this.getFromCache(inventoryCache => {
+            const service = inventoryCache.services.find(s => s.name === serviceName);
+            if (typeof service !== "undefined") {
+                return service.dependsOn as string[];
+            }
+            return [];
+        });
+    }
+
+    getServiceDirectDependencies (serviceName: string): string[] {
+        const service = this.getFromCache(inventoryCache =>
+            inventoryCache.services.find(s => s.name === serviceName)
+        );
+        if (!service?.source) return [];
+        const dockerCompose: DockerComposeSpec = yaml.parse(
+            readFileSync(service.source, "utf-8")
+        );
+        const dependsOn = dockerCompose.services?.[serviceName]?.depends_on || [];
+        return Array.isArray(dependsOn) ? dependsOn : Object.keys(dependsOn);
     }
 
     private getFromCache<T> (cacheSupplier: (inventoryCache: InventoryCache) => T): T {

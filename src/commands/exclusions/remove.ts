@@ -1,4 +1,4 @@
-import { Args, Config } from "@oclif/core";
+import { Args, Config, Flags } from "@oclif/core";
 import AbstractStateModificationCommand from "../AbstractStateModificationCommand.js";
 import { serviceValidator } from "../../helpers/validator.js";
 
@@ -16,6 +16,16 @@ export default class Remove extends AbstractStateModificationCommand {
         })
     };
 
+    static flags = {
+        dependency: Flags.boolean({
+            name: "dependency",
+            char: "d",
+            aliases: ["dependency"],
+            default: false,
+            description: "Remove service and its dependencies from the exclusion list."
+        })
+    };
+
     constructor (argv: string[], config: Config) {
         super(argv, config, "service");
 
@@ -23,11 +33,44 @@ export default class Remove extends AbstractStateModificationCommand {
         this.validArgumentHandler = this.handleValidService;
     }
 
-    private handleValidService (serviceName: string): Promise<void> {
-        this.stateManager.removeExclusionForService(serviceName);
-
-        this.log(`Service "${serviceName}" is included (previous exclusion removed)`);
-
-        return Promise.resolve();
+    protected override parseArgumentsAndFlags (): Promise<{
+        argv: unknown[],
+        flags: Record<string, any>
+    }> {
+        return this.parse(Remove);
     }
+
+    private async handleValidService (serviceName: string): Promise<void> {
+        const dependency = this.flagValues?.dependency || false;
+        const logs: string[] = [];
+
+        if (dependency) {
+            logs.push(...await this.handleDependencyExclusion(serviceName));
+        }
+
+        logs.push(this.excludeAndLog(serviceName));
+        logs.forEach(msg => this.log(msg));
+    }
+
+    private async handleDependencyExclusion (serviceName: string): Promise<string[]> {
+        const logs: string[] = [];
+        const dependencies = this.inventory.getServiceDirectDependencies(serviceName);
+
+        if (dependencies.length > 0) {
+            logs.push(`Removing"${serviceName}" and its dependencies from the exclusion list`);
+            for (const dep of dependencies) {
+                logs.push(this.excludeAndLog(dep));
+            }
+
+        } else {
+            logs.push(`No dependencies found for service "${serviceName}"`);
+        }
+        return logs;
+    }
+
+    private excludeAndLog (serviceName: string): string {
+        this.stateManager.removeExclusionForService(serviceName);
+        return `Service "${serviceName}" is included (previous exclusion removed)`;
+    }
+
 }
