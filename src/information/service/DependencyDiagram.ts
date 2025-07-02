@@ -1,6 +1,8 @@
 import { Inventory } from "../../state/inventory.js";
 import { Service } from "../../model/Service.js";
 import DependencyNode from "../../model/DependencyNode.js";
+import { getRepoDescription } from "../../information/service/RepositoryDescription.js";
+import { getTeamCodeOwner } from "../../information/service/TeamCodeOwner.js";
 import { graphviz } from "node-graphviz";
 import fs from "fs";
 import open from "open";
@@ -17,7 +19,7 @@ export default class DependencyDiagram {
         this.inventory = inventory;
     }
 
-    createDependencyDiagrams (serviceName : string) {
+    async createDependencyDiagrams (serviceName : string) {
 
         const service = this.inventory.services.find(item => item.name === serviceName) as Service;
         if (service !== undefined) {
@@ -45,13 +47,42 @@ export default class DependencyDiagram {
             }
             traverse(service.dependencyTree);
 
+            const repoUrl = service.repository?.url?.trim() ?? null;
+            let repoId: string | null = null;
 
-            let serviceDetail = "{Number of services that depend on this service: " + service.timesUsedByOtherServices + "}|" +
-                                "{Number of dependencies: " + service.numberOfDependencies + "}";
-            
-            dot += "info_box [shape=record, rankdir=TB, style=none, color=black label=\"" + serviceDetail + "\"]";
+            if (repoUrl && repoUrl.includes("github.com")) {
+                const cleanedUrl = repoUrl.replace(/\.git$/, "").replace(/\/+$/, "");
+                const match = cleanedUrl.match(/github\.com[:\/]([^\/]+\/[^\/]+)$/);
+                if (match) {
+                    repoId = match[1];
+                }
+            }
 
-            dot += "}";
+            let repoDescription = "No GitHub repo found.";
+            if (repoId) {
+                repoDescription = await getRepoDescription(repoId);
+            }
+
+            let teamCodeOwner  = "Unknown Code Owner.";
+            if (repoId) {
+                teamCodeOwner = await getTeamCodeOwner(repoId);
+            }
+
+
+        let serviceDetail = `{
+            ${service.name}
+            |
+            Description: ${repoDescription.replace(/"/g, "'")}
+            |
+            Code Owner: ${teamCodeOwner.replace(/"/g, "'")}
+            |
+            Number of services that depend on this service: ${service.timesUsedByOtherServices}
+            |
+            Number of dependencies: ${service.numberOfDependencies}
+        }`;
+
+        dot += `info_box [shape=record, rankdir=TB, style=none, color=black label="${serviceDetail}"]\n`;
+        dot += "}";
 
             const DIAGRAM_PATH = `./local/${serviceName}-dependency_diagram.svg`;
 
