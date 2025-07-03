@@ -21,6 +21,7 @@ type ServicesBuildContext = {
     hasJavaBuilder?: boolean;
     hasNginxBuilder?: boolean;
     hasNoBuilder?: boolean;
+    hasRepositoryBuilder?: boolean
 };
 export default class Up extends Command {
 
@@ -128,13 +129,13 @@ export default class Up extends Command {
                 this.log(
                     "Running services in development mode - watching for changes.\n"
                 );
-                const { services, hasJavaBuilder, hasNodeBuilder, hasNginxBuilder, hasNoBuilder } = this.servicesBuildContext;
+                const builderContext = this.servicesBuildContext;
 
-                this.logReloadInstructions(hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasNoBuilder);
+                this.logReloadInstructions(builderContext);
 
-                this.logWaitReadyInstructions(services, hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasNoBuilder);
+                this.logWaitReadyInstructions(builderContext);
 
-                this.runHealthCheck(services, hasJavaBuilder, hasNoBuilder);
+                this.runHealthCheck(builderContext);
 
                 this.dependencyCache.update();
                 const logsArgs = {
@@ -183,6 +184,8 @@ export default class Up extends Command {
                     builderMap.hasJavaBuilder = true;
                 } else if (builder === "nginx") {
                     builderMap.hasNginxBuilder = true;
+                } else if (builder === "repository") {
+                    builderMap.hasRepositoryBuilder = true;
                 } else if (!builder || builder === "undefined") {
                     builderMap.hasNoBuilder = true;
                 }
@@ -203,8 +206,9 @@ export default class Up extends Command {
         }
     }
 
-    private logReloadInstructions (hasNodeBuilder: boolean | undefined, hasJavaBuilder: boolean | undefined, hasNginxBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
+    private logReloadInstructions (builders: ServicesBuildContext): void {
         const instructions: string[] = [];
+        const { hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasRepositoryBuilder, hasNoBuilder } = builders;
 
         if (hasNodeBuilder) {
             instructions.push("Node Applications: Automatically sync changes.\n");
@@ -214,8 +218,8 @@ export default class Up extends Command {
             instructions.push("Java and Nginx Applications: To sync changes, run: '$ chs-dev reload <serviceName>' in a new shell session.\n");
         }
 
-        if (hasNoBuilder) {
-            instructions.push("Repository Applications[Go and Perl]: Build and sync procedure remains the same.\n");
+        if (hasRepositoryBuilder || hasNoBuilder) {
+            instructions.push("Repository Applications[Java, Go and Perl]: Build and sync procedure remains the same.\n");
         }
 
         if (instructions.length > 0) {
@@ -223,10 +227,11 @@ export default class Up extends Command {
         }
     }
 
-    private logWaitReadyInstructions (services: Service[], hasNodeBuilder: boolean | undefined, hasJavaBuilder: boolean | undefined, hasNginxBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
+    private logWaitReadyInstructions (builders: ServicesBuildContext): void {
+        const { services, hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasRepositoryBuilder, hasNoBuilder } = builders;
         const serviceNames = services.map(service => service.name).join(", ");
 
-        if (hasNodeBuilder || hasJavaBuilder || hasNoBuilder) {
+        if (hasNodeBuilder || hasJavaBuilder || hasRepositoryBuilder || hasNoBuilder) {
             this.log(`Waiting for Services: ${serviceNames} to be ready...\n`);
         }
 
@@ -239,14 +244,15 @@ export default class Up extends Command {
 
     }
 
-    private runHealthCheck (services: Service[], hasJavaBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
-        if (hasJavaBuilder || hasNoBuilder) {
-            const javaAndNoBuilderServicesNames = services.length > 1
+    private runHealthCheck (builders: ServicesBuildContext): void {
+        const { services, hasJavaBuilder, hasRepositoryBuilder, hasNoBuilder } = builders;
+        if (hasJavaBuilder || hasRepositoryBuilder || hasNoBuilder) {
+            const javaRepositoryAndNoBuilderServicesNames = services.length > 1
                 ? services.filter(service => {
-                    return service.builder.includes("java") || !service.builder;
+                    return service.builder.includes("java") || service.builder.includes("repository") || !service.builder;
                 }).map(service => service.name)
                 : [services[0].name];
-            this.dockerCompose.healthCheck(javaAndNoBuilderServicesNames);
+            this.dockerCompose.healthCheck(javaRepositoryAndNoBuilderServicesNames);
         }
     }
 }
