@@ -19,12 +19,12 @@ export default class SystemDependencyDiagram {
     createSystemDiagram () {
 
         let dot = "digraph SystemDependencyDiagram {\n";
-        dot += 'graph [rankdir=TB, splines=polyline, nodesep=5, ranksep=20]\n';
-        dot += 'node [ shape=box, style=filled, color=lightblue2, fontsize=75, height=3, width=7]\n';
+        dot += "graph [rankdir=TB, splines=polyline, nodesep=5, ranksep=20]\n";
+        dot += "node [ shape=box, style=filled, color=lightblue2, fontsize=75, height=3, width=7]\n";
 
         const seenEdges = new Set();
 
-        const traverse =  (node : DependencyNode) => {
+        const traverse = (node : DependencyNode) => {
 
             if (!node) {
                 return;
@@ -38,25 +38,24 @@ export default class SystemDependencyDiagram {
                 }
                 traverse(childNode);
             });
-        }
-
+        };
 
         this.inventory.services.forEach(service => {
-            traverse(service.dependencyTree)          
+            traverse(service.dependencyTree);
         });
 
         dot += "}\n";
         const DIAGRAM_PATH = `./local/system-dependency_diagram.svg`;
 
         graphviz.fdp(dot, "svg").then((svg) => {
-            try{
+            try {
                 fs.writeFileSync(DIAGRAM_PATH, svg);
-                
-            } catch(error){
+
+            } catch (error) {
                 console.log(`an error occurred: ${error}`);
             }
         });
-        
+
         open(DIAGRAM_PATH);
 
     }

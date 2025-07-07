@@ -1,3 +1,4 @@
+import { execSync } from "child_process";
 import CONSTANTS from "../model/Constants.js";
 import { displayLink } from "./link.js";
 import { spawn } from "./spawn-promise.js";
@@ -57,6 +58,39 @@ export const createPullRequest = async (
     }
 
     openPullRequestInBrowser(gitHibOrganisationName, repository, destinationBranch, branch, title);
+};
+
+/**
+ * Fetches the GitHub repository description using the gh CLI.
+ * @param repository
+ * @returns returned as a string, the description of the repository
+ */
+export const getRepositoryDescription = (repositoryName: string): string => {
+    try {
+        const stdout = execSync(`gh repo view --json description companieshouse/${repositoryName}`).toString("utf8");
+
+        const parsed = JSON.parse(stdout);
+        return parsed.description ?? "No description available.";
+    } catch (error) {
+        console.error(`Failed to fetch description for ${repositoryName}:`, error);
+        return "Error fetching description.";
+    }
+};
+
+/**
+  * Fetches the repository code_owner using the gh CLI.
+ * @param repository
+ * @returns team-code-owner value
+ */
+export const getRespositoryOwner = (repositoryName: string): string => {
+    try {
+        const stdout = execSync(`gh api /repos/companieshouse/${repositoryName} --jq '.custom_properties["team-code-owner"]'`).toString("utf8");
+
+        return stdout || "Unknown repository owner.";
+    } catch (error) {
+        console.error(`Failed to fetch team code owner for ${repositoryName}:`, error);
+        return "Error fetching team code owner.";
+    }
 };
 
 const attemptToGetFromGhCli = async () => {
