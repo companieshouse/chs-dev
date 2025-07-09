@@ -11,7 +11,6 @@ import { volumeSpecAssemblyFunction } from "./volume-spec-assembly-function.js";
 
 const specFieldsWhichAreMutable = [
     "build",
-    "develop",
     "env_file",
     "volumes",
     "depends_on",

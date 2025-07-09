@@ -25,14 +25,6 @@ exports[`builderSpecAssemblyFunction adds dependency builder on service and can 
       "context": "/home/test/user/projects/docker-project",
       "dockerfile": "local/builders/java/v2/build.Dockerfile",
     },
-    "develop": {
-      "watch": [
-        {
-          "action": "rebuild",
-          "path": ".touch",
-        },
-      ],
-    },
     "volumes": [
       "repositories/service-four:/app/",
       "./out:/opt/out",
@@ -62,14 +54,6 @@ exports[`builderSpecAssemblyFunction adds dependency builder on service and can 
     "build": {
       "context": "/home/test/user/projects/docker-project",
       "dockerfile": "local/builders/java/v2/build.Dockerfile",
-    },
-    "develop": {
-      "watch": [
-        {
-          "action": "rebuild",
-          "path": ".touch",
-        },
-      ],
     },
     "volumes": [
       "repositories/service-four:/app/",
@@ -101,14 +85,6 @@ exports[`builderSpecAssemblyFunction adds extra builder service to the generated
       "context": "/home/test/user/projects/docker-project",
       "dockerfile": "local/builders/java/v2/build.Dockerfile",
     },
-    "develop": {
-      "watch": [
-        {
-          "action": "rebuild",
-          "path": ".touch",
-        },
-      ],
-    },
     "volumes": [
       "repositories/service-four:/app/",
       "./out:/opt/out",
@@ -138,14 +114,6 @@ exports[`builderSpecAssemblyFunction applies extra properties to service 1`] = `
     "build": {
       "context": "/home/test/user/projects/docker-project",
       "dockerfile": "local/builders/java/v2/build.Dockerfile",
-    },
-    "develop": {
-      "watch": [
-        {
-          "action": "rebuild",
-          "path": ".touch",
-        },
-      ],
     },
     "volumes": [
       "repositories/service-four:/app/",
@@ -214,14 +182,6 @@ exports[`builderSpecAssemblyFunction can handle using builder and service docker
     "context": "/home/test/user/projects/docker-project",
     "dockerfile": "local/builders/java/v2/build.Dockerfile",
   },
-  "develop": {
-    "watch": [
-      {
-        "action": "rebuild",
-        "path": ".touch",
-      },
-    ],
-  },
   "volumes": [
     "repositories/service-one:/app/",
     "./out:/opt/out",
@@ -252,14 +212,6 @@ exports[`builderSpecAssemblyFunction can handle using builder and service docker
   "build": {
     "context": "/home/test/user/projects/docker-project",
     "dockerfile": "local/builders/java/v2/build.Dockerfile",
-  },
-  "develop": {
-    "watch": [
-      {
-        "action": "rebuild",
-        "path": ".touch",
-      },
-    ],
   },
   "volumes": [
     "repositories/service-one:/app/",

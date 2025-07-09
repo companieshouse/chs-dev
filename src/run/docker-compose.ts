@@ -32,6 +32,8 @@ type LogsArgs = {
     signal: AbortSignal | undefined
 }
 
+type ContainerType = "builderContainer" | "nonBuilderContainer"
+
 export class DockerCompose {
 
     readonly logFile: string;
@@ -108,19 +110,34 @@ export class DockerCompose {
         );
     }
 
-    async build (serviceName: string, regxPattern?: RegExp, signal?: AbortSignal): Promise<boolean | void> {
+    /**
+     * Builds a service using docker compose.
+     * Specifically useful for one-off tasks or builder containers
+     * @param serviceName - The name of the service to build.
+     * @param regxPattern - Optional regex pattern to match against logs.
+     * @param signal - Optional AbortSignal to cancel the operation.
+     * @returns A promise that resolves to true if the pattern was matched, or void if no pattern was provided.
+     */
+    async build (
+        serviceName: string,
+        containerType: ContainerType,
+        regxPattern?: RegExp,
+        signal?: AbortSignal
+    ): Promise<boolean | void> {
         const logHandler = regxPattern
-            ? new PatternMatchingConsoleLogHandler(
-                regxPattern, this.logFile, this.logger
-            )
+            ? new PatternMatchingConsoleLogHandler(regxPattern, this.logFile, this.logger)
             : new LogNothingLogHandler(this.logFile, this.logger);
 
-        await this.runDockerCompose(
-            ["up", "--build", "--exit-code-from", serviceName, serviceName],
-            logHandler,
-            signal
-        );
-        return regxPattern ? (logHandler as { matchFoundByPattern: boolean }).matchFoundByPattern : undefined;
+        const args =
+            containerType === "builderContainer"
+                ? ["up", "--build", "--exit-code-from", serviceName, serviceName]
+                : ["up", "--build", "--force-recreate", "--no-deps", "--detach", serviceName];
+
+        await this.runDockerCompose(args, logHandler, signal);
+
+        return regxPattern
+            ? (logHandler as PatternMatchingConsoleLogHandler).matchFoundByPattern
+            : undefined;
     }
 
     restart (serviceName: string, signal?: AbortSignal): Promise<void> {

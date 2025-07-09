@@ -429,9 +429,9 @@ describe("DockerCompose", () => {
 
         });
 
-        it("runs docker compose build", async () => {
+        it("runs docker compose build for builder containers", async () => {
 
-            await dockerCompose.build(serviceName);
+            await dockerCompose.build(serviceName, "builderContainer");
 
             const expectedSpawnOptions = {
                 logHandler: { handle: mockWatchLogHandle },
@@ -453,6 +453,35 @@ describe("DockerCompose", () => {
                 "--build",
                 "--exit-code-from",
                 serviceName,
+                serviceName
+            ], expect.anything());
+        });
+
+        it("runs docker compose build for Non-builder containers", async () => {
+
+            await dockerCompose.build(serviceName, "nonBuilderContainer");
+
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockWatchLogHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "up",
+                "--build",
+                "--force-recreate",
+                "--no-deps",
+                "--detach",
                 serviceName
             ], expect.anything());
         });

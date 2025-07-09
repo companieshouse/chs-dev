@@ -41,6 +41,20 @@ app.listen(PORT, () => {
 });
 
 ```
+
+```js
+const app = require("./../app");
+
+const PORT = 3000;
+
+app.set("port", PORT);
+
+app.listen(PORT, () => {
+  console.log(`:white_tick:  Application Ready. Running on port ${PORT}`);
+});
+
+```
+
 It is important the listen event is configured exactly as described above:
 This output is used to verify the application is up and running.
 Sample `nodemon.entry` file: `/local/builders/node/v3/bin/config/nodemon-entry`.

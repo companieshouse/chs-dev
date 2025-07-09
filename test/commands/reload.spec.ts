@@ -150,18 +150,18 @@ describe("reload spec", () => {
         expect(logMock).toHaveBeenCalledWith("Use the --force flag (-f) to restart the container if necessary.");
     });
 
-    it("should reload a valid non-node service", async () => {
+    it("should reload a valid java service", async () => {
         // @ts-expect-error
         parseMock.mockResolvedValue({
             args: {
-                service: "service-two"
+                service: "service-one"
             },
             flags: {
                 force: false
             }
         });
 
-        jest.spyOn(reload as any, "checkServicesBuilder").mockReturnValue("non-node");
+        jest.spyOn(reload as any, "checkServicesBuilder").mockReturnValue("java");
         const updateMock = jest.spyOn(reload["dependencyCache"], "update");
         const buildMock = jest.spyOn(reload["dockerCompose"], "build");
         const restartMock = jest.spyOn(reload["dockerCompose"], "restart");
@@ -170,14 +170,14 @@ describe("reload spec", () => {
         await reload.run();
 
         expect(updateMock).toHaveBeenCalled();
-        expect(logMock).toHaveBeenCalledWith("Service: service-two building...");
-        expect(buildMock).toHaveBeenCalledWith("service-two-builder", NO_CHANGES_PATTERN);
-        expect(logMock).toHaveBeenCalledWith("Service: service-two restarting...");
-        expect(restartMock).toHaveBeenCalledWith("service-two");
-        expect(healthCheckMock).toHaveBeenCalledWith(["service-two"]);
+        expect(logMock).toHaveBeenCalledWith("Service: service-one building...");
+        expect(buildMock).toHaveBeenCalledWith("service-one-builder", "builderContainer", NO_CHANGES_PATTERN);
+        expect(logMock).toHaveBeenCalledWith("Service: service-one restarting...");
+        expect(restartMock).toHaveBeenCalledWith("service-one");
+        expect(healthCheckMock).toHaveBeenCalledWith(["service-one"]);
     });
 
-    it("should not reload a valid non-node service if there are no changes", async () => {
+    it("should not reload a valid java service if there are no changes", async () => {
         // @ts-expect-error
         parseMock.mockResolvedValue({
             args: {
@@ -188,7 +188,7 @@ describe("reload spec", () => {
             }
         });
 
-        jest.spyOn(reload as any, "checkServicesBuilder").mockReturnValue("non-node");
+        jest.spyOn(reload as any, "checkServicesBuilder").mockReturnValue("java");
         const updateMock = jest.spyOn(reload["dependencyCache"], "update");
         const buildMock = jest.spyOn(reload["dockerCompose"], "build").mockResolvedValueOnce(true);
 
@@ -199,9 +199,53 @@ describe("reload spec", () => {
 
         expect(updateMock).toHaveBeenCalled();
         expect(logMock).toHaveBeenCalledWith("Service: service-two building...");
-        expect(buildMock).toHaveBeenCalledWith("service-two-builder", NO_CHANGES_PATTERN);
+        expect(buildMock).toHaveBeenCalledWith("service-two-builder", "builderContainer", NO_CHANGES_PATTERN);
         expect(logMock).toHaveBeenCalledWith("No changes found in code. Terminating reload.");
         expect(logMock).toHaveBeenCalledWith("Use the --force flag (-f) to rebuild if necessary.");
+    });
+
+    it("should reload a valid nginx service", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            flags: {
+                force: false
+            }
+        });
+
+        jest.spyOn(reload as any, "checkServicesBuilder").mockReturnValue("nginx");
+        const restartMock = jest.spyOn(reload["dockerCompose"], "restart");
+
+        await reload.run();
+
+        expect(logMock).toHaveBeenCalledWith("Service: service-one restarted");
+        expect(restartMock).toHaveBeenCalledWith("service-one");
+    });
+
+    it("should reload a valid repository service", async () => {
+        // @ts-expect-error
+        parseMock.mockResolvedValue({
+            args: {
+                service: "service-one"
+            },
+            flags: {
+                force: false
+            }
+        });
+
+        jest.spyOn(reload as any, "checkServicesBuilder").mockReturnValue("repository");
+        const updateMock = jest.spyOn(reload["dependencyCache"], "update");
+        const buildMock = jest.spyOn(reload["dockerCompose"], "build");
+        const healthCheckMock = jest.spyOn(reload["dockerCompose"], "healthCheck");
+
+        await reload.run();
+
+        expect(updateMock).toHaveBeenCalled();
+        expect(buildMock).toHaveBeenCalledWith("service-one", "nonBuilderContainer");
+        expect(logMock).toHaveBeenCalledWith("Service: service-one building...");
+        expect(healthCheckMock).toHaveBeenCalledWith(["service-one"]);
     });
 
     it("should handle missing builder property in docker-compose", async () => {
