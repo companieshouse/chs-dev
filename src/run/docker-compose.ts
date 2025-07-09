@@ -128,10 +128,14 @@ export class DockerCompose {
             ? new PatternMatchingConsoleLogHandler(regxPattern, this.logFile, this.logger)
             : new LogNothingLogHandler(this.logFile, this.logger);
 
-        const args =
-            containerType === ContainerType.builder
-                ? ["up", "--build", "--exit-code-from", serviceName, serviceName]
-                : ["up", "--build", "--force-recreate", "--no-deps", "--detach", serviceName];
+        let args: string[];
+        if (containerType === ContainerType.builder) {
+            args = ["up", "--build", "--exit-code-from", serviceName, serviceName];
+        } else if (containerType === ContainerType.application) {
+            args = ["up", "--build", "--force-recreate", "--no-deps", "--detach", serviceName];
+        } else {
+            throw new Error(`Unknown container type: ${containerType}`);
+        }
 
         await this.runDockerCompose(args, logHandler, signal);
 

@@ -5,14 +5,12 @@ import { State } from "../../src/model/State";
 import { services, modules } from "../utils/data";
 import { StateManager } from "../../src/state/state-manager";
 import { Inventory } from "../../src/state/inventory";
-import { DependencyCache } from "../../src/run/dependency-cache";
 import { DockerCompose } from "../../src/run/docker-compose";
 import { DevelopmentMode } from "../../src/run/development-mode";
 import { ComposeLogViewer } from "../../src/run/compose-log-viewer";
 import { PermanentRepositories } from "../../src/state/permanent-repositories";
 import { OtelGenerator } from "../../src/generator/otel-generator";
 
-const dependencyCacheUpdateMock = jest.fn();
 const composeLogViewerViewMock = jest.fn();
 const permanentRepositoriesEnsureAllExistAndAreUpToDateMock = jest.fn();
 
@@ -101,11 +99,6 @@ describe("Up command", () => {
         StateManager.mockReturnValue({ snapshot });
 
         // @ts-expect-error
-        DependencyCache.mockReturnValue({
-            update: dependencyCacheUpdateMock
-        });
-
-        // @ts-expect-error
         DockerCompose.mockReturnValue(dockerComposeMock);
 
         // @ts-expect-error
@@ -180,12 +173,6 @@ describe("Up command", () => {
         await up.run();
 
         expect(developmentModeMock.start).not.toHaveBeenCalled();
-    });
-
-    it("should not update dependency cache when no services in dev mode", async () => {
-        await up.run();
-
-        expect(dependencyCacheUpdateMock).not.toHaveBeenCalled();
     });
 
     it("should display a couple of lines of output if it fails", async () => {
@@ -273,12 +260,6 @@ describe("Up command", () => {
             await up.run();
 
             expect(dockerComposeMock.healthCheck).toHaveBeenCalled();
-        });
-
-        it("should update dependency cache", async () => {
-            await up.run();
-
-            expect(dependencyCacheUpdateMock).toHaveBeenCalled();
         });
 
         it("should display a couple of lines of output if it fails", async () => {
