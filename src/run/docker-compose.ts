@@ -9,6 +9,7 @@ import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
 import LogNothingLogHandler from "./logs/LogNothingLogHandler.js";
 import { LogHandler } from "./logs/logs-handler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
+import { ContainerType } from "../model/index.js";
 
 interface Logger {
     log: (msg: string) => void;
@@ -31,8 +32,6 @@ type LogsArgs = {
     follow: boolean | undefined,
     signal: AbortSignal | undefined
 }
-
-type ContainerType = "builderContainer" | "nonBuilderContainer"
 
 export class DockerCompose {
 
@@ -112,11 +111,12 @@ export class DockerCompose {
 
     /**
      * Builds a service using docker compose.
-     * Specifically useful for one-off tasks or builder containers
-     * @param serviceName - The name of the service to build.
-     * @param regxPattern - Optional regex pattern to match against logs.
+     * Useful for running one-off tasks/builder containers or long-running/application containers.
+     * @param serviceName - Name of the service to build.
+     * @param containerType - Type of container: "builder" or "application".
+     * @param regxPattern - Optional regex pattern to match log output.
      * @param signal - Optional AbortSignal to cancel the operation.
-     * @returns A promise that resolves to true if the pattern was matched, or void if no pattern was provided.
+     * @returns A promise that resolves to true if the pattern was matched in logs, or void if no pattern was provided.
      */
     async build (
         serviceName: string,
@@ -129,7 +129,7 @@ export class DockerCompose {
             : new LogNothingLogHandler(this.logFile, this.logger);
 
         const args =
-            containerType === "builderContainer"
+            containerType === ContainerType.builder
                 ? ["up", "--build", "--exit-code-from", serviceName, serviceName]
                 : ["up", "--build", "--force-recreate", "--no-deps", "--detach", serviceName];
 

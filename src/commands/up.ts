@@ -251,7 +251,6 @@ export default class Up extends Command {
 
             this.handleHealthCheck(builderContext);
 
-            this.dependencyCache.update();
             const logsArgs = {
                 serviceNames: this.servicesInDevelopmentMode,
                 tail: "10",

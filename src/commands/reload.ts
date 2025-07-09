@@ -7,6 +7,7 @@ import { DockerCompose } from "../run/docker-compose.js";
 import { Inventory } from "../state/inventory.js";
 import { join } from "path";
 import { existsSync, unlinkSync } from "fs";
+import { ContainerType } from "../model/index.js";
 
 type ReloadFunc = (serviceName: string, flags: any) => Promise<void>
 
@@ -150,10 +151,9 @@ export default class Reload extends Command {
         if (flags.force && codeHashFile) {
             unlinkSync(codeHashFile);
         }
-        this.dependencyCache.update();
         this.log(`Service: ${serviceName} building...`);
 
-        const noChangesFound = await this.dockerCompose.build(`${serviceName}-builder`, "builderContainer", NO_CHANGES_PATTERN);
+        const noChangesFound = await this.dockerCompose.build(`${serviceName}-builder`, ContainerType.builder, NO_CHANGES_PATTERN);
         if (noChangesFound) {
             this.log(`No changes found in code. Terminating reload.`);
             this.log(`Use the --force flag (-f) to rebuild if necessary.`);
@@ -170,9 +170,8 @@ export default class Reload extends Command {
      *  @param flags - Flags passed to the command
      */
     private async reloadRepositoryService (serviceName: string): Promise<void> {
-        this.dependencyCache.update();
         this.log(`Service: ${serviceName} building...`);
-        const boss = await this.dockerCompose.build(`${serviceName}`, "nonBuilderContainer");
+        const boss = await this.dockerCompose.build(`${serviceName}`, ContainerType.application);
         this.dockerCompose.healthCheck([serviceName]);
 
     }

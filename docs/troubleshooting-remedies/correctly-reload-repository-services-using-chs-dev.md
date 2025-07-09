@@ -4,7 +4,7 @@
 
 Repository services typically include:
 
-- Java (e.g., CHIPS)
+- Non-Standard Java (e.g., CHIPS)
 - Perl services
 - Go services
 
