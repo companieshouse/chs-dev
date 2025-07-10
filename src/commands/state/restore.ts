@@ -1,12 +1,13 @@
 import { Args, Command, Config, Flags } from "@oclif/core";
-import ChsDevConfig from "../../model/Config.js";
-import loadConfig from "../../helpers/config-loader.js";
-import { DockerCompose } from "../../run/docker-compose.js";
-import { confirm } from "../../helpers/user-input.js";
-import { createHash } from "crypto";
-import yaml from "yaml";
+import { existsSync } from "fs";
 import { basename, join } from "path";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import yaml from "yaml";
+import loadConfig from "../../helpers/config-loader.js";
+import { readFileContent, writeContentToFile } from "../../helpers/file-utils.js";
+import { hashAlgorithm } from "../../helpers/index.js";
+import { confirm } from "../../helpers/user-input.js";
+import ChsDevConfig from "../../model/Config.js";
+import { DockerCompose } from "../../run/docker-compose.js";
 
 type StateCache = {
     state: {
@@ -90,15 +91,15 @@ export default class Restore extends Command {
         this.log(`Restored state from saved cache '${cacheName}'`);
     }
 
-    private restoreFromImport (importCache: string): void {
-        if (!existsSync(importCache)) {
-            this.error(`Import cache file does not exist in location: ${importCache}`);
+    private restoreFromImport (importCachePath: string): void {
+        if (!existsSync(importCachePath)) {
+            this.error(`Import cache file does not exist in location: ${importCachePath}`);
         }
 
-        const cacheData = this.parseYamlFile(importCache) as StateCache;
+        const cacheData = readFileContent(importCachePath) as StateCache;
 
         if (!cacheData || typeof cacheData !== "object") {
-            this.error(`Invalid cache data in imported file: ${importCache}`);
+            this.error(`Invalid cache data in imported file: ${importCachePath}`);
         }
 
         const data = this.verifyCacheAuthencity(cacheData, (stateCache) => stateCache);
@@ -109,8 +110,8 @@ export default class Restore extends Command {
 
     private verifyCacheAuthencity<T> (cacheData: StateCache, cacheSupplier: (stateCache: StateCache) => StateCache): StateCache {
 
-        if (cacheData.state.hash === this.hash(yaml.stringify(cacheData.state.snapshot)) &&
-            cacheData.dockerCompose.hash === this.hash(yaml.stringify(cacheData.dockerCompose.snapshot))) {
+        if (cacheData.state.hash === hashAlgorithm(yaml.stringify(cacheData.state.snapshot)) &&
+            cacheData.dockerCompose.hash === hashAlgorithm(yaml.stringify(cacheData.dockerCompose.snapshot))) {
             return cacheSupplier(cacheData);
         }
         this.error("Cache data has been corrupted or touched.");
@@ -119,34 +120,15 @@ export default class Restore extends Command {
     private restoreState ({ state, dockerCompose }: StateCache): void {
         // Restore state file
         const stateFilePath = join(this.chsDevConfig.projectPath, `.chs-dev.yaml`);
-        const stateData = [
-            "# DO NOT MODIFY MANUALLY",
-            yaml.stringify(state.snapshot)
-        ];
-        writeFileSync(stateFilePath, stateData.join("\n\n"));
+        writeContentToFile(state.snapshot, stateFilePath);
 
         // Restore docker-compose file
         const dockerComposeFilePath = join(this.chsDevConfig.projectPath, "docker-compose.yaml");
-        const dockerComposeData = [
-            "# DO NOT MODIFY MANUALLY",
-            yaml.stringify(dockerCompose.snapshot)
-        ];
-        writeFileSync(dockerComposeFilePath, dockerComposeData.join("\n\n"));
+        writeContentToFile(dockerCompose.snapshot, dockerComposeFilePath);
     }
 
     private loadSavedCacheData (): Record<string, StateCache> {
-        if (existsSync(this.stateCacheFile)) {
-            return this.parseYamlFile(this.stateCacheFile) as Record<string, StateCache> || {};
-        }
-        return {};
-    }
-
-    private parseYamlFile (filePath: string): Record<string, StateCache> | StateCache {
-        return yaml.parse(readFileSync(filePath, "utf-8"));
-    }
-
-    private hash (data: string): string {
-        return createHash("sha256").update(data).digest("hex");
+        return readFileContent(this.stateCacheFile) as Record<string, StateCache> || {};
     }
 
     private async handlePrompt (cacheName: string): Promise<boolean> {

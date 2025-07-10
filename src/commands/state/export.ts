@@ -1,9 +1,11 @@
 import { Args, Command, Config } from "@oclif/core";
-import { createHash } from "crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import yaml from "yaml";
 import loadConfig from "../../helpers/config-loader.js";
+import { getGeneratedDockerComposeFile } from "../../helpers/docker-compose-file.js";
+import { writeContentToFile } from "../../helpers/file-utils.js";
+import { hashAlgorithm } from "../../helpers/index.js";
 import { confirm } from "../../helpers/user-input.js";
 import ChsDevConfig from "../../model/Config.js";
 import { StateManager } from "../../state/state-manager.js";
@@ -50,52 +52,33 @@ export default class Export extends Command {
     async run (): Promise<void> {
         const { args: { name } } = await this.parse(Export);
 
-        if (await confirm(`Export current state of chs-dev into a saved file: ${name}?`)) {
+        if (await confirm(`Export current state of chs-dev to file: ${name}?`)) {
             this.exportState(name);
         }
 
     }
 
     private exportState (exportFileName: string): void {
-        const exportedFilename = join(this.exportedStateDir, `${exportFileName}.yaml`);
+        const exportedFilenamePath = join(this.exportedStateDir, `${exportFileName}.yaml`);
+        writeContentToFile(this.getExportData(), exportedFilenamePath);
 
-        const exportData = [
-            "# DO NOT MODIFY MANUALLY",
-            yaml.stringify(this.getExportData())
-        ];
-
-        writeFileSync(exportedFilename, exportData.join("\n\n"));
-        this.log(`Exported state destination: ${exportedFilename}`);
+        this.log(`Exported state destination: ${exportedFilenamePath}`);
     }
 
     private getExportData (): StateCache {
         const stateSnapshot = this.stateManager.snapshot;
-        const dockerComposeSnapshot = this.getDockerFile();
+        const dockerComposeSnapshot = getGeneratedDockerComposeFile(this.chsDevConfig.projectPath);
         return {
             state: {
-                hash: this.hash(yaml.stringify(stateSnapshot)),
+                hash: hashAlgorithm(yaml.stringify(stateSnapshot)),
                 snapshot: stateSnapshot
             },
             dockerCompose: {
-                hash: this.hash(yaml.stringify(dockerComposeSnapshot)),
+                hash: hashAlgorithm(yaml.stringify(dockerComposeSnapshot)),
                 snapshot: dockerComposeSnapshot
             }
         };
 
-    }
-
-    private getDockerFile (): Buffer {
-        const dockerComposeFilePath = join(
-            this.chsDevConfig.projectPath,
-            "docker-compose.yaml"
-        );
-        return yaml.parse(readFileSync(dockerComposeFilePath).toString("utf-8"));
-    }
-
-    private hash (data: string): string {
-        const sha256Hash = createHash("sha256");
-        sha256Hash.update(data);
-        return sha256Hash.digest("hex");
     }
 
 }

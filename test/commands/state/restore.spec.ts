@@ -7,6 +7,8 @@ import ChsDevConfig from "../../../src/model/Config";
 import { DockerCompose } from "../../../src/run/docker-compose";
 import { existsSync } from "fs";
 import * as yaml from "yaml";
+import { hashAlgorithm } from "../../../src/helpers";
+import { readFileContent } from "../../../src/helpers/file-utils";
 
 const dockerComposeMock = {
     getServiceStatuses: jest.fn()
@@ -17,6 +19,8 @@ jest.mock("yaml");
 jest.mock("../../../src/helpers/config-loader");
 jest.mock("../../../src/run/docker-compose");
 jest.mock("../../../src/helpers/user-input");
+jest.mock("../../../src/helpers/index");
+jest.mock("../../../src/helpers/file-utils");
 
 const chsDevConfig: ChsDevConfig = {
     projectPath: "./docker-chs",
@@ -60,11 +64,11 @@ describe("Restore Command", () => {
         stateCache = {
             state: {
                 snapshot: { foo: "bar" },
-                hash: jest.spyOn(restore as any, "hash").mockReturnValue(yaml.stringify({ foo: "bar" }))
+                hash: (hashAlgorithm as jest.Mock).mockReturnValue(yaml.stringify({ foo: "bar" }))
             },
             dockerCompose: {
                 snapshot: { baz: "qux" },
-                hash: jest.spyOn(restore as any, "hash").mockReturnValue(yaml.stringify({ baz: "qux" }))
+                hash: (hashAlgorithm as jest.Mock).mockReturnValue(yaml.stringify({ baz: "qux" }))
             }
         };
         cacheData = { cacheName: stateCache };
@@ -108,7 +112,7 @@ describe("Restore Command", () => {
     describe("restoreFromImport", () => {
 
         it("should restore state from imported cache", () => {
-            jest.spyOn(restore as any, "parseYamlFile").mockReturnValue(stateCache);
+            (readFileContent as jest.Mock).mockReturnValue(stateCache);
             const verifySpy = jest.spyOn(restore as any, "verifyCacheAuthencity").mockReturnValue(stateCache);
             const restoreStateSpy = jest.spyOn(restore as any, "restoreState").mockImplementation(() => {});
             const logSpy = jest.spyOn(restore, "log").mockImplementation(() => {});
@@ -128,8 +132,7 @@ describe("Restore Command", () => {
         });
 
         it("should error if imported cache data is invalid", () => {
-            (existsSync as jest.Mock).mockReturnValue(true);
-            jest.spyOn(restore as any, "parseYamlFile").mockReturnValue(undefined);
+            (readFileContent as jest.Mock).mockReturnValue(undefined);
             const errorSpy = jest.spyOn(restore, "error").mockImplementation(() => { throw new Error("err"); });
             expect(() => (restore as any).restoreFromImport("/import/path.yaml")).toThrow("err");
             expect(errorSpy).toHaveBeenCalledWith("Invalid cache data in imported file: /import/path.yaml");

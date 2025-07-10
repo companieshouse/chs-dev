@@ -4,6 +4,7 @@ import ChsDevConfig from "../../model/Config.js";
 import loadConfig from "../../helpers/config-loader.js";
 import { DockerCompose } from "../../run/docker-compose.js";
 import { confirm } from "../../helpers/user-input.js";
+import { Prune } from "../../model/index.js";
 
 export default class Clean extends Command {
 
@@ -49,9 +50,9 @@ export default class Clean extends Command {
 
             await this.config.runHook("generate-runnable-docker-compose", {});
 
-            this.dockerCompose.prune("volume");
+            this.dockerCompose.prune(Prune.VOLUME);
             if (purge) {
-                this.dockerCompose.prune("image");
+                this.dockerCompose.prune(Prune.IMAGE);
             }
 
         }

@@ -7,6 +7,7 @@ import ChsDevConfig from "../../../src/model/Config";
 import State from "../../../src/model/State";
 import { DockerCompose } from "../../../src/run/docker-compose";
 import { StateManager } from "../../../src/state/state-manager";
+import { Prune } from "../../../src/model";
 
 const dockerComposeMock = {
     getServiceStatuses: jest.fn(),
@@ -114,7 +115,7 @@ describe("Clean Command", () => {
 
         expect(cleanStateMock).toHaveBeenCalled();
         expect(runHookMock).toHaveBeenCalledWith("generate-runnable-docker-compose", { });
-        expect(dockerComposeMock.prune).toHaveBeenCalledWith("volume");
+        expect(dockerComposeMock.prune).toHaveBeenCalledWith(Prune.VOLUME);
         expect(dockerComposeMock.prune).toHaveBeenCalledTimes(1);
     });
 
@@ -125,8 +126,8 @@ describe("Clean Command", () => {
 
         await clean.run();
 
-        expect(dockerComposeMock.prune).toHaveBeenCalledWith("volume");
-        expect(dockerComposeMock.prune).toHaveBeenCalledWith("image");
+        expect(dockerComposeMock.prune).toHaveBeenCalledWith(Prune.VOLUME);
+        expect(dockerComposeMock.prune).toHaveBeenCalledWith(Prune.IMAGE);
         expect(dockerComposeMock.prune).toHaveBeenCalledTimes(2);
     });
 
