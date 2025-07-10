@@ -160,7 +160,7 @@ describe("reload spec", () => {
         await reload.run();
 
         expect(logMock).toHaveBeenCalledWith("Service: service-one building...");
-        expect(buildMock).toHaveBeenCalledWith("service-one-builder", ContainerType.builder, NO_CHANGES_PATTERN);
+        expect(buildMock).toHaveBeenCalledWith("service-one-builder", ContainerType.BUILDER, NO_CHANGES_PATTERN);
         expect(logMock).toHaveBeenCalledWith("Service: service-one restarting...");
         expect(restartMock).toHaveBeenCalledWith("service-one");
         expect(healthCheckMock).toHaveBeenCalledWith(["service-one"]);
@@ -186,7 +186,7 @@ describe("reload spec", () => {
         await reload.run();
 
         expect(logMock).toHaveBeenCalledWith("Service: service-two building...");
-        expect(buildMock).toHaveBeenCalledWith("service-two-builder", ContainerType.builder, NO_CHANGES_PATTERN);
+        expect(buildMock).toHaveBeenCalledWith("service-two-builder", ContainerType.BUILDER, NO_CHANGES_PATTERN);
         expect(logMock).toHaveBeenCalledWith("No changes found in code. Terminating reload.");
         expect(logMock).toHaveBeenCalledWith("Use the --force flag (-f) to rebuild if necessary.");
     });
@@ -228,7 +228,7 @@ describe("reload spec", () => {
 
         await reload.run();
 
-        expect(buildMock).toHaveBeenCalledWith("service-one", ContainerType.application);
+        expect(buildMock).toHaveBeenCalledWith("service-one", ContainerType.APPLICATION);
         expect(logMock).toHaveBeenCalledWith("Service: service-one building...");
         expect(healthCheckMock).toHaveBeenCalledWith(["service-one"]);
     });

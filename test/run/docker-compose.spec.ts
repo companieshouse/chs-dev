@@ -431,7 +431,7 @@ describe("DockerCompose", () => {
 
         it("runs docker compose build for builder containers", async () => {
 
-            await dockerCompose.build(serviceName, ContainerType.builder);
+            await dockerCompose.build(serviceName, ContainerType.BUILDER);
 
             const expectedSpawnOptions = {
                 logHandler: { handle: mockWatchLogHandle },
@@ -459,7 +459,7 @@ describe("DockerCompose", () => {
 
         it("runs docker compose build for Non-builder containers", async () => {
 
-            await dockerCompose.build(serviceName, ContainerType.application);
+            await dockerCompose.build(serviceName, ContainerType.APPLICATION);
 
             const expectedSpawnOptions = {
                 logHandler: { handle: mockWatchLogHandle },

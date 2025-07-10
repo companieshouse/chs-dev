@@ -50,7 +50,7 @@ const PORT = 3000;
 app.set("port", PORT);
 
 app.listen(PORT, () => {
-  console.log(`:white_tick:  Application Ready. Running on port ${PORT}`);
+  console.log(`✅  Application Ready. Running on port ${PORT}`);
 });
 
 ```

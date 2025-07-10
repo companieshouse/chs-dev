@@ -153,7 +153,7 @@ export default class Reload extends Command {
         }
         this.log(`Service: ${serviceName} building...`);
 
-        const noChangesFound = await this.dockerCompose.build(`${serviceName}-builder`, ContainerType.builder, NO_CHANGES_PATTERN);
+        const noChangesFound = await this.dockerCompose.build(`${serviceName}-builder`, ContainerType.BUILDER, NO_CHANGES_PATTERN);
         if (noChangesFound) {
             this.log(`No changes found in code. Terminating reload.`);
             this.log(`Use the --force flag (-f) to rebuild if necessary.`);
@@ -171,7 +171,7 @@ export default class Reload extends Command {
      */
     private async reloadRepositoryService (serviceName: string): Promise<void> {
         this.log(`Service: ${serviceName} building...`);
-        const boss = await this.dockerCompose.build(`${serviceName}`, ContainerType.application);
+        const boss = await this.dockerCompose.build(`${serviceName}`, ContainerType.APPLICATION);
         this.dockerCompose.healthCheck([serviceName]);
 
     }

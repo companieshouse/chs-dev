@@ -129,9 +129,9 @@ export class DockerCompose {
             : new LogNothingLogHandler(this.logFile, this.logger);
 
         let args: string[];
-        if (containerType === ContainerType.builder) {
+        if (containerType === ContainerType.BUILDER) {
             args = ["up", "--build", "--exit-code-from", serviceName, serviceName];
-        } else if (containerType === ContainerType.application) {
+        } else if (containerType === ContainerType.APPLICATION) {
             args = ["up", "--build", "--force-recreate", "--no-deps", "--detach", serviceName];
         } else {
             throw new Error(`Unknown container type: ${containerType}`);
