@@ -5,7 +5,15 @@ import loadConfig from "../../helpers/config-loader.js";
 import { readFileContent } from "../../helpers/file-utils.js";
 import ChsDevConfig from "../../model/Config.js";
 import { StateManager } from "../../state/state-manager.js";
-import { AddCacheStrategy, AvailableCacheStrategy, ExportCacheStrategy, RemoveCacheStrategy, WipeCacheStrategy } from "./CacheActionStrategy.js";
+import { AddCacheContext, AddCacheStrategy, AvailableCacheContext, AvailableCacheStrategy, ExportCacheContext, ExportCacheStrategy, RemoveCacheContext, RemoveCacheStrategy, WipeCacheContext, WipeCacheStrategy } from "./CacheActionStrategy.js";
+
+type CacheContextMap = {
+    available: AvailableCacheContext;
+    wipe: WipeCacheContext;
+    remove: RemoveCacheContext;
+    export: ExportCacheContext;
+    add: AddCacheContext;
+  };
 
 export default class Cache extends Command {
     static description = "Cache the state of chs-dev into a saved file";
@@ -67,11 +75,13 @@ export default class Cache extends Command {
 
         if (wipe) {
             const wipeStrategy = new WipeCacheStrategy();
-            await wipeStrategy.execute(this, cacheData);
+            const wipeContext = this.cacheContext("wipe");
+            await wipeStrategy.execute(wipeContext, cacheData);
             return;
         } else if (available) {
             const availableStrategy = new AvailableCacheStrategy();
-            availableStrategy.execute(this, cacheData);
+            const availableContext = this.cacheContext("available");
+            availableStrategy.execute(availableContext, cacheData);
             return;
         }
 
@@ -79,16 +89,47 @@ export default class Cache extends Command {
 
         if (remove) {
             const removeStrategy = new RemoveCacheStrategy();
-            await removeStrategy.execute(this, cacheData, cacheName);
+            const removeContext = this.cacheContext("remove");
+            await removeStrategy.execute(removeContext, cacheData, cacheName);
 
         } else if (exportCache) {
             const exportCacheStrategy = new ExportCacheStrategy();
-            await exportCacheStrategy.execute(this, cacheData, cacheName);
+            const exportContext = this.cacheContext("export");
+            await exportCacheStrategy.execute(exportContext, cacheData, cacheName);
 
         } else {
             const addCacheStrategy = new AddCacheStrategy();
-            await addCacheStrategy.execute(this, cacheData, cacheName);
+            const addContext = this.cacheContext("add");
+            await addCacheStrategy.execute(addContext, cacheData, cacheName);
         }
+    }
+
+    cacheContext<T extends keyof CacheContextMap> (key: T): CacheContextMap[T] {
+        const logger = (msg: string) => this.log(msg);
+        const map: CacheContextMap = {
+            available: {
+                logger
+            },
+            wipe: {
+                stateCacheFile: this.stateCacheFile,
+                logger
+            },
+            remove: {
+                stateCacheFile: this.stateCacheFile,
+                logger
+            },
+            export: {
+                projectPath: this.chsDevConfig.projectPath,
+                logger
+            },
+            add: {
+                stateManager: this.stateManager,
+                stateCacheFile: this.stateCacheFile,
+                projectPath: this.chsDevConfig.projectPath,
+                logger
+            }
+        };
+        return map[key] as CacheContextMap[T];
     }
 
 }

@@ -96,7 +96,7 @@ describe("Export state command", () => {
         await exportState.run();
 
         expect(confirmMock).toHaveBeenCalledWith(
-            expect.stringContaining("Export current state of chs-dev to file: myExport?")
+            expect.stringContaining("Export current state of chs-dev to file named: 'myExport'?")
         );
     });
 

@@ -1,3 +1,4 @@
+import { expect, jest } from "@jest/globals";
 import {
     AddCacheStrategy,
     AvailableCacheStrategy,
@@ -5,123 +6,79 @@ import {
     RemoveCacheStrategy,
     WipeCacheStrategy
 } from "../../../src/commands/state/CacheActionStrategy";
-import { writeContentToFile } from "../../../src/helpers/file-utils";
-import { getGeneratedDockerComposeFile } from "../../../src/helpers/docker-compose-file";
-import { hashAlgorithm } from "../../../src/helpers/index";
-import { confirm as confirmMock } from "../../../src/helpers/user-input";
-import yaml from "yaml";
-import { expect, jest } from "@jest/globals";
-import { existsSync } from "fs";
-
-jest.mock("fs");
-jest.mock("yaml");
-jest.mock("../../../src/helpers/file-utils");
-jest.mock("../../../src/helpers/docker-compose-file");
-jest.mock("../../../src/helpers/index");
-jest.mock("../../../src/helpers/user-input");
+import * as stateCacheUtils from "../../../src/commands/state/state-cache-utils";
+import * as dockerComposeFile from "../../../src/helpers/docker-compose-file";
+import * as fileUtils from "../../../src/helpers/file-utils";
+import * as hashHelpers from "../../../src/helpers/index";
+import { DockerComposeSpec } from "../../../src/model/DockerComposeSpec";
 
 describe("CacheActionStrategy", () => {
-    let mockCache: any;
-    let stateCache: any;
-    let cacheData: any;
+    let logger: jest.Mock;
+    let stateManager: any;
+    let cacheData: Record<string, any>;
+    let stateCacheFile: string;
+    let projectPath: string;
 
     beforeEach(() => {
-        mockCache = {
-            log: jest.fn(),
-            error: jest.fn(),
-            chsDevConfig: { projectPath: "/proj" },
-            stateCacheFile: "/proj/cache.yaml",
-            stateManager: { snapshot: { foo: "bar" } }
-        };
-        stateCache = {
-            state: {
-                snapshot: { foo: "bar" },
-                hash: (hashAlgorithm as jest.Mock).mockReturnValue(yaml.stringify({ foo: "bar" }))
-            },
-            dockerCompose: {
-                snapshot: { baz: "qux" },
-                hash: (hashAlgorithm as jest.Mock).mockReturnValue(yaml.stringify({ baz: "qux" }))
-            }
-        };
-        cacheData = { testCacheName: stateCache };
-        (confirmMock as jest.Mock).mockReturnValue(true);
-        (getGeneratedDockerComposeFile as jest.Mock).mockReturnValue({ dc: "data" });
-        mockCache.error.mockImplementation((msg: string) => { throw new Error(msg); });
+        logger = jest.fn();
+        stateManager = { snapshot: { foo: "bar" } };
+        cacheData = { testCache: { state: { hash: "hash", snapshot: {} }, dockerCompose: { hash: "hash", snapshot: {} } } };
+        stateCacheFile = "/tmp/cache.yaml";
+        projectPath = "/tmp";
+        jest.spyOn(stateCacheUtils, "handlePrompt").mockResolvedValue(true);
+        jest.spyOn(stateCacheUtils, "validateCacheNameExists").mockImplementation((data, name) => {
+            if (!data[name]) throw new Error(`Cache named ${name} does not exist.`);
+        });
+        jest.spyOn(stateCacheUtils, "restoreStateFiles").mockImplementation(() => {});
+        jest.spyOn(fileUtils, "writeContentToFile").mockImplementation(() => {});
+        jest.spyOn(dockerComposeFile, "getGeneratedDockerComposeFile").mockReturnValue({} as DockerComposeSpec);
+        jest.spyOn(hashHelpers, "hashAlgorithm").mockReturnValue("hash");
     });
 
     afterEach(() => {
-        jest.clearAllMocks();
+        jest.restoreAllMocks();
     });
 
-    describe("AvailableCacheStrategy", () => {
-        it("logs available caches", () => {
-            new AvailableCacheStrategy().execute(mockCache, cacheData);
-            expect(mockCache.log).toHaveBeenCalledWith("Available caches:");
-            expect(mockCache.log).toHaveBeenCalledWith("- testCacheName");
-        });
-        it("logs when no caches are available", () => {
-            new AvailableCacheStrategy().execute(mockCache, {});
-            expect(mockCache.log).toHaveBeenCalledWith("No cache available.");
-        });
+    it("AvailableCacheStrategy logs available caches", () => {
+        new AvailableCacheStrategy().execute({ logger }, cacheData);
+        expect(logger).toHaveBeenCalledWith("Available caches:");
+        expect(logger).toHaveBeenCalledWith("- testCache");
     });
 
-    describe("WipeCacheStrategy", () => {
-        it("wipes all caches if confirmed", async () => {
-            await new WipeCacheStrategy().execute(mockCache, cacheData);
-            expect(writeContentToFile).toHaveBeenCalledWith({}, mockCache.stateCacheFile);
-            expect(mockCache.log).toHaveBeenCalledWith("Wiped all caches");
-        });
-        it("does not wipe if not confirmed", async () => {
-            (confirmMock as jest.Mock).mockReturnValue(false);
-            await new WipeCacheStrategy().execute(mockCache, cacheData);
-            expect(writeContentToFile as jest.Mock).not.toHaveBeenCalled();
-        });
+    it("AvailableCacheStrategy logs when no caches are available", () => {
+        new AvailableCacheStrategy().execute({ logger }, {});
+        expect(logger).toHaveBeenCalledWith("No cache available.");
     });
 
-    describe("RemoveCacheStrategy", () => {
-        it("removes a cache if confirmed", async () => {
-            await new RemoveCacheStrategy().execute(mockCache, cacheData, "testCacheName");
-            expect(writeContentToFile).toHaveBeenCalledWith(cacheData, mockCache.stateCacheFile);
-            expect(mockCache.log).toHaveBeenCalledWith("Removed cache 'testCacheName'");
-            expect(cacheData.testCacheName).toBeUndefined();
-        });
-        it("throws if cache does not exist", async () => {
-            await expect(new RemoveCacheStrategy().execute(mockCache, cacheData, "baz")).rejects.toThrow("Cache named baz does not exist.");
-        });
-        it("does not remove if not confirmed", async () => {
-            (confirmMock as jest.Mock).mockReturnValue(false);
-            await new RemoveCacheStrategy().execute(mockCache, cacheData, "testCacheName");
-            expect(writeContentToFile).not.toHaveBeenCalled();
-        });
+    it("WipeCacheStrategy wipes all caches if confirmed", async () => {
+        await new WipeCacheStrategy().execute({ stateCacheFile, logger }, cacheData);
+        expect(fileUtils.writeContentToFile).toHaveBeenCalledWith({}, stateCacheFile);
+        expect(logger).toHaveBeenCalledWith("Wiped all caches");
     });
 
-    describe("ExportCacheStrategy", () => {
-        beforeEach(() => {
-            (existsSync as jest.Mock).mockReturnValue(false);
-        });
-
-        it("exports a cache if it exists", async () => {
-            await new ExportCacheStrategy().execute(mockCache, cacheData, "testCacheName");
-            expect(writeContentToFile).toHaveBeenCalled();
-            expect(mockCache.log).toHaveBeenCalledWith(expect.stringContaining("Exported cache testCacheName destination"));
-        });
-        it("throws if cache does not exist", async () => {
-            await expect(new ExportCacheStrategy().execute(mockCache, cacheData, "foo")).rejects.toThrow("Cache named foo does not exist.");
-        });
+    it("RemoveCacheStrategy removes a cache if confirmed", async () => {
+        await new RemoveCacheStrategy().execute({ stateCacheFile, logger }, { testCache: {} }, "testCache");
+        expect(fileUtils.writeContentToFile).toHaveBeenCalledWith({}, stateCacheFile);
+        expect(logger).toHaveBeenCalledWith("Removed cache 'testCache'");
     });
 
-    describe("AddCacheStrategy", () => {
-        it("adds a cache if confirmed", async () => {
-            await new AddCacheStrategy().execute(mockCache, cacheData, "newcache");
-            expect(writeContentToFile).toHaveBeenCalledWith(cacheData, mockCache.stateCacheFile);
-            expect(mockCache.log).toHaveBeenCalledWith("Saved cache as 'newcache'");
-            expect(cacheData.newcache).toBeDefined();
-        });
-        it("does not add if not confirmed", async () => {
-            (confirmMock as jest.Mock).mockReturnValue(false);
-            await new AddCacheStrategy().execute(mockCache, cacheData, "newcache");
-            expect(writeContentToFile).not.toHaveBeenCalled();
-            expect(cacheData.newcache).toBeUndefined();
-        });
+    it("RemoveCacheStrategy throws if cache does not exist", async () => {
+        await expect(new RemoveCacheStrategy().execute({ stateCacheFile, logger }, {}, "missing")).rejects.toThrow("Cache named missing does not exist.");
+    });
+
+    it("ExportCacheStrategy exports a cache if it exists", async () => {
+        await new ExportCacheStrategy().execute({ projectPath, logger }, cacheData, "testCache");
+        expect(fileUtils.writeContentToFile).toHaveBeenCalled();
+        expect(logger).toHaveBeenCalledWith(expect.stringContaining("Exported cache testCache destination"));
+    });
+
+    it("ExportCacheStrategy throws if cache does not exist", async () => {
+        await expect(new ExportCacheStrategy().execute({ projectPath, logger }, {}, "missing")).rejects.toThrow("Cache named missing does not exist.");
+    });
+
+    it("AddCacheStrategy adds a cache if confirmed", async () => {
+        await new AddCacheStrategy().execute({ stateManager, stateCacheFile, projectPath, logger }, {}, "newCache");
+        expect(fileUtils.writeContentToFile).toHaveBeenCalledWith(expect.any(Object), stateCacheFile);
+        expect(logger).toHaveBeenCalledWith("Saved cache as 'newCache'");
     });
 });

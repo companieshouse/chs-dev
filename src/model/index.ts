@@ -1,12 +1,12 @@
 export enum LogCoverage {
-        WATCH,
-        LOG
-    };
+  WATCH,
+  LOG,
+}
 
 export enum Prune {
-        VOLUME,
-        NETWORK,
-        IMAGE,
-        CONTAINER,
-        BUILDER
-    }
+  VOLUME,
+  NETWORK,
+  IMAGE,
+  CONTAINER,
+  BUILDER,
+}

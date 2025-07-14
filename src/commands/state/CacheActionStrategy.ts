@@ -1,38 +1,46 @@
 import yaml from "yaml";
-import { confirm } from "../../helpers/user-input.js";
+
 import { getGeneratedDockerComposeFile } from "../../helpers/docker-compose-file.js";
 import { hashAlgorithm } from "../../helpers/index.js";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { writeContentToFile } from "../../helpers/file-utils.js";
-import Cache from "./cache.js";
-
-interface CacheActionStrategy {
-    execute(cache: Cache, cacheData: Record<string, any>, cacheName?: string): Promise<void> | void;
-}
+import { handlePrompt, validateCacheNameExists } from "./state-cache-utils.js";
+import { StateManager } from "../../state/state-manager.js";
 
 const EXPORT_STATE_DIR = ".exported_state_cache";
 
-const handlePrompt = async (
-    action: "add" | "remove" | "wipe",
-    cacheName: string = "default-cache-name"
-): Promise<boolean> => {
-    const messages: Record<string, string> = {
-        add: `This will save the cache as '${cacheName}' or overwrite if name already exists. Proceed?`,
-        remove: `Do you want to delete the cache '${cacheName}'?`,
-        wipe: "Do you want to delete all saved caches?"
-    };
-    return await confirm(messages[action]);
-};
+export interface AvailableCacheContext {
+    logger: (message: string) => void;
+  }
 
-const validateCacheNameExists = (cache: Cache, cacheData: Record<string, any>, cacheName: string): void => {
-    if (!cacheData[cacheName]) {
-        cache.error(`Cache named ${cacheName} does not exist.`);
-    }
-};
+export interface WipeCacheContext {
+    stateCacheFile: string;
+    logger: (message: string) => void;
+}
 
-const handleExportCache = (cache: Cache, cacheData: Record<string, any>, cacheName: string): void => {
-    const exportDir = join((cache as any).chsDevConfig.projectPath, EXPORT_STATE_DIR);
+export interface RemoveCacheContext {
+    stateCacheFile: string;
+    logger: (message: string) => void;
+}
+
+export interface ExportCacheContext {
+    projectPath: string;
+    logger: (message: string) => void;
+}
+
+export interface AddCacheContext {
+    stateManager: StateManager;
+    stateCacheFile: string;
+    projectPath: string;
+    logger: (message: string) => void;
+}
+interface CacheActionStrategy<C> {
+    execute(cache: C, cacheData: Record<string, any>, cacheName?: string): Promise<void> | void;
+}
+
+const handleExportCache = (context: ExportCacheContext, cacheData: Record<string, any>, cacheName: string): void => {
+    const exportDir = join(context.projectPath, EXPORT_STATE_DIR);
     if (!existsSync(exportDir)) {
         mkdirSync(exportDir, { recursive: true });
     }
@@ -40,61 +48,59 @@ const handleExportCache = (cache: Cache, cacheData: Record<string, any>, cacheNa
     const exportedFilenamePath = join(exportDir, `${cacheName}.yaml`);
 
     writeContentToFile(cacheData[cacheName], exportedFilenamePath);
-    cache.log(`Exported cache ${cacheName} destination: '${exportedFilenamePath}'`);
+    context.logger(`Exported cache ${cacheName} destination: '${exportedFilenamePath}'`);
 };
 
-export class AvailableCacheStrategy implements CacheActionStrategy {
-    execute (cache: Cache, cacheData: Record<string, any>): void {
+export class AvailableCacheStrategy implements CacheActionStrategy<AvailableCacheContext> {
+    execute (context: AvailableCacheContext, cacheData: Record<string, any>): void {
         const cacheNames = Object.keys(cacheData);
         if (cacheNames.length > 0) {
-            cache.log("Available caches:");
-            cacheNames.forEach((name: string) => cache.log(`- ${name}`));
+            context.logger("Available caches:");
+            cacheNames.forEach((name: string) => context.logger(`- ${name}`));
         } else {
-            cache.log("No cache available.");
+            context.logger("No cache available.");
         }
     }
 }
 
-export class WipeCacheStrategy implements CacheActionStrategy {
-    async execute (cache: Cache, _cacheData: Record<string, any>): Promise<void> {
+export class WipeCacheStrategy implements CacheActionStrategy<WipeCacheContext> {
+    async execute (context: WipeCacheContext, _cacheData: Record<string, any>): Promise<void> {
         const confirmed = await handlePrompt("wipe");
         if (confirmed) {
-            writeContentToFile({}, (cache as any).stateCacheFile);
-            cache.log("Wiped all caches");
+            writeContentToFile({}, context.stateCacheFile);
+            context.logger("Wiped all caches");
         }
     }
 }
 
-export class RemoveCacheStrategy implements CacheActionStrategy {
-    async execute (cache: Cache, _cacheData: Record<string, any>, _cacheName: string): Promise<void> {
+export class RemoveCacheStrategy implements CacheActionStrategy<RemoveCacheContext> {
+    async execute (context: RemoveCacheContext, _cacheData: Record<string, any>, _cacheName: string): Promise<void> {
+        validateCacheNameExists(_cacheData, _cacheName);
 
-        validateCacheNameExists(cache, _cacheData, _cacheName);
         const confirmed = await handlePrompt("remove", _cacheName);
-
         if (confirmed) {
             delete _cacheData[_cacheName];
-            writeContentToFile(_cacheData, (cache as any).stateCacheFile);
-            cache.log(`Removed cache '${_cacheName}'`);
+            writeContentToFile(_cacheData, context.stateCacheFile);
+            context.logger(`Removed cache '${_cacheName}'`);
 
         }
     }
 }
 
-export class ExportCacheStrategy implements CacheActionStrategy {
-    async execute (cache: Cache, _cacheData: Record<string, any>, _cacheName: string): Promise<void> {
-        validateCacheNameExists(cache, _cacheData, _cacheName);
-
-        handleExportCache(cache, _cacheData, _cacheName);
+export class ExportCacheStrategy implements CacheActionStrategy<ExportCacheContext> {
+    async execute (context: ExportCacheContext, _cacheData: Record<string, any>, _cacheName: string): Promise<void> {
+        validateCacheNameExists(_cacheData, _cacheName);
+        handleExportCache(context, _cacheData, _cacheName);
 
     }
 }
 
-export class AddCacheStrategy implements CacheActionStrategy {
-    async execute (cache: Cache, _cacheData: Record<string, any>, _cacheName: string): Promise<void> {
+export class AddCacheStrategy implements CacheActionStrategy<AddCacheContext> {
+    async execute (context: AddCacheContext, _cacheData: Record<string, any>, _cacheName: string): Promise<void> {
         const confirmed = await handlePrompt("add", _cacheName);
         if (confirmed) {
-            const stateSnapshot = (cache as any).stateManager.snapshot;
-            const dockerComposeSnapshot = getGeneratedDockerComposeFile((cache as any).chsDevConfig.projectPath);
+            const stateSnapshot = context.stateManager.snapshot;
+            const dockerComposeSnapshot = getGeneratedDockerComposeFile(context.projectPath);
             _cacheData[_cacheName] = {
                 state: {
                     hash: hashAlgorithm(yaml.stringify(stateSnapshot)),
@@ -105,8 +111,8 @@ export class AddCacheStrategy implements CacheActionStrategy {
                     snapshot: dockerComposeSnapshot
                 }
             };
-            writeContentToFile(_cacheData, (cache as any).stateCacheFile);
-            cache.log(`Saved cache as '${_cacheName}'`);
+            writeContentToFile(_cacheData, context.stateCacheFile);
+            context.logger(`Saved cache as '${_cacheName}'`);
         }
     }
 }

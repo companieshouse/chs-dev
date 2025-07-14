@@ -52,7 +52,7 @@ export default class Export extends Command {
     async run (): Promise<void> {
         const { args: { name } } = await this.parse(Export);
 
-        if (await confirm(`Export current state of chs-dev to file: ${name}?`)) {
+        if (await confirm(`Export current state of chs-dev to file named: '${name}'?`)) {
             this.exportState(name);
         }
 
