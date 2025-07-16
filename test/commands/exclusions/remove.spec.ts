@@ -3,6 +3,17 @@ import Remove from "../../../src/commands/exclusions/remove";
 import { services } from "../../utils/data";
 
 const removeExclusionForServiceMock = jest.fn();
+const getServiceDirectDependenciesMock = jest.fn();
+
+jest.mock("./../../../src/run/service-loader", () => ({
+    ServiceLoader: function () {
+        return {
+            getServiceDirectDependencies: getServiceDirectDependenciesMock,
+            loadServicesNames: jest.fn().mockReturnValue(["service-one", "service-two", "service-three"])
+        };
+    }
+
+}));
 
 jest.mock("../../../src/state/inventory", () => {
     return {
@@ -44,6 +55,7 @@ describe("exclusions remove", () => {
         );
 
         parseMock = jest.spyOn(exclusionsRemove, "parse");
+        getServiceDirectDependenciesMock.mockReturnValue(["dep1", "dep2"]);
     });
 
     for (const invalidService of [null, undefined, "service-not-found"]) {
@@ -91,5 +103,26 @@ describe("exclusions remove", () => {
         expect(runHookMock).toHaveBeenCalledWith(
             "generate-runnable-docker-compose", {}
         );
+    });
+
+    it("removes exclusion for dependencies of a service", async () => {
+        const serviceName = "service-main";
+
+        const logs = await exclusionsRemove.handleDependencyExclusion(serviceName);
+
+        expect(getServiceDirectDependenciesMock).toHaveBeenCalledWith(serviceName);
+        expect(removeExclusionForServiceMock).toHaveBeenCalledWith("dep1");
+        expect(removeExclusionForServiceMock).toHaveBeenCalledWith("dep2");
+        expect(logs[0]).toContain(`Removing"${serviceName}" and its dependencies from the exclusion list`);
+        expect(logs).toContain("Service \"dep1\" is included (previous exclusion removed)");
+        expect(logs).toContain("Service \"dep2\" is included (previous exclusion removed)");
+    });
+
+    it("logs when no dependencies are found for a service", async () => {
+        getServiceDirectDependenciesMock.mockReturnValue([]);
+        const serviceName = "service-main";
+
+        const logs = await exclusionsRemove.handleDependencyExclusion(serviceName);
+        expect(logs[0]).toBe(`No dependencies found for service "${serviceName}"`);
     });
 });

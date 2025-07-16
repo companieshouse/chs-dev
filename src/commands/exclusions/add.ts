@@ -68,7 +68,7 @@ export default class Add extends AbstractStateModificationCommand {
             logs.push(`Adding "${serviceName}" and its dependencies to the exclusion list`);
             const logMessage: string[] = [];
 
-            // Build enabled service names and dependency map
+            // Build activated service names and dependency map
             const activatedServiceNames = this.getActivatedServiceNames(serviceName);
             const dependencyMap = this.buildDependencyMap(activatedServiceNames, logMessage);
 
@@ -128,7 +128,7 @@ export default class Add extends AbstractStateModificationCommand {
     }
 
     /**
-     * Checks if a dependency is also a direct dependency of another enabled service.
+     * Checks if a dependency is also a direct dependency of another activated service.
      */
     private isDependencyElsewhere (
         dep: string,
@@ -136,9 +136,9 @@ export default class Add extends AbstractStateModificationCommand {
         dependencyMap: Record<string, Set<string>>,
         logMessage: string[]
     ): boolean {
-        for (const enabledService of activatedServiceNames) {
-            if (dependencyMap[enabledService]?.has(dep)) {
-                logMessage.push(this.handleDependencyMessages(enabledService, dep));
+        for (const activatedService of activatedServiceNames) {
+            if (dependencyMap[activatedService]?.has(dep)) {
+                logMessage.push(this.handleDependencyMessages(activatedService, dep));
                 return true;
             }
         }
