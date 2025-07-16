@@ -137,7 +137,7 @@ export default class Status extends Command {
         }
 
         this.log("\nManually deactivated services:");
-        for (const file of excludedServices || []) {
+        for (const file of excludedServices.sort() || []) {
             this.log(` - ${file}`);
         }
     }

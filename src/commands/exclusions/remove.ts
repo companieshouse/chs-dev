@@ -48,18 +48,18 @@ export default class Remove extends AbstractStateModificationCommand {
             logs.push(...await this.handleDependencyExclusion(serviceName));
         }
 
-        logs.push(this.excludeAndLog(serviceName));
+        logs.push(this.handleExcludeAndLog(serviceName));
         logs.forEach(msg => this.log(msg));
     }
 
     private async handleDependencyExclusion (serviceName: string): Promise<string[]> {
         const logs: string[] = [];
-        const dependencies = this.inventory.getServiceDirectDependencies(serviceName);
+        const dependencies = this.serviceLoader.getServiceDirectDependencies(serviceName);
 
         if (dependencies.length > 0) {
             logs.push(`Removing"${serviceName}" and its dependencies from the exclusion list`);
             for (const dep of dependencies) {
-                logs.push(this.excludeAndLog(dep));
+                logs.push(this.handleExcludeAndLog(dep));
             }
 
         } else {
@@ -68,7 +68,7 @@ export default class Remove extends AbstractStateModificationCommand {
         return logs;
     }
 
-    private excludeAndLog (serviceName: string): string {
+    private handleExcludeAndLog (serviceName: string): string {
         this.stateManager.removeExclusionForService(serviceName);
         return `Service "${serviceName}" is included (previous exclusion removed)`;
     }

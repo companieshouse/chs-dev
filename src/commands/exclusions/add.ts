@@ -1,11 +1,6 @@
 import { Args, Config, Flags } from "@oclif/core";
-import AbstractStateModificationCommand from "../AbstractStateModificationCommand.js";
 import { serviceValidator } from "../../helpers/validator.js";
-import { ServiceLoader } from "../../run/service-loader.js";
-import { read, readFileSync } from "fs";
-import { join } from "path";
-import yaml from "yaml";
-import { DockerComposeSpec } from "../../model/DockerComposeSpec.js";
+import AbstractStateModificationCommand from "../AbstractStateModificationCommand.js";
 
 export default class Add extends AbstractStateModificationCommand {
     static description = "Adds a new service to the exclusions list";
@@ -55,27 +50,33 @@ export default class Add extends AbstractStateModificationCommand {
             logs.push(...await this.handleDependencyExclusion(serviceName));
         }
 
-        logs.push(this.excludeAndLog(serviceName));
+        logs.push(this.handleExcludeAndLog(serviceName));
         logs.forEach(msg => this.log(msg));
     }
 
+    /**
+     * Handles exclusion of a service's direct dependencies.
+     * Optimized for performance and readability.
+     * @param serviceName Name of the service to exclude dependencies for
+     * @returns Array of log messages
+     */
     private async handleDependencyExclusion (serviceName: string): Promise<string[]> {
         const logs: string[] = [];
-        const dependencies = this.inventory.getServiceDirectDependencies(serviceName);
+        const dependencies = this.serviceLoader.getServiceDirectDependencies(serviceName);
 
         if (dependencies.length > 0) {
             logs.push(`Adding "${serviceName}" and its dependencies to the exclusion list`);
-            const alreadyDependent: string[] = [];
+            const logMessage: string[] = [];
 
-            for (const dep of dependencies) {
-                if (this.isDependentServiceADependentInAnotherService(serviceName, dep, alreadyDependent)) {
-                    continue;
-                }
-                logs.push(this.excludeAndLog(dep));
-            }
+            // Build enabled service names and dependency map
+            const activatedServiceNames = this.getActivatedServiceNames(serviceName);
+            const dependencyMap = this.buildDependencyMap(activatedServiceNames, logMessage);
 
-            if (alreadyDependent.length > 0) {
-                logs.push(...alreadyDependent);
+            // Exclude dependencies if not already dependent elsewhere
+            logs.push(...this.excludeDependencies(dependencies, activatedServiceNames, dependencyMap, logMessage));
+
+            if (logMessage.length > 0) {
+                logs.push(...logMessage);
             }
         } else {
             logs.push(`No dependencies found for service "${serviceName}"`);
@@ -83,37 +84,68 @@ export default class Add extends AbstractStateModificationCommand {
         return logs;
     }
 
-    private isDependentServiceADependentInAnotherService (
-        parentServiceName: string,
-        dependentServiceName: string,
-        alreadyDependent: string[]
-    ): boolean {
-        const serviceLoader = new ServiceLoader(this.inventory);
-        const enabledServiceNames = serviceLoader
+    /**
+     * Returns activated service names excluding the current service and already excluded services.
+     */
+    private getActivatedServiceNames (serviceName: string): string[] {
+        return this.serviceLoader
             .loadServicesNames(this.stateManager.snapshot)
-            .filter(name => !this.stateManager.snapshot.excludedServices.includes(name));
+            .filter(name => !this.stateManager.snapshot.excludedServices.includes(name) && name !== serviceName);
+    }
 
-        for (const enabledService of enabledServiceNames) {
-            if (
-                enabledService === parentServiceName ||
-                enabledService === dependentServiceName
-            ) {
+    /**
+     * Builds a map of service names to their direct dependencies.
+     */
+    private buildDependencyMap (serviceNames: string[], logMessage: string[]): Record<string, Set<string>> {
+        const dependencyMap: Record<string, Set<string>> = {};
+        for (const name of serviceNames) {
+            try {
+                dependencyMap[name] = new Set(this.serviceLoader.getServiceDirectDependencies(name));
+            } catch (err) {
+                logMessage.push(`Failed to parse docker compose for service "${name}": ${err}`);
+            }
+        }
+        return dependencyMap;
+    }
+
+    /**
+     * Excludes dependencies if not already dependent elsewhere and returns log messages.
+     */
+    private excludeDependencies (
+        dependencies: string[],
+        activatedServiceNames: string[],
+        dependencyMap: Record<string, Set<string>>,
+        logMessage: string[]
+    ): string[] {
+        const logs: string[] = [];
+        for (const dep of dependencies) {
+            if (this.isDependencyElsewhere(dep, activatedServiceNames, dependencyMap, logMessage)) {
                 continue;
             }
+            logs.push(this.handleExcludeAndLog(dep));
+        }
+        return logs;
+    }
 
-            try {
-                if (this.inventory.getServiceDirectDependencies(enabledService).includes(dependentServiceName)) {
-                    alreadyDependent.push(this.handleDependencyMessages(enabledService, dependentServiceName));
-                    return true;
-                }
-            } catch (err) {
-                alreadyDependent.push(`Failed to parse docker compose for service "${enabledService}": ${err}`);
+    /**
+     * Checks if a dependency is also a direct dependency of another enabled service.
+     */
+    private isDependencyElsewhere (
+        dep: string,
+        activatedServiceNames: string[],
+        dependencyMap: Record<string, Set<string>>,
+        logMessage: string[]
+    ): boolean {
+        for (const enabledService of activatedServiceNames) {
+            if (dependencyMap[enabledService]?.has(dep)) {
+                logMessage.push(this.handleDependencyMessages(enabledService, dep));
+                return true;
             }
         }
         return false;
     }
 
-    private excludeAndLog (serviceName: string): string {
+    private handleExcludeAndLog (serviceName: string): string {
         this.stateManager.addExclusionForService(serviceName);
         return `Service "${serviceName}" is excluded`;
     }
