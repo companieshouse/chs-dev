@@ -10,3 +10,8 @@ export enum Prune {
   CONTAINER,
   BUILDER,
 }
+
+export enum ContainerType {
+  BUILDER,
+  APPLICATION
+}

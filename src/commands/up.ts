@@ -14,6 +14,7 @@ import { StateManager } from "../state/state-manager.js";
 import Service from "../model/Service.js";
 import { greenBright } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
+import { documentationLink } from "../helpers/link.js";
 
 type ServicesBuildContext = {
     services: Service[];
@@ -21,7 +22,10 @@ type ServicesBuildContext = {
     hasJavaBuilder?: boolean;
     hasNginxBuilder?: boolean;
     hasNoBuilder?: boolean;
+    hasRepositoryBuilder?: boolean
 };
+
+const DOCUMENTATION_LINK = "troubleshooting-remedies/correctly-reload-repository-services-using-chs-dev.md";
 export default class Up extends Command {
 
     static description: string = "Brings up the docker-chs-development environment";
@@ -123,31 +127,8 @@ export default class Up extends Command {
         ux.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         try {
             await this.dockerCompose.up();
+            await this.handleDevelopmentMode();
 
-            if (this.hasServicesInDevelopmentMode) {
-                this.log(
-                    "Running services in development mode - watching for changes.\n"
-                );
-                const { services, hasJavaBuilder, hasNodeBuilder, hasNginxBuilder, hasNoBuilder } = this.servicesBuildContext;
-
-                this.logReloadInstructions(hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasNoBuilder);
-
-                this.logWaitReadyInstructions(services, hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasNoBuilder);
-
-                this.runHealthCheck(services, hasJavaBuilder, hasNoBuilder);
-
-                this.dependencyCache.update();
-                const logsArgs = {
-                    serviceNames: this.servicesInDevelopmentMode,
-                    tail: "10",
-                    follow: true
-                };
-
-                const developmentMode = new DevelopmentMode(this.dockerCompose, logsArgs);
-                await developmentMode.start((prompt) => confirm({
-                    message: prompt
-                }));
-            }
         } catch (error) {
             this.log(`\n${"-".repeat(80)}`);
             this.log("Recent Docker Compose Logs:");
@@ -183,6 +164,8 @@ export default class Up extends Command {
                     builderMap.hasJavaBuilder = true;
                 } else if (builder === "nginx") {
                     builderMap.hasNginxBuilder = true;
+                } else if (builder === "repository") {
+                    builderMap.hasRepositoryBuilder = true;
                 } else if (!builder || builder === "undefined") {
                     builderMap.hasNoBuilder = true;
                 }
@@ -203,19 +186,20 @@ export default class Up extends Command {
         }
     }
 
-    private logReloadInstructions (hasNodeBuilder: boolean | undefined, hasJavaBuilder: boolean | undefined, hasNginxBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
+    private handleReloadInstructions (builders: ServicesBuildContext): void {
         const instructions: string[] = [];
+        const { hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasRepositoryBuilder, hasNoBuilder } = builders;
 
         if (hasNodeBuilder) {
             instructions.push("Node Applications: Automatically sync changes.\n");
         }
 
         if (hasJavaBuilder || hasNginxBuilder) {
-            instructions.push("Java and Nginx Applications: To sync changes, run: '$ chs-dev reload <serviceName>' in a new shell session.\n");
+            instructions.push("Java and Nginx Applications: To sync changes, run: '$ chs-dev reload <serviceName>'.\n");
         }
 
-        if (hasNoBuilder) {
-            instructions.push("Repository Applications[Go and Perl]: Build and sync procedure remains the same.\n");
+        if (hasRepositoryBuilder || hasNoBuilder) {
+            instructions.push(`Repository Applications[Java, Go and Perl]: For the build and sync procedure, refer to ${documentationLink(DOCUMENTATION_LINK)}. \n`);
         }
 
         if (instructions.length > 0) {
@@ -223,10 +207,11 @@ export default class Up extends Command {
         }
     }
 
-    private logWaitReadyInstructions (services: Service[], hasNodeBuilder: boolean | undefined, hasJavaBuilder: boolean | undefined, hasNginxBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
+    private handleWaitReadyInstructions (builders: ServicesBuildContext): void {
+        const { services, hasNodeBuilder, hasJavaBuilder, hasNginxBuilder, hasRepositoryBuilder, hasNoBuilder } = builders;
         const serviceNames = services.map(service => service.name).join(", ");
 
-        if (hasNodeBuilder || hasJavaBuilder || hasNoBuilder) {
+        if (hasNodeBuilder || hasJavaBuilder || hasRepositoryBuilder || hasNoBuilder) {
             this.log(`Waiting for Services: ${serviceNames} to be ready...\n`);
         }
 
@@ -239,14 +224,44 @@ export default class Up extends Command {
 
     }
 
-    private runHealthCheck (services: Service[], hasJavaBuilder: boolean | undefined, hasNoBuilder: boolean | undefined): void {
-        if (hasJavaBuilder || hasNoBuilder) {
-            const javaAndNoBuilderServicesNames = services.length > 1
+    private handleHealthCheck (builders: ServicesBuildContext): void {
+        const { services, hasJavaBuilder, hasRepositoryBuilder, hasNoBuilder } = builders;
+        if (hasJavaBuilder || hasRepositoryBuilder || hasNoBuilder) {
+            const javaRepositoryAndNoBuilderServicesNames = services.length > 1
                 ? services.filter(service => {
-                    return service.builder.includes("java") || !service.builder;
+                    return service.builder.includes("java") || service.builder.includes("repository") || !service.builder;
                 }).map(service => service.name)
                 : [services[0].name];
-            this.dockerCompose.healthCheck(javaAndNoBuilderServicesNames);
+            this.dockerCompose.healthCheck(javaRepositoryAndNoBuilderServicesNames);
+        }
+    }
+
+    private async handleDevelopmentMode (): Promise<void> {
+        if (this.hasServicesInDevelopmentMode) {
+            const builderContext = this.servicesBuildContext;
+            const { hasNodeBuilder, hasNginxBuilder } = builderContext;
+
+            this.log(
+                `Running services in development mode ${hasNodeBuilder || hasNginxBuilder ? " - watching for changes." : "."} \n`
+            );
+
+            this.handleReloadInstructions(builderContext);
+
+            this.handleWaitReadyInstructions(builderContext);
+
+            this.handleHealthCheck(builderContext);
+
+            const logsArgs = {
+                serviceNames: this.servicesInDevelopmentMode,
+                tail: "10",
+                follow: true
+            };
+            if (hasNodeBuilder || hasNginxBuilder) {
+                const developmentMode = new DevelopmentMode(this.dockerCompose, logsArgs);
+                await developmentMode.start((prompt) => confirm({
+                    message: prompt
+                }));
+            }
         }
     }
 }

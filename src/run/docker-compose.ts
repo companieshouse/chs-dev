@@ -9,8 +9,7 @@ import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
 import LogNothingLogHandler from "./logs/LogNothingLogHandler.js";
 import { LogHandler } from "./logs/logs-handler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
-import { LogCoverage, Prune } from "../model/index.js";
-
+import { LogCoverage, Prune, ContainerType } from "../model/index.js";
 interface Logger {
     log: (msg: string) => void;
 }
@@ -107,19 +106,39 @@ export class DockerCompose {
         );
     }
 
-    async build (serviceName: string, regxPattern?: RegExp, signal?: AbortSignal): Promise<boolean | void> {
+    /**
+     * Builds a service using docker compose.
+     * Useful for running one-off tasks/builder containers or long-running/application containers.
+     * @param serviceName - Name of the service to build.
+     * @param containerType - Type of container: "builder" or "application".
+     * @param regxPattern - Optional regex pattern to match log output.
+     * @param signal - Optional AbortSignal to cancel the operation.
+     * @returns A promise that resolves to true if the pattern was matched in logs, or void if no pattern was provided.
+     */
+    async build (
+        serviceName: string,
+        containerType: ContainerType,
+        regxPattern?: RegExp,
+        signal?: AbortSignal
+    ): Promise<boolean | void> {
         const logHandler = regxPattern
-            ? new PatternMatchingConsoleLogHandler(
-                regxPattern, this.logFile, this.logger
-            )
+            ? new PatternMatchingConsoleLogHandler(regxPattern, this.logFile, this.logger)
             : new LogNothingLogHandler(this.logFile, this.logger);
 
-        await this.runDockerCompose(
-            ["up", "--build", "--exit-code-from", serviceName, serviceName],
-            logHandler,
-            signal
-        );
-        return regxPattern ? (logHandler as { matchFoundByPattern: boolean }).matchFoundByPattern : undefined;
+        let args: string[];
+        if (containerType === ContainerType.BUILDER) {
+            args = ["up", "--build", "--exit-code-from", serviceName, serviceName];
+        } else if (containerType === ContainerType.APPLICATION) {
+            args = ["up", "--build", "--force-recreate", "--no-deps", "--detach", serviceName];
+        } else {
+            throw new Error(`Unknown container type: ${containerType}`);
+        }
+
+        await this.runDockerCompose(args, logHandler, signal);
+
+        return regxPattern
+            ? (logHandler as PatternMatchingConsoleLogHandler).matchFoundByPattern
+            : undefined;
     }
 
     restart (serviceName: string, signal?: AbortSignal): Promise<void> {
