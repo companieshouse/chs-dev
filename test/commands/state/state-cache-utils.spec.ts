@@ -27,6 +27,16 @@ describe("state-cache-utils", () => {
         });
     });
 
+    describe("validateNameFormat", () => {
+        it("should not throw if name format is valid", () => {
+            expect(() => stateCacheUtils.validateNameFormat("test_one_1")).not.toThrow();
+        });
+        it("should throw iif name format is invalid", () => {
+            const name = "temp/filename";
+            expect(() => stateCacheUtils.validateNameFormat(name)).toThrow(`Invalid cache name format: '${name}'. Only alphanumeric characters with underscores or hypens are allowed.`);
+        });
+    });
+
     describe("validateCacheNameExists", () => {
         it("should not throw if cache exists", () => {
             expect(() => stateCacheUtils.validateCacheNameExists({ foo: {} }, "foo")).not.toThrow();

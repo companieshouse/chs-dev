@@ -5,10 +5,8 @@ import { hashAlgorithm } from "../../helpers/index.js";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { writeContentToFile } from "../../helpers/file-utils.js";
-import { handlePrompt, validateCacheNameExists } from "./state-cache-utils.js";
+import { EXPORT_STATE_DIR, handlePrompt, validateCacheNameExists, validateNameFormat } from "./state-cache-utils.js";
 import { StateManager } from "../../state/state-manager.js";
-
-const EXPORT_STATE_DIR = ".exported_state_cache";
 
 export interface AvailableCacheContext {
     logger: (message: string) => void;
@@ -97,6 +95,8 @@ export class ExportCacheStrategy implements CacheActionStrategy<ExportCacheConte
 
 export class AddCacheStrategy implements CacheActionStrategy<AddCacheContext> {
     async execute (context: AddCacheContext, _cacheData: Record<string, any>, _cacheName: string): Promise<void> {
+        validateNameFormat(_cacheName);
+
         const confirmed = await handlePrompt("add", _cacheName);
         if (confirmed) {
             const stateSnapshot = context.stateManager.snapshot;

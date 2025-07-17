@@ -74,6 +74,13 @@ describe("Export state command", () => {
         jest.clearAllMocks();
     });
 
+    it("should throw error if export filename is invalid", async () => {
+        const name = "/temp/filename";
+        parseMock.mockResolvedValue({ args: { name } });
+
+        await expect(exportState.run()).rejects.toThrow(`Invalid cache name format: '${name}'. Only alphanumeric characters with underscores or hypens are allowed.`);
+    });
+
     it("should call exportState if user confirms", async () => {
         parseMock.mockResolvedValue({ args: { name: "testExport" } });
 

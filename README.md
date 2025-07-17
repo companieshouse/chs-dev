@@ -610,17 +610,19 @@ DESCRIPTION
 
 ## `chs-dev state export NAME`
 
-Export current state of chs-dev into a saved file
+Export the current state of chs-dev as a named file into the 'exported_state_cache' directory. This is useful when you need to share your setup with others or for backup purposes. The exported file will contain the current state of chs-dev, including the Docker Compose configuration and the state snapshot.
 
 ```
 USAGE
   $ chs-dev state export NAME
 
 ARGUMENTS
-  NAME  Name of the exported file
+  NAME  Specify the export file name using letters, numbers, and optional underscores.
 
 DESCRIPTION
-  Export current state of chs-dev into a saved file
+  Export the current state of chs-dev as a named file into the 'exported_state_cache' directory. This is useful when you
+  need to share your setup with others or for backup purposes. The exported file will contain the current state of
+  chs-dev, including the Docker Compose configuration and the state snapshot.
 ```
 
 ## `chs-dev state restore [NAME]`

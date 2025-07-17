@@ -76,9 +76,14 @@ describe("CacheActionStrategy", () => {
         await expect(new ExportCacheStrategy().execute({ projectPath, logger }, {}, "missing")).rejects.toThrow("Cache named missing does not exist.");
     });
 
-    it("AddCacheStrategy adds a cache if confirmed", async () => {
+    it("AddCacheStrategy adds a cache if name format is valid and prompt confirmed", async () => {
         await new AddCacheStrategy().execute({ stateManager, stateCacheFile, projectPath, logger }, {}, "newCache");
         expect(fileUtils.writeContentToFile).toHaveBeenCalledWith(expect.any(Object), stateCacheFile);
         expect(logger).toHaveBeenCalledWith("Saved cache as 'newCache'");
+    });
+
+    it("AddCacheStrategy throws error if name format is invalid", async () => {
+        const name = "/temp/fileName";
+        await expect(new AddCacheStrategy().execute({ stateManager, stateCacheFile, projectPath, logger }, {}, name)).rejects.toThrow(`Invalid cache name format: '${name}'. Only alphanumeric characters with underscores or hypens are allowed.`);
     });
 });

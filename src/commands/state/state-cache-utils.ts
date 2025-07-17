@@ -18,6 +18,8 @@ type StateCache = {
 };
 type CacheActions = "add" | "remove" | "wipe" | "import-file-cache" | "import-saved-cache";
 
+export const EXPORT_STATE_DIR = "exported_state_cache";
+
 export const handlePrompt = async (
     action:CacheActions,
     cacheName: string = "default-cache-name"
@@ -30,6 +32,13 @@ export const handlePrompt = async (
         "import-saved-cache": `Restore from a saved cache '${cacheName}'?`
     };
     return await confirm(messages[action]);
+};
+
+export const validateNameFormat = (name: string): void => {
+    const regex = /^[a-zA-Z0-9_-]+$/;
+    if (!regex.test(name)) {
+        throw new Error(`Invalid cache name format: '${name}'. Only alphanumeric characters with underscores or hypens are allowed.`);
+    }
 };
 
 export const validateCacheNameExists = (cacheData: Record<string, any>, cacheName: string): void => {
