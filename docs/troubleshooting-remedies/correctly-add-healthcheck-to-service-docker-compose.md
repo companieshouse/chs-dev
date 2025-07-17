@@ -31,8 +31,8 @@ healthcheck:
           "CMD-SHELL",
           "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/company-profile-api/healthcheck || exit 1",
         ]
-      timeout: 5s
-      retries: 3
+      retries: 6
+      start_period: 15s
 
 ```
 
