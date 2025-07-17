@@ -18,7 +18,6 @@ describe("immutableServiceFieldsSpecAssemblyFunction", () => {
 
         const mutableFields = [
             "build",
-            "develop",
             "env_file",
             "volumes",
             "depends_on",

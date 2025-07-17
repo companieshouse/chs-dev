@@ -59,14 +59,6 @@ exports[`DevelopmentDockerComposeSpecFactory create adds builder service 1`] = `
       "context": "/home/test-user/projects/docker-chs",
       "dockerfile": "locals/builder/java/v2/build.Dockerfile",
     },
-    "develop": {
-      "watch": [
-        {
-          "action": "rebuild",
-          "path": ".touch",
-        },
-      ],
-    },
     "volumes": [
       "repositories/service-seven:/app/",
       "./out:/opt/out",

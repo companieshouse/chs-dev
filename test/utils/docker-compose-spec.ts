@@ -59,15 +59,7 @@ export const generateBuilderSpec = (builderPath: string, separateBuilder: boolea
             volumes: [
                 "<repository_path>:/app/",
                 "./out:/opt/out"
-            ],
-            develop: {
-                watch: [
-                    {
-                        path: ".touch",
-                        action: "rebuild"
-                    }
-                ]
-            }
+            ]
         };
     }
 
@@ -139,9 +131,6 @@ export const createCompleteServiceSpecForServiceWithName = (serviceName: string)
                 "service-5"
             ],
             deploy: {},
-            develop: {
-                watch: "my-file"
-            },
             device_cgroup_rules: [
                 "c 1:3 mr"
             ],

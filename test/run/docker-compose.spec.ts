@@ -4,13 +4,13 @@ import fs, { mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import Config from "../../src/model/Config";
+import { ContainerType } from "../../src/model";
 
 describe("DockerCompose", () => {
     const execSyncMock = jest.spyOn(childProcess, "execSync");
     const spawnMock = jest.fn();
     const existsSyncMock = jest.spyOn(fs, "existsSync");
     const mkdirSyncMock = jest.spyOn(fs, "mkdirSync");
-    const readFileSyncMock = jest.spyOn(fs, "readFileSync");
 
     const mockPatternMatchingHandle = jest.fn();
     const mockWatchLogHandle = jest.fn();
@@ -429,9 +429,9 @@ describe("DockerCompose", () => {
 
         });
 
-        it("runs docker compose build", async () => {
+        it("runs docker compose build for builder containers", async () => {
 
-            await dockerCompose.build(serviceName);
+            await dockerCompose.build(serviceName, ContainerType.BUILDER);
 
             const expectedSpawnOptions = {
                 logHandler: { handle: mockWatchLogHandle },
@@ -455,6 +455,39 @@ describe("DockerCompose", () => {
                 serviceName,
                 serviceName
             ], expect.anything());
+        });
+
+        it("runs docker compose build for Non-builder containers", async () => {
+
+            await dockerCompose.build(serviceName, ContainerType.APPLICATION);
+
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockWatchLogHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "up",
+                "--build",
+                "--force-recreate",
+                "--no-deps",
+                "--detach",
+                serviceName
+            ], expect.anything());
+        });
+
+        it("docker compose build should throw an error if the container type is invalid ", async () => {
+            await expect(dockerCompose.build(serviceName, "unknown" as any)).rejects.toThrowError("Unknown container type: unknown");
         });
 
         it("rejects when code is not 0 or 130", async () => {

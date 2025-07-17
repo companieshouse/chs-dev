@@ -82,14 +82,6 @@ const repositoryBuilderSpec = yaml.stringify({
                     // eslint-disable-next-line no-template-curly-in-string
                     SSH_PRIVATE_KEY_PASSPHRASE: "${SSH_PRIVATE_KEY_PASSPHRASE}"
                 }
-            },
-            develop: {
-                watch: [
-                    {
-                        path: ".touch",
-                        action: "rebuild"
-                    }
-                ]
             }
         }
     }

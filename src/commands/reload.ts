@@ -7,11 +7,13 @@ import { DockerCompose } from "../run/docker-compose.js";
 import { Inventory } from "../state/inventory.js";
 import { join } from "path";
 import { existsSync, unlinkSync } from "fs";
+import { ContainerType } from "../model/index.js";
 
 type ReloadFunc = (serviceName: string, flags: any) => Promise<void>
 
 const NODE_BUILDER = "node";
 const NGINX_BUILDER = "nginx";
+const REPOSITORY_BUILDER = "repository";
 const NO_CHANGES_PATTERN = /"?([\w-]+)"?\s+\|\s+.*No changes\./;
 
 /**
@@ -63,6 +65,7 @@ export default class Reload extends Command {
         this.reloadStrategies = new Map<string, ReloadFunc>([
             [NODE_BUILDER, this.reloadNodeService.bind(this)],
             [NGINX_BUILDER, this.reloadNginxService.bind(this)],
+            [REPOSITORY_BUILDER, this.reloadRepositoryService.bind(this)],
             ["default", this.reloadJavaService.bind(this)]
         ]);
     }
@@ -148,10 +151,9 @@ export default class Reload extends Command {
         if (flags.force && codeHashFile) {
             unlinkSync(codeHashFile);
         }
-        this.dependencyCache.update();
         this.log(`Service: ${serviceName} building...`);
 
-        const noChangesFound = await this.dockerCompose.build(`${serviceName}-builder`, NO_CHANGES_PATTERN);
+        const noChangesFound = await this.dockerCompose.build(`${serviceName}-builder`, ContainerType.BUILDER, NO_CHANGES_PATTERN);
         if (noChangesFound) {
             this.log(`No changes found in code. Terminating reload.`);
             this.log(`Use the --force flag (-f) to rebuild if necessary.`);
@@ -160,6 +162,18 @@ export default class Reload extends Command {
             await this.dockerCompose.restart(serviceName);
             this.dockerCompose.healthCheck([serviceName]);
         }
+    }
+
+    /**
+     * Reloads a Repository service by rebuilding the container.
+     * @param serviceName - Name of the service to reload
+     *  @param flags - Flags passed to the command
+     */
+    private async reloadRepositoryService (serviceName: string): Promise<void> {
+        this.log(`Service: ${serviceName} building...`);
+        const boss = await this.dockerCompose.build(`${serviceName}`, ContainerType.APPLICATION);
+        this.dockerCompose.healthCheck([serviceName]);
+
     }
 
     /**
