@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import yaml from "yaml";
 import { State } from "../model/State.js";
+import { writeContentToFile } from "../helpers/file-utils.js";
 
 const fileName = ".chs-dev.yaml";
 
@@ -97,11 +98,17 @@ export class StateManager {
         }
     }
 
+    cleanState (): void {
+        this.dumpState({
+            modules: [],
+            services: [],
+            servicesWithLiveUpdate: [],
+            excludedServices: []
+        });
+    }
+
     private dumpState (state: State): void {
-        const lines = [
-            "# DO NOT MODIFY MANUALLY",
-            yaml.stringify(state)
-        ];
-        writeFileSync(join(this.path, fileName), lines.join("\n\n"));
+        const fullPath = join(this.path, fileName);
+        writeContentToFile(state, fullPath);
     }
 }
