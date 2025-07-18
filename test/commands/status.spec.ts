@@ -117,7 +117,6 @@ describe("Status command", () => {
             "service-five": "Exited (0)",
             "service-six": "Exited (137)",
             "service-seven": "Up 33 minutes",
-            "service-three": "Up About an hour (healthy)",
             "service-eight": "Up About an hour"
         });
 
@@ -135,7 +134,6 @@ describe("Status command", () => {
             "service-five": "Exited (0)",
             "service-six": "Exited (137)",
             "service-seven": "Up 33 minutes",
-            "service-three": "Up About an hour (healthy)",
             "service-eight": "Up About an hour",
             "otel-collector": "Up About an hour",
             loki: "Up About an hour",

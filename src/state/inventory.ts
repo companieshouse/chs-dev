@@ -89,7 +89,7 @@ export class Inventory {
 
         this.serviceFiles
             .map(serviceFile => readFileSync(serviceFile))
-            .forEach(serviceFile => {
+            .forEach((serviceFile:any) => {
                 sha256Hash.update(serviceFile);
             });
 

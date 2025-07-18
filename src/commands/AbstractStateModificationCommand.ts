@@ -39,6 +39,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
 
     protected readonly inventory: Inventory;
     protected readonly stateManager: StateManager;
+    protected readonly serviceLoader: ServiceLoader;
 
     protected argumentValidationPredicate: ArgumentValidationPredicate = defaultValidationPredicate;
     protected validArgumentHandler: ValidArgumentHandler = defaultValidArgumentHandler;
@@ -55,6 +56,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.stateManager = new StateManager(this.chsDevConfig.projectPath);
         this.stateModificationObjectType = stateModificationObjectType;
+        this.serviceLoader = new ServiceLoader(this.inventory);
     }
 
     async run (): Promise<any> {

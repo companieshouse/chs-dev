@@ -1,7 +1,10 @@
+import { readFileSync } from "fs";
 import { collect, deduplicate } from "../helpers/array-reducers.js";
+import { DockerComposeSpec } from "../model/DockerComposeSpec.js";
 import Service from "../model/Service.js";
 import State from "../model/State.js";
 import { Inventory } from "../state/inventory.js";
+import yaml from "yaml";
 
 type LoadedService = Service & {
   liveUpdate: boolean;
@@ -66,10 +69,40 @@ export class ServiceLoader {
      * @returns list of manually and automatically activated services names.
      */
     loadServicesNames (state: State): string[] {
-        return this.getActivatedServicesList(state)
-            .reduce(collect<string, Service>(service => [service.name, ...service.dependsOn || []]), [])
-            .reduce(deduplicate, [])
-            .sort();
+        const activated = this.getActivatedServicesList(state);
+        const names = new Set<string>();
+
+        for (const service of activated) {
+            names.add(service.name);
+            if (service.dependsOn) {
+                for (const dep of service.dependsOn) {
+                    names.add(dep);
+                }
+            }
+        }
+
+        return Array.from(names).sort();
+    }
+
+    /**
+     * Retrieves the direct dependencies of a given service as defined in its Docker Compose specification.
+     *
+     * This method locates the service by name, reads its Docker Compose YAML file,
+     * and extracts the `depends_on` field for the specified service.
+     * If the service or its source file is not found, an empty array is returned.
+     *
+     * @param serviceName - The name of the service whose direct dependencies are to be retrieved.
+     * @returns An array of service names that the specified service directly depends on.
+     */
+    getServiceDirectDependencies (serviceName: string): string[] {
+        const service = this.findService(serviceName);
+
+        if (!service?.source) return [];
+        const dockerCompose: DockerComposeSpec = yaml.parse(
+            readFileSync(service.source, "utf-8")
+        );
+        const dependsOn = dockerCompose.services?.[serviceName]?.depends_on || [];
+        return Array.isArray(dependsOn) ? dependsOn : Object.keys(dependsOn);
     }
 
     private findService (serviceName: string): Service | undefined {
@@ -87,7 +120,10 @@ export class ServiceLoader {
      * @returns list of activated services as Service object
      */
     private getActivatedServicesList (state: State): Service[] {
-        return this.inventory.services
-            .filter(service => state.services.includes(service.name) || state.modules.includes(service.module));
+        const serviceNames = new Set(state.services);
+        const moduleNames = new Set(state.modules);
+        return this.inventory.services.filter(
+            service => serviceNames.has(service.name) || moduleNames.has(service.module)
+        );
     }
 }
