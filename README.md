@@ -314,10 +314,13 @@ Adds a new service to the exclusions list
 
 ```
 USAGE
-  $ chs-dev exclude SERVICE...
+  $ chs-dev exclude SERVICE... [-d]
 
 ARGUMENTS
   SERVICE...  name of service being excluded from the docker environment
+
+FLAGS
+  -d, --dependency  Add services dependencies to the exclusion list.
 
 DESCRIPTION
   Adds a new service to the exclusions list
@@ -332,10 +335,13 @@ Adds a new service to the exclusions list
 
 ```
 USAGE
-  $ chs-dev exclusions add SERVICE...
+  $ chs-dev exclusions add SERVICE... [-d]
 
 ARGUMENTS
   SERVICE...  name of service being excluded from the docker environment
+
+FLAGS
+  -d, --dependency  Add services dependencies to the exclusion list.
 
 DESCRIPTION
   Adds a new service to the exclusions list
@@ -365,10 +371,13 @@ Removes an exclusion for a service.
 
 ```
 USAGE
-  $ chs-dev exclusions remove SERVICE...
+  $ chs-dev exclusions remove SERVICE... [-d]
 
 ARGUMENTS
   SERVICE...  name of service being reincluded in the docker environment
+
+FLAGS
+  -d, --dependency  Remove service and its dependencies from the exclusion list.
 
 DESCRIPTION
   Removes an exclusion for a service.
@@ -403,10 +412,13 @@ Removes an exclusion for a service.
 
 ```
 USAGE
-  $ chs-dev include SERVICE...
+  $ chs-dev include SERVICE... [-d]
 
 ARGUMENTS
   SERVICE...  name of service being reincluded in the docker environment
+
+FLAGS
+  -d, --dependency  Remove service and its dependencies from the exclusion list.
 
 DESCRIPTION
   Removes an exclusion for a service.
