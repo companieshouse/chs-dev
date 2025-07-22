@@ -9,13 +9,10 @@ import LogEverythingLogHandler from "./logs/LogEverythingLogHandler.js";
 import LogNothingLogHandler from "./logs/LogNothingLogHandler.js";
 import { LogHandler } from "./logs/logs-handler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
-import { ContainerType } from "../model/index.js";
-
+import { LogCoverage, Prune, ContainerType } from "../model/index.js";
 interface Logger {
     log: (msg: string) => void;
 }
-
-type LogCoverage = "Watch" | "Log";
 
 const CONTAINER_STOPPED_STATUS_PATTERN =
     /Container\s([\dA-Za-z-]+)\s*(Stopped|Removed)/;
@@ -153,7 +150,7 @@ export class DockerCompose {
 
     logs (
         { serviceNames = [], signal, tail = "all", follow = false }: LogsArgs,
-        coverage: LogCoverage = "Log"
+        coverage: LogCoverage = LogCoverage.LOG
     ): Promise<void> {
         const args = [
             "logs",
@@ -162,7 +159,7 @@ export class DockerCompose {
             ...(serviceNames.length > 0 ? ["--", ...serviceNames] : [])
         ];
 
-        const logHandler = coverage === "Log"
+        const logHandler = coverage === LogCoverage.LOG
             ? new LogEverythingLogHandler(this.logger)
             : new DockerComposeWatchLogHandler(this.logger);
 
@@ -203,6 +200,24 @@ export class DockerCompose {
             new LogNothingLogHandler(this.logFile, this.logger),
             abortSignal
         );
+    }
+
+    prune (commandArg: Prune): void {
+        try {
+            let logMsg: string;
+            if (commandArg === Prune.VOLUME) {
+                const volumes = execSync(`docker volume ls -qf dangling=true`, { encoding: "utf-8" });
+                if (volumes.length === 0) {
+                    return;
+                }
+                logMsg = execSync(`docker volume rm $(docker volume ls -qf dangling=true)`, { encoding: "utf-8" });
+            } else {
+                logMsg = execSync(`docker ${commandArg} prune -f`, { encoding: "utf-8" });
+            }
+            const log = new LogNothingLogHandler(logMsg, this.logger);
+        } catch (error) {
+            throw new Error(`Docker prune command failed: ${error}`);
+        }
     }
 
     private createStatusMatchLogHandler (pattern: RegExp, colouriser?: (status: string) => string) {

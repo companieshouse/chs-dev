@@ -1,6 +1,7 @@
 import { ux } from "@oclif/core";
 
 import { DockerCompose } from "./docker-compose.js";
+import { LogCoverage } from "../model/index.js";
 
 type Prompter = (prompt: string) => Promise<boolean>
 type WatchLogsArgs = { serviceNames, tail, follow }
@@ -22,7 +23,7 @@ export class DevelopmentMode {
                     .then(resolve)
                     .catch(reject);
             });
-            return this.dockerCompose.logs({ ...this.logsArgs, signal }, "Watch").catch(reject);
+            return this.dockerCompose.logs({ ...this.logsArgs, signal }, LogCoverage.WATCH).catch(reject);
         });
     }
 

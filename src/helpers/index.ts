@@ -1,3 +1,5 @@
+import { BinaryToTextEncoding, createHash } from "crypto";
+
 /**
  * Checks if a given value is an object and not an array.
  *
@@ -39,4 +41,16 @@ export const matchExistInArrays = (array1: unknown[], array2: unknown[]): boolea
 export const findUniqueItemsInParentArray = (parentArray: unknown[], childArray: unknown[]): any[] => {
     const childSet = new Set(childArray);
     return parentArray.filter(item => !childSet.has(item));
+};
+
+/**
+ * Generates a SHA-256 hash of the provided string data and returns it as a hexadecimal string.
+ *
+ * @param data - The input string to hash.
+ * @returns The SHA-256 hash of the input as a hexadecimal string.
+ */
+export const hashAlgorithm = (data: string, algorithm = "sha256", encoder = "hex"): string => {
+    const sha256Hash = createHash(algorithm);
+    sha256Hash.update(data);
+    return sha256Hash.digest(encoder as BinaryToTextEncoding);
 };
