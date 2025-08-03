@@ -13,7 +13,7 @@ export default class GenerateSystemDependencyDiagrams extends Command {
     protected chsDevConfig: ChsDevConfig;
 
     constructor (argv: string[], config: Config) {
-        super(argv, config,);
+        super(argv, config);
         this.chsDevConfig = loadConfig();
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.tree = new DependencyDiagram(this.inventory);

@@ -65,15 +65,19 @@ export const createPullRequest = async (
  * @param repository
  * @returns returned as a string, the description of the repository
  */
-export const getRepositoryDescription = (repositoryName: string): string => {
+export const getRepositoryDescription = (repositoryName: string, muteError = false): string => {
     try {
-        const stdout = execSync(`gh repo view --json description companieshouse/${repositoryName}`).toString("utf8");
+        const stdout = execSync(`
+            gh repo view --json 'description' companieshouse/${repositoryName} 2>/dev/null`).toString("utf8");
 
         const parsed = JSON.parse(stdout);
         return parsed.description ?? "No description available.";
     } catch (error) {
-        console.error(`Failed to fetch description for ${repositoryName}:`, error);
-        return "Error fetching description.";
+        if (!muteError) {
+            console.error(`Failed to fetch description for ${repositoryName}:`, error);
+            return "Error fetching description.";
+        }
+        return "No description available.";
     }
 };
 
@@ -82,14 +86,17 @@ export const getRepositoryDescription = (repositoryName: string): string => {
  * @param repository
  * @returns team-code-owner value
  */
-export const getRespositoryOwner = (repositoryName: string): string => {
+export const getRespositoryOwner = (repositoryName: string, muteError = false): string => {
     try {
-        const stdout = execSync(`gh api /repos/companieshouse/${repositoryName} --jq '.custom_properties["team-code-owner"]'`).toString("utf8");
+        const stdout = execSync(`gh api /repos/companieshouse/${repositoryName} --jq '.custom_properties["team-code-owner"]' 2>/dev/null`).toString("utf8");
 
         return stdout || "Unknown repository owner.";
     } catch (error) {
-        console.error(`Failed to fetch team code owner for ${repositoryName}:`, error);
-        return "Error fetching team code owner.";
+        if (!muteError) {
+            console.error(`Failed to fetch team code owner for ${repositoryName}:`, error);
+            return "Error fetching team code owner.";
+        }
+        return "Unknown repository owner.";
     }
 };
 

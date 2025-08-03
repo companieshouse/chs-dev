@@ -4,7 +4,7 @@ import { Inventory } from "../../state/inventory.js";
 import loadConfig from "../../helpers/config-loader.js";
 import DependencyDiagram from "../../information/service/DependencyDiagram.js";
 import { Command, Config, Args, Flags, Parser } from "@oclif/core";
-import DependencyTree from "../../information/service/dependencyTree.js";
+import DependencyTree from "../../information/service/DependencyTree.js";
 
 export default class GenerateServiceDependencyDiagrams extends AbstractStateModificationCommand {
     static description: string = "Generates a dependency diagram / tree for the specified service(s)";
@@ -27,10 +27,10 @@ export default class GenerateServiceDependencyDiagrams extends AbstractStateModi
             aliases: ["type"],
             summary: "diagram / tree",
             required: true
-        }),
+        })
     };
 
-    constructor (argv: string[], config: Config) { 
+    constructor (argv: string[], config: Config) {
         super(argv, config, "service");
         this.chsDevConfig = loadConfig();
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
@@ -49,18 +49,16 @@ export default class GenerateServiceDependencyDiagrams extends AbstractStateModi
 
     private async handleValidService (serviceName: string): Promise<void> {
 
-        if (this.flagValues !== undefined){
+        if (this.flagValues !== undefined) {
             const type = this.flagValues?.type || null;
-        
-            if (type === "tree" ){
+
+            if (type === "tree") {
                 this.tree.generateTree(serviceName);
-            }
-            else if (type === "flattree" ){
+            } else if (type === "flattree") {
                 this.tree.generateFlatTree(serviceName);
-            }
-            else if (type === "diagram" ){
+            } else if (type === "diagram") {
                 this.diagram.createDependencyDiagrams(serviceName);
-            }else {
+            } else {
                 console.error(`'${type}' is not a valid value`);
             }
         }

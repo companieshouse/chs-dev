@@ -11,6 +11,7 @@ import { readServices } from "./service-reader.js";
 import { DependencyNameResolver } from "./dependency-name-resolver.js";
 import { DependencyTreeBuilder } from "./dependency-tree-builder.js";
 import DependencyNode from "../model/DependencyNode.js";
+import { getRepositoryDescription, getRespositoryOwner } from "../helpers/github.js";
 
 interface InventoryCache {
   hash: string;
@@ -40,15 +41,33 @@ export class Inventory {
         return this.getFromCache(inventoryCache => inventoryCache.services);
     }
 
+    updateService (updatedService: Service) {
+
+        const services = this.services;
+        const index = services.findIndex(s => s.name === "cdn-ch-gov-uk");
+        console.log(services[index], "gd");
+        if (index !== -1) {
+            services[index] = updatedService;
+            const hash = createHash("sha256").update(JSON.stringify(services)).digest("hex");
+            const updatedCache = {
+                services,
+                hash
+            };
+            writeFileSync(this.inventoryCacheFile, yaml.stringify(updatedCache));
+            console.log("written", updatedService);
+        } else {
+            throw new Error(`Service ${updatedService.name} not found in inventory.`);
+        }
+    }
+
     private getFromCache<T> (cacheSupplier: (inventoryCache: InventoryCache) => T): T {
         const inventoryCache = this.inventoryCache;
 
         if (typeof inventoryCache !== "undefined") {
-            if (inventoryCache.hash === this.hashServiceFiles()) {
+            if (inventoryCache.hash === this.hashServiceCacheObject()) {
                 return cacheSupplier(inventoryCache);
             }
         }
-
         this.updateCache();
 
         return this.getFromCache(cacheSupplier);
@@ -56,7 +75,7 @@ export class Inventory {
 
     private updateCache () {
         const inventory = {
-            hash: this.hashServiceFiles(),
+            hash: this.hashServiceCacheObject(),
             services: this.loadServices(),
             modules: this.loadModules()
         };
@@ -74,46 +93,34 @@ export class Inventory {
             });
     }
 
-    private loadServices (): Service[] {
+    private get __servicesCacheObject (): Service[] {
         const partialServices: Partial<Service>[] = this.serviceFiles.flatMap(readServices);
         const dependencyNameResolver = new DependencyNameResolver(partialServices);
 
         const dependencyTreeBuilder = new DependencyTreeBuilder(partialServices);
-        
-        const services: Service[] =  partialServices.map(service => ({
-            ...service,
-            dependencyTree: dependencyTreeBuilder.dependencyTree(service.name as string),
-            dependsOn: dependencyNameResolver.fullDependencyListIncludingTransitive(service.dependsOn as string[]),
-        } as Service));
 
-        services.forEach(dependency => { 
+        return partialServices.map(service => {
+            const fullDependencyList = dependencyNameResolver.fullDependencyListIncludingTransitive(
+                Array.isArray(service.dependsOn) ? service.dependsOn as string[] : []
+            );
+
+            return {
+                ...service,
+                dependencyTree: dependencyTreeBuilder.dependencyTree(service.name as string),
+                dependsOn: fullDependencyList,
+                numberOfDependencies: fullDependencyList.length
+            } as Service;
+        });
+    }
+
+    private loadServices (): Service[] {
+        const services: Service[] = this.__servicesCacheObject;
+
+        services.forEach(dependency => {
             let count = 0;
             services.forEach(service => {
-                if (service.name != dependency.name){
-                    count = count + this.addTimesReferenced(service.dependencyTree, dependency.name);                    
-                }
-            });
-            dependency.timesUsedByOtherServices = count;
-        });
-
-        services.forEach(service => { 
-            let count = 0;
-        
-            function traverse(node: DependencyNode){
-                count ++;
-                node.dependencies.forEach(childNode => traverse(childNode));
-            }
-        
-            traverse(service.dependencyTree);
-        
-            service.numberOfDependencies = count - 1;
-        });
-
-        services.forEach(dependency => { 
-            let count = 0;
-            services.forEach(service => {
-                if (service.name != dependency.name){
-                    count = count + this.addTimesReferenced(service.dependencyTree, dependency.name);                    
+                if (service.name !== dependency.name) {
+                    count = count + this.addTimesReferenced(service.dependencyTree, dependency.name);
                 }
             });
             dependency.timesUsedByOtherServices = count;
@@ -122,29 +129,25 @@ export class Inventory {
         return services;
     }
 
-    private addTimesReferenced(dependencyTree: DependencyNode, dependencyName: String){
+    private addTimesReferenced (dependencyTree: DependencyNode, dependencyName: String) {
         let count = 0;
 
-        function traverse(node: DependencyNode){           
-            if (node.name  == dependencyName){ 
-                count ++;
+        function traverse (node: DependencyNode) {
+            if (node.name === dependencyName) {
+                count++;
             }
             node.dependencies.forEach(childNode => traverse(childNode));
         }
-    
+
         traverse(dependencyTree);
-    
+
         return count;
     }
-    
-    private hashServiceFiles () {
+
+    private hashServiceCacheObject () {
         const sha256Hash = createHash("sha256");
 
-        this.serviceFiles
-            .map(serviceFile => readFileSync(serviceFile))
-            .forEach(serviceFile => {
-                sha256Hash.update(serviceFile);
-            });
+        sha256Hash.update(JSON.stringify(this.__servicesCacheObject));
 
         return sha256Hash.digest("hex");
     }

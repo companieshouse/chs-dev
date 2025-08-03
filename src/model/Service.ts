@@ -22,6 +22,16 @@ export interface Service {
     description?: OrNull<string>;
 
     /**
+     * Github description of the service
+     */
+    gitDescription?: OrNull<string>;
+
+    /**
+     * Team owner of the service
+     */
+    teamOwner?: OrNull<string>;
+
+    /**
      * Path to the Docker Compose file for the service
      */
     source: string;
@@ -43,7 +53,12 @@ export interface Service {
     dependencyTree : DependencyNode;
 
     timesUsedByOtherServices: number;
-    
+    /**
+     * The number of services that depend on this service.
+     *
+     * This is the number of services that have this service in their
+     * `dependsOn` list.
+     */
     numberOfDependencies: number;
     /**
      * Details about the code repository for the service (required for
