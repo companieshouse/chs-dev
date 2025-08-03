@@ -91,7 +91,7 @@ Manually activated services:",
     " - service-eight ([32mUp About an hour[39m)",
   ],
   [
-    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m)",
+    " - service-three ([90mNot running[39m)",
   ],
   [
     "
@@ -120,9 +120,6 @@ Automatically activated services:",
   ],
   [
     " - service-six ([31mExited (137)[39m) ",
-  ],
-  [
-    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m) ",
   ],
   [
     " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m) [LIVE UPDATE]",
@@ -171,7 +168,7 @@ Manually activated services:",
     " - service-eight ([32mUp About an hour[39m)",
   ],
   [
-    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m)",
+    " - service-three ([90mNot running[39m)",
   ],
   [
     "
@@ -194,9 +191,6 @@ Automatically activated services:",
   ],
   [
     " - service-six ([31mExited (137)[39m) ",
-  ],
-  [
-    " - service-three ([32m[1mUp About an hour (healthy)[22m[39m) ",
   ],
   [
     " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m) [LIVE UPDATE]",
@@ -265,9 +259,6 @@ Automatically activated services:",
   ],
   [
     " - service-six  ",
-  ],
-  [
-    " - service-three  ",
   ],
   [
     " - service-two  [LIVE UPDATE]",

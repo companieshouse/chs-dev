@@ -1,5 +1,6 @@
-import { lstatSync, readdirSync } from "fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import yaml from "yaml";
 
 /**
  * Checks if a given path corresponds to a file.
@@ -22,4 +23,22 @@ export const getAllFilesInDirectory = (dirPath: string): string[] => {
         return join(dirPath, fileName);
     }).filter(isFile);
 
+};
+
+export const writeContentToFile = (data: Record<string, any>, fullPath: string): void => {
+    const lines = [
+        "# DO NOT MODIFY MANUALLY",
+        yaml.stringify(data)
+    ];
+    writeFileSync(fullPath, lines.join("\n\n"));
+};
+
+export const readFileContent = (filePath: string): Record<string, any> => {
+    if (existsSync(filePath)) {
+        const fileContent = yaml.parse(
+            readFileSync(filePath, "utf-8")
+        );
+        return fileContent || {};
+    }
+    return {};
 };

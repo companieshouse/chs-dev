@@ -5,14 +5,12 @@ import { State } from "../../src/model/State";
 import { services, modules } from "../utils/data";
 import { StateManager } from "../../src/state/state-manager";
 import { Inventory } from "../../src/state/inventory";
-import { DependencyCache } from "../../src/run/dependency-cache";
 import { DockerCompose } from "../../src/run/docker-compose";
 import { DevelopmentMode } from "../../src/run/development-mode";
 import { ComposeLogViewer } from "../../src/run/compose-log-viewer";
 import { PermanentRepositories } from "../../src/state/permanent-repositories";
 import { OtelGenerator } from "../../src/generator/otel-generator";
 
-const dependencyCacheUpdateMock = jest.fn();
 const composeLogViewerViewMock = jest.fn();
 const permanentRepositoriesEnsureAllExistAndAreUpToDateMock = jest.fn();
 
@@ -44,7 +42,7 @@ const MODULE_WITH_SERVICE_IN_DEV_MODE = {
         "service-one"
     ],
     servicesWithLiveUpdate: [
-        "service-twelve"
+        "service-two"
     ],
     excludedServices: []
 };
@@ -99,11 +97,6 @@ describe("Up command", () => {
 
         // @ts-expect-error
         StateManager.mockReturnValue({ snapshot });
-
-        // @ts-expect-error
-        DependencyCache.mockReturnValue({
-            update: dependencyCacheUpdateMock
-        });
 
         // @ts-expect-error
         DockerCompose.mockReturnValue(dockerComposeMock);
@@ -176,16 +169,10 @@ describe("Up command", () => {
         expect(otelGeneratorMock.modifyGeneratedDockerCompose).toHaveBeenCalledWith(flagsMock);
     });
 
-    it("should not call developmentMode start when no services in dev", async () => {
+    it("should not call developmentMode start when no services in dev or if dev services builder are neither node nor nginx", async () => {
         await up.run();
 
         expect(developmentModeMock.start).not.toHaveBeenCalled();
-    });
-
-    it("should not update dependency cache when no services in dev mode", async () => {
-        await up.run();
-
-        expect(dependencyCacheUpdateMock).not.toHaveBeenCalled();
     });
 
     it("should display a couple of lines of output if it fails", async () => {
@@ -225,16 +212,42 @@ describe("Up command", () => {
 
         it("should handle service being in module", async () => {
             setUpCommand(MODULE_WITH_SERVICE_IN_DEV_MODE);
+            const mockBuildersNode = {
+                services: [{ name: "service-two", builder: "node" }],
+                hasNodeBuilder: true
+            };
+
+            jest.spyOn(up as any, "getServicesBuildContext").mockReturnValue(mockBuildersNode);
 
             await up.run();
 
             expect(developmentModeMock.start).toHaveBeenCalledTimes(1);
         });
 
-        it("should call developmentMode start", async () => {
+        it("should call developmentMode start if dev services builder is either node or nginx.", async () => {
+            const mockBuildersNode = {
+                services: [{ name: "service-two", builder: "node" }],
+                hasNodeBuilder: true
+            };
+
+            jest.spyOn(up as any, "getServicesBuildContext").mockReturnValue(mockBuildersNode);
+
             await up.run();
 
             expect(developmentModeMock.start).toHaveBeenCalled();
+        });
+
+        it("should not call developmentMode start when dev services builder is neither node nor nginx", async () => {
+            const mockBuildersJava = {
+                services: [{ name: "service-one", builder: "java" }],
+                hasJavaBuilder: true
+            };
+
+            jest.spyOn(up as any, "getServicesBuildContext").mockReturnValue(mockBuildersJava);
+
+            await up.run();
+
+            expect(developmentModeMock.start).not.toHaveBeenCalled();
         });
 
         it("should call health check ", async () => {
@@ -247,12 +260,6 @@ describe("Up command", () => {
             await up.run();
 
             expect(dockerComposeMock.healthCheck).toHaveBeenCalled();
-        });
-
-        it("should update dependency cache", async () => {
-            await up.run();
-
-            expect(dependencyCacheUpdateMock).toHaveBeenCalled();
         });
 
         it("should display a couple of lines of output if it fails", async () => {
