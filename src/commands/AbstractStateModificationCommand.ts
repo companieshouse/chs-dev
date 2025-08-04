@@ -23,6 +23,9 @@ type HookResult = {
     failures: Failure[];
     successes: Success[];
 };
+
+type StateModificationObjectType = "service" | "module";
+type DependencyObjectType = "service" | "system";
 type ArgumentValidationPredicate = (argument: string) => boolean;
 type ValidArgumentHandler = (argument: string) => Promise<void>;
 type PreHookCheck = (argument: string[]) => Promise<string | undefined>;
@@ -31,11 +34,13 @@ const defaultValidationPredicate = (_: string) => true;
 const defaultValidArgumentHandler = (_: string) => Promise.reject(new Error("Command not configured correctly"));
 const defaultPrehookCheck = async (argument: string[]) => Promise.resolve(undefined);
 
-export default abstract class AbstractStateModificationCommand extends Command {
+export default abstract class AbstractStateModificationCommand <
+  T extends StateModificationObjectType | DependencyObjectType = StateModificationObjectType
+> extends Command {
 
     static strict = false;
 
-    private readonly stateModificationObjectType: "service" | "module";
+    private readonly stateModificationObjectType: T;
 
     protected readonly inventory: Inventory;
     protected readonly stateManager: StateManager;
@@ -48,7 +53,7 @@ export default abstract class AbstractStateModificationCommand extends Command {
 
     protected flagValues: Record<string, any> | undefined = undefined;
 
-    constructor (argv: string[], config: Config, stateModificationObjectType: "service" | "module") {
+    constructor (argv: string[], config: Config, stateModificationObjectType: T) {
         super(argv, config);
 
         this.chsDevConfig = loadConfig();

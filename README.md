@@ -173,6 +173,8 @@ USAGE
 
 <!-- commands -->
 * [`chs-dev autocomplete [SHELL]`](#chs-dev-autocomplete-shell)
+* [`chs-dev dependency service SERVICES`](#chs-dev-dependency-service-services)
+* [`chs-dev dependency system`](#chs-dev-dependency-system)
 * [`chs-dev development disable SERVICES`](#chs-dev-development-disable-services)
 * [`chs-dev development enable SERVICES`](#chs-dev-development-enable-services)
 * [`chs-dev development services`](#chs-dev-development-services)
@@ -231,6 +233,36 @@ EXAMPLES
 ```
 
 _See code: [@oclif/plugin-autocomplete](https://github.com/oclif/plugin-autocomplete/blob/v3.1.11/src/commands/autocomplete/index.ts)_
+
+## `chs-dev dependency service SERVICES`
+
+Generates a dependency diagram / tree for the specified service(s)
+
+```
+USAGE
+  $ chs-dev dependency service SERVICES... -t <value>
+
+ARGUMENTS
+  SERVICES...  names of services to be graphed
+
+FLAGS
+  -t, --type=<value>  (required) diagram / tree / flattree
+
+DESCRIPTION
+  Generates a dependency diagram / tree for the specified service(s)
+```
+
+## `chs-dev dependency system`
+
+Generates a System dependency Diagram
+
+```
+USAGE
+  $ chs-dev dependency system
+
+DESCRIPTION
+  Generates a System dependency Diagram
+```
 
 ## `chs-dev development disable SERVICES`
 
@@ -629,7 +661,7 @@ USAGE
   $ chs-dev state export NAME
 
 ARGUMENTS
-  NAME  Specify the export file name using letters, numbers, and optional underscores.
+  NAME  Specify the export file name using letters, numbers, and optional underscores or hypens.
 
 DESCRIPTION
   Export the current state of chs-dev as a named file into the 'exported_state_cache' directory. This is useful when you
@@ -756,10 +788,6 @@ EXAMPLES
 
   $ chs-dev up --no-otel
 ```
-
-DOCUMENTATION
-OpenTelemetry is a framework for collecting and exporting traces, metrics, and logs to observe services in chs-dev. When enabled, service logs and metrics can be processed and viewed in the [Grafana interface](http://api.chs.local/grafana).
-[Link to the Opentelemetry documentation](https://companieshouse.atlassian.net/wiki/spaces/TP/pages/5369659489/OpenTelemetry+Instrumenting+Services+with+docker-chs-development)
 <!-- commandsstop -->
 
 ## chs-dev Configuration
