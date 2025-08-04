@@ -24,7 +24,7 @@ export const serviceValidator = (inventory: Inventory, error: (message: string) 
     }
 
     if (requireRepository && (service.repository === null || typeof service.repository === "undefined")) {
-        error(`Service "${serviceName}" does not have git repository defined`);
+        error(`Service "${serviceName}" does not have a git repository url defined`);
         return false;
     }
 

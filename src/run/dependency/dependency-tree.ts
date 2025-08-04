@@ -16,7 +16,7 @@ export default class DependencyTree extends AbstractDependencyGraph {
         if (service !== undefined) {
             let lines: string[] = [];
             const edges = new Set<string>();
-            lines = this.handleTraverseTree(service.dependencyTree, lines, edges, "", true, 0);
+            lines = this.handleTraverseTree(service.dependencyTree as DependencyNode, lines, edges, "", true, 0);
             this.logger(lines.join("\n"));
         }
     };
@@ -24,7 +24,7 @@ export default class DependencyTree extends AbstractDependencyGraph {
     generateFlatTree = (serviceName : string) => {
         const service = this.serviceFinder(serviceName);
         if (service !== undefined) {
-            let services = this.handleTraverseFlatTree(service.dependencyTree);
+            let services = this.handleTraverseFlatTree(service.dependencyTree as DependencyNode);
             services = Array.from(new Set(services.split("\n").filter(line => line.trim() !== "").map((line, index) => (index === 0 ? line.trim() : "\t" + line.trim())))).join("\n");
             this.logger(services);
         }

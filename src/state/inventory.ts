@@ -100,7 +100,7 @@ export class Inventory {
             let count = 0;
             services.forEach(service => {
                 if (service.name !== dependency.name) {
-                    count = count + this.addTimesReferenced(service.dependencyTree, dependency.name);
+                    count = count + this.addTimesReferenced(service.dependencyTree as DependencyNode, dependency.name);
                 }
             });
             dependency.timesUsedByOtherServices = count;

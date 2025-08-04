@@ -47,7 +47,7 @@ export default class DependencyDiagram extends AbstractDependencyGraph {
 
             let dot = this.generateDotHeader("ServiceDependencyDiagram", { rankdir: "TB", ranksep: 2.5 });
             const seenEdges = new Set<string>();
-            dot = this.handleTraverse(service.dependencyTree, dot, seenEdges);
+            dot = this.handleTraverse(service.dependencyTree as DependencyNode, dot, seenEdges);
             dot += "}";
 
             const DIAGRAM_PATH = `./local/${serviceName}-dependency_diagram.svg`;
@@ -70,7 +70,7 @@ export default class DependencyDiagram extends AbstractDependencyGraph {
         const seenEdges = new Set<string>();
 
         inventory.services.forEach(service => {
-            dot = this.handleTraverse(service.dependencyTree, dot, seenEdges, "system");
+            dot = this.handleTraverse(service.dependencyTree as DependencyNode, dot, seenEdges, "system");
         });
 
         dot += "}\n";

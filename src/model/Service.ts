@@ -40,16 +40,16 @@ export interface Service {
      * This will include all of the direct and indirect/transitive dependencies
      * the service has.
      */
-    dependencyTree : DependencyNode;
+    dependencyTree?: DependencyNode;
 
-    timesUsedByOtherServices: number;
+    timesUsedByOtherServices?: number;
     /**
      * The number of services that depend on this service.
      *
      * This is the number of services that have this service in their
      * `dependsOn` list.
      */
-    numberOfDependencies: number;
+    numberOfDependencies?: number;
     /**
      * Details about the code repository for the service (required for
      * development mode)

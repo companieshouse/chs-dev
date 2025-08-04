@@ -57,7 +57,7 @@ describe("serviceValidator", () => {
 
         serviceValidatorUnderTest("service-three");
 
-        expect(errorMock).toHaveBeenCalledWith("Service \"service-three\" does not have repository defined");
+        expect(errorMock).toHaveBeenCalledWith("Service \"service-three\" does not have a git repository url defined");
     });
 });
 
