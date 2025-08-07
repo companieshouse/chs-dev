@@ -21,7 +21,7 @@ describe("GraphBuilder", () => {
         graphBuilder.addNode("A", "LabelA", "TooltipA", "#ff0000");
         expect((graphBuilder as any).lines).toEqual(expect.arrayContaining([expect.stringContaining("A")]));
         expect((graphBuilder as any).lines).toEqual(expect.arrayContaining([
-            expect.stringContaining("label=\"Label\""),
+            expect.stringContaining("label=\"LabelA\""),
             expect.stringContaining("tooltip=\"TooltipA\""),
             expect.stringContaining("href=\"#ff0000\"")
         ]));
