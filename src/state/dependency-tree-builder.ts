@@ -1,5 +1,5 @@
 import Service from "../model/Service.js";
-import DependencyTree, { DependencyNode } from "../model/DependencyNode.js";
+import { DependencyNode } from "../model/DependencyGraph.js";
 
 /**
  * Will resolve a Service's full list of dependencies including any transitive
@@ -18,7 +18,7 @@ export class DependencyTreeBuilder {
      * @param serviceName ServiceName to produce a dependency tree for
      * @returns A complete dependency tree for the specified service
      */
-    dependencyTree (serviceName: string, seen = new Set()): DependencyTree {
+    dependencyTree (serviceName: string, seen = new Set()): DependencyNode {
 
         const NO_DEPENDENCIES : DependencyNode = { name: serviceName, dependencies: [] };
 

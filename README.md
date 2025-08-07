@@ -173,7 +173,7 @@ USAGE
 
 <!-- commands -->
 * [`chs-dev autocomplete [SHELL]`](#chs-dev-autocomplete-shell)
-* [`chs-dev dependency service SERVICES`](#chs-dev-dependency-service-services)
+* [`chs-dev dependency service SERVICE`](#chs-dev-dependency-service-service)
 * [`chs-dev dependency system`](#chs-dev-dependency-system)
 * [`chs-dev development disable SERVICES`](#chs-dev-development-disable-services)
 * [`chs-dev development enable SERVICES`](#chs-dev-development-enable-services)
@@ -234,22 +234,23 @@ EXAMPLES
 
 _See code: [@oclif/plugin-autocomplete](https://github.com/oclif/plugin-autocomplete/blob/v3.1.11/src/commands/autocomplete/index.ts)_
 
-## `chs-dev dependency service SERVICES`
+## `chs-dev dependency service SERVICE`
 
-Generates a dependency diagram / tree for the specified service(s)
+Generates a dependency diagram / tree for the specified service
 
 ```
 USAGE
-  $ chs-dev dependency service SERVICES... -t <value>
+  $ chs-dev dependency service SERVICE... -t diagram|tree|flattree
 
 ARGUMENTS
-  SERVICES...  names of services to be graphed
+  SERVICE...  names of service to be graphed
 
 FLAGS
-  -t, --type=<value>  (required) diagram / tree / flattree
+  -t, --type=<option>  (required) diagram / tree / flattree
+                       <options: diagram|tree|flattree>
 
 DESCRIPTION
-  Generates a dependency diagram / tree for the specified service(s)
+  Generates a dependency diagram / tree for the specified service
 ```
 
 ## `chs-dev dependency system`

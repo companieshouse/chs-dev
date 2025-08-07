@@ -1,5 +1,5 @@
+import { DependencyNode } from "./DependencyGraph.js";
 import { OrNull } from "./OrNull.js";
-import DependencyNode from "./DependencyNode.js";
 
 /**
  * Represents a service within the development environment. A service is a
@@ -42,12 +42,20 @@ export interface Service {
      */
     dependencyTree?: DependencyNode;
 
+    /**
+     * The number of times this service is used by other services.
+     *
+     * This is the number of services that have this service in their `dependsOn` list and
+     * is not the same as `numberOfDependencies` which counts the number of
+     * services that the service depends on.
+     */
     timesUsedByOtherServices?: number;
     /**
      * The number of services that depend on this service.
      *
-     * This is the number of services that have this service in their
-     * `dependsOn` list.
+     * This is the number of services that this service depends on either directly or
+     * indirectly. This is not the same as `timesUsedByOtherServices` which counts
+     * the number of time a service appears on the `dependsOn` list.
      */
     numberOfDependencies?: number;
     /**

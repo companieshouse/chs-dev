@@ -63,6 +63,7 @@ export const createPullRequest = async (
 /**
  * Fetches the GitHub repository description using the gh CLI.
  * @param repository
+ * @param muteError
  * @returns returned as a string, the description of the repository
  */
 export const getRepositoryDescription = (repositoryName: string, muteError = false): string => {
@@ -84,6 +85,7 @@ export const getRepositoryDescription = (repositoryName: string, muteError = fal
 /**
   * Fetches the repository code_owner using the gh CLI.
  * @param repository
+ * @param muteError
  * @returns team-code-owner value
  */
 export const getRespositoryOwner = (repositoryName: string, muteError = false): string => {

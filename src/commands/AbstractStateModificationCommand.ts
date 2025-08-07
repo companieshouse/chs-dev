@@ -5,6 +5,7 @@ import ChsDevConfig from "../model/Config.js";
 import loadConfig from "../helpers/config-loader.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import { Plugin } from "@oclif/core/lib/interfaces/plugin.js";
+import { DependencyObjectType } from "../model/DependencyGraph.js";
 
 type ServiceModuleStateHook = {
     topic: string
@@ -25,7 +26,6 @@ type HookResult = {
 };
 
 type StateModificationObjectType = "service" | "module";
-type DependencyObjectType = "service" | "system";
 type ArgumentValidationPredicate = (argument: string) => boolean;
 type ValidArgumentHandler = (argument: string) => Promise<void>;
 type PreHookCheck = (argument: string[]) => Promise<string | undefined>;

@@ -1,16 +1,29 @@
 import { simpleColouriser } from "../../helpers/colouriser.js";
-import DependencyNode from "../../model/DependencyNode.js";
+import { DependencyNode } from "../../model/DependencyGraph.js";
 import AbstractDependencyGraph, { Logger, ServiceFinder } from "./AbstractDependencyGraph.js";
 
+/**
+ * DependencyTree extends AbstractDependencyGraph to provide
+ * methods for generating and displaying dependency trees.
+ */
 export default class DependencyTree extends AbstractDependencyGraph {
 
     private logger: (msg: string) => void;
 
+    /**
+     * Constructs a DependencyTree with a logger and service finder.
+     * @param logger - Function to log output.
+     * @param serviceFinder - Function to find services by name.
+     */
     constructor (logger: Logger, serviceFinder: ServiceFinder) {
         super(serviceFinder);
         this.logger = logger;
     }
 
+    /**
+     * Generates and logs a formatted dependency tree for a given service.
+     * @param serviceName - Name of the service to generate the tree for.
+     */
     generateTree = (serviceName : string) => {
         const service = this.serviceFinder(serviceName);
         if (service !== undefined) {
@@ -21,6 +34,10 @@ export default class DependencyTree extends AbstractDependencyGraph {
         }
     };
 
+    /**
+     * Generates and logs a flat list of all dependencies for a given service.
+     * @param serviceName - Name of the service to generate the flat tree for.
+     */
     generateFlatTree = (serviceName : string) => {
         const service = this.serviceFinder(serviceName);
         if (service !== undefined) {
@@ -30,6 +47,16 @@ export default class DependencyTree extends AbstractDependencyGraph {
         }
     };
 
+    /**
+     * Recursively traverses the dependency tree and builds a formatted tree structure.
+     * @param node - Current dependency node.
+     * @param lines - Accumulated lines of the tree.
+     * @param edges - Set of visited node names to detect duplicates.
+     * @param prefix - Prefix for formatting tree branches.
+     * @param isLast - Whether the node is the last child.
+     * @param depth - Current depth in the tree.
+     * @returns Array of formatted tree lines.
+     */
     handleTraverseTree (
         node: DependencyNode,
         lines: string[],
@@ -72,6 +99,11 @@ export default class DependencyTree extends AbstractDependencyGraph {
         return lines;
     }
 
+    /**
+     * Recursively traverses the dependency tree and builds a flat list of all dependencies.
+     * @param dependencyTree - Root dependency node.
+     * @returns String containing all dependencies in a flat format.
+     */
     handleTraverseFlatTree (dependencyTree: DependencyNode) {
         let output = "";
         const space = "";

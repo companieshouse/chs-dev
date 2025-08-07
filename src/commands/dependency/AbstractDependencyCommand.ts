@@ -1,14 +1,28 @@
 import { serviceValidator } from "../../helpers/validator.js";
+import { DependencyObjectType } from "../../model/DependencyGraph.js";
 import Service from "../../model/Service.js";
 import AbstractStateModificationCommand from "../AbstractStateModificationCommand.js";
 
-type DependencyObjectType = "service" | "system";
-
+/**
+ * Abstract base class for dependency-related commands.
+ *
+ * Extends {@link AbstractStateModificationCommand} to provide common functionality for commands
+ * that modify a specific dependency object type.
+ *
+ * @template DependencyObjectType - The type of dependency object this command operates on.
+ */
 export default abstract class AbstractDependencyCommand extends AbstractStateModificationCommand<DependencyObjectType> {
 
     protected dependencyObjectType: DependencyObjectType;
     protected logger: (msg: string) => void;
 
+    /**
+     * Constructs an instance of AbstractDependencyCommand.
+     *
+     * @param argv - Command line arguments.
+     * @param config - Configuration object.
+     * @param dependencyObjectType - The type of dependency object this command operates on (e.g., "service" or "system").
+     */
     constructor (argv: string[], config: any, dependencyObjectType: DependencyObjectType) {
         super(argv, config, dependencyObjectType);
 
@@ -33,6 +47,15 @@ export default abstract class AbstractDependencyCommand extends AbstractStateMod
 
     }
 
+    /**
+     * Retrieves a service from the inventory by its name.
+     *
+     * Searches the `inventory.services` array for a service whose `name` property matches
+     * the provided `serviceName`. Returns the matching `Service` instance if found.
+     *
+     * @param serviceName - The name of the service to retrieve.
+     * @returns The `Service` object with the specified name, or `undefined` if not found.
+     */
     protected getServiceByName (serviceName: string): Service {
         return this.inventory.services.find(item => item.name === serviceName) as Service;
     }

@@ -10,7 +10,7 @@ import { Module } from "../model/Module.js";
 import { readServices } from "./service-reader.js";
 import { DependencyNameResolver } from "./dependency-name-resolver.js";
 import { DependencyTreeBuilder } from "./dependency-tree-builder.js";
-import DependencyNode from "../model/DependencyNode.js";
+import { DependencyNode } from "../model/DependencyGraph.js";
 
 interface InventoryCache {
   hash: string;
@@ -73,7 +73,7 @@ export class Inventory {
             });
     }
 
-    private get __servicesCacheObject (): Service[] {
+    private get servicesCacheObject (): Service[] {
         const partialServices: Partial<Service>[] = this.serviceFiles.flatMap(readServices);
         const dependencyNameResolver = new DependencyNameResolver(partialServices);
 
@@ -94,7 +94,7 @@ export class Inventory {
     }
 
     private loadServices (): Service[] {
-        const services: Service[] = this.__servicesCacheObject;
+        const services: Service[] = this.servicesCacheObject;
 
         services.forEach(dependency => {
             let count = 0;
@@ -127,7 +127,7 @@ export class Inventory {
     private hashServiceCacheObject () {
         const sha256Hash = createHash("sha256");
 
-        sha256Hash.update(JSON.stringify(this.__servicesCacheObject));
+        sha256Hash.update(JSON.stringify(this.servicesCacheObject));
 
         return sha256Hash.digest("hex");
     }
