@@ -130,3 +130,14 @@ export const getCommitCountAheadOfRemote = async (repoPath: string): Promise<num
 
     return Number(await git.raw(["rev-list", "HEAD..@{upstream}", "--count"]));
 };
+
+export const gitSshToHttps = (sshUrl: string): string => {
+    const sshPattern = /^git@([^:]+):(.+?)(\.git)?$/;
+    const match = sshUrl.match(sshPattern);
+    if (!match) {
+        throw new Error("Invalid SSH Git URL format");
+    }
+
+    const [, host, repoPath] = match;
+    return `https://${host}/${repoPath}`;
+};

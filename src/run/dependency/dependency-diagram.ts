@@ -7,6 +7,7 @@ import Service from "../../model/Service.js";
 import { Inventory } from "../../state/inventory.js";
 import { GraphBuilder, GraphOptions } from "../graph-builder.js";
 import { DependencyNode, DependencyObjectType } from "../../model/DependencyGraph.js";
+import { gitSshToHttps } from "../../helpers/git.js";
 
 /**
  * DependencyDiagram generates visual diagrams of service or system dependencies.
@@ -85,9 +86,10 @@ export default class DependencyDiagram extends AbstractDependencyGraph {
             if (this.dependencyObjectType === DependencyObjectType.SERVICE) {
                 let nodeService = this.serviceFinder(node.name) as ServiceGitDescriptionAndOwner;
                 if (nodeService) {
+                    const repositoryUrl = nodeService.repository?.url ? gitSshToHttps(nodeService.repository.url) : "#";
                     nodeService = this.getServiceGitDescriptionAndOwner(nodeService);
                     const tooltip = `Name: ${nodeService.name.trim().toUpperCase()}\nDescription: ${nodeService.gitDescription?.trim()}\nOwner: ${nodeService.teamOwner?.trim()}\nDependencies: ${nodeService.numberOfDependencies}\nUsed By: ${nodeService.timesUsedByOtherServices} service(s)\n`;
-                    builder.addNode(node.name, node.name, tooltip, "#");
+                    builder.addNode(node.name, node.name, tooltip, repositoryUrl);
                 }
             }
         }

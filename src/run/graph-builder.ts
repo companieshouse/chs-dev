@@ -65,7 +65,7 @@ export class GraphBuilder {
         const attrs: string[] = [];
         if (label) attrs.push(`label="${label}"`);
         if (tooltip) attrs.push(`tooltip="${tooltip}"`);
-        if (href) attrs.push(`href="${href}"`);
+        if (href) attrs.push(`href="${href}", target="_blank"`);
         if (attrs.length) nodeStr += ` [${attrs.join(", ")}]`;
         this.lines.push(nodeStr);
     }

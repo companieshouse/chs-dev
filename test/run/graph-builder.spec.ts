@@ -41,7 +41,7 @@ describe("GraphBuilder", () => {
         expect(dot).toEqual(expect.stringContaining("digraph TestDiagram {"));
         expect(dot).toEqual(expect.stringContaining("graph [rankdir=TB, ranksep=5]"));
         expect(dot).toEqual(expect.stringContaining("node [shape=box, style=filled, color=lightblue2]"));
-        expect(dot).toEqual(expect.stringContaining("\"A\" [label=\"LabelA\", tooltip=\"TooltipA\", href=\"#ff0000\"]"));
+        expect(dot).toEqual(expect.stringContaining("\"A\" [label=\"LabelA\", tooltip=\"TooltipA\", href=\"#ff0000\", target=\"_blank\"]"));
         expect(dot).toEqual(expect.stringContaining("\"A\" -> \"B\""));
     });
 

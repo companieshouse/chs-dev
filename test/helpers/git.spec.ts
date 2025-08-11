@@ -1,5 +1,5 @@
 import { expect, jest } from "@jest/globals";
-import { cloneRepo, updateRepo, checkoutNewBranch, addToStage, commit, push, checkoutExistingBranch, getCommitCountAheadOfRemote } from "../../src/helpers/git";
+import { cloneRepo, updateRepo, checkoutNewBranch, addToStage, commit, push, checkoutExistingBranch, getCommitCountAheadOfRemote, gitSshToHttps } from "../../src/helpers/git";
 import { simpleGit } from "simple-git";
 
 const gitCloneMock = jest.fn();
@@ -196,5 +196,23 @@ describe("getCommitCountAheadOfRemote", () => {
 
         expect(gitRaw).toBeCalledWith(["rev-list", "HEAD..@{upstream}", "--count"]);
         expect(gitRaw).toHaveReturnedWith(0);
+    });
+});
+
+describe("gitSshToHttps", () => {
+    it("converts SSH URL to HTTPS", () => {
+        const sshUrl = "git@github.com:user/repo.git";
+        const httpsUrl = gitSshToHttps(sshUrl);
+        expect(httpsUrl).toBe("https://github.com/user/repo");
+    });
+
+    it("converts SSH URL without .git to HTTPS", () => {
+        const sshUrl = "git@github.com:user/repo";
+        const httpsUrl = gitSshToHttps(sshUrl);
+        expect(httpsUrl).toBe("https://github.com/user/repo");
+    });
+
+    it("throws error for invalid SSH URL", () => {
+        expect(() => gitSshToHttps("invalid-url")).toThrow("Invalid SSH Git URL format");
     });
 });
