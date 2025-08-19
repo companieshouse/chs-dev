@@ -4,6 +4,10 @@ exports[`Inventory services returns services with all dependencies 1`] = `
 [
   {
     "builder": "",
+    "dependencyTree": {
+      "dependencies": [],
+      "name": "mongo",
+    },
     "dependsOn": [],
     "description": "primary database storing Companies House data",
     "metadata": {
@@ -11,11 +15,22 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     },
     "module": "infrastructure",
     "name": "mongo",
+    "numberOfDependencies": 0,
     "repository": null,
     "source": "inventory/services/infrastructure/mongo.docker-compose.yaml",
+    "timesUsedByOtherServices": 15,
   },
   {
     "builder": "java",
+    "dependencyTree": {
+      "dependencies": [
+        {
+          "dependencies": [],
+          "name": "mongo",
+        },
+      ],
+      "name": "service-one",
+    },
     "dependsOn": [
       "mongo",
     ],
@@ -26,14 +41,34 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     },
     "module": "module-one",
     "name": "service-one",
+    "numberOfDependencies": 1,
     "repository": {
       "branch": null,
       "url": "git@github.com:companieshouse/service-one.git",
     },
     "source": "inventory/services/modules/module-one/service-one.docker-compose.yaml",
+    "timesUsedByOtherServices": 5,
   },
   {
     "builder": "node",
+    "dependencyTree": {
+      "dependencies": [
+        {
+          "dependencies": [],
+          "name": "mongo",
+        },
+        {
+          "dependencies": [
+            {
+              "dependencies": [],
+              "name": "mongo",
+            },
+          ],
+          "name": "service-one",
+        },
+      ],
+      "name": "service-two",
+    },
     "dependsOn": [
       "mongo",
       "service-one",
@@ -45,14 +80,52 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     },
     "module": "module-one",
     "name": "service-two",
+    "numberOfDependencies": 2,
     "repository": {
       "branch": null,
       "url": "git@github.com:companieshouse/service-one.git",
     },
     "source": "inventory/services/modules/module-one/service-two.docker-compose.yaml",
+    "timesUsedByOtherServices": 3,
   },
   {
     "builder": "java",
+    "dependencyTree": {
+      "dependencies": [
+        {
+          "dependencies": [],
+          "name": "mongo",
+        },
+        {
+          "dependencies": [
+            {
+              "dependencies": [],
+              "name": "mongo",
+            },
+            {
+              "dependencies": [
+                {
+                  "dependencies": [],
+                  "name": "mongo",
+                },
+                {
+                  "dependencies": [
+                    {
+                      "dependencies": [],
+                      "name": "mongo",
+                    },
+                  ],
+                  "name": "service-one",
+                },
+              ],
+              "name": "service-two",
+            },
+          ],
+          "name": "service-three",
+        },
+      ],
+      "name": "service-four",
+    },
     "dependsOn": [
       "mongo",
       "service-three",
@@ -66,14 +139,43 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     },
     "module": "module-two",
     "name": "service-four",
+    "numberOfDependencies": 4,
     "repository": {
       "branch": null,
       "url": "git@github.com:companieshouse/service-one.git",
     },
     "source": "inventory/services/modules/module-two/service-four.docker-compose.yaml",
+    "timesUsedByOtherServices": 0,
   },
   {
     "builder": "",
+    "dependencyTree": {
+      "dependencies": [
+        {
+          "dependencies": [],
+          "name": "mongo",
+        },
+        {
+          "dependencies": [
+            {
+              "dependencies": [],
+              "name": "mongo",
+            },
+            {
+              "dependencies": [
+                {
+                  "dependencies": [],
+                  "name": "mongo",
+                },
+              ],
+              "name": "service-one",
+            },
+          ],
+          "name": "service-two",
+        },
+      ],
+      "name": "service-seven",
+    },
     "dependsOn": [
       "mongo",
       "service-two",
@@ -86,14 +188,34 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     },
     "module": "module-two",
     "name": "service-seven",
+    "numberOfDependencies": 3,
     "repository": {
       "branch": "feature/my-branch",
       "url": "git@github.com:companieshouse/service-one.git",
     },
     "source": "inventory/services/modules/module-two/service-seven.docker-compose.yaml",
+    "timesUsedByOtherServices": 0,
   },
   {
     "builder": "repository",
+    "dependencyTree": {
+      "dependencies": [
+        {
+          "dependencies": [],
+          "name": "mongo",
+        },
+        {
+          "dependencies": [
+            {
+              "dependencies": [],
+              "name": "mongo",
+            },
+          ],
+          "name": "service-one",
+        },
+      ],
+      "name": "service-six",
+    },
     "dependsOn": [
       "mongo",
       "service-one",
@@ -104,14 +226,43 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     },
     "module": "module-two",
     "name": "service-six",
+    "numberOfDependencies": 2,
     "repository": {
       "branch": null,
       "url": "git@github.com:companieshouse/service-one.git",
     },
     "source": "inventory/services/modules/module-two/service-six.docker-compose.yaml",
+    "timesUsedByOtherServices": 0,
   },
   {
     "builder": "java",
+    "dependencyTree": {
+      "dependencies": [
+        {
+          "dependencies": [],
+          "name": "mongo",
+        },
+        {
+          "dependencies": [
+            {
+              "dependencies": [],
+              "name": "mongo",
+            },
+            {
+              "dependencies": [
+                {
+                  "dependencies": [],
+                  "name": "mongo",
+                },
+              ],
+              "name": "service-one",
+            },
+          ],
+          "name": "service-two",
+        },
+      ],
+      "name": "service-three",
+    },
     "dependsOn": [
       "mongo",
       "service-two",
@@ -123,11 +274,13 @@ exports[`Inventory services returns services with all dependencies 1`] = `
     },
     "module": "module-two",
     "name": "service-three",
+    "numberOfDependencies": 3,
     "repository": {
       "branch": null,
       "url": "git@github.com:companieshouse/service-one.git",
     },
     "source": "inventory/services/modules/module-two/service-three.docker-compose.yaml",
+    "timesUsedByOtherServices": 1,
   },
 ]
 `;

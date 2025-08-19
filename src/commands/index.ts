@@ -9,6 +9,8 @@ import ExclusionsAdd from "./exclusions/add.js";
 import ExclusionsRemove from "./exclusions/remove.js";
 import DevelopmentServices from "./development/services.js";
 import DevelopmentEnable from "./development/enable.js";
+import DependencyService from "./dependency/service.js";
+import DependencySystem from "./dependency/system.js";
 import StateClean from "./state/clean.js";
 import StateCache from "./state/cache.js";
 import StateExport from "./state/export.js";
@@ -46,6 +48,8 @@ export const commands = {
     "services:available": ServicesAvailable,
     "services:enable": ServiceEnable,
     "services:disable": ServiceDisable,
+    "dependency:service": DependencyService,
+    "dependency:system": DependencySystem,
     "modules:available": ModulesAvailable,
     "modules:enable": ModulesEnable,
     "modules:disable": ModulesDisable,
