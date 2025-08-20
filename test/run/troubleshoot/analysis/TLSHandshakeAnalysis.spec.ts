@@ -1,20 +1,9 @@
 import { expect, jest } from "@jest/globals";
-import AnalysisOutcome from "../../../../src/run/troubleshoot/analysis/AnalysisOutcome";
-import { TroubleshootAnalysisTaskContext } from "../../../../src/run/troubleshoot/analysis/AnalysisTask";
 import * as fs from "fs";
-import TLSHandshakeAnalysis from "../../../../src/run/troubleshoot/analysis/TLSHandshakeAnalysis";
 import { join } from "path";
+import TLSHandshakeAnalysis from "../../../../src/run/troubleshoot/analysis/TLSHandshakeAnalysis";
 
 jest.mock("fs");
-
-const SUGGESTIONS = [
-    "Run: `COMPOSE_PARALLEL_LIMIT=1 chs-dev up`",
-    "to resolve the issue then",
-    "Run: 'rm -r ./local/.logs/' to clear logs."
-];
-const DOCUMENTATION_LINKS = [
-    "troubleshooting-remedies/correctly-set-docker-compose-parallel-limit-variable.md"
-];
 
 describe("TLSHandshakeAnalysis", () => {
     let analysis: TLSHandshakeAnalysis;
@@ -27,9 +16,10 @@ describe("TLSHandshakeAnalysis", () => {
     );
 
     beforeEach(async () => {
+        jest.resetAllMocks();
         jest.useFakeTimers().setSystemTime(new Date(`${mockDate}T12:00:00.000Z`));
         analysis = new TLSHandshakeAnalysis();
-        jest.resetAllMocks();
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
     });
 
     afterEach(() => {
@@ -83,6 +73,15 @@ describe("TLSHandshakeAnalysis", () => {
     it("should handle empty log files gracefully", async () => {
         (fs.readFileSync as jest.Mock).mockReturnValue("");
 
+        const outcome = await analysis.analyse({
+            config: { projectPath: mockProjectPath }
+        } as any);
+
+        expect(outcome.issues).toHaveLength(0);
+    });
+
+    it("should handle non-existent log file gracefully", async () => {
+        (fs.existsSync as jest.Mock).mockReturnValue(false);
         const outcome = await analysis.analyse({
             config: { projectPath: mockProjectPath }
         } as any);
