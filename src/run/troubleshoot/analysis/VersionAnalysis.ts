@@ -14,7 +14,7 @@ interface VersionComplianceIssues {
 const ANALYSIS_HEADLINE = "Checks chs-dev version";
 
 const VERSION_SUGGESTIONS = [
-    "Run: 'chs-dev sync --latest' to update chs-dev to a suitable version. Refer to the documentation for guidance."
+    "Run: 'chs-dev sync -v latest' to update chs-dev to a suitable version. Refer to the documentation for guidance."
 ];
 
 const DOCUMENTATION_LINKS = [
