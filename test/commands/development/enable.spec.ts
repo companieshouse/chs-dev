@@ -198,7 +198,7 @@ describe("development enable", () => {
             gitCloneMock.mockResolvedValue(undefined);
 
             await expect(developmentEnable.run()).rejects.toEqual(new Error(
-                `Service "${serviceName}" does not have repository defined`
+                `Service "${serviceName}" does not have a git repository url defined`
             ));
         });
     }
