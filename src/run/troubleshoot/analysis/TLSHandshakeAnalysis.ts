@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import BaseAnalysis from "./AbstractBaseAnalysis.js";
 import AnalysisOutcome from "./AnalysisOutcome.js";
@@ -35,20 +35,23 @@ export default class TLSHandshake extends BaseAnalysis {
     private checkDockerLogsForTLSHandshakeTimeoutError (projectPath): AnalysisIssue | undefined {
         const currentDate = new Date().toISOString().slice(0, 10);
         const daylogFile = `local/.logs/compose.out.${currentDate}.txt`;
-        const localLogs = join(projectPath, daylogFile);
-        const logContent = readFileSync(localLogs, "utf-8");
 
-        // Extract the last 5 log lines
-        const logLines = logContent.trim().split("\n");
-        const last5LogOutput = logLines.slice(-5).join("\n");
-        if (last5LogOutput.includes("TLS handshake timeout")) {
+        if (existsSync(daylogFile)) {
+            const localLogs = join(projectPath, daylogFile);
+            const logContent = readFileSync(localLogs, "utf-8");
 
-            return this.createIssue(
-                "TLS Handshake Error Found in Docker Logs",
-                "Ensure 'COMPOSE_PARALLEL_LIMIT' environment variable is set to 1. This is necessary to avoid TLS handshake timeout errors when running multiple services in parallel.",
-                SUGGESTIONS,
-                DOCUMENTATION_LINKS
-            );
+            // Extract the last 5 log lines
+            const logLines = logContent.trim().split("\n");
+            const last5LogOutput = logLines.slice(-5).join("\n");
+            if (last5LogOutput.includes("TLS handshake timeout")) {
+
+                return this.createIssue(
+                    "TLS Handshake Error Found in Docker Logs",
+                    "Ensure 'COMPOSE_PARALLEL_LIMIT' environment variable is set to 1. This is necessary to avoid TLS handshake timeout errors when running multiple services in parallel.",
+                    SUGGESTIONS,
+                    DOCUMENTATION_LINKS
+                );
+            }
         }
         return undefined;
     }
