@@ -12,7 +12,7 @@ jest.mock("semver", () => ({
 describe("VersionAnalysis", () => {
     let analysis: VersionAnalysis;
     const VERSION_SUGGESTIONS = [
-        "Run: 'chs-dev sync --latest' to update chs-dev to a suitable version. Refer to the documentation for guidance."
+        "Run: 'chs-dev sync -v latest' to update chs-dev to a suitable version. Refer to the documentation for guidance."
     ];
 
     beforeEach(async () => {
