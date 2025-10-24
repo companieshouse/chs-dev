@@ -129,8 +129,25 @@ Javascript:
   "exec": "node --inspect=0.0.0.0:9229 src/bin/nodemon-entry.js"
 }
 ```
-2. Create a vscode configuration file in the codebase root dir: `.vscode/launch.json`
+2. Configure the service's docker compose file to expose the debugging port
 
+It's important to map the port from the default 9229 to an unused port.
+
+Search the project for ports unused and find one e.g. if `9230` exists try `9231` and so on.
+
+In this example we'll map port `9229` to `9230`:
+
+```yaml
+services:
+  your-service-web:
+    # ... other configuration goes here ...
+    ports:
+      - 9230:9229 # Node.js Debugger
+```
+
+3. Create a vscode configuration file in the codebase root dir: `.vscode/launch.json`
+
+Make sure the port is configured to the externally mapped port in step 2.
 ```json
   {
     "version": "0.2.0",
@@ -140,7 +157,7 @@ Javascript:
         "request": "attach",
         "name": "attach - remote",
         "address": "localhost",
-        "port": 9229,
+        "port": 9230,
         "restart": false,
         "sourceMaps": true,
         "remoteRoot": "/app",
@@ -152,8 +169,8 @@ Javascript:
       }
     ]
 }
-
 ```
+
 More information on usage: https://code.visualstudio.com/docs/debugtest/debugging
 
 
@@ -195,4 +212,3 @@ Maintain a standardized development experience across environments
 
 By following this setup, your development workflow will be faster,
 more stable.
-
