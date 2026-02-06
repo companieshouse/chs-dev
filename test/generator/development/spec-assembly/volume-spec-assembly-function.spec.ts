@@ -49,7 +49,7 @@ describe("volumeSpecAssemblyFunction", () => {
             services: {
                 [service.name]: {
                     volumes: [
-                        `../../services/modules/${service.module}/my-vol:/var/vol`,
+                        "my-vol:/var/vol",
                         `../../services/modules/another-vol:/var/volb`
                     ]
                 }
@@ -101,7 +101,7 @@ describe("volumeSpecAssemblyFunction", () => {
             services: {
                 [service.name]: {
                     volumes: [
-                        `../../services/modules/${service.module}/my-vol:/var/vol:z`,
+                        "my-vol:/var/vol:z",
                         `../../services/modules/another-vol:/var/volb:ro`
                     ]
                 }
@@ -225,5 +225,103 @@ describe("volumeSpecAssemblyFunction", () => {
         );
 
         expect(developmentDockerComposeSpec.services[service.name].volumes).toBe(undefined);
+    });
+
+    it("merges builder volumes and lets service override targets", () => {
+        const service = services[1];
+
+        const projectPath = `/Users/tester/project`;
+
+        service.source =
+            `${projectPath}/services/modules/${service.module}/` +
+                `${service.name}.docker-compose.yaml`;
+
+        const developmentDockerComposeSpec: DockerComposeSpec = {
+            services: {
+                [service.name]: {
+                    volumes: [
+                        `${projectPath}/repositories/${service.name}:/app`,
+                        "/builder-cache:/tmp/cache"
+                    ]
+                }
+            }
+        };
+
+        const serviceDockerComposeSpec = {
+            services: {
+                [service.name]: {
+                    volumes: [
+                        "/var/run/docker.sock:/var/run/docker.sock",
+                        "/custom/app:/app"
+                    ]
+                }
+            }
+        };
+
+        volumeSpecAssemblyFunction(
+            developmentDockerComposeSpec,
+            {
+                service,
+                projectPath,
+                serviceDockerComposeSpec,
+                builderDockerComposeSpec: {
+                    name: "java",
+                    version: "v1",
+                    builderSpec: ""
+                }
+            }
+        );
+
+        expect(developmentDockerComposeSpec.services[service.name].volumes).toEqual([
+            "/builder-cache:/tmp/cache",
+            "/var/run/docker.sock:/var/run/docker.sock",
+            "/custom/app:/app"
+        ]);
+    });
+
+    it("keeps named volumes unchanged", () => {
+        const service = services[1];
+
+        const projectPath = `/Users/tester/project`;
+
+        service.source =
+            `${projectPath}/services/modules/${service.module}/` +
+                `${service.name}.docker-compose.yaml`;
+
+        const developmentDockerComposeSpec: DockerComposeSpec = {
+            services: {
+                [service.name]: {}
+            }
+        };
+
+        const serviceDockerComposeSpec = {
+            services: {
+                [service.name]: {
+                    volumes: [
+                        "db-data:/var/lib/postgres",
+                        "logs:/var/log/app"
+                    ]
+                }
+            }
+        };
+
+        volumeSpecAssemblyFunction(
+            developmentDockerComposeSpec,
+            {
+                service,
+                projectPath,
+                serviceDockerComposeSpec,
+                builderDockerComposeSpec: {
+                    name: "java",
+                    version: "v1",
+                    builderSpec: ""
+                }
+            }
+        );
+
+        expect(developmentDockerComposeSpec.services[service.name].volumes).toEqual([
+            "db-data:/var/lib/postgres",
+            "logs:/var/log/app"
+        ]);
     });
 });
