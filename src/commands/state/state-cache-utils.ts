@@ -1,12 +1,12 @@
 import { existsSync } from "fs";
-import { join } from "path";
+import path, { join } from "path";
 import yaml from "yaml";
 import { readFileContent, writeContentToFile } from "../../helpers/file-utils.js";
 import { hashAlgorithm } from "../../helpers/index.js";
 import ChsDevConfig from "../../model/Config.js";
 import { confirm } from "../../helpers/user-input.js";
 
-type StateCache = {
+export type StateCache = {
     state: {
         snapshot: Record<string, any>;
         hash: string;
@@ -68,9 +68,49 @@ export function loadImportCache (importCachePath: string): StateCache {
     return cacheData;
 }
 
+export function validateHostandImportedProjectPath (data: StateCache, chsDevConfig: ChsDevConfig):StateCache {
+    const { projectName, projectPath } = chsDevConfig;
+    const includes = data.dockerCompose.snapshot.include || [];
+
+    if (includes.length === 0) {
+        return data;
+    }
+
+    const normalizedImportedCachePath = path.normalize(includes[0]);
+    const indexBeforeProjectName = normalizedImportedCachePath.indexOf(projectName);
+
+    if (indexBeforeProjectName === -1) {
+        throw new Error(`${projectName} not found in imported cache paths.`);
+    }
+
+    const indexAfterProjectName = indexBeforeProjectName + projectName.length;
+    const hostProjectPath = projectPath;
+
+    const absoluteImportedCachePath = normalizedImportedCachePath.slice(0, indexAfterProjectName);
+
+    const matchesHostProjectPath = hostProjectPath === absoluteImportedCachePath;
+
+    if (matchesHostProjectPath) {
+        return data;
+    }
+
+    const updatedImportedCacheProjectPath = remapImportedCachePathWithHost(includes, hostProjectPath, absoluteImportedCachePath);
+    data.dockerCompose.snapshot.include = updatedImportedCacheProjectPath;
+    return data;
+}
+
 export function restoreStateFiles (config: ChsDevConfig, state: StateCache["state"], dockerCompose: StateCache["dockerCompose"]): void {
     const stateFilePath = join(config.projectPath, ".chs-dev.yaml");
     writeContentToFile(state.snapshot, stateFilePath);
     const dockerComposeFilePath = join(config.projectPath, "docker-compose.yaml");
     writeContentToFile(dockerCompose.snapshot, dockerComposeFilePath);
+}
+
+function remapImportedCachePathWithHost (pathList: string[], hostProjectPath: string, absoluteImportedCachePath:string): string[] {
+    return pathList.map((includePath: string) => {
+        return includePath.replace(
+            absoluteImportedCachePath, hostProjectPath
+        );
+    });
+
 }

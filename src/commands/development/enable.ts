@@ -78,7 +78,7 @@ export default class Enable extends AbstractStateModificationCommand {
             // @ts-ignore
             const git = simpleGit();
 
-            await git.clone(service.repository!.url, localPath, service.repository?.branch ? ["--branch", service.repository.branch] : []);
+            await git.clone(service.repository!.url.trim(), localPath, service.repository?.branch ? ["--branch", service.repository.branch] : []);
             ux.action.stop("done");
         }
     }

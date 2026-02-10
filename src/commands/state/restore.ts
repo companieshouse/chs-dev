@@ -3,14 +3,15 @@ import { basename, join } from "path";
 import loadConfig from "../../helpers/config-loader.js";
 import ChsDevConfig from "../../model/Config.js";
 import { DockerCompose } from "../../run/docker-compose.js";
+import { readFileContent } from "../../helpers/file-utils.js";
 import {
+    handlePrompt,
     loadImportCache,
-    verifyCacheAuthenticity,
     restoreStateFiles,
     validateCacheNameExists,
-    handlePrompt
+    validateHostandImportedProjectPath,
+    verifyCacheAuthenticity
 } from "./state-cache-utils.js";
-import { readFileContent } from "../../helpers/file-utils.js";
 
 export default class Restore extends Command {
     static description = "Restore and update the state files from saved cache or imported cache.";
@@ -89,11 +90,14 @@ export default class Restore extends Command {
     private restoreFromImport (importCachePath: string): void {
         try {
             const cacheData = loadImportCache(importCachePath);
-            const data = verifyCacheAuthenticity(cacheData);
-            restoreStateFiles(this.chsDevConfig, data.state, data.dockerCompose);
+            const verifiedData = verifyCacheAuthenticity(cacheData);
+            const validatedData = validateHostandImportedProjectPath(verifiedData, this.chsDevConfig);
+
+            restoreStateFiles(this.chsDevConfig, validatedData.state, validatedData.dockerCompose);
             this.log(`Restored state from imported cache.`);
         } catch (err: any) {
             this.error(err.message);
         }
     }
+
 }

@@ -37,6 +37,7 @@ describe("Restore Command", () => {
         jest.spyOn(stateCacheUtils, "handlePrompt").mockResolvedValue(true);
         jest.spyOn(stateCacheUtils, "validateCacheNameExists").mockImplementation(() => {});
         jest.spyOn(stateCacheUtils, "verifyCacheAuthenticity").mockImplementation((data) => data);
+        jest.spyOn(stateCacheUtils, "validateHostandImportedProjectPath").mockImplementation((verifiedData, chsDevConfig) => verifiedData);
         jest.spyOn(stateCacheUtils, "restoreStateFiles").mockImplementation(() => {});
         jest.spyOn(fileUtils, "readFileContent").mockImplementation(() => ({ testCache: { state: {}, dockerCompose: {} } }));
         jest.spyOn(stateCacheUtils, "loadImportCache").mockImplementation(() => ({
