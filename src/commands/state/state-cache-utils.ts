@@ -69,24 +69,18 @@ export function loadImportCache (importCachePath: string): StateCache {
 }
 
 /**
+ * Validates and updates the cache include paths in the state cache to match the current project's path.
  *
- * @param data
- * @param chsDevConfig
- * @returns
- */
-/**
- * Validates and updates the imported project path in the state cache to ensure it matches the host project's path.
+ * This function checks if the cache's include paths (from `data.dockerCompose.snapshot.include`) contain the current project's name.
+ * If the include paths do not match the current project's path, it remaps them to align with the host project.
+ * Throws an error if the project name is not found in any of the cache include paths.
  *
- * This function checks if the imported cache path (from `data.dockerCompose.snapshot.include`) contains the current project's name.
- * If the path does not match the host project's path, it remaps the imported cache path to align with the host.
- * Throws an error if the project name is not found in the imported cache paths.
- *
- * @param data - The current state cache object containing Docker Compose snapshot information.
+ * @param data - The state cache object containing Docker Compose snapshot information.
  * @param chsDevConfig - The configuration object containing the project name and project path.
- * @returns The updated state cache object with the imported project path validated and, if necessary, remapped.
- * @throws {Error} If the project name is not found in the imported cache paths.
+ * @returns The updated state cache object with validated and, if necessary, remapped include paths.
+ * @throws {Error} If the project name is not found in the cache include paths.
  */
-export function validateHostandImportedProjectPath (data: StateCache, chsDevConfig: ChsDevConfig):StateCache {
+export function validateCacheIncludePath (data: StateCache, chsDevConfig: ChsDevConfig):StateCache {
     const { projectName, projectPath } = chsDevConfig;
     const includes = data.dockerCompose.snapshot.include || [];
 
@@ -94,26 +88,25 @@ export function validateHostandImportedProjectPath (data: StateCache, chsDevConf
         return data;
     }
 
-    const normalizedImportedCachePath = path.normalize(includes[0]);
-    const indexBeforeProjectName = normalizedImportedCachePath.indexOf(projectName);
+    const normalizedCacheIncludePath = path.normalize(includes[0]);
+    const indexBeforeProjectName = normalizedCacheIncludePath.indexOf(projectName);
 
     if (indexBeforeProjectName === -1) {
-        throw new Error(`${projectName} not found in imported cache paths.`);
+        throw new Error(`${projectName} not found in cache include paths.`);
     }
 
     const indexAfterProjectName = indexBeforeProjectName + projectName.length;
-    const hostProjectPath = projectPath;
 
-    const absoluteImportedCachePath = normalizedImportedCachePath.slice(0, indexAfterProjectName);
+    const cacheIncludeAbsolutePath = normalizedCacheIncludePath.slice(0, indexAfterProjectName);
 
-    const matchesHostProjectPath = hostProjectPath === absoluteImportedCachePath;
+    const matchesProjectPath = projectPath === cacheIncludeAbsolutePath;
 
-    if (matchesHostProjectPath) {
+    if (matchesProjectPath) {
         return data;
     }
 
-    const updatedImportedCacheProjectPath = remapImportedCachePathWithHost(includes, hostProjectPath, absoluteImportedCachePath);
-    data.dockerCompose.snapshot.include = updatedImportedCacheProjectPath;
+    const updatedCacheIncludeProjectPath = remapCacheIncludePathWithProjectPath(includes, projectPath, cacheIncludeAbsolutePath);
+    data.dockerCompose.snapshot.include = updatedCacheIncludeProjectPath;
     return data;
 }
 
@@ -124,10 +117,10 @@ export function restoreStateFiles (config: ChsDevConfig, state: StateCache["stat
     writeContentToFile(dockerCompose.snapshot, dockerComposeFilePath);
 }
 
-function remapImportedCachePathWithHost (pathList: string[], hostProjectPath: string, absoluteImportedCachePath:string): string[] {
+function remapCacheIncludePathWithProjectPath (pathList: string[], projectPath: string, cacheIncludeAbsolutePath:string): string[] {
     return pathList.map((includePath: string) => {
         return includePath.replace(
-            absoluteImportedCachePath, hostProjectPath
+            cacheIncludeAbsolutePath, projectPath
         );
     });
 

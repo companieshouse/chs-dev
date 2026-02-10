@@ -9,7 +9,7 @@ import {
     loadImportCache,
     restoreStateFiles,
     validateCacheNameExists,
-    validateHostandImportedProjectPath,
+    validateCacheIncludePath,
     verifyCacheAuthenticity
 } from "./state-cache-utils.js";
 
@@ -91,7 +91,7 @@ export default class Restore extends Command {
         try {
             const cacheData = loadImportCache(importCachePath);
             const verifiedData = verifyCacheAuthenticity(cacheData);
-            const validatedData = validateHostandImportedProjectPath(verifiedData, this.chsDevConfig);
+            const validatedData = validateCacheIncludePath(verifiedData, this.chsDevConfig);
 
             restoreStateFiles(this.chsDevConfig, validatedData.state, validatedData.dockerCompose);
             this.log(`Restored state from imported cache.`);
