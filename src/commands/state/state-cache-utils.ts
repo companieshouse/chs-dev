@@ -68,6 +68,24 @@ export function loadImportCache (importCachePath: string): StateCache {
     return cacheData;
 }
 
+/**
+ *
+ * @param data
+ * @param chsDevConfig
+ * @returns
+ */
+/**
+ * Validates and updates the imported project path in the state cache to ensure it matches the host project's path.
+ *
+ * This function checks if the imported cache path (from `data.dockerCompose.snapshot.include`) contains the current project's name.
+ * If the path does not match the host project's path, it remaps the imported cache path to align with the host.
+ * Throws an error if the project name is not found in the imported cache paths.
+ *
+ * @param data - The current state cache object containing Docker Compose snapshot information.
+ * @param chsDevConfig - The configuration object containing the project name and project path.
+ * @returns The updated state cache object with the imported project path validated and, if necessary, remapped.
+ * @throws {Error} If the project name is not found in the imported cache paths.
+ */
 export function validateHostandImportedProjectPath (data: StateCache, chsDevConfig: ChsDevConfig):StateCache {
     const { projectName, projectPath } = chsDevConfig;
     const includes = data.dockerCompose.snapshot.include || [];
