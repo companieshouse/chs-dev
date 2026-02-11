@@ -67,6 +67,44 @@ describe("state-cache-utils", () => {
         });
     });
 
+    describe("validateCacheIncludePath", () => {
+        const baseStateCache = {
+            state: { snapshot: {}, hash: "" },
+            dockerCompose: { snapshot: {}, hash: "" }
+        };
+        const baseConfig = {
+            projectName: "myproject",
+            projectPath: "/Users/test/myproject",
+            env: {}
+        };
+
+        it("should return data unchanged if include is empty", () => {
+            const data = JSON.parse(JSON.stringify(baseStateCache));
+            data.dockerCompose.snapshot.include = [];
+            expect(stateCacheUtils.validateCacheIncludePath(data, baseConfig)).toBe(data);
+        });
+
+        it("should throw if projectName is not found in imported path", () => {
+            const data = JSON.parse(JSON.stringify(baseStateCache));
+            data.dockerCompose.snapshot.include = ["/some/other/path/notfound/compose.yaml"];
+            expect(() => stateCacheUtils.validateCacheIncludePath(data, baseConfig)).toThrow("myproject not found in cache include paths.");
+        });
+
+        it("should return data unchanged if imported path matches host project path", () => {
+            const data = JSON.parse(JSON.stringify(baseStateCache));
+            data.dockerCompose.snapshot.include = ["/Users/test/myproject/compose.yaml"];
+            expect(stateCacheUtils.validateCacheIncludePath(data, baseConfig)).toBe(data);
+        });
+
+        it("should remap imported path to host project path if they differ", () => {
+            const data = JSON.parse(JSON.stringify(baseStateCache));
+            // Simulate imported cache from a different user
+            data.dockerCompose.snapshot.include = ["/Users/otheruser/myproject/compose.yaml"];
+            const result = stateCacheUtils.validateCacheIncludePath(data, baseConfig);
+            expect(result.dockerCompose.snapshot.include[0]).toBe("/Users/test/myproject/compose.yaml");
+        });
+    });
+
     describe("loadImportCache", () => {
         it("should throw if file does not exist", () => {
             (existsSync as jest.Mock).mockReturnValue(false);

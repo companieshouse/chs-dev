@@ -1,6 +1,7 @@
 import { expect, jest } from "@jest/globals";
 import * as fs from "fs";
 import { isOnVpn, isWebProxyHostSet } from "../../../../src/helpers/vpn-check";
+import { isIbossEnabled } from "../../../../src/helpers/iboss-status";
 import AnalysisOutcome from "../../../../src/run/troubleshoot/analysis/AnalysisOutcome";
 import ProxiesConfiguredCorrectlyAnalysis from "../../../../src/run/troubleshoot/analysis/ProxiesConfiguredCorrectlyAnalysis";
 import { TroubleshootAnalysisTaskContext } from "../../../../src/run/troubleshoot/analysis/AnalysisTask";
@@ -10,6 +11,9 @@ jest.mock("fs");
 jest.mock("../../../../src/helpers/vpn-check", () => ({
     isWebProxyHostSet: jest.fn(),
     isOnVpn: jest.fn()
+}));
+jest.mock("../../../../src/helpers/iboss-status", () => ({
+    isIbossEnabled: jest.fn()
 }));
 jest.mock("../../../../src/helpers/docker-settings-store", () => ({
     fetchDockerSettings: jest.fn()
@@ -30,6 +34,7 @@ describe("ProxiesConfiguredCorrectlyAnalysis", () => {
 
     beforeEach(async () => {
         analysis = new ProxiesConfiguredCorrectlyAnalysis();
+        (isIbossEnabled as jest.Mock).mockReturnValue(false);
         jest.resetAllMocks();
 
     });
