@@ -99,8 +99,8 @@ export class DockerCompose {
             : undefined;
     }
 
-    up (signal?: AbortSignal): Promise<void> {
-        return this.runDockerCompose(["up", "-d", "--remove-orphans"],
+    up (extraArgs: string[] = [], signal?: AbortSignal): Promise<void> {
+        return this.runDockerCompose(["up", "-d", "--remove-orphans", ...extraArgs],
             this.createStatusMatchLogHandler(CONTAINER_STARTED_HEALTHY_STATUS_PATTERN, runStatusColouriser),
             signal
         );

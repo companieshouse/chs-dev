@@ -169,6 +169,19 @@ describe("Up command", () => {
         expect(otelGeneratorMock.modifyGeneratedDockerCompose).toHaveBeenCalledWith(flagsMock);
     });
 
+    it("should call up with env flag", async () => {
+        parseMock.mockResolvedValueOnce({
+            flags: {
+                otel: false,
+                "no-otel": false,
+                env: "cidev"
+            }
+        });
+        await up.run();
+
+        expect(dockerComposeMock.up).toBeCalledWith(["-e", `TAG=current-development-cidev`]);
+    });
+
     it("should not call developmentMode start when no services in dev or if dev services builder are neither node nor nginx", async () => {
         await up.run();
 

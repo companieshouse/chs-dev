@@ -39,13 +39,19 @@ export default class Up extends Command {
         "no-otel": Flags.boolean({
             aliases: ["no-otel"],
             description: "Disable OpenTelemetry for tracing"
+        }),
+        env: Flags.string({
+            aliases: ["env"],
+            description: "Set the environment to mimic, this will determine which versions of images are pulled",
+            options: ["cidev", "staging", "live"]
         })
     };
 
     static examples = [
         "$ chs-dev up",
         "$ chs-dev up --otel",
-        "$ chs-dev up --no-otel"
+        "$ chs-dev up --no-otel",
+        "$ chs-dev up --env cidev"
     ];
 
     private readonly dependencyCache: DependencyCache;
@@ -57,6 +63,7 @@ export default class Up extends Command {
     private readonly permanentRepositories: PermanentRepositories;
     private readonly otelGenerator: OtelGenerator;
     private servicesBuildContext!: ServicesBuildContext;
+    private tagMap: Record<string, string>;
 
     constructor (argv: string[], config: Config) {
         super(argv, config);
@@ -75,6 +82,11 @@ export default class Up extends Command {
         this.inventory = new Inventory(this.chsDevConfig.projectPath, config.cacheDir);
         this.permanentRepositories = new PermanentRepositories(this.chsDevConfig, this.inventory);
         this.otelGenerator = new OtelGenerator(this.chsDevConfig.projectPath);
+        this.tagMap = {
+            cidev: "current-development-cidev",
+            staging: "current-staging-staging",
+            live: "current-live-live"
+        };
     }
 
     async run (): Promise<any> {
@@ -102,6 +114,11 @@ export default class Up extends Command {
             });
         }
 
+        let extraArgs: string[] = [];
+        if (flags.env) {
+            extraArgs = ["-e", `TAG=${this.tagMap[flags.env]}`];
+        }
+
         this.otelGenerator.modifyGeneratedDockerCompose(flags);
 
         if (this.hasServicesInDevelopmentMode) {
@@ -126,7 +143,7 @@ export default class Up extends Command {
 
         ux.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         try {
-            await this.dockerCompose.up();
+            await this.dockerCompose.up(extraArgs);
             await this.handleDevelopmentMode();
 
         } catch (error) {

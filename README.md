@@ -773,11 +773,12 @@ Brings up the docker-chs-development environment
 
 ```
 USAGE
-  $ chs-dev up [--otel] [--no-otel]
+  $ chs-dev up [--otel] [--no-otel] [--env]
 
 FLAGS
-  --no-otel  Disable OpenTelemetry for tracing
-  --otel     Enable OpenTelemetry for tracing
+  --no-otel     Disable OpenTelemetry for tracing
+  --otel        Enable OpenTelemetry for tracing
+  --env         Set to run versions of images in cidev, staging or live. Not setting will build from latest
 
 DESCRIPTION
   Brings up the docker-chs-development environment
@@ -788,6 +789,8 @@ EXAMPLES
   $ chs-dev up --otel
 
   $ chs-dev up --no-otel
+
+  $ chs-dev up --env cidev
 ```
 
 DOCUMENTATION

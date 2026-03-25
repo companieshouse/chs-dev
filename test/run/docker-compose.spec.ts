@@ -383,7 +383,7 @@ describe("DockerCompose", () => {
             existsSyncMock.mockReturnValue(true);
         });
 
-        it("executes docker compose down", async () => {
+        it("executes docker compose up", async () => {
             await dockerCompose.up();
 
             const expectedSpawnOptions = {
@@ -405,6 +405,33 @@ describe("DockerCompose", () => {
                 "up",
                 "-d",
                 "--remove-orphans"
+            ], expectedSpawnOptions);
+        });
+
+        it("executes docker compose up with extraArgs", async () => {
+            await dockerCompose.up(["-e", `TAG=current-development-cidev`]);
+
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockPatternMatchingHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value",
+                        ...mockAwsCredentialsObject
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "up",
+                "-d",
+                "--remove-orphans",
+                "-e",
+                "TAG=current-development-cidev"
             ], expectedSpawnOptions);
         });
 
