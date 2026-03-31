@@ -97,7 +97,12 @@ export const CONSTANTS = {
     /**
      * The path to the new service specs in the repository
      */
-    NEW_SERVICE_SPECS_PATH: "specifications/"
+    NEW_SERVICE_SPECS_PATH: "specifications/",
+
+    /**
+     * The name of the custom shell initialisation script
+     */
+    SHELL_CUSTOM_INIT_SCRIPT: "custom-init.sh"
 };
 
 export default CONSTANTS;
