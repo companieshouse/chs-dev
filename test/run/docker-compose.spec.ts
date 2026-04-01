@@ -408,8 +408,20 @@ describe("DockerCompose", () => {
             ], expectedSpawnOptions);
         });
 
-        it("executes docker compose up with extraArgs", async () => {
-            await dockerCompose.up(["-e", `TAG=current-development-cidev`]);
+        it("executes docker compose up with dynamicEnv config", async () => {
+            const configPlusDynamicEnv = {
+                projectPath: "./",
+                projectName: "project",
+                env: {
+                    sshPrivateKey: "SSH_PRIVATE_KEY"
+                },
+                dynamicEnv: {
+                    TAG: "current-development-cidev"
+                }
+            };
+
+            const dockerComposePlusDynamicEnv = new DockerCompose(configPlusDynamicEnv, logger);
+            await dockerComposePlusDynamicEnv.up();
 
             const expectedSpawnOptions = {
                 logHandler: { handle: mockPatternMatchingHandle },
@@ -417,9 +429,9 @@ describe("DockerCompose", () => {
                     cwd: config.projectPath,
                     env: {
                         ...(process.env),
-                        SSH_PRIVATE_KEY: sshPrivateKey,
-                        ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        ...configPlusDynamicEnv.dynamicEnv,
+                        ...configPlusDynamicEnv.env
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -429,9 +441,7 @@ describe("DockerCompose", () => {
                 "compose",
                 "up",
                 "-d",
-                "--remove-orphans",
-                "-e",
-                "TAG=current-development-cidev"
+                "--remove-orphans"
             ], expectedSpawnOptions);
         });
 

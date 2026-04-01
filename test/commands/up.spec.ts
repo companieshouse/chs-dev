@@ -1,6 +1,7 @@
 import { expect, jest } from "@jest/globals";
 import Up from "../../src/commands/up";
 import { Config } from "@oclif/core";
+import { Config as DockerConfig } from "../../src/model/Config";
 import { State } from "../../src/model/State";
 import { services, modules } from "../utils/data";
 import { StateManager } from "../../src/state/state-manager";
@@ -169,7 +170,7 @@ describe("Up command", () => {
         expect(otelGeneratorMock.modifyGeneratedDockerCompose).toHaveBeenCalledWith(flagsMock);
     });
 
-    it("should call up with env flag", async () => {
+    it("should set dynamicEnv with env flag", async () => {
         parseMock.mockResolvedValueOnce({
             flags: {
                 otel: false,
@@ -179,7 +180,10 @@ describe("Up command", () => {
         });
         await up.run();
 
-        expect(dockerComposeMock.up).toBeCalledWith(["-e", `TAG=current-development-cidev`]);
+        expect(dockerComposeMock.up).toBeCalled();
+        const dockerComposeClassMock = DockerCompose as jest.MockedClass<typeof DockerCompose>;
+        const dockerConfig: DockerConfig = dockerComposeClassMock.mock.calls[0][0];
+        expect(dockerConfig.dynamicEnv?.TAG).toBe("current-development-cidev");
     });
 
     it("should not call developmentMode start when no services in dev or if dev services builder are neither node nor nginx", async () => {

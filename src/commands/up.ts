@@ -114,9 +114,11 @@ export default class Up extends Command {
             });
         }
 
-        let extraArgs: string[] = [];
         if (flags.env) {
-            extraArgs = ["-e", `TAG=${this.tagMap[flags.env]}`];
+            if (!this.chsDevConfig.dynamicEnv) {
+                this.chsDevConfig.dynamicEnv = {};
+            }
+            this.chsDevConfig.dynamicEnv.TAG = this.tagMap[flags.env];
         }
 
         this.otelGenerator.modifyGeneratedDockerCompose(flags);
@@ -143,7 +145,7 @@ export default class Up extends Command {
 
         ux.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         try {
-            await this.dockerCompose.up(extraArgs);
+            await this.dockerCompose.up();
             await this.handleDevelopmentMode();
 
         } catch (error) {

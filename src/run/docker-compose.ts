@@ -99,8 +99,8 @@ export class DockerCompose {
             : undefined;
     }
 
-    up (extraArgs: string[] = [], signal?: AbortSignal): Promise<void> {
-        return this.runDockerCompose(["up", "-d", "--remove-orphans", ...extraArgs],
+    up (signal?: AbortSignal): Promise<void> {
+        return this.runDockerCompose(["up", "-d", "--remove-orphans"],
             this.createStatusMatchLogHandler(CONTAINER_STARTED_HEALTHY_STATUS_PATTERN, runStatusColouriser),
             signal
         );
@@ -228,7 +228,10 @@ export class DockerCompose {
 
     private async runDockerCompose (composeArgs: string[], logHandler: LogHandler, signal?: AbortSignal): Promise<void> {
         // Spawn docker compose process
-        const dockerComposeEnv = this.config.env;
+        const dockerComposeEnv = {
+            ...this.config.env,
+            ...this.config.dynamicEnv
+        };
         const spawnOptions: {
             cwd: string,
             signal?: AbortSignal,
