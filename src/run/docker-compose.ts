@@ -228,7 +228,10 @@ export class DockerCompose {
 
     private async runDockerCompose (composeArgs: string[], logHandler: LogHandler, signal?: AbortSignal): Promise<void> {
         // Spawn docker compose process
-        const dockerComposeEnv = this.config.env;
+        const dockerComposeEnv = {
+            ...this.config.env,
+            ...this.config.dynamicEnv
+        };
         const spawnOptions: {
             cwd: string,
             signal?: AbortSignal,

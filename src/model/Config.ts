@@ -1,5 +1,5 @@
 /**
- * Represents project configuration defining project related properties for
+ * Represents configuration defining project related properties for
  * customising the behaviours of chs-dev
  */
 export type Config = {
@@ -46,6 +46,12 @@ export type Config = {
      * specifies the application version
      */
     readonly chsDevVersion?: string;
+
+    /**
+     * For non-static environment config created in chs-dev run
+     * on behalf of user
+     */
+    dynamicEnv?: Record<string, string>
 
 }
 
