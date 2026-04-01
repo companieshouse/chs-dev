@@ -383,7 +383,7 @@ describe("DockerCompose", () => {
             existsSyncMock.mockReturnValue(true);
         });
 
-        it("executes docker compose down", async () => {
+        it("executes docker compose up", async () => {
             await dockerCompose.up();
 
             const expectedSpawnOptions = {
@@ -395,6 +395,43 @@ describe("DockerCompose", () => {
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
                         ...mockAwsCredentialsObject
+                    }
+                },
+                acceptableExitCodes: [0, 130]
+            };
+
+            expect(spawnMock).toHaveBeenCalledWith("docker", [
+                "compose",
+                "up",
+                "-d",
+                "--remove-orphans"
+            ], expectedSpawnOptions);
+        });
+
+        it("executes docker compose up with dynamicEnv config", async () => {
+            const configPlusDynamicEnv = {
+                projectPath: "./",
+                projectName: "project",
+                env: {
+                    sshPrivateKey: "SSH_PRIVATE_KEY"
+                },
+                dynamicEnv: {
+                    TAG: "current-development-cidev"
+                }
+            };
+
+            const dockerComposePlusDynamicEnv = new DockerCompose(configPlusDynamicEnv, logger);
+            await dockerComposePlusDynamicEnv.up();
+
+            const expectedSpawnOptions = {
+                logHandler: { handle: mockPatternMatchingHandle },
+                spawnOptions: {
+                    cwd: config.projectPath,
+                    env: {
+                        ...(process.env),
+                        ...mockAwsCredentialsObject,
+                        ...configPlusDynamicEnv.dynamicEnv,
+                        ...configPlusDynamicEnv.env
                     }
                 },
                 acceptableExitCodes: [0, 130]
