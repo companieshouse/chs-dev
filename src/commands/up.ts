@@ -2,7 +2,7 @@ import confirm from "@inquirer/confirm";
 import { Command, Config, Flags, ux } from "@oclif/core";
 import { execSync } from "child_process";
 import fs from "fs";
-import {CONSTANTS} from "../model/Constants.js";
+import { CONSTANTS } from "../model/Constants.js";
 
 import { basename } from "path";
 import loadConfig from "../helpers/config-loader.js";
@@ -144,18 +144,17 @@ export default class Up extends Command {
 
         ux.action.start("Ensuring all permanent repos are up to date");
         await this.permanentRepositories.ensureAllExistAndAreUpToDate();
-        ux.action.stop;
+        ux.action.stop();
 
         let customInitOutput = "";
         ux.action.start("Running init shell script");
         try {
             const customScript = `${this.chsDevConfig.projectPath}/${CONSTANTS.SHELL_CUSTOM_INIT_SCRIPT}`;
-                customInitOutput =
-                    fs.existsSync(customScript) ?
-                    execSync(customScript, { encoding: 'utf-8' }) :
-                    `Skipped init script ${customScript} as not present`;
+            customInitOutput = fs.existsSync(customScript)
+                ? execSync(customScript, { encoding: "utf-8" })
+                : `Skipped init script ${customScript} as not present`;
         } catch (err) {
-            this.log('Failed to execute init script: ' + err);
+            this.log("Failed to execute init script: " + err);
         }
         ux.action.stop();
         this.log(customInitOutput);
