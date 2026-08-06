@@ -21,7 +21,12 @@ export const CONSTANTS = {
     /**
      * Default value for the number of hours between ecr login checks
      */
-    DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD: 8
+    DEFAULT_PERFORM_ECR_LOGIN_HOURS_THRESHOLD: 8,
+
+    /**
+     * The name of the custom shell initialisation script
+     */
+    SHELL_CUSTOM_INIT_SCRIPT: "custom-init.sh"
 };
 
 export default CONSTANTS;
