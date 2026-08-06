@@ -27,7 +27,7 @@ export const createPullRequest = async (
     destinationBranch: string | undefined = undefined,
     organisation: string | undefined = undefined
 ) => {
-    const gitHibOrganisationName = organisation || CONSTANTS.COMPANIES_HOUSE_GITHUB_ORGANISATION_NAME;
+    const gitHibOrganisationName = organisation || "companieshouse";
     const githubApiToken = await getPersonalAccessToken();
 
     if (typeof githubApiToken !== "undefined") {
