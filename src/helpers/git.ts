@@ -14,7 +14,6 @@ type CloneRepoOpts = {
  * @returns Promise
  */
 export const cloneRepo = ({ repositoryUrl, destinationPath, branch }: CloneRepoOpts) => {
-    // @ts-ignore
     const git = simpleGit();
 
     const gitArgs = branch ? ["--branch", branch] : [];
@@ -30,7 +29,6 @@ export const cloneRepo = ({ repositoryUrl, destinationPath, branch }: CloneRepoO
  * @returns Promise
  */
 export const updateRepo = (destinationPath: string) => {
-    // @ts-ignore
     const git = simpleGit(destinationPath);
 
     return git.pull();
