@@ -1,3 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`ServiceFactory raises error when file contains invalid keys 1`] = `[Error: Invalid override file, contains invalid keys: invalidKey, anotherInvalidKey]`;
