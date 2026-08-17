@@ -20,6 +20,12 @@ const UNSET_VALUE_SUGGESTIONS = [
  */
 export default class SSHKeyPassphraseAnalysis extends BaseAnalysis {
 
+    /**
+     * Runs the SSH Key passphrase analysis.
+     * @param {TroubleshootAnalysisTaskContext} _context - The context for the analysis task (unused by this analysis).
+     * @returns { Promise<AnalysisOutcome> } - The outcome of the analysis, containing an issue when the SSH
+     * key passphrase is unset or misconfigured, otherwise a successful outcome.
+     */
     async analyse (_context: TroubleshootAnalysisTaskContext): Promise<AnalysisOutcome> {
         const passphraseIssue = await this.checkSSHKeyPassphrase();
 
