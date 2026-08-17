@@ -26,7 +26,22 @@ export const CONSTANTS = {
     /**
      * The name of the custom shell initialisation script
      */
-    SHELL_CUSTOM_INIT_SCRIPT: "custom-init.sh"
+    SHELL_CUSTOM_INIT_SCRIPT: "custom-init.sh",
+
+    /**
+     * The name of the keychain item used to store the SSH private key passphrase
+     */
+    SSH_PASSWORD_KEYCHAIN_ITEM_NAME: "ch-chs-dev:SSH_KEY_PASSPHRASE",
+
+    /**
+     * The name of the environment variable used to store the SSH private key passphrase
+     */
+    SSH_PASSWORD_ENV_VAR_NAME: "SSH_PRIVATE_KEY_PASSPHRASE",
+
+    /**
+     * The value to use when there is no SSH password
+     */
+    NO_SSH_PASSWORD_VALUE: "ch-chs-dev:SSH_KEY_PASSPHRASE:UNSET"
 };
 
 export default CONSTANTS;

@@ -10,6 +10,9 @@ import LogNothingLogHandler from "./logs/LogNothingLogHandler.js";
 import { LogHandler } from "./logs/logs-handler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
 import { LogCoverage, Prune, ContainerType } from "../model/index.js";
+import { getItemFromKeyChain } from "../helpers/keychain.js";
+import CONSTANTS from "../model/Constants.js";
+
 interface Logger {
     log: (msg: string) => void;
 }
@@ -246,7 +249,8 @@ export class DockerCompose {
             spawnOptions.env = {
                 ...process.env,
                 ...dockerComposeEnv,
-                ...this.getAwsCredentials
+                ...this.getAwsCredentials,
+                ...await this.loadEnvironmentVariablesFromKeychain()
             };
         }
 
@@ -298,4 +302,15 @@ export class DockerCompose {
         }
     }
 
+    private async loadEnvironmentVariablesFromKeychain (): Promise<Record<string, string>> {
+        const sshKeyPassphrase = await getItemFromKeyChain(CONSTANTS.SSH_PASSWORD_KEYCHAIN_ITEM_NAME);
+
+        if (!sshKeyPassphrase || sshKeyPassphrase === CONSTANTS.NO_SSH_PASSWORD_VALUE) {
+            throw new Error("SSH key passphrase not found in keychain or not been set. Run: 'chs-dev troubleshoot analyse' command to troubleshoot.");
+        }
+
+        return {
+            [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: sshKeyPassphrase
+        };
+    }
 }

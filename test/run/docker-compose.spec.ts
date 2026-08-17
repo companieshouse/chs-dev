@@ -5,18 +5,21 @@ import { tmpdir } from "os";
 import { join } from "path";
 import Config from "../../src/model/Config";
 import { ContainerType } from "../../src/model";
+import CONSTANTS from "../../src/model/Constants";
 
 describe("DockerCompose", () => {
     const execSyncMock = jest.spyOn(childProcess, "execSync");
     const spawnMock = jest.fn();
     const existsSyncMock = jest.spyOn(fs, "existsSync");
     const mkdirSyncMock = jest.spyOn(fs, "mkdirSync");
+    const getItemFromKeyChainMock = jest.fn();
 
     const mockPatternMatchingHandle = jest.fn();
     const mockWatchLogHandle = jest.fn();
     const mockLogEverythingLogHandle = jest.fn();
 
     const sshPrivateKey = "ssh-rsa blagr94@testuer";
+    const mockSshKeyPassphrase = "mock-ssh-key-passphrase";
 
     const config: Config = {
         env: {
@@ -54,6 +57,12 @@ describe("DockerCompose", () => {
     jest.mock("../../src/helpers/spawn-promise", () => {
         return {
             spawn: spawnMock
+        };
+    });
+
+    jest.mock("../../src/helpers/keychain", () => {
+        return {
+            getItemFromKeyChain: getItemFromKeyChainMock
         };
     });
 
@@ -216,6 +225,7 @@ describe("DockerCompose", () => {
             (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
+            getItemFromKeyChainMock.mockResolvedValue(mockSshKeyPassphrase as never);
 
             existsSyncMock.mockReturnValue(true);
         });
@@ -238,7 +248,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -299,6 +310,24 @@ describe("DockerCompose", () => {
             await expect(dockerCompose.down()).rejects.toBeInstanceOf(Error);
         });
 
+        it("rejects when getItemFromKeyChain returns undefined", async () => {
+            getItemFromKeyChainMock.mockResolvedValue(undefined as never);
+
+            await expect(dockerCompose.down()).rejects.toThrowError(
+                "SSH key passphrase not found in keychain or not been set. Run: 'chs-dev troubleshoot analyse' command to troubleshoot."
+            );
+            expect(spawnMock).not.toHaveBeenCalledWith("docker", expect.anything(), expect.anything());
+        });
+
+        it("rejects when getItemFromKeyChain returns the NO_SSH_PASSWORD_VALUE placeholder", async () => {
+            getItemFromKeyChainMock.mockResolvedValue(CONSTANTS.NO_SSH_PASSWORD_VALUE as never);
+
+            await expect(dockerCompose.down()).rejects.toThrowError(
+                "SSH key passphrase not found in keychain or not been set. Run: 'chs-dev troubleshoot analyse' command to troubleshoot."
+            );
+            expect(spawnMock).not.toHaveBeenCalledWith("docker", expect.anything(), expect.anything());
+        });
+
         it("removes volumes when removeVolumes true", async () => {
             mockOnce.mockImplementation((type, listener) => {
                 if (type === "exit") {
@@ -318,7 +347,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
 
                     }
                 },
@@ -353,7 +383,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -379,6 +410,7 @@ describe("DockerCompose", () => {
             (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
+            getItemFromKeyChainMock.mockResolvedValue(mockSshKeyPassphrase as never);
 
             existsSyncMock.mockReturnValue(true);
         });
@@ -394,7 +426,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -431,7 +464,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         ...mockAwsCredentialsObject,
                         ...configPlusDynamicEnv.dynamicEnv,
-                        ...configPlusDynamicEnv.env
+                        ...configPlusDynamicEnv.env,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -463,6 +497,7 @@ describe("DockerCompose", () => {
             (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
+            getItemFromKeyChainMock.mockResolvedValue(mockSshKeyPassphrase as never);
 
         });
 
@@ -478,7 +513,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -506,7 +542,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -545,6 +582,7 @@ describe("DockerCompose", () => {
             (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
+            getItemFromKeyChainMock.mockResolvedValue(mockSshKeyPassphrase as never);
 
         });
 
@@ -580,6 +618,7 @@ describe("DockerCompose", () => {
             (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
+            getItemFromKeyChainMock.mockResolvedValue(mockSshKeyPassphrase as never);
 
         });
 
@@ -594,7 +633,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -624,7 +664,8 @@ describe("DockerCompose", () => {
                         ...(process.env),
                         SSH_PRIVATE_KEY: sshPrivateKey,
                         ANOTHER_VALUE: "another-value",
-                        ...mockAwsCredentialsObject
+                        ...mockAwsCredentialsObject,
+                        [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: mockSshKeyPassphrase
                     }
                 },
                 acceptableExitCodes: [0, 130]
@@ -698,6 +739,7 @@ describe("DockerCompose", () => {
             (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
 
             spawnMock.mockResolvedValue(undefined as never);
+            getItemFromKeyChainMock.mockResolvedValue(mockSshKeyPassphrase as never);
 
         });
 

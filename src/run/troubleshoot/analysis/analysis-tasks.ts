@@ -7,6 +7,7 @@ import PortAnalysis from "./PortAnalysis.js";
 import ProxiesConfiguredCorrectlyAnalysis from "./ProxiesConfiguredCorrectlyAnalysis.js";
 import ServicesInLiveUpdateConfiguredCorrectlyAnalysis from "./ServicesInLiveUpdateConfiguredCorrectlyAnalysis.js";
 import SSHAnalysis from "./SSHAnalysis.js";
+import SSHKeyPassphraseAnalysis from "./SSHKeyPassphraseAnalysis.js";
 import TLSHandshake from "./TLSHandshakeAnalysis.js";
 import VersionAnalysis from "./VersionAnalysis.js";
 
@@ -20,6 +21,7 @@ const analysisTasks: AnalysisTask[] = [
     new DockerChsDevelopmentVersionAnalysis(),
     new AwsEnvironmentVariableAnalysis(),
     new SSHAnalysis(),
+    new SSHKeyPassphraseAnalysis(),
     new TLSHandshake()
 ];
 
