@@ -90,6 +90,15 @@ export const confirm = (
 };
 
 /**
+ * Prompts for a secret without echoing it to the terminal.
+ */
+export const password = (question: string): Promise<string> => {
+    return inquirer.password({
+        message: question
+    });
+};
+
+/**
  * Prompts the user for a value in response to a question. When options have
  * been supplied offers the user a list to choose from otherwise just accepts
  * plain text input.

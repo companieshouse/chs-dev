@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync, SpawnOptions } from "child_process";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { runStatusColouriser, stopStatusColouriser } from "../helpers/colouriser.js";
@@ -10,6 +10,9 @@ import LogNothingLogHandler from "./logs/LogNothingLogHandler.js";
 import { LogHandler } from "./logs/logs-handler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
 import { LogCoverage, Prune, ContainerType } from "../model/index.js";
+import { getItemFromKeyChain } from "../helpers/keychain.js";
+import { password } from "../helpers/user-input.js";
+import CONSTANTS from "../model/Constants.js";
 interface Logger {
     log: (msg: string) => void;
 }
@@ -232,23 +235,25 @@ export class DockerCompose {
             ...this.config.env,
             ...this.config.dynamicEnv
         };
-        const spawnOptions: {
-            cwd: string,
-            signal?: AbortSignal,
-            env?: Record<string, string>
-        } = {
+        const spawnOptions: SpawnOptions = {
             cwd: this.config.projectPath,
-            signal
+            ...(signal ? { signal } : {})
         };
 
-        if (dockerComposeEnv && Object.keys(dockerComposeEnv).length > 0) {
-            // @ts-expect-error
-            spawnOptions.env = {
-                ...process.env,
-                ...dockerComposeEnv,
-                ...this.getAwsCredentials
-            };
+        const sshKeyPassphrase = process.platform === "darwin"
+            ? await getItemFromKeyChain(CONSTANTS.SSH_PASSWORD_KEYCHAIN_ITEM_NAME)
+            : await password("Enter your SSH key passphrase:");
+
+        if (!sshKeyPassphrase) {
+            throw new Error("SSH key passphrase not found. Run 'bin/init' in the docker-chs-development project.");
         }
+
+        spawnOptions.env = {
+            ...process.env,
+            ...dockerComposeEnv,
+            ...(Object.keys(dockerComposeEnv).length > 0 ? this.getAwsCredentials : {}),
+            [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: sshKeyPassphrase
+        };
 
         try {
             await spawn(
