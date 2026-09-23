@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync, SpawnOptions } from "child_process";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { runStatusColouriser, stopStatusColouriser } from "../helpers/colouriser.js";
@@ -10,6 +10,9 @@ import LogNothingLogHandler from "./logs/LogNothingLogHandler.js";
 import { LogHandler } from "./logs/logs-handler.js";
 import PatternMatchingConsoleLogHandler from "./logs/PatternMatchingConsoleLogHandler.js";
 import { LogCoverage, Prune, ContainerType } from "../model/index.js";
+import { getItemFromKeyChain } from "../helpers/keychain.js";
+import { password } from "../helpers/user-input.js";
+import CONSTANTS from "../model/Constants.js";
 interface Logger {
     log: (msg: string) => void;
 }
@@ -75,7 +78,7 @@ export class DockerCompose {
         );
     }
 
-    getServiceStatuses (): Record<string, string> | undefined {
+    async getServiceStatuses (): Promise<Record<string, string> | undefined> {
         if (!existsSync(join(this.config.projectPath, "docker-compose.yaml"))) {
             return undefined;
         }
@@ -84,7 +87,7 @@ export class DockerCompose {
         // each service on an individual line
         const execOptions = {
             cwd: this.config.projectPath,
-            env: this.getAwsCredentials
+            env: await this.getDockerComposeEnv()
         };
         const dockerComposePsOutput = execSync(
             "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"",
@@ -227,28 +230,12 @@ export class DockerCompose {
     }
 
     private async runDockerCompose (composeArgs: string[], logHandler: LogHandler, signal?: AbortSignal): Promise<void> {
-        // Spawn docker compose process
-        const dockerComposeEnv = {
-            ...this.config.env,
-            ...this.config.dynamicEnv
-        };
-        const spawnOptions: {
-            cwd: string,
-            signal?: AbortSignal,
-            env?: Record<string, string>
-        } = {
+        const spawnOptions: SpawnOptions = {
             cwd: this.config.projectPath,
-            signal
+            ...(signal ? { signal } : {})
         };
 
-        if (dockerComposeEnv && Object.keys(dockerComposeEnv).length > 0) {
-            // @ts-expect-error
-            spawnOptions.env = {
-                ...process.env,
-                ...dockerComposeEnv,
-                ...this.getAwsCredentials
-            };
-        }
+        spawnOptions.env = await this.getDockerComposeEnv();
 
         try {
             await spawn(
@@ -266,6 +253,31 @@ export class DockerCompose {
         } catch (error) {
             throw new Error(`Docker compose failed with status code: ${error}`);
         }
+    }
+
+    private async getDockerComposeEnv (): Promise<NonNullable<SpawnOptions["env"]>> {
+        const dockerComposeEnv = {
+            ...this.config.env,
+            ...this.config.dynamicEnv
+        };
+        const sshKeyPassphrase = await this.getSshKeyPassphrase();
+
+        if (!sshKeyPassphrase) {
+            throw new Error("SSH key passphrase not found. Run 'bin/init' in the docker-chs-development project.");
+        }
+
+        return {
+            ...process.env,
+            ...dockerComposeEnv,
+            ...(Object.keys(dockerComposeEnv).length > 0 ? this.getAwsCredentials : {}),
+            [CONSTANTS.SSH_PASSWORD_ENV_VAR_NAME]: sshKeyPassphrase
+        };
+    }
+
+    private async getSshKeyPassphrase () : Promise<string | undefined> {
+        return process.platform === "darwin"
+            ? await getItemFromKeyChain(CONSTANTS.SSH_PASSWORD_KEYCHAIN_ITEM_NAME)
+            : await password("Enter your SSH key passphrase:");
     }
 
     /**

@@ -9,6 +9,7 @@ import ServicesInLiveUpdateConfiguredCorrectlyAnalysis from "./ServicesInLiveUpd
 import SSHAnalysis from "./SSHAnalysis.js";
 import TLSHandshake from "./TLSHandshakeAnalysis.js";
 import VersionAnalysis from "./VersionAnalysis.js";
+import SSHKeyPassphraseAnalysis from "./SSHKeyPassphraseAnalysis.js";
 
 const analysisTasks: AnalysisTask[] = [
     new ServicesInLiveUpdateConfiguredCorrectlyAnalysis(),
@@ -20,6 +21,7 @@ const analysisTasks: AnalysisTask[] = [
     new DockerChsDevelopmentVersionAnalysis(),
     new AwsEnvironmentVariableAnalysis(),
     new SSHAnalysis(),
+    new SSHKeyPassphraseAnalysis(),
     new TLSHandshake()
 ];
 

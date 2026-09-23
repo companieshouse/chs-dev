@@ -1,7 +1,7 @@
 import { expect, jest } from "@jest/globals";
 
-import { confirm as confirmMock, input as inputMock, select as selectMock, editor as editorMock } from "@inquirer/prompts";
-import { confirm, input, editor } from "../../src/helpers/user-input";
+import { confirm as confirmMock, input as inputMock, select as selectMock, editor as editorMock, password as passwordMock } from "@inquirer/prompts";
+import { confirm, input, editor, password } from "../../src/helpers/user-input";
 
 jest.mock("@inquirer/prompts");
 
@@ -174,6 +174,37 @@ describe("input with options", () => {
             message: question,
             choices: options
         });
+    });
+});
+
+describe("password", () => {
+    const question = "Enter your SSH key passphrase:";
+
+    beforeEach(() => {
+        jest.resetAllMocks();
+    });
+
+    it("calls inquirer password with message", async () => {
+        await password(question);
+
+        expect(passwordMock).toHaveBeenCalledWith({
+            message: question
+        });
+    });
+
+    it("responds with value from inquirer", async () => {
+        // @ts-expect-error
+        passwordMock.mockResolvedValue("super-secret-passphrase");
+
+        await expect(password(question)).resolves.toEqual("super-secret-passphrase");
+    });
+
+    it("does not echo the value in the returned prompt options", async () => {
+        await password(question);
+
+        expect(passwordMock).toHaveBeenCalledWith(
+            expect.not.objectContaining({ default: expect.anything() })
+        );
     });
 });
 

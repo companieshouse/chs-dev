@@ -49,7 +49,7 @@ export default class Restore extends Command {
     async run (): Promise<void> {
         const { args, flags: { importCacheFrom } } = await this.parse(Restore);
 
-        const containerStatus = this.dockerCompose.getServiceStatuses();
+        const containerStatus = await this.dockerCompose.getServiceStatuses();
         if (containerStatus !== undefined) {
             this.error("Ensure all containers are stopped. Run: '$ chs-dev down'");
         }
