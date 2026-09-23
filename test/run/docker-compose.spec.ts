@@ -156,50 +156,58 @@ describe("DockerCompose", () => {
             dockerCompose = new DockerCompose(config, logger);
         });
 
-        it("returns undefined when docker-compose.yaml file does not exist", () => {
+        it("returns undefined when docker-compose.yaml file does not exist", async () => {
             existsSyncMock.mockReturnValue(false);
 
-            const result = dockerCompose.getServiceStatuses();
+            const result = await dockerCompose.getServiceStatuses();
 
             expect(result).toBeUndefined();
         });
 
-        it("does not call execSync when no docker-compose.yaml file", () => {
+        it("does not call execSync when no docker-compose.yaml file", async () => {
             existsSyncMock.mockReturnValue(false);
 
-            dockerCompose.getServiceStatuses();
+            await dockerCompose.getServiceStatuses();
 
             expect(execSyncMock).not.toHaveBeenCalled();
         });
 
-        it("calls docker compose when docker-compose.yaml file exists", () => {
+        it("calls docker compose when docker-compose.yaml file exists", async () => {
             existsSyncMock.mockReturnValue(true);
             (execSyncMock as jest.Mock).mockImplementationOnce(() =>
                 mockAwsCredentialsCmdOutput
             );
             (execSyncMock as jest.Mock).mockImplementationOnce(() => Buffer.from("", "utf8"));
 
-            dockerCompose.getServiceStatuses();
+            await dockerCompose.getServiceStatuses();
 
             expect(execSyncMock).toHaveBeenCalledWith(
                 "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"",
-                { cwd: config.projectPath, env: mockAwsCredentialsObject }
+                {
+                    cwd: config.projectPath,
+                    env: expect.objectContaining({
+                        ...mockAwsCredentialsObject,
+                        SSH_PRIVATE_KEY: sshPrivateKey,
+                        ANOTHER_VALUE: "another-value",
+                        SSH_PRIVATE_KEY_PASSPHRASE: sshKeyPassphrase
+                    })
+                }
             );
         });
 
-        it("returns undefined when docker compose errored", () => {
+        it("returns undefined when docker compose errored", async () => {
             existsSyncMock.mockReturnValue(true);
             (execSyncMock as jest.Mock).mockImplementationOnce(() =>
                 mockAwsCredentialsCmdOutput
             );
             (execSyncMock as jest.Mock).mockImplementationOnce(() => Buffer.from("", "utf8"));
 
-            const result = dockerCompose.getServiceStatuses();
+            const result = await dockerCompose.getServiceStatuses();
 
             expect(result).toBeUndefined();
         });
 
-        it("returns service statuses as object", () => {
+        it("returns service statuses as object", async () => {
             const expected = {
                 serviceOne: "up",
                 serviceTwo: "down",
@@ -212,7 +220,7 @@ describe("DockerCompose", () => {
             );
             (execSyncMock as jest.Mock).mockImplementationOnce(() => Buffer.from(Object.entries(expected).map(([name, value]) => `${name},${value}`).join("\n"), "utf8"));
 
-            const result = dockerCompose.getServiceStatuses();
+            const result = await dockerCompose.getServiceStatuses();
 
             expect(result).toEqual(expected);
         });
