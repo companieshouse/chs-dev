@@ -24,18 +24,15 @@ blockers.
 
 ## Ownership
 
-Assign named owners before announcing the release date:
+One release owner coordinates and executes the entire release. This includes
+the timeline, communications, pilot coordination, merges, release
+verification, support triage, go/no-go decisions, and rollback.
 
-| Role | Responsibility |
-| --- | --- |
-| Release lead | Runs the timeline, records decisions, and sends communications |
-| `chs-dev` maintainer | Merges chs-dev#186 and verifies the 5.0.0 release |
-| Docker development maintainer | Merges docker-chs-development#2649 and verifies its release |
-| Pilot coordinator | Coordinates pilot users and records results |
-| Support lead | Monitors the developer support channel and triages failures |
-| Rollback approver | Makes the go/no-go or rollback decision |
+The maintainers of `chs-dev` and `docker-chs-development` review and approve
+their respective pull requests before the release window. They are not
+required to take part in the release itself.
 
-Use one release coordination thread or call throughout the release window.
+Use one canonical release coordination thread throughout the release window.
 Pause unrelated merges to both repositories until the rollout is confirmed
 stable.
 
@@ -70,8 +67,8 @@ Complete the following before either pull request is approved:
      `install.sh -v 4.0.0`.
    - Tested recovery steps for restoring the previous SSH key and legacy
      configuration.
-6. Confirm support coverage for the release window and the following business
-   day.
+6. Reserve time for the release owner to monitor the developer support
+   channel during the release window and the following business day.
 
 ## Pilot
 
@@ -157,8 +154,9 @@ superseded keys should be securely destroyed.
 Use a staffed mid-week release window and avoid Friday deployment.
 
 1. Start the coordination call and freeze unrelated merges.
-2. Confirm all named owners are present.
-3. Confirm CI and reviews are green on both pull requests.
+2. Confirm both maintainers have approved their respective pull requests and
+   CI is green.
+3. Post the release-start communication.
 4. Merge chs-dev#186 first.
 5. Publish `chs-dev` 5.0.0 and verify the `darwin-arm64` artifact.
 6. Perform a clean installation of 5.0.0 on an Apple Silicon Mac and verify
@@ -171,7 +169,7 @@ Use a staffed mid-week release window and avoid Friday deployment.
 10. Run the migration on one fresh clone and one existing installation.
 11. Execute the pilot smoke-test checklist.
 12. Send the "ready to migrate" communication.
-13. Keep maintainers available for at least two hours and retain the merge
+13. Monitor the support channel for at least two hours and retain the merge
     freeze until the first rollout cohort succeeds.
 
 The gap between releasing `chs-dev` 5.0.0 and merging the Docker repository
