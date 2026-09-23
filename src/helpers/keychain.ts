@@ -26,6 +26,9 @@ export const getItemFromKeyChain = async (key: string): Promise<string | undefin
         return undefined;
     }
 
-    const value = stdout.getLogs().join("");
-    return value.length > 0 ? value.trimEnd() : undefined;
+    // Strip only the trailing line ending appended by the `security` command's
+    // output, preserving any other trailing whitespace that may be part of the
+    // actual passphrase.
+    const value = stdout.getLogs().join("").replace(/\r?\n$/, "");
+    return value.length > 0 ? value : undefined;
 };

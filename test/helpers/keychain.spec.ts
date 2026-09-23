@@ -39,6 +39,24 @@ describe("getItemFromKeyChain", () => {
             .resolves.toBeUndefined();
     });
 
+    it("preserves meaningful trailing whitespace in the passphrase", async () => {
+        spawnMock.mockImplementation(async (_command, _args, options) => {
+            options.logHandler.handle("secret value \n");
+        });
+
+        await expect(getItemFromKeyChain("ch-chs-dev:SSH_KEY_PASSPHRASE"))
+            .resolves.toBe("secret value ");
+    });
+
+    it("strips a trailing CRLF line ending", async () => {
+        spawnMock.mockImplementation(async (_command, _args, options) => {
+            options.logHandler.handle("secret-value\r\n");
+        });
+
+        await expect(getItemFromKeyChain("ch-chs-dev:SSH_KEY_PASSPHRASE"))
+            .resolves.toBe("secret-value");
+    });
+
     it("rejects requests for non-permitted keychain items", async () => {
         await expect(getItemFromKeyChain("another-secret"))
             .rejects.toThrow("is not permitted");
