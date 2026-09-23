@@ -108,6 +108,11 @@ describe("Status command", () => {
         expect(logJsonMock).not.toHaveBeenCalled();
     });
 
+    it("should use a deterministic colour configuration", () => {
+        expect(process.env.FORCE_COLOR).toBe("1");
+        expect(process.env.NO_COLOR).toBeUndefined();
+    });
+
     it("should log with their docker compose statuses without otel services", async () => {
 
         getServiceStatusesMock.mockReturnValue({
