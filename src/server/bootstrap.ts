@@ -175,7 +175,6 @@ async function openSupervised(
             project.directory,
             groups,
             {
-                explicitStart: true,
                 initialIntent: intent,
                 lock: { acquire: heldSupervisorLease },
                 versions,

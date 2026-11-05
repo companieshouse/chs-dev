@@ -58,8 +58,6 @@ export async function daemonFixture(
     const engine = {
         applies: 0,
         stops: 0,
-        probes: 0,
-        monitors: 0,
         observations: 0,
         failStop: false,
         beforeStop: undefined as (() => Promise<void>) | undefined,
@@ -247,17 +245,10 @@ export async function daemonFixture(
                         return success();
                     },
                     logs: async () => ['fixture log'],
-                    probe: async () => {
-                        engine.probes++;
-                    },
-                    monitor: async () => {
-                        engine.monitors++;
-                    },
                 };
                 const runtime = options.runtime?.(baseRuntime) ?? baseRuntime;
                 const controller = new LiveController({
                     runtime,
-                    explicitStart: true,
                     initialIntent: intent,
                     configuration: { read: async () => revision() },
                     preparation: {

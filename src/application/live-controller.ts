@@ -47,8 +47,6 @@ export interface LiveDependencies {
     };
     eventSink?(event: LogEvent, fields?: LogFields): void;
     operation?(work: () => Promise<void>): Promise<void>;
-    /** The daemon requires a Start in this login session before adopting running intent. */
-    explicitStart?: boolean;
     initialIntent?: LiveIntent;
 }
 
@@ -75,8 +73,6 @@ type RevisionPlan = {
     observed: RuntimeSnapshot;
 };
 
-/** Exit codes from a normal stop: success, SIGINT, SIGKILL and SIGTERM. */
-const stopExitCodes = [0, 130, 137, 143];
 const isActive = (container: RuntimeContainer) =>
     isActiveContainer(container.lifecycle);
 
@@ -190,28 +186,6 @@ function authenticationFailure(
     return undefined;
 }
 
-function observedServiceHealth(
-    revision: ConfigurationRevision,
-    observed: RuntimeSnapshot,
-) {
-    const inventory = new Set(revision.inventory.map((entry) => entry.service));
-    const anyUp = observed.containers.some(
-        (container) => inventory.has(container.service) && isActive(container),
-    );
-
-    // Crashed containers mean a failing environment, not a stopped one.
-    const crashed = observed.containers.some(
-        (container) =>
-            inventory.has(container.service) &&
-            container.lifecycle === 'exited' &&
-            (container.oomKilled === true ||
-                (container.exitCode !== undefined &&
-                    !stopExitCodes.includes(container.exitCode))),
-    );
-
-    return { anyUp, crashed };
-}
-
 export class LiveController {
     private state: LiveState;
     private listeners = new Set<() => void>();
@@ -288,12 +262,11 @@ export class LiveController {
         } while (operation !== this.operation);
     }
 
-    /** Health observation stays independent of the serialized lifecycle monitor. */
+    /** Health observation stays independent of serialized lifecycle operations. */
     async probe(signal?: AbortSignal): Promise<void> {
-        if (this.closed) return;
+        if (this.closed || signal?.aborted) return;
 
-        await this.dependencies.runtime.probe?.({ signal });
-        if (!this.closed) await this.refresh();
+        await this.refresh(signal);
     }
 
     getSnapshot = (): LiveState => this.state;
@@ -381,17 +354,7 @@ export class LiveController {
     }
 
     private run_(work: () => Promise<void>) {
-        const serial = async () => {
-            if (this.polling && this.dependencies.runtime.monitor) {
-                this.update({ busy: true });
-                this.pollAbort?.abort();
-                await this.pollOperation;
-            }
-
-            return work();
-        };
-
-        this.operation = this.dependencies.operation?.(serial) ?? serial();
+        this.operation = this.dependencies.operation?.(work) ?? work();
         return this.operation;
     }
 
@@ -1212,15 +1175,17 @@ export class LiveController {
         }
     }
 
-    private async refresh() {
+    private async refresh(signal?: AbortSignal) {
+        if (this.closed) return false;
         try {
             // Cancellation must refresh using a new signal, after termination.
-            if (!this.closed) {
-                const observed = await this.dependencies.runtime.snapshot();
-                this.update({ observed });
-                return true;
-            }
+            const observed = await this.dependencies.runtime.snapshot(signal);
+            if (this.closed || signal?.aborted) return false;
+            this.update({ observed });
+            return true;
         } catch (error) {
+            if (signal?.aborted) return false;
+
             this.log(
                 `Cannot refresh container state: ${error instanceof Error ? error.message : String(error)}`,
             );
@@ -1674,15 +1639,13 @@ export class LiveController {
 
         const revision = await this.dependencies.configuration.read();
         if (this.closed || this.state.busy) return;
-        if (!(await this.startMonitor(signal))) return;
 
         const observed: RuntimeSnapshot =
             await this.dependencies.runtime.snapshot(signal);
         if (this.observationObsolete(epoch)) return;
 
         const update: Partial<LiveState> = { observed };
-        this.observeIntent(update, revision, observed);
-        update.changes = this.observeDifferences(update, revision, observed);
+        update.changes = this.observeDifferences(revision, observed);
         this.pollError = undefined;
         this.update(update);
     }
@@ -1693,82 +1656,11 @@ export class LiveController {
         );
     }
 
-    /** Keeps one monitor per checkout, sharing the same mutation lock as Apply. */
-    private async startMonitor(signal: AbortSignal): Promise<boolean> {
-        if (
-            !this.dependencies.runtime.monitor ||
-            (this.dependencies.explicitStart &&
-                !(this.state.running && !this.paused))
-        )
-            return true;
-
-        try {
-            await this.lock();
-        } catch (error) {
-            if (!(error instanceof LiveFailure)) throw error;
-        }
-        if (this.closed || this.state.busy) return false;
-        if (this.release)
-            await this.dependencies.runtime.monitor({
-                signal,
-                onOutput: (entry) => this.log(entry.text),
-            });
-        return true;
-    }
-
-    private observeIntent(
-        update: Partial<LiveState>,
-        revision: ConfigurationRevision,
-        observed: RuntimeSnapshot,
-    ) {
-        const { anyUp, crashed } = observedServiceHealth(revision, observed);
-        // The environment's intent follows reality when nothing is in progress:
-        // containers started elsewhere count as running, and a fully stopped
-        // environment counts as stopped.
-        if (
-            !this.state.running &&
-            !this.dependencies.explicitStart &&
-            this.state.phase === 'Stopped' &&
-            !this.state.plan &&
-            anyUp
-        ) {
-            update.running = true;
-            update.phase = 'Running';
-            update.message = 'Environment is running.';
-            this.baseline = revision.identity;
-            return;
-        }
-
-        this.observeStopped(update, anyUp, crashed);
-    }
-
-    private observeStopped(
-        update: Partial<LiveState>,
-        anyUp: boolean,
-        crashed: boolean,
-    ) {
-        if (
-            !this.dependencies.explicitStart &&
-            this.state.running &&
-            this.state.phase === 'Running' &&
-            !anyUp &&
-            !crashed
-        ) {
-            update.running = false;
-            update.phase = 'Stopped';
-            update.message = 'Environment stopped outside chs-dev.';
-            this.applied = undefined;
-            this.baseline = undefined;
-        }
-    }
-
     private observeDifferences(
-        update: Partial<LiveState>,
         revision: ConfigurationRevision,
         observed: RuntimeSnapshot,
     ) {
-        const running = update.running ?? this.state.running;
-        const differences = running
+        const differences = this.state.running
             ? this.changes(revision, observed)
             : undefined;
         const drifted =
@@ -1801,7 +1693,6 @@ export class LiveController {
         if (this.state.busy) this.abort?.abort();
         this.pollAbort?.abort();
         await Promise.all([this.operation, this.pollOperation]);
-        await this.dependencies.runtime.close?.();
         await this.unlock();
     }
 }

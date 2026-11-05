@@ -48,10 +48,13 @@ test('accepted work survives disconnect; clients share progress, deduplication a
             /different command/,
         );
         await eventually(() => second.getSnapshot().live.busy);
-        const probesDuringBuild = f.engine.probes;
+        const observationsDuringBuild = f.engine.observations;
         first.close();
         second.close();
-        await eventually(() => f.engine.probes > probesDuringBuild, 3000);
+        await eventually(
+            () => f.engine.observations > observationsDuringBuild,
+            3000,
+        );
         assert.equal(f.app.snapshot().live.busy, true);
         finish();
         const observer = await f.client();
@@ -61,8 +64,8 @@ test('accepted work survives disconnect; clients share progress, deduplication a
         const third = await f.client();
         assert.equal(third.getSnapshot().live.running, true);
         f.disconnect();
-        const probes = f.engine.probes;
-        await eventually(() => f.engine.probes > probes, 3000);
+        const observations = f.engine.observations;
+        await eventually(() => f.engine.observations > observations, 3000);
         assert.equal(f.app.snapshot().live.running, true);
     } finally {
         await f.close();
@@ -168,13 +171,13 @@ test('daemon recovery restores intent within a login but a new login requires St
         await f.restart(true);
         assert.equal(f.app.snapshot().live.running, false);
         assert.equal(f.engine.applies, applies);
-        const monitors = f.engine.monitors;
         await f.app.query({
             scope: f.app.snapshot().scope,
             query: 'refresh',
             args: {},
         });
-        assert.equal(f.engine.monitors, monitors);
+        assert.equal(f.engine.applies, applies);
+        assert.equal(f.app.snapshot().live.running, false);
     } finally {
         await f.close();
     }

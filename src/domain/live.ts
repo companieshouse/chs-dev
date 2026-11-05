@@ -378,9 +378,6 @@ export interface LiveApplyContext extends OperationContext {
 }
 
 export interface LiveRuntime {
-    probe?(context: OperationContext): Promise<void>;
-    monitor?(context: OperationContext): Promise<void>;
-    close?(): Promise<void>;
     checkAvailability(signal?: AbortSignal): Promise<RuntimeAvailability>;
     snapshot(signal?: AbortSignal): Promise<RuntimeSnapshot>;
     reloadApplied(

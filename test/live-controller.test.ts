@@ -62,6 +62,7 @@ function fixture() {
     let sshReady = false;
     let output = '';
     let hold: (() => Promise<void>) | undefined;
+    let observation: ((signal?: AbortSignal) => Promise<void>) | undefined;
     let partialPrepare = false;
     let partialExclusions: PreparationExclusion[] | undefined;
     let partialUnattributable: string[] | undefined;
@@ -108,7 +109,8 @@ function fixture() {
                 available,
                 message: 'Docker unavailable',
             }),
-            snapshot: async () => {
+            snapshot: async (signal) => {
+                await observation?.(signal);
                 if (observationFailure) throw observationFailure;
                 return {
                     projectName: 'chs',
@@ -271,6 +273,9 @@ function fixture() {
         stopLeaves: (next: RuntimeContainer[], error?: Error) => {
             stopRemainder = next;
             stopFailure = error;
+        },
+        observe: (fn: (signal?: AbortSignal) => Promise<void>) => {
+            observation = fn;
         },
         rejectLock: (error: Error) => {
             lockFailure = error;
@@ -779,7 +784,7 @@ test('failures do not loop, ECR requires registry login, and outside changes nev
     assert.equal(applies(f), 2);
 });
 
-test('a crashed environment stays running; one stopped everywhere becomes stopped', async () => {
+test('observing externally stopped containers preserves explicit running intent', async () => {
     const f = fixture();
     await start(f);
     f.containers([{ ...container('api'), lifecycle: 'exited', exitCode: 2 }]);
@@ -787,8 +792,13 @@ test('a crashed environment stays running; one stopped everywhere becomes stoppe
     assert.equal(f.controller.getSnapshot().running, true);
     f.containers([{ ...container('api'), lifecycle: 'exited', exitCode: 143 }]);
     await f.controller.poll();
-    assert.equal(f.controller.getSnapshot().running, false);
-    assert.equal(f.controller.getSnapshot().phase, 'Stopped');
+    assert.equal(f.controller.getSnapshot().running, true);
+    assert.equal(f.controller.getSnapshot().phase, 'Running');
+    assert.equal(
+        f.controller.getSnapshot().observed?.containers[0].exitCode,
+        143,
+    );
+    assert.deepEqual(f.controller.getSnapshot().changes?.start, ['api']);
     assert.equal(applies(f), 1);
 });
 
@@ -810,21 +820,96 @@ test('poll stages external configuration changes without retrying failed revisio
     assert.equal(f.snapshots.at(-1)?.identity, 'external');
 });
 
-test('a running environment is detected at launch without applying anything', async () => {
+test('external containers are observed at launch without adopting running intent', async () => {
     const f = fixture();
     f.containers([container('api')]);
     await f.controller.poll();
     let state = f.controller.getSnapshot();
-    assert.equal(state.running, true);
-    assert.equal(state.phase, 'Running');
+    assert.equal(state.running, false);
+    assert.equal(state.phase, 'Stopped');
+    assert.deepEqual(state.observed?.containers, [container('api')]);
     assert.equal(state.changes, undefined);
     assert.deepEqual(f.calls, []);
     f.edit('two');
     f.controller.saved();
     await settle();
     state = f.controller.getSnapshot();
-    assert.equal(state.changes?.edited, true);
+    assert.equal(state.changes, undefined);
+    assert.equal(state.running, false);
     assert.equal(applies(f), 0);
+});
+
+test('external containers cannot release explicit environment stop intent', async () => {
+    const f = fixture();
+    await start(f);
+    await f.controller.stop();
+    f.containers([container('api')]);
+    await f.controller.poll();
+    await f.controller.probe();
+    const state = f.controller.getSnapshot();
+    assert.deepEqual(state.observed?.containers, [container('api')]);
+    assert.equal(state.running, false);
+    assert.equal(state.phase, 'Stopped');
+    assert.equal(state.changes, undefined);
+    assert.equal(applies(f), 1);
+    assert.equal(
+        (await f.controller.coldStart('api', Date.now() + 1000)).ok,
+        false,
+    );
+});
+
+test('health snapshots refresh during Apply without taking lifecycle ownership', async () => {
+    const f = fixture();
+    await start(f);
+    let release!: () => void;
+    f.hold(
+        () =>
+            new Promise<void>((resolve) => {
+                release = resolve;
+            }),
+    );
+    const applying = f.controller.apply();
+    await settle();
+    f.calls.length = 0;
+    f.containers([{ ...container('api'), health: 'unhealthy' }]);
+    await f.controller.probe();
+    assert.equal(f.controller.getSnapshot().busy, true);
+    assert.equal(
+        f.controller.getSnapshot().observed?.containers[0].health,
+        'unhealthy',
+    );
+    assert.deepEqual(f.calls, []);
+    release();
+    await applying;
+});
+
+test('cancelling a health snapshot discards its late observation', async () => {
+    const f = fixture();
+    await start(f);
+    const abort = new AbortController();
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+        entered = resolve;
+    });
+    f.observe(
+        (signal) =>
+            new Promise<void>((resolve) => {
+                signal!.addEventListener('abort', () => resolve(), {
+                    once: true,
+                });
+                entered();
+            }),
+    );
+    f.containers([{ ...container('api'), health: 'unhealthy' }]);
+    const probing = f.controller.probe(abort.signal);
+    await started;
+    abort.abort();
+    await probing;
+    assert.equal(
+        f.controller.getSnapshot().observed?.containers[0].health,
+        undefined,
+    );
+    assert.equal(f.controller.getSnapshot().running, true);
 });
 
 test('saved edits wait for Apply and ordinary Apply preserves manual stops', async () => {

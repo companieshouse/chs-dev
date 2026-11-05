@@ -14,14 +14,13 @@ import { tuiLog } from './tui-log.js';
 import { activeSettings, projectStateDirectory } from './settings.js';
 import type { ServiceVersions } from './service-versions.js';
 
-const sessions = new Set<LiveController>();
 export function createLiveSession(
     runtime: RuntimeStrategy,
     directory: string,
     groups: ServiceGroup[],
-    options: Partial<
-        Pick<LiveDependencies, 'explicitStart' | 'initialIntent' | 'lock'>
-    > & { versions?: ServiceVersions } = {},
+    options: Partial<Pick<LiveDependencies, 'initialIntent' | 'lock'>> & {
+        versions?: ServiceVersions;
+    } = {},
 ) {
     if (!runtime.capabilities.apply || !runtime.live)
         throw new Error(`${runtime.name} cannot be controlled from chs-dev.`);
@@ -61,7 +60,7 @@ export function createLiveSession(
         files: sshSetupFiles,
         artifacts: state,
     });
-    const controller = new LiveController({
+    return new LiveController({
         eventSink: (event, fields) => tuiLog?.write(event, fields),
         operation: (work) => tuiLog?.scope(work) ?? work(),
         runtime: runtime.live({
@@ -83,13 +82,8 @@ export function createLiveSession(
         },
         ...options,
     });
-    sessions.add(controller);
-    return controller;
 }
+
 export async function closeLiveSession(controller: LiveController) {
     await controller.shutdown();
-    sessions.delete(controller);
-}
-export async function closeLiveSessions() {
-    await Promise.all([...sessions].map(closeLiveSession));
 }
