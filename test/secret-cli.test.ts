@@ -539,3 +539,84 @@ test('direct storage cancellation during AWS privacy probing remains a typed can
             'Secret request cancelled. A write may have reached SSM; retrieve it before retrying.',
     });
 });
+
+test('public secret CLI uses private stdin through the real AWS adapter and process executor', async () => {
+    const { mkdtemp, readFile, rm, writeFile } =
+        await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { initializeTuiLog } =
+        await import('../src/infrastructure/tui-log.js');
+    const directory = await mkdtemp(join(tmpdir(), 'chs-secret-process-'));
+    const previousPath = process.env.PATH;
+    const privateValue = 'fixture-private-value ☃\n';
+    const aws = join(directory, 'aws');
+    const source = `#!${process.execPath}
+const args = process.argv.slice(2);
+if (args.join(' ').includes('fixture-private')) process.exit(9);
+if (args[0] === 'configure') { console.log('disabled'); process.exit(0); }
+let body = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', chunk => body += chunk);
+process.stdin.on('end', () => {
+    const input = JSON.parse(body);
+    console.error('provider-private-value fixture-private-value');
+    if (input.Name === '/approved/dev/denied') {
+        console.error('An error occurred (AccessDeniedException): fixture-private-value');
+        process.exitCode = 254;
+        return;
+    }
+    if (input.Name !== '/approved/dev/name') process.exit(8);
+    if (args[1] === 'put-parameter') {
+        if (input.Value !== ${JSON.stringify(privateValue)} || input.Type !== 'SecureString') process.exit(7);
+        console.log(JSON.stringify({Version: 1}));
+    } else if (args[1] === 'get-parameter') {
+        console.log(JSON.stringify({Parameter: {Name: input.Name, Type: 'SecureString', Value: ${JSON.stringify(privateValue)}}}));
+    } else if (args[1] !== 'delete-parameter') process.exit(6);
+});
+`;
+    try {
+        await writeFile(aws, source, { mode: 0o700 });
+        // Only this owned executable is resolvable; installed AWS is unreachable.
+        process.env.PATH = directory;
+        const log = initializeTuiLog(join(directory, 'logs'));
+        for (const action of ['create', 'get', 'update', 'delete']) {
+            const result = await run(
+                [
+                    'secret',
+                    action,
+                    'name',
+                    ...flags,
+                    ...(action === 'get' ? ['--reveal'] : ['--json']),
+                ],
+                {
+                    readSecretInput: async () => privateValue,
+                },
+            );
+            assert.equal(result.code, 0, result.output + result.errors);
+            assert.equal(result.errors, '');
+            if (action === 'get') assert.equal(result.output, privateValue);
+            else assert.equal(result.output.includes('fixture-private'), false);
+        }
+        const denied = await run([
+            'secret',
+            'get',
+            'denied',
+            ...flags,
+            '--reveal',
+        ]);
+        assert.equal(denied.code, 1);
+        assert.match(denied.errors, /Secret access denied/);
+        assert.equal(denied.output, '');
+        assert.equal(denied.errors.includes('fixture-private'), false);
+        assert.equal(denied.errors.includes('provider-private'), false);
+        const diagnostic = await readFile(log.path, 'utf8');
+        assert.match(diagnostic, /"event":"process"/);
+        assert.equal(diagnostic.includes('fixture-private'), false);
+        assert.equal(diagnostic.includes('provider-private'), false);
+    } finally {
+        if (previousPath === undefined) delete process.env.PATH;
+        else process.env.PATH = previousPath;
+        await rm(directory, { recursive: true, force: true });
+    }
+});

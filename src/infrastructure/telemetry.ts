@@ -69,10 +69,11 @@ export function telemetryEnvironment(
     env: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv {
     const configuration = telemetryConfiguration(env);
-    if (!safeEndpoint(configuration)) return { CHS_DEV_TELEMETRY: 'off' };
+    const endpoint = safeEndpoint(configuration);
+    if (!endpoint) return { CHS_DEV_TELEMETRY: 'off' };
     return {
         CHS_DEV_TELEMETRY: 'on',
-        CHS_DEV_TELEMETRY_ENDPOINT: configuration!.endpoint,
+        CHS_DEV_TELEMETRY_ENDPOINT: endpoint.href,
         CHS_DEV_TELEMETRY_INSTALL_ID: configuration!.installId,
     };
 }

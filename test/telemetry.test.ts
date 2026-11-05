@@ -171,7 +171,11 @@ test('shared application reports each accepted operation once, including failure
     }
 });
 
-test('collection is disabled without explicit opt-in and endpoint, UUID and transport validation fail closed', async () => {
+test('collection is disabled without explicit opt-in and endpoint, UUID and transport validation fail closed', async (context) => {
+    const clients: ReturnType<typeof createTelemetry>[] = [];
+    context.after(() => {
+        for (const client of clients) client.close();
+    });
     let sends = 0;
     const send = async () => {
         sends++;
@@ -192,7 +196,7 @@ test('collection is disabled without explicit opt-in and endpoint, UUID and tran
             state: 'succeeded',
             durationMs: 1,
         });
-        client.close();
+        clients.push(client);
     }
     for (const configuration of [
         {
@@ -238,8 +242,11 @@ test('collection is disabled without explicit opt-in and endpoint, UUID and tran
             state: 'succeeded',
             durationMs: 1,
         });
-        client.close();
+        clients.push(client);
     }
+    await new Promise((resolve) => {
+        setTimeout(resolve, 1100);
+    });
     assert.equal(sends, 0);
 });
 
@@ -539,4 +546,91 @@ test('login startup retains only valid opt-in configuration and strips private e
     assert.equal(plist.includes('private-startup-token'), false);
     assert.equal(plist.includes('private-query'), false);
     assert.equal(daemonEnvironment(privateEnv).CHS_DEV_TELEMETRY, 'off');
+});
+
+test('login startup persists only the normalized validated telemetry URL', async () => {
+    const { launchAgentPlist } =
+        await import('../src/daemon-control/macos/launch-agent.js');
+    const endpoint = 'https://telemetry.example/private-path-token/../events';
+    const plist = launchAgentPlist({
+        CHS_DEV_TELEMETRY: 'on',
+        CHS_DEV_TELEMETRY_ENDPOINT: endpoint,
+        CHS_DEV_TELEMETRY_INSTALL_ID: installId,
+    });
+    assert.equal(plist.includes('private-path-token'), false);
+    assert.match(
+        plist,
+        /<key>CHS_DEV_TELEMETRY_ENDPOINT<\/key><string>https:\/\/telemetry\.example\/events<\/string>/,
+    );
+});
+
+test('rejected requests and restored interrupted operations emit no new completion telemetry', async () => {
+    const { daemonFixture } = await import('./daemon-fixture.js');
+    const { Operations } = await import('../src/application/operations.js');
+    const server = await receiver();
+    const telemetry = createTelemetry({
+        enabled: true,
+        endpoint: server.endpoint,
+        installId,
+    });
+    const fixture = await daemonFixture(undefined, undefined, {
+        completed: (completion) => telemetry.record(completion),
+    });
+    const recovered = new Operations(
+        {
+            read: async () => [
+                {
+                    id: 'private-recovered-operation',
+                    requestId: 'private-recovered-request',
+                    clientId: 'private-recovered-client',
+                    kind: 'environment.start',
+                    state: 'running',
+                    fingerprint: 'private-fingerprint',
+                    scope: {
+                        project: '/private-recovered-project',
+                        generation: 'old-generation',
+                    },
+                    createdAt: '2026-11-05T00:00:00.000Z',
+                    updatedAt: '2026-11-05T00:00:01.000Z',
+                },
+            ],
+            write: async () => {},
+            fingerprint: () => 'unused',
+            id: () => 'unused',
+        },
+        () => {},
+        (completion) => telemetry.record(completion),
+    );
+    try {
+        const client = await fixture.client();
+        await assert.rejects(
+            client.submit(
+                'environment.stop',
+                {},
+                { project: fixture.directory, generation: 'stale-generation' },
+            ),
+        );
+        assert.equal(fixture.operations.list().length, 0);
+        await recovered.initialize();
+        assert.equal(
+            recovered.get('private-recovered-operation').state,
+            'interrupted',
+        );
+        await new Promise((resolve) => {
+            setTimeout(resolve, 1100);
+        });
+        assert.equal(server.events.length, 0);
+        await client.command('environment.start', {});
+        await eventually(() => server.events.length === 1);
+        assert.equal((server.events[0] as any).command, 'environment.start');
+        assert.equal(
+            JSON.stringify(server.events).includes('private-recovered'),
+            false,
+        );
+    } finally {
+        await recovered.close();
+        await fixture.close();
+        telemetry.close();
+        await server.close();
+    }
 });
