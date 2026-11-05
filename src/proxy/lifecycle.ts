@@ -8,8 +8,6 @@ export const COLD_START_HOLD_MS = 90_000;
 export const COLD_START_POLL_MS = 500;
 export const IDLE_UNLOAD_MS = 30 * 60_000;
 export const IDLE_SWEEP_MS = 60_000;
-/** Cached lifetime of the lazy-service set from the checkout definitions. */
-export const LAZY_REFRESH_MS = 30_000;
 
 /** Structured proxy event fields; the log allowlist admits exactly these. */
 export interface ProxyEvent {

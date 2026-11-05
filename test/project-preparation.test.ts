@@ -229,6 +229,10 @@ test('mock preparation replaces the service, omits its dependencies and preserve
     assert.equal(mock.environment.AWS_ACCESS_KEY_ID, undefined);
     assert.equal(mock.labels['chs.dev.mode'], 'Mock');
     assert.deepEqual(Object.keys(mock.depends_on), ['chs-dev-microcks']);
+    assert.deepEqual(
+        JSON.parse(mock.labels['chs.dev.lifecycle']).dependencies,
+        ['chs-dev-microcks'],
+    );
     assert.deepEqual(prepared.environmentRequirements, []);
     assert.deepEqual(prepared.sshRequirements, []);
     assert.equal(
@@ -287,6 +291,10 @@ test('the Felix mock needs no validation dependencies, private credentials, debu
     const mock = parse(f.files.get(prepared.composeFiles[0])!).services
         .felixvalidator;
     assert.deepEqual(Object.keys(mock.depends_on), ['chs-dev-microcks']);
+    assert.deepEqual(
+        JSON.parse(mock.labels['chs.dev.lifecycle']).dependencies,
+        ['chs-dev-microcks'],
+    );
     assert.match(String(mock.ports[0]), /^127\.0\.0\.1:\d{4,5}:8080$/);
     assert.deepEqual(prepared.environmentRequirements, []);
     assert.deepEqual(prepared.sshRequirements, []);
@@ -414,6 +422,21 @@ test('builder helpers keep ordering and write out and touch paths to the operati
     assert.ok(f.files.has('/state/one/.touch'));
     assert.ok(services.app.depends_on['app-builder']);
     assert.ok(services.app.depends_on.database);
+    assert.deepEqual(
+        JSON.parse(
+            services.app.labels['chs.dev.lifecycle'],
+        ).dependencies.sort(),
+        ['app-builder', 'database'],
+    );
+    assert.equal(
+        services.app.depends_on['app-builder'].condition,
+        'service_completed_successfully',
+    );
+    assert.deepEqual(
+        JSON.parse(services['app-builder'].labels['chs.dev.lifecycle'])
+            .dependencies,
+        [],
+    );
     assert.equal(
         services['app-builder'].labels['chs.dev.owner-service'],
         'app',
@@ -1040,4 +1063,31 @@ test('services forwarding to the retired ingress-proxy are pointed at the daemon
     assert.deepEqual(services.other.environment, [
         'UPSTREAM=http://ingress-proxy/path',
     ]);
+});
+
+test('prepared lifecycle metadata records resolved lazy policy and generated dependencies', async () => {
+    const f = fixture({
+        services: ['app'],
+        serviceStartModes: { app: 'lazy' },
+    });
+    const result = await prepareProject(f.request, f.dependencies);
+    const services = parse(f.files.get(result.composeFiles[0]!)!).services;
+    assert.deepEqual(JSON.parse(services.app.labels['chs.dev.lifecycle']), {
+        version: 1,
+        lazy: true,
+        reclaimable: false,
+        dependencies: ['database'],
+    });
+    assert.deepEqual(
+        JSON.parse(services.database.labels['chs.dev.lifecycle']),
+        {
+            version: 1,
+            lazy: true,
+            reclaimable: true,
+            dependencies: [],
+        },
+    );
+    assert.deepEqual(services.app.depends_on.database, {
+        condition: 'service_healthy',
+    });
 });

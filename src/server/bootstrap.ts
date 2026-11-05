@@ -503,7 +503,6 @@ export async function createApplication(
         accounting,
         controller: () => active.controller,
         ledger,
-        usageCache: usageCacheEnabled,
     });
     const host = createApplicationHost(settings, state, sessionIdentity, {
         runtime: options.runtime,

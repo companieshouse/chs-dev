@@ -3,12 +3,15 @@ import type {
     ContainerManager,
     ContainerSummary,
 } from '../domain/containers.js';
+import { appliedServicePolicy, lifecycleLabel } from '../domain/live.js';
 import { routeTable, type Route, type RouteSource } from './routes.js';
 import { healthcheckPaths } from './accounting.js';
 import type { RequestAccounting } from './accounting.js';
 
 export interface ResolvedRoutes {
     routes: Route[];
+    lazy: Set<string>;
+    dependencies: Map<string, readonly string[]>;
     /** Routing-network address per service. */
     addresses: Map<string, string>;
     /** Published host port per service container port, when published. */
@@ -16,9 +19,9 @@ export interface ResolvedRoutes {
 }
 
 /**
- * Builds routes from the containers that are actually running — the same
- * view Traefik's docker provider sees — and caches them until the container
- * set changes. Requests hit the cached table; only a changed fingerprint
+ * Builds routes and lifecycle policy from owned applied containers, including
+ * stopped lazy containers. Only running containers provide upstream addresses.
+ * Requests hit the cached table; only a changed fingerprint
  * triggers fresh inspections. When a service's container starts, stops, or
  * is recreated, its request counters reset.
  */
@@ -37,14 +40,16 @@ export function createRouteBuilder(
     return {
         async current(): Promise<ResolvedRoutes> {
             if (inflight) return inflight;
-            const containers = await manager.list();
+            const containers = (await manager.list()).filter(
+                (container) => container.currentProject,
+            );
             const perService = fingerprintByService(containers);
             const fingerprint = [...perService.entries()]
                 .map(([service, mark]) => `${service}=${mark}`)
                 .sort()
                 .join('|');
             if (cache?.fingerprint === fingerprint) return cache.resolved;
-            inflight = this.rebuild(containers).then((resolved) => {
+            inflight = rebuild(manager, containers).then((resolved) => {
                 resetChanged(accounting, cache?.perService, perService);
                 cache = { fingerprint, perService, resolved };
                 return resolved;
@@ -55,8 +60,6 @@ export function createRouteBuilder(
                 inflight = undefined;
             }
         },
-        rebuild: (containers: ContainerSummary[]) =>
-            rebuild(manager, containers),
     };
 }
 
@@ -82,6 +85,26 @@ function resetChanged(
 
 const UNROUTED = new Set(['ingress-proxy', 'chs-dev-microcks']);
 
+async function inspectApplied(
+    manager: ContainerManager,
+    container: ContainerSummary,
+) {
+    if (!container.service || container.service === 'ingress-proxy')
+        return undefined;
+    const details = await manager.inspect(container.id);
+    const labeled = serviceLabels(details);
+    if (!labeled) return undefined;
+    return {
+        service: container.service,
+        details,
+        labeled,
+        policy: appliedServicePolicy(
+            labeled[lifecycleLabel],
+            container.service,
+        ),
+    };
+}
+
 async function rebuild(
     manager: ContainerManager,
     containers: ContainerSummary[],
@@ -89,22 +112,37 @@ async function rebuild(
     const addresses = new Map<string, string>();
     const published = new Map<string, Map<number, number>>();
     const sources: RouteSource[] = [];
+    const lazy = new Set<string>();
+    const dependencies = new Map<string, readonly string[]>();
     for (const container of containers) {
-        if (!container.service || UNROUTED.has(container.service)) continue;
-        if (!isRunning(container.state)) continue;
-        const details = await manager.inspect(container.id);
-        const labeled = serviceLabels(details);
-        if (!labeled) continue;
-        addresses.set(container.service, addressOf(details));
-        published.set(container.service, publishedPorts(details));
+        const applied = await inspectApplied(manager, container);
+        if (!applied) continue;
+        const { service, details, labeled, policy } = applied;
+        dependencies.set(service, policy.dependencies);
+        if (policy.lazy || policy.reclaimable) lazy.add(service);
+        if (!routable(container.state, service, lazy)) continue;
+        if (isRunning(container.state)) {
+            addresses.set(service, addressOf(details));
+            published.set(service, publishedPorts(details));
+        }
         sources.push({
-            service: container.service,
+            service,
             labels: labeled,
             containerPorts: containerPorts(details),
             healthcheckPaths: probePaths(details, labeled),
         });
     }
-    return { routes: routeTable(sources), addresses, published };
+    return {
+        routes: routeTable(sources),
+        addresses,
+        published,
+        lazy,
+        dependencies,
+    };
+}
+
+function routable(state: string, service: string, lazy: ReadonlySet<string>) {
+    return !UNROUTED.has(service) && (isRunning(state) || lazy.has(service));
 }
 
 function isRunning(state: string) {

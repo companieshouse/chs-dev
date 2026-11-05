@@ -1,43 +1,26 @@
-import { join } from 'node:path';
-import { realpath } from 'node:fs/promises';
 import { createProxyServer, type ProxyUpstream } from '../proxy/server.js';
-import { createRouteBuilder, type ResolvedRoutes } from '../proxy/builder.js';
+import { createRouteBuilder } from '../proxy/builder.js';
 import {
     createAccounting,
-    healthcheckPaths,
     type RequestAccounting,
 } from '../proxy/accounting.js';
 import type { UsageLedger } from '../proxy/usage-ledger.js';
 import {
     createLazyLifecycle,
     IDLE_SWEEP_MS,
-    LAZY_REFRESH_MS,
     lazyChain,
     type ProxyLog,
     type ServiceLifecycle,
 } from '../proxy/lifecycle.js';
-import { mergeRoutes, routeTable, type Route } from '../proxy/routes.js';
+import type { Route } from '../proxy/routes.js';
 import type { ContainerManager } from '../domain/containers.js';
 import type { LiveController } from '../application/live-controller.js';
 import type { RuntimeStrategy } from '../domain/runtime-strategy.js';
-import { readProjectConfig } from '../project/config.js';
-import { labels, type Mapping } from '../project/compose.js';
-import {
-    loadDefinitions,
-    readState,
-    resolveSelection,
-} from '../project/resolve.js';
-import { loadUsagePolicy } from '../project/usage-cache.js';
-import { selectedJourney } from '../project/journeys.js';
-import { nodeProjectFs } from '../project/files.js';
 import { DockerComposeStrategy } from '../infrastructure/runtimes/docker-compose.js';
 import { tuiLog } from '../infrastructure/tui-log.js';
 
 /** The host port the current ingress (Traefik) listens on. */
 export const PROXY_PORT = 80;
-
-/** Cached-route lifetime; applies converge within this window. */
-const ROUTE_REFRESH_MS = 2000;
 
 /** How long the proxy waits before retrying a busy ingress port. */
 const BIND_RETRY_MS = 30_000;
@@ -61,8 +44,8 @@ export interface DaemonProxy {
 
 /**
  * Hosts the label-driven reverse proxy inside the daemon. Routes come from
- * the running containers plus the checkout's lazy definitions (so a stopped
- * lazy service still routes), upstreams are the same containers and ports
+ * applied container metadata, including stopped lazy containers. Upstreams
+ * are the same containers and ports
  * Traefik picks, and lazy services cold-start on request and unload when
  * idle. Binding is best-effort: while Traefik still owns the ingress port
  * the proxy logs and stays idle, leaving Traefik unaffected.
@@ -74,8 +57,6 @@ export function startDaemonProxy(
         controller?: () => LiveController | undefined;
         /** Per-run usage evidence for the usage cache. */
         ledger?: UsageLedger;
-        /** Whether learned usage modes apply; polled per route refresh. */
-        usageCache?: () => boolean;
         /** Test override for the busy-port retry interval. */
         bindRetryMs?: number;
         /** Test override for the ingress port. */
@@ -84,7 +65,6 @@ export function startDaemonProxy(
 ): DaemonProxy {
     const runtime = options.runtime?.() ?? new DockerComposeStrategy();
     const accounting = options.accounting ?? createAccounting();
-    const usageCache = options.usageCache;
     const port = options.portOverride ?? PROXY_PORT;
     const log: ProxyLog = (message, event) => {
         tuiLog?.write('proxy', { ...event });
@@ -96,8 +76,7 @@ export function startDaemonProxy(
         runtime,
         accounting,
         lifecycle,
-        log,
-        usageCache,
+        controller: options.controller,
     });
     routingRef.current = routing;
     const server = createProxyServer({
@@ -170,201 +149,61 @@ function retryableBind(error: NodeJS.ErrnoException) {
     return error.code === 'EACCES' || error.code === 'EADDRINUSE';
 }
 
-interface RoutingState {
-    active?: { directory: string; manager: ContainerManager };
-    builder?: ReturnType<typeof createRouteBuilder>;
-    cached?: { at: number; resolved: ResolvedRoutes };
-    lazyCache?:
-        { directory: string; at: number; services: Set<string> } | undefined;
-    dependencies: Map<string, readonly string[]>;
-    readonly knownLazy: Set<string>;
-}
-
+/** Routes and lifecycle policy come from applied containers, never saved edits. */
 function createRouting(deps: {
     runtime: RuntimeStrategy;
     accounting: RequestAccounting;
     lifecycle: ServiceLifecycle;
-    log(message: string): void;
-    usageCache?: () => boolean;
+    controller?: () => LiveController | undefined;
 }) {
-    const state: RoutingState = {
-        knownLazy: new Set(),
-        dependencies: new Map(),
-    };
+    const knownLazy = new Set<string>();
+    let active: { directory: string; manager: ContainerManager } | undefined;
+    let builder: ReturnType<typeof createRouteBuilder> | undefined;
+    let dependencies = new Map<string, readonly string[]>();
 
-    const projectManager = async () => {
-        const project = await readProjectConfig();
-        if (!project.valid) return undefined;
-        const directory = await realpath(project.directory);
-        if (state.active?.directory === directory) return state.active;
+    const currentBuilder = () => {
+        const directory = deps.controller?.()?.getSnapshot()
+            .observed?.projectDirectory;
+        if (!directory) return undefined;
+        if (active?.directory === directory) return builder;
         const manager = deps.runtime.containers?.({ directory });
         if (!manager) return undefined;
-        state.active = { directory, manager };
-        state.builder = undefined;
-        state.cached = undefined;
-        state.lazyCache = undefined;
-        return state.active;
+        active = { directory, manager };
+        builder = createRouteBuilder(manager, deps.accounting);
+        return builder;
     };
-
-    const refresh = async (project: {
-        directory: string;
-        manager: ContainerManager;
-    }): Promise<ResolvedRoutes> => {
-        state.builder ??= createRouteBuilder(project.manager, deps.accounting);
-        const resolved = await state.builder.current();
-        const sets = await checkoutLazySets(project.directory, deps.usageCache);
-        state.dependencies = sets.dependencies;
-        state.knownLazy.clear();
-        for (const service of sets.lazy) state.knownLazy.add(service);
-        for (const service of sets.reclaimable) state.knownLazy.add(service);
-        for (const service of state.knownLazy)
+    const refresh = async () => {
+        const current = currentBuilder();
+        if (!current) return undefined;
+        const resolved = await current.current();
+        dependencies = resolved.dependencies;
+        knownLazy.clear();
+        for (const service of resolved.lazy) knownLazy.add(service);
+        for (const service of knownLazy) {
             if (
                 resolved.addresses.has(service) ||
                 resolved.published.has(service)
             )
                 deps.lifecycle.seen(service);
+        }
         return resolved;
     };
 
-    const routes = async (): Promise<Route[]> => {
-        const project = await projectManager();
-        if (!project) return [];
-        if (state.cached && Date.now() - state.cached.at < ROUTE_REFRESH_MS)
-            return state.cached.resolved.routes;
-        const resolved = await refresh(project);
-        state.cached = { at: Date.now(), resolved };
-        let lazy: Route[] = [];
-        try {
-            lazy = await checkoutLazyRoutes(project.directory, deps.usageCache);
-        } catch (error) {
-            deps.log(
-                `lazy route load failed: ${error instanceof Error ? error.message : String(error)}`,
-            );
-        }
-        return mergeRoutes(resolved.routes, lazy);
-    };
-
+    const routes = async (): Promise<Route[]> =>
+        (await refresh())?.routes ?? [];
     const upstream = async (
         route: Route,
     ): Promise<ProxyUpstream | undefined> => {
-        const project = await projectManager();
-        if (!project) return undefined;
-        const resolved = await refresh(project);
-        state.cached = { at: Date.now(), resolved };
+        const resolved = await refresh();
+        if (!resolved) return undefined;
         const hostPort = resolved.published.get(route.service)?.get(route.port);
         if (hostPort) return { host: '127.0.0.1', port: hostPort };
         const address = resolved.addresses.get(route.service);
         return address ? { host: address, port: route.port } : undefined;
     };
-
     const chainFor = (service: string): string[] =>
-        lazyChain(service, state.dependencies);
-
-    return { routes, upstream, knownLazy: state.knownLazy, chainFor };
-}
-
-/** Cached lazy and reclaimable sets; keyed by directory, refreshed at LAZY_REFRESH_MS. */
-let lazySetsCache:
-    | {
-          directory: string;
-          at: number;
-          lazy: Set<string>;
-          reclaimable: Set<string>;
-          dependencies: Map<string, readonly string[]>;
-      }
-    | undefined;
-
-/**
- * Proxy-managed services from the checkout definitions: lazy ones (journey
- * or label) plus derived members the usage cache may reclaim. Both sets
- * route, cold-start on request and idle-unload; briefly cached.
- */
-async function checkoutLazySets(
-    directory: string,
-    usageCache?: () => boolean,
-): Promise<{
-    lazy: Set<string>;
-    reclaimable: Set<string>;
-    dependencies: Map<string, readonly string[]>;
-}> {
-    if (
-        lazySetsCache?.directory === directory &&
-        Date.now() - lazySetsCache.at < LAZY_REFRESH_MS
-    )
-        return lazySetsCache;
-    const { definitions } = await loadDefinitions(directory, nodeProjectFs);
-    const state = readState(
-        await nodeProjectFs.readFile(join(directory, '.chs-dev.yaml')),
-    );
-    const journey = await selectedJourney(
-        directory,
-        state.journey,
-        nodeProjectFs,
-    );
-    const usage = await loadUsagePolicy(
-        directory,
-        usageCache?.() ?? false,
-        nodeProjectFs,
-    );
-    const { entries, dependencies } = resolveSelection(
-        definitions,
-        state,
-        journey,
-        usage,
-    );
-    const lazy = new Set(
-        entries.filter((entry) => entry.lazy).map((entry) => entry.service),
-    );
-    const reclaimable = new Set(
-        entries
-            .filter((entry) => entry.reclaimable)
-            .map((entry) => entry.service),
-    );
-    lazySetsCache = {
-        directory,
-        at: Date.now(),
-        lazy,
-        reclaimable,
-        dependencies,
-    };
-    return lazySetsCache;
-}
-
-/** Definition-based routes for proxy-managed services, stopped ones included. */
-async function checkoutLazyRoutes(
-    directory: string,
-    usageCache?: () => boolean,
-): Promise<Route[]> {
-    const { definitions } = await loadDefinitions(directory, nodeProjectFs);
-    const { lazy, reclaimable } = await checkoutLazySets(directory, usageCache);
-    const sources = [...lazy, ...reclaimable]
-        .filter((service) => definitions.has(service))
-        .map((service) => {
-            const spec = definitions.get(service)!.spec;
-            return {
-                service,
-                labels: labels(spec.labels),
-                containerPorts: exposedPorts(spec),
-                healthcheckPaths: healthcheckPaths(spec.healthcheck),
-            };
-        });
-    return routeTable(sources);
-}
-
-/** Container ports a compose spec exposes or publishes, for LB-port fallback. */
-function exposedPorts(spec: Mapping): number[] {
-    const exposed = Array.isArray(spec.expose) ? spec.expose : [];
-    const declared = Array.isArray(spec.ports) ? spec.ports : [];
-    const ports = new Set<number>();
-    for (const entry of [...exposed, ...declared]) {
-        const value = Number(
-            typeof entry === 'string'
-                ? entry.split(':').at(-1)!.split('/')[0]
-                : entry,
-        );
-        if (Number.isFinite(value) && value > 0) ports.add(value);
-    }
-    return [...ports].sort((a, b) => a - b);
+        lazyChain(service, dependencies);
+    return { routes, upstream, knownLazy, chainFor };
 }
 
 /**

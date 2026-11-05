@@ -10,6 +10,7 @@ import {
 import { parse, stringify } from 'yaml';
 import type { InventoryEntry, PreparedProject } from '../domain/live.js';
 import {
+    lifecycleLabel,
     mockRuntimeService,
     mockOnlyInventory,
     withMockRuntime,
@@ -507,6 +508,31 @@ function applyImagePin(
     spec.image = image;
 }
 
+function recordLifecycle(
+    document: Mapping,
+    inventory: readonly InventoryEntry[],
+) {
+    const owners = new Map(inventory.map((entry) => [entry.service, entry]));
+    for (const [service, spec] of Object.entries(
+        document.services as Mapping,
+    )) {
+        const owner = owners.get(
+            spec.labels?.['chs.dev.owner-service'] ?? service,
+        );
+        spec.labels = {
+            ...labels(spec.labels),
+            [lifecycleLabel]: JSON.stringify({
+                version: 1,
+                lazy: Boolean(owner?.lazy),
+                reclaimable: Boolean(owner?.reclaimable),
+                dependencies: Array.isArray(spec.depends_on)
+                    ? spec.depends_on
+                    : Object.keys(spec.depends_on ?? {}),
+            }),
+        };
+    }
+}
+
 function pruneDependencies(document: Mapping): void {
     const selected = new Set(Object.keys(document.services));
     for (const spec of Object.values(document.services as Mapping)) {
@@ -820,6 +846,7 @@ export async function prepareProject(
         definitions,
         durable.inventory,
     );
+    recordLifecycle(document, durable.inventory);
     progress('Validating referenced files');
     await (dependencies.validate ?? ((d) => validateDocument(fs, d)))(document);
     const composeFile = await writeArtifacts(fs, output, document);

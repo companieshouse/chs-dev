@@ -21,6 +21,7 @@ function container(
         status: state,
         service,
         project: 'checkout',
+        currentProject: true,
     };
 }
 
@@ -40,7 +41,10 @@ function details(
         inspection: {
             Config: {
                 Labels: Object.fromEntries(
-                    labels.map((label) => {
+                    [
+                        'chs.dev.lifecycle={"version":1,"lazy":false,"reclaimable":false,"dependencies":[]}',
+                        ...labels,
+                    ].map((label) => {
                         const index = label.indexOf('=');
                         return [label.slice(0, index), label.slice(index + 1)];
                     }),
@@ -87,6 +91,7 @@ test('routes come from running labeled containers on the chs network', async () 
         unlabeled: details('mongo', [], '172.21.0.11'),
         proxy: details('ingress-proxy', ROUTED, '172.21.0.12'),
         mock: details('chs-dev-microcks', ROUTED, '172.21.0.13'),
+        stopped: details('company-profile-api', [], ''),
     };
     const { manager } = stub(
         [
@@ -184,4 +189,57 @@ test('counters reset when a service starts, stops, or is recreated', async () =>
     inspections['web-2'] = inspections['web-1']!;
     await builder.current();
     assert.deepEqual(accounting.snapshot(), { counts: {}, excluded: {} });
+});
+
+test('applied metadata keeps stopped lazy routes and generated dependencies across cached reads', async () => {
+    const stopped = container('lazy-api', 'api', 'Created');
+    const inspection = details(
+        'api',
+        [
+            'traefik.http.routers.api.rule=Host(`api.chs.local`)',
+            'traefik.http.services.api.loadbalancer.server.port=8080',
+            'chs.dev.lifecycle={"version":1,"lazy":true,"reclaimable":false,"dependencies":["build-api","chs-dev-microcks"]}',
+        ],
+        '',
+    );
+    const fake = stub([stopped], { 'lazy-api': inspection });
+    const builder = createRouteBuilder(fake.manager);
+    const first = await builder.current();
+    const cached = await builder.current();
+    assert.equal(first.routes.length, 1);
+    assert.equal(first.routes[0]?.matches('api.chs.local', '/'), true);
+    assert.equal(cached.routes.length, 1);
+    assert.deepEqual([...cached.lazy], ['api']);
+    assert.deepEqual(cached.dependencies.get('api'), [
+        'build-api',
+        'chs-dev-microcks',
+    ]);
+    assert.equal(cached.addresses.has('api'), false);
+    assert.equal(cached.published.has('api'), false);
+});
+
+test('applied routing rejects missing or unsupported lifecycle metadata with an Apply instruction', async () => {
+    for (const policy of [undefined, 'not-json', '{"version":2}']) {
+        const inspection = details('api', ROUTED, '127.0.0.1');
+        const configuration = inspection.inspection as {
+            Config: { Labels: Record<string, unknown> };
+        };
+        configuration.Config.Labels['chs.dev.lifecycle'] = policy;
+        const fake = stub([container('api', 'api')], { api: inspection });
+        await assert.rejects(
+            createRouteBuilder(fake.manager).current(),
+            /metadata.*api.*Apply configuration/,
+        );
+    }
+});
+
+test('foreign checkout containers cannot supply routes or lifecycle policy', async () => {
+    const foreign = { ...container('foreign', 'api'), currentProject: false };
+    const fake = stub([foreign], {
+        foreign: details('api', ROUTED, '127.0.0.1'),
+    });
+    const resolved = await createRouteBuilder(fake.manager).current();
+    assert.deepEqual(resolved.routes, []);
+    assert.deepEqual([...resolved.lazy], []);
+    assert.deepEqual([...resolved.dependencies], []);
 });

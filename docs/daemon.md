@@ -53,6 +53,18 @@ settings; if an environment variable pins a value, update the login service's st
 environment with `install`. Relative `CHS_DEV_PROJECT` values are resolved at launch,
 before a background process changes directory.
 
+## Applied proxy policy
+
+Apply writes resolved lazy/reclaimable policy and generated dependency names into
+container metadata. The proxy reads that applied metadata, including stopped
+lazy containers, so saving a journey, provider, start mode or route does not alter
+routing before Apply. Cached reads keep the same stopped-service routes.
+
+Existing containers with missing or unsupported lifecycle metadata report an
+instruction to Apply configuration. The proxy never reconstructs that policy from
+pending saved files. Generated Compose dependencies keep their original readiness
+and completion conditions; metadata records their names for lifecycle protection.
+
 ## Local protocol
 
 HTTP/JSON and SSE run over the Unix socket. The typed contract is in

@@ -24,6 +24,42 @@ export interface InventoryEntry {
     reclaimable?: boolean;
 }
 
+/** Effective lifecycle policy written into each immutable prepared container. */
+export const lifecycleLabel = 'chs.dev.lifecycle';
+
+export interface AppliedServicePolicy {
+    version: 1;
+    lazy: boolean;
+    reclaimable: boolean;
+    dependencies: string[];
+}
+
+export function appliedServicePolicy(
+    raw: unknown,
+    service: string,
+): AppliedServicePolicy {
+    let value: Partial<AppliedServicePolicy> | undefined;
+    try {
+        value = typeof raw === 'string' ? JSON.parse(raw) : undefined;
+    } catch {
+        value = undefined;
+    }
+    if (
+        value?.version !== 1 ||
+        typeof value.lazy !== 'boolean' ||
+        typeof value.reclaimable !== 'boolean' ||
+        !Array.isArray(value.dependencies) ||
+        !value.dependencies.every(
+            (name) => typeof name === 'string' && name.length > 0,
+        )
+    )
+        throw new LiveFailure(
+            `Applied lifecycle metadata is missing or unsupported for ${service}. Apply configuration before using lazy services.`,
+            'blocked',
+        );
+    return value as AppliedServicePolicy;
+}
+
 export const mockRuntimeService = 'chs-dev-microcks';
 
 /** The legacy Traefik container in the checkout's infrastructure compose. */
