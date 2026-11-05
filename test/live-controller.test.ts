@@ -49,6 +49,9 @@ function fixture() {
         inventory: [{ service: 'api', mode: 'Service' }],
     };
     let containers: RuntimeContainer[] = [];
+    let stopRemainder: RuntimeContainer[] | undefined;
+    let stopFailure: Error | undefined;
+    let observationFailure: Error | undefined;
     let aws = 'active';
     let preparationFailure: Error | undefined;
     let applyFailure: Error | undefined;
@@ -105,11 +108,14 @@ function fixture() {
                 available,
                 message: 'Docker unavailable',
             }),
-            snapshot: async () => ({
-                projectName: 'chs',
-                projectDirectory: '/project',
-                containers: [...containers],
-            }),
+            snapshot: async () => {
+                if (observationFailure) throw observationFailure;
+                return {
+                    projectName: 'chs',
+                    projectDirectory: '/project',
+                    containers: [...containers],
+                };
+            },
             startApplied: async (service, context) => {
                 context.signal?.throwIfAborted();
                 calls.push(`cold:${service}`);
@@ -147,7 +153,8 @@ function fixture() {
             },
             stopProject: async () => {
                 calls.push('stopProject');
-                containers = [];
+                containers = stopRemainder ?? [];
+                if (stopFailure) throw stopFailure;
                 return {
                     outcome: 'success',
                     message: '',
@@ -258,6 +265,13 @@ function fixture() {
     });
     return {
         controller,
+        failObservation: (error: Error) => {
+            observationFailure = error;
+        },
+        stopLeaves: (next: RuntimeContainer[], error?: Error) => {
+            stopRemainder = next;
+            stopFailure = error;
+        },
         rejectLock: (error: Error) => {
             lockFailure = error;
         },
@@ -1323,4 +1337,68 @@ test('traffic waiting behind Apply expires without starting after the deadline',
         f.calls.some((call) => call.startsWith('cold:')),
         false,
     );
+});
+
+test('Stop reports remaining owned containers even when the engine claims successful cleanup', async () => {
+    const f = fixture();
+    await start(f);
+    f.stopLeaves([container('api')]);
+    await f.controller.stop();
+    const state = f.controller.getSnapshot();
+    assert.equal(state.running, false);
+    assert.equal(state.phase, 'Failed');
+    assert.match(
+        state.message,
+        /Stop incomplete.*Owned containers remaining: 1/i,
+    );
+    assert.equal(state.observed?.containers[0]?.id, 'api');
+});
+
+test('Stop keeps partial cleanup failure and actual remaining containers visible', async () => {
+    const f = fixture();
+    await start(f);
+    f.stopLeaves(
+        [{ ...container('api'), lifecycle: 'exited', exitCode: 143 }],
+        new Error('Engine removal failed'),
+    );
+    await f.controller.stop();
+    assert.equal(f.controller.getSnapshot().running, false);
+    assert.equal(f.controller.getSnapshot().phase, 'Failed');
+    assert.match(
+        f.controller.getSnapshot().message,
+        /Stop incomplete.*Owned containers remaining: 1.*Engine removal failed/,
+    );
+    assert.equal(
+        f.controller.getSnapshot().observed?.containers[0]?.lifecycle,
+        'exited',
+    );
+});
+
+test('Stop cannot claim completion when actual container cleanup cannot be inspected', async () => {
+    const f = fixture();
+    await start(f);
+    f.failObservation(new Error('Docker observation unavailable'));
+    await f.controller.stop();
+    assert.equal(f.controller.getSnapshot().running, false);
+    assert.equal(f.controller.getSnapshot().phase, 'Failed');
+    assert.match(
+        f.controller.getSnapshot().message,
+        /Stop incomplete.*Cannot verify the actual containers/,
+    );
+});
+
+test('cancelling Stop during persistence prevents later cleanup while retaining stopped intent', async () => {
+    const f = fixture();
+    await start(f);
+    let release!: () => void;
+    const checkpoint = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    const stopping = f.controller.stop(() => checkpoint);
+    f.controller.cancel();
+    release();
+    await stopping;
+    assert.equal(f.calls.includes('stopProject'), false);
+    assert.equal(f.controller.getSnapshot().running, false);
+    assert.equal(f.controller.getSnapshot().blocked, 'cancelled');
 });

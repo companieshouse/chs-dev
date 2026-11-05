@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdtemp, rm, rename } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { daemonFixture, eventually } from './daemon-fixture.js';
@@ -393,5 +394,150 @@ test('journey list reports the journeys in the checkout', async () => {
         });
     } finally {
         await f.close();
+    }
+});
+
+test('Environment Stop durably records stopped intent before issuing cleanup', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'chs-stop-order-'));
+    const intents = new DaemonState(join(root, 'intent-store'));
+    await intents.initialize();
+    const f = await daemonFixture(undefined, undefined, {
+        intentStore: intents,
+    });
+    try {
+        const client = await f.client();
+        await client.command('environment.start', {});
+        await intents.flush();
+        const persisted: boolean[] = [];
+        f.engine.beforeStop = async () => {
+            persisted.push(
+                JSON.parse(
+                    readFileSync(
+                        join(intents.directory, 'session.json'),
+                        'utf8',
+                    ),
+                ).intent.running,
+            );
+        };
+        await client.command('environment.stop', {});
+        assert.deepEqual(persisted, [false]);
+        assert.equal(f.engine.stops, 1);
+        assert.equal((await intents.readIntent())?.intent?.running, false);
+    } finally {
+        await f.close();
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
+test('failed stopped-intent persistence blocks cleanup and reports an incomplete Stop', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'chs-stop-storage-'));
+    const intents = new DaemonState(join(root, 'intent-store'));
+    await intents.initialize();
+    const f = await daemonFixture(undefined, undefined, {
+        intentStore: intents,
+    });
+    let unavailable = false;
+    try {
+        const client = await f.client();
+        await client.command('environment.start', {});
+        await intents.flush();
+        await rename(intents.directory, `${intents.directory}.saved`);
+        await writeFile(intents.directory, 'storage unavailable');
+        unavailable = true;
+        await assert.rejects(client.command('environment.stop', {}));
+        assert.equal(f.app.snapshot().live.running, false);
+        assert.equal(f.engine.stops, 0);
+        assert.equal(f.stores.get(f.directory)!.containers.length, 1);
+        assert.match(
+            f.app.snapshot().live.message,
+            /persist.*stopped intent|Stop incomplete/i,
+        );
+    } finally {
+        if (unavailable) {
+            await rm(intents.directory);
+            await rename(`${intents.directory}.saved`, intents.directory);
+        }
+        await f.close();
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
+test('Stop owns mutation throughout slow intent persistence and joins repeated Stop commands', async () => {
+    for (const applyInFlight of [false, true]) {
+        const root = await mkdtemp(join(tmpdir(), 'chs-stop-owner-'));
+        const intents = new DaemonState(join(root, 'intent-store'));
+        await intents.initialize();
+        let hold = false;
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const intentStore = {
+            readIntent: () => intents.readIntent(),
+            writeIntent: async (
+                value: Parameters<DaemonState['writeIntent']>[0],
+            ) => {
+                if (hold && value.intent?.running === false) await gate;
+                await intents.writeIntent(value);
+            },
+        };
+        const f = await daemonFixture(undefined, undefined, { intentStore });
+        let releaseApply = () => {};
+        try {
+            const first = await f.client(),
+                second = await f.client();
+            if (applyInFlight)
+                f.engine.applyGate = new Promise<void>((resolve) => {
+                    releaseApply = resolve;
+                });
+            const starting = await first.submit('environment.start', {});
+            await eventually(() => f.engine.applies === 1);
+            if (!applyInFlight) {
+                await first.wait(starting.id);
+                await intents.flush();
+            }
+            hold = true;
+            const stop = await first.submit('environment.stop', {});
+            await eventually(() => f.app.snapshot().live.running === false);
+            if (applyInFlight)
+                await eventually(
+                    () => f.app.snapshot().live.phase === 'Blocked',
+                );
+            assert.equal(f.app.snapshot().live.busy, true);
+            assert.equal(f.app.snapshot().live.action, 'stop');
+            assert.equal(
+                (await f.controller.coldStart('api', Date.now() + 50)).ok,
+                false,
+            );
+            await assert.rejects(
+                second.submit('environment.start', {}),
+                (error: any) => error.detail.code === 'BUSY',
+            );
+            await assert.rejects(
+                second.submit('service.action', {
+                    services: ['api'],
+                    action: 'restart',
+                }),
+                (error: any) => error.detail.code === 'BUSY',
+            );
+            const repeated = await second.submit('environment.stop', {});
+            assert.equal(f.engine.stops, 0);
+            release();
+            await first.wait(stop.id);
+            await second.wait(repeated.id);
+            if (applyInFlight)
+                await assert.rejects(
+                    first.wait(starting.id),
+                    /superseded|cancel/i,
+                );
+            assert.equal(f.engine.stops, 1);
+            assert.equal(f.app.snapshot().live.running, false);
+            assert.equal(f.app.snapshot().live.busy, false);
+        } finally {
+            release();
+            releaseApply();
+            await f.close();
+            await rm(root, { recursive: true, force: true });
+        }
     }
 });

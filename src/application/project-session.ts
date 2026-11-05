@@ -239,7 +239,7 @@ export class ProjectSession {
     }
     private persistenceFailed(error: unknown) {
         this.stateFailure =
-            'Cannot save daemon state. Check permissions and free space before starting more work.';
+            'Cannot save daemon state. Repair permissions or free space, then restart the daemon before starting more work.';
         this.backend?.controller?.cancel();
         this.update({ notice: this.stateFailure });
     }
@@ -330,6 +330,7 @@ export class ProjectSession {
         executing?: string,
     ) {
         const coordinated = [
+            'environment.stop',
             'environment.start',
             'environment.apply',
             'environment.confirm',
@@ -501,7 +502,7 @@ export class ProjectSession {
     /** Stops the environment, closing the run so its verdict is learned. */
     private async stopEnvironment(controller: LiveController) {
         this.interactions.close();
-        await controller.stop();
+        await controller.stop(() => this.checkpoint(true));
         await this.usage?.closeRun();
         await this.refreshUsage();
         return undefined;
@@ -851,6 +852,11 @@ export class ProjectSession {
                     : 'ENVIRONMENT_FAILED',
                 message: state.message,
             });
+        if (request.command !== 'environment.stop' && !state.running)
+            throw new ClientError({
+                code: 'CANCELLED',
+                message: 'The operation was superseded by Environment Stop.',
+            });
     }
     private async saveSetting(
         key: SettingKey,
@@ -940,7 +946,7 @@ export class ProjectSession {
             const cancel = () => old.controller?.cancel();
             signal?.addEventListener('abort', cancel, { once: true });
             try {
-                await old.controller.stop();
+                await old.controller.stop(() => this.checkpoint(true));
             } finally {
                 signal?.removeEventListener('abort', cancel);
             }

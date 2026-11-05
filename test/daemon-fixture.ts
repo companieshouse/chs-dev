@@ -35,6 +35,7 @@ export async function daemonFixture(
     options: {
         mock?: MockSupport;
         image?: string;
+        intentStore?: Pick<ApplicationHost, 'readIntent' | 'writeIntent'>;
         completed?: (completion: OperationCompletion) => void;
         configure?: (backend: BackendSession) => void;
     } = {},
@@ -60,6 +61,7 @@ export async function daemonFixture(
         monitors: 0,
         observations: 0,
         failStop: false,
+        beforeStop: undefined as (() => Promise<void>) | undefined,
         applyGate: undefined as Promise<void> | undefined,
         legacySaveGate: undefined as Promise<void> | undefined,
     };
@@ -101,8 +103,12 @@ export async function daemonFixture(
             previewSetting: (key, value) => settings.preview(key, value),
             saveSetting: (key, value) => settings.save(key, value),
             activateSettings: () => settings.activate(),
-            readIntent: () => state.readIntent(),
-            writeIntent: (value) => state.writeIntent(value),
+            readIntent: () =>
+                options.intentStore?.readIntent() ?? state.readIntent(),
+            writeIntent: (value) =>
+                options.intentStore
+                    ? options.intentStore.writeIntent(value)
+                    : state.writeIntent(value),
             validateProject: async (path) => ({
                 directory: path,
                 valid: [directory, second].includes(path),
@@ -211,6 +217,7 @@ export async function daemonFixture(
                     },
                     stop: async () => success(),
                     stopProject: async () => {
+                        await engine.beforeStop?.();
                         engine.stops++;
                         if (engine.failStop)
                             throw new Error('Fixture Stop failed');

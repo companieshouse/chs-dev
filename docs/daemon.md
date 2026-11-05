@@ -24,7 +24,14 @@ install with npm lifecycle scripts enabled and rebuild after a Node ABI change.
 
 `stop` stops supervision and running daemon commands, but leaves containers alone.
 Use **Stop environment** in the TUI to stop/remove containers while retaining
-volumes. `stop` unloads the LaunchAgent for the current login. `uninstall` also
+volumes. Environment Stop blocks new cold starts and aborts active work immediately,
+then waits for its stopped-intent checkpoint before issuing cleanup. A checkpoint
+failure leaves cleanup unissued and reports an incomplete Stop; repair storage
+and restart the daemon before retrying. Completion is
+verified against observed owned containers; partial cleanup retains its failure
+and remaining-container count.
+
+`stop` unloads the LaunchAgent for the current login. `uninstall` also
 removes its plist. Starting a frontend can install/start it again. `restart` waits
 for shutdown before starting the replacement; interrupted work is not replayed.
 Linux can run a foreground or detached daemon but has no service installer.

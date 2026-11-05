@@ -200,6 +200,7 @@ export class LiveController {
     private listeners = new Set<() => void>();
     private abort?: AbortController;
     private operation?: Promise<void>;
+    private stopping?: Promise<void>;
     private release?: () => Promise<void>;
     private releasing?: Promise<void>;
     private paused = false;
@@ -286,6 +287,8 @@ export class LiveController {
     };
 
     private update(update: Partial<LiveState>) {
+        if (this.stopping)
+            update = { ...update, busy: true, action: 'stop', running: false };
         if (update.phase && update.phase !== this.state.phase) {
             this.dependencies.eventSink?.('live.phase', {
                 status: update.phase,
@@ -503,69 +506,128 @@ export class LiveController {
         void this.poll();
     }
 
-    /** Stops and removes this checkout's containers, while keeping data volumes. */
-    async stop(): Promise<void> {
-        if (this.closed) return;
-
+    /** Stop owns persistence, cancellation, draining and verified cleanup together. */
+    stop(persistStoppedIntent?: () => Promise<void>): Promise<void> {
+        if (this.closed) return Promise.resolve();
+        if (this.stopping) return this.stopping;
+        const active = this.state.busy ? this.operation : undefined;
+        const previousAbort = this.abort;
+        this.abort = new AbortController();
+        const signal = this.abort.signal;
+        const stopping = Promise.resolve()
+            .then(() =>
+                this.persistAndStop(active, persistStoppedIntent, signal),
+            )
+            .finally(() => {
+                this.stopping = undefined;
+                this.update({ busy: false });
+            });
+        this.stopping = stopping;
+        this.operation = stopping;
         this.dependencies.eventSink?.('live.disable');
         this.paused = false;
-        this.update({ running: false, plan: undefined });
+        this.update({
+            running: false,
+            busy: true,
+            action: 'stop',
+            plan: undefined,
+        });
+        previousAbort?.abort();
+        return stopping;
+    }
 
-        if (this.state.busy) {
-            this.abort?.abort();
-            await this.operation;
-        }
-
-        const work = async () => {
+    private async persistAndStop(
+        active: Promise<void> | undefined,
+        persistStoppedIntent: (() => Promise<void>) | undefined,
+        signal: AbortSignal,
+    ) {
+        try {
+            await persistStoppedIntent?.();
+        } catch {
+            await active;
+            this.paused = true;
+            await this.refresh();
             this.update({
-                busy: true,
-                action: 'stop',
-                phase: 'Stopping',
-                blocked: undefined,
-                sshSetup: undefined,
-                message: 'Stopping and removing containers…',
+                busy: false,
+                phase: 'Blocked',
+                blocked: 'other',
+                message:
+                    'Stop incomplete: cannot persist stopped intent. Containers may still be running. Fix daemon storage and restart the daemon before retrying.',
             });
-            this.log(
-                'Stopping environment: inspecting and removing containers; data volumes will be kept.',
+            this.log(this.state.message);
+            return;
+        }
+        await active;
+        await this.run_(() => this.stopContainers(signal));
+    }
+
+    private async stopContainers(signal: AbortSignal) {
+        this.update({
+            busy: true,
+            action: 'stop',
+            phase: 'Stopping',
+            blocked: undefined,
+            sshSetup: undefined,
+            message: 'Stopping and removing containers…',
+        });
+        this.log(
+            'Stopping environment: inspecting and removing containers; data volumes will be kept.',
+        );
+        let stopped = false;
+        try {
+            await this.lock();
+            signal.throwIfAborted();
+            this.accept(
+                await this.dependencies.runtime.stopProject({
+                    signal,
+                    onOutput: (entry) => this.log(entry.text),
+                }),
             );
-            this.abort = new AbortController();
-            const signal = this.abort.signal;
-
-            try {
-                await this.lock();
-                this.accept(
-                    await this.dependencies.runtime.stopProject({
-                        signal,
-                        onOutput: (entry) => this.log(entry.text),
-                    }),
-                );
-                this.applied = undefined;
-                this.baseline = undefined;
-                this.authentication = undefined;
+            this.applied = undefined;
+            this.baseline = undefined;
+            this.authentication = undefined;
+            stopped = true;
+        } catch (error) {
+            if (signal.aborted)
                 this.update({
-                    phase: 'Stopped',
-                    stoppedByUser: [],
+                    phase: 'Blocked',
+                    blocked: 'cancelled',
                     message:
-                        'Environment stopped and containers removed. Data volumes were kept.',
+                        'Stop cancelled. Some containers may still be running.',
                 });
-                this.log('Stopped: containers removed, volumes kept.');
-            } catch (error) {
-                if (signal.aborted)
-                    this.update({
-                        phase: 'Blocked',
-                        blocked: 'cancelled',
-                        message:
-                            'Stop cancelled. Some containers may still be running.',
-                    });
-                else this.report(error);
-            } finally {
-                await this.refresh();
-                this.update({ busy: false });
-                await this.unlock();
-            }
-        };
+            else this.report(error);
+        } finally {
+            await this.finishStop(stopped);
+        }
+    }
 
-        await this.run_(work);
+    private async finishStop(stopped: boolean) {
+        const refreshed = await this.refresh();
+        const remaining = this.state.observed?.containers.length;
+        if (stopped && refreshed && remaining === 0) {
+            this.update({
+                phase: 'Stopped',
+                stoppedByUser: [],
+                message:
+                    'Environment stopped and containers removed. Data volumes were kept.',
+            });
+            this.log('Stopped: containers removed, volumes kept.');
+        } else if (!refreshed || remaining) {
+            const detail = refreshed
+                ? `Owned containers remaining: ${remaining}.`
+                : 'Cannot verify the actual containers.';
+            this.update({
+                phase:
+                    this.state.phase === 'Stopping'
+                        ? 'Failed'
+                        : this.state.phase,
+                message:
+                    `Stop incomplete: ${detail} ${stopped ? '' : this.state.message}`.trim(),
+            });
+            this.log(this.state.message);
+        }
+        this.update({ busy: false });
+        await this.unlock();
     }
 
     /** Serializes exact-container actions with environment operations and tracks manual stops. */
@@ -1078,12 +1140,14 @@ export class LiveController {
             if (!this.closed) {
                 const observed = await this.dependencies.runtime.snapshot();
                 this.update({ observed });
+                return true;
             }
         } catch (error) {
             this.log(
                 `Cannot refresh container state: ${error instanceof Error ? error.message : String(error)}`,
             );
         }
+        return false;
     }
 
     private accept(result: RuntimeOperationResult) {
