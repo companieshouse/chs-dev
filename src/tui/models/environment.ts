@@ -316,6 +316,7 @@ export function environmentActions(
             ...(state.phase === 'Cancelling'
                 ? []
                 : [{ id: 'cancel' as const, label: 'Cancel' }]),
+            ...(state.action === 'stop' ? [] : [stopAction]),
             logsAction,
             closeAction,
         ];

@@ -177,3 +177,49 @@ test('an idle service can be held stopped through the TUI and released by explic
     assert.deepEqual(client.getSnapshot().live.stoppedByUser, []);
     assert.doesNotMatch(view.frame(), /Intent: manual stop/);
 });
+
+test('the TUI can confirm Environment Stop while Start is still running', async (t) => {
+    const fixture = await daemonFixture();
+    const client = await fixture.client();
+    let release!: () => void;
+    fixture.engine.applyGate = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    const view = terminal(createElement(App, { client }), {
+        columns: 80,
+        rows: 24,
+    });
+    t.after(async () => {
+        release();
+        view.app.unmount();
+        await fixture.close();
+    });
+    const start = await client.submit('environment.start', {});
+    await eventually(() => fixture.engine.applies === 1);
+    await view.key('\u0005');
+    assert.match(view.frame(), /Cancel/);
+    assert.match(view.frame(), /Stop environment/);
+    const lines = view.frame().split('\n');
+    assert.ok(lines.length <= 25);
+    assert.ok(lines.every((line) => line.length <= 80));
+    for (
+        let steps = 0;
+        steps < 6 && !/› Stop environment/.test(view.frame());
+        steps++
+    )
+        await view.key('\u001b[B');
+    assert.match(view.frame(), /› Stop environment/);
+    await view.key('\r');
+    assert.match(view.frame(), /Stop all services in this environment/);
+    assert.equal(fixture.engine.stops, 0, 'Stop requires confirmation');
+    await view.key('y');
+    await eventually(() => client.getSnapshot().live.phase === 'Stopped');
+    await assert.rejects(
+        client.wait(start.id),
+        /superseded by Environment Stop/,
+    );
+    assert.equal(client.getSnapshot().live.running, false);
+    assert.equal(client.getSnapshot().live.busy, false);
+    assert.equal(fixture.engine.stops, 1);
+    assert.equal(fixture.stores.get(fixture.directory)!.containers.length, 0);
+});

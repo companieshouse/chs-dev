@@ -186,9 +186,14 @@ test('the panel offers only actions that apply, recommended first', () => {
     );
     assert.deepEqual(ids({ ...base, busy: true, phase: 'Checking' }), [
         'cancel',
+        'stop',
         'logs',
         'close',
     ]);
+    assert.deepEqual(
+        ids({ ...base, busy: true, phase: 'Stopping', action: 'stop' }),
+        ['cancel', 'logs', 'close'],
+    );
     assert.deepEqual(
         ids({ ...base, plan: { start: ['api'], stop: ['old'], recreate: [] } }),
         ['confirm', 'dismiss', 'logs'],
