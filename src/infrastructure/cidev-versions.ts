@@ -113,6 +113,7 @@ async function readCluster(
     const images: RunningServiceImage[] = [];
     let runningTasks = 0;
     for (let offset = 0; offset < arns.length; offset += 100) {
+        const batch = arns.slice(offset, offset + 100);
         const result = await read(
             [
                 'ecs',
@@ -120,12 +121,12 @@ async function readCluster(
                 '--cluster',
                 cluster,
                 '--tasks',
-                ...arns.slice(offset, offset + 100),
+                ...batch,
             ],
             '{tasks:tasks[].{group:group,lastStatus:lastStatus,architecture:attributes[?name==`ecs.cpu-architecture`].value|[0],containers:containers[].{name:name,image:image,imageDigest:imageDigest,lastStatus:lastStatus}},failures:failures}',
             signal,
         );
-        if (result.failures?.length)
+        if (result.failures?.length || result.tasks?.length !== batch.length)
             throw new Error(
                 `ECS tasks changed while reading ${cluster}. Retry the snapshot.`,
             );
@@ -172,6 +173,7 @@ export async function readEnvironmentVersions(
     } = {},
 ) {
     const { signal } = request;
+    signal?.throwIfAborted();
     const read =
         request.read ?? environmentReader(environment, request.options ?? {});
     const all: string[] = await read(

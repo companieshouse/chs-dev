@@ -103,8 +103,8 @@ test('Services distinguishes saved provider edits from applied mode and observed
     });
     await eventually(() => view.frame().includes('Saved: Yes Development'));
     assert.match(view.frame(), /Pending: saved changes/);
-    assert.match(view.frame(), /Saved version: —/);
-    assert.match(view.frame(), /Version source: compose/);
+    assert.match(view.frame(), /Inactive Service version: —/);
+    assert.match(view.frame(), /Inactive Service source: compose/);
     assert.match(view.frame(), /Applied mode \(observed\): Service/);
     assert.match(view.frame(), /RUNTIME/);
     assert.match(view.frame(), /Running/);

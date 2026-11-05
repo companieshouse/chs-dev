@@ -176,27 +176,33 @@ function savedDescription(
 
 function appliedDescription(screen: Props, name: string): string[] {
     if (!screen.live) return [];
-    const applied =
-        screen.live.observed?.containers.find((item) => item.service === name)
-            ?.mode ?? 'unobserved';
+    const container = screen.live.observed?.containers.find(
+        (item) => item.service === name,
+    );
+    const { mode: applied = 'unobserved', image, imageId } = container ?? {};
     return [
         `Applied mode (observed): ${applied} · Runtime: ${screen.statuses[name] ?? screen.defaultStatus}`,
+        ...(image ? [`Observed image: ${image}`] : []),
+        ...(imageId ? [`Image ID: ${imageId}`] : []),
         ...(screen.live.stoppedByUser.includes(name)
             ? ['Intent: manual stop; traffic will not start this service.']
             : []),
     ];
 }
 
-function versionDescription(detail?: ServiceDetails): string[] {
-    const lines = [`Saved version: ${serviceVersion(detail)}`];
-    if (detail?.image && detail.image !== serviceVersion(detail))
-        lines.push(`Saved image: ${detail.image}`);
-    if (detail?.mockScenario) lines.push(`Scenario: ${detail.mockScenario}`);
-    if (
-        detail?.versionSource &&
-        detail.versionSource !== serviceVersion(detail)
-    )
-        lines.push(`Version source: ${detail.versionSource}`);
+function versionDescription(
+    detail: ServiceDetails = { enabled: 'Unknown', mode: 'Unknown' },
+): string[] {
+    const { image, mockScenario, versionSource, mode } = detail;
+    const inactive = mode === 'Development' || mode === 'Mock';
+    const prefix = inactive ? 'Inactive Service' : 'Saved';
+    const sourceLabel = inactive ? 'Inactive Service source' : 'Version source';
+    const lines = [`${prefix} version: ${serviceVersion(detail)}`];
+    if (image && image !== serviceVersion(detail))
+        lines.push(`${prefix} image: ${image}`);
+    if (mockScenario) lines.push(`Scenario: ${mockScenario}`);
+    if (versionSource && versionSource !== serviceVersion(detail))
+        lines.push(`${sourceLabel}: ${versionSource}`);
     return lines;
 }
 

@@ -49,7 +49,7 @@ function fixture() {
             'chs.dev.directory': '/checkout',
             'chs.dev.service': 'api',
             'chs.dev.backend': 'native',
-            'chs.dev.image': 'registry:5000/api:1.2',
+            'chs.dev.image': 'registry:5000/api:stale-label',
         }),
         inspection(second, {
             'com.docker.compose.project.working_dir': '/checkout',

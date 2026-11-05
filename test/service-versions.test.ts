@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -267,4 +267,47 @@ test('other environment readers select their own cluster and service names using
             ['list-clusters', 'list-tasks', 'describe-tasks'].includes(args[1]),
         ),
     );
+});
+
+test('a cancelled metadata refresh waiter cannot report success from another caller’s shared read', async (t) => {
+    const f = await fixture(t);
+    const existing = await f.read('cidev');
+    let release!: (value: typeof existing) => void;
+    const gate = new Promise<typeof existing>((resolve) => {
+        release = resolve;
+    });
+    const versions = new ServiceVersions(f.root, groups, async () => gate);
+    const first = versions.snapshot('cidev', undefined, true);
+    const abort = new AbortController();
+    const cancelled = versions.snapshot('cidev', abort.signal, true);
+    abort.abort(new Error('Version refresh cancelled'));
+    release(existing);
+    await assert.rejects(cancelled, /Version refresh cancelled/);
+    assert.equal(
+        (await first).images.api,
+        `${registry}/api@sha256:${'a'.repeat(64)}`,
+    );
+});
+
+test('a failed cache publication preserves the previous persisted snapshot across recreation', async (t) => {
+    const f = await fixture(t);
+    let clock = Date.now();
+    const versions = new ServiceVersions(f.root, groups, f.read, () => clock);
+    const initial = await versions.snapshot('cidev');
+    clock += 1000;
+    await chmod(f.root, 0o500);
+    try {
+        await assert.rejects(
+            versions.snapshot('cidev', undefined, true),
+            /EACCES|EPERM/,
+        );
+    } finally {
+        await chmod(f.root, 0o700);
+    }
+    const recreated = new ServiceVersions(f.root, groups, async () => {
+        throw new Error('Unexpected metadata reread');
+    });
+    const persisted = await recreated.snapshot('cidev');
+    assert.equal(persisted.retrievedAt, initial.retrievedAt);
+    assert.equal(persisted.images.api, initial.images.api);
 });

@@ -13,6 +13,7 @@ import {
     validateProvider,
     type ServiceProvider,
 } from '../domain/providers.js';
+import type { RuntimeContainer } from '../domain/live.js';
 import type { VersionSource } from '../domain/version-sources.js';
 
 function providerEdit(context: CliContext) {
@@ -50,9 +51,32 @@ export function serviceRows(context: CliContext) {
                 module: group.name,
                 ...state.details[name],
                 status: state.statuses[name] ?? 'Unknown',
+                observed: observedService(
+                    state.live.observed?.containers,
+                    name,
+                ),
             })),
         )
         .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function observedService(
+    containers: readonly RuntimeContainer[] | undefined,
+    name: string,
+) {
+    return (containers ?? [])
+        .filter(
+            (container) =>
+                container.service === name || container.ownerService === name,
+        )
+        .map(({ id, service, mode, lifecycle, image, imageId }) => ({
+            id,
+            service,
+            mode,
+            lifecycle,
+            image,
+            imageId,
+        }));
 }
 
 function mockScenarioSelection(provider: ServiceProvider, scenario: unknown) {

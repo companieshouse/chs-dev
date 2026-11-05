@@ -174,12 +174,45 @@ test('CIDEV discovery reports missing clusters, changed tasks and cancellation w
     );
     const controller = new AbortController();
     controller.abort(new Error('Cancelled'));
+    let cancelledReads = 0;
     await assert.rejects(
-        readCidevVersions({}, groups, controller.signal, read),
+        readCidevVersions({}, groups, controller.signal, async (...args) => {
+            cancelledReads++;
+            return read(...args);
+        }),
         /Cancelled/,
     );
+    assert.equal(cancelledReads, 0);
     assert.throws(
         () => cidevReader({ profile: '../invalid' }),
         /valid AWS profile/,
+    );
+});
+
+test('ECS version reads reject an incomplete task response instead of pinning a partial deployment', async () => {
+    const read: AwsRead = async (args) => {
+        if (args[1] === 'list-clusters') return ['cidev-cluster'];
+        if (args[1] === 'list-tasks') return ['task-one', 'task-missing'];
+        return {
+            failures: [],
+            tasks: [
+                {
+                    group: 'service:cidev-api',
+                    lastStatus: 'RUNNING',
+                    containers: [
+                        {
+                            name: 'api',
+                            image: 'registry.example/api:1.2.3',
+                            imageDigest: digest,
+                            lastStatus: 'RUNNING',
+                        },
+                    ],
+                },
+            ],
+        };
+    };
+    await assert.rejects(
+        readCidevVersions({}, groups, undefined, read),
+        /tasks changed|incomplete/i,
     );
 });

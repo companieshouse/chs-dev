@@ -126,7 +126,7 @@ export class DockerContainerManager implements ContainerManager {
         return {
             id: item.Id,
             name: (item.Names?.[0] ?? item.Id.slice(0, 12)).replace(/^\//, ''),
-            image: labels['chs.dev.image'] ?? item.Image,
+            image: item.Image,
             imageId: item.ImageID,
             state: item.State,
             status: item.Status,

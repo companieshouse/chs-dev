@@ -82,11 +82,16 @@ export class ServiceVersions {
         signal?.throwIfAborted();
         if (!refresh) {
             const cached = await this.load(source);
+            signal?.throwIfAborted();
             if (cached && this.now() - Date.parse(cached.retrievedAt) < 300_000)
                 return cached;
         }
         const pending = this.pending.get(source);
-        if (pending) return pending;
+        if (pending) {
+            const result = await pending;
+            signal?.throwIfAborted();
+            return result;
+        }
         const work = this.fetch(source, signal);
         this.pending.set(source, work);
         try {
@@ -109,7 +114,9 @@ export class ServiceVersions {
             await writeFile(temporary, JSON.stringify(result), {
                 flag: 'wx',
                 mode: 0o600,
+                signal,
             });
+            signal?.throwIfAborted();
             await rename(temporary, path);
         } finally {
             await rm(temporary, { force: true });
