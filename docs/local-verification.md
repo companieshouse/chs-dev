@@ -7,7 +7,8 @@ portable test command and does not impose this sandbox.
 
 The local runner uses the macOS process sandbox to deny outbound network access
 for tests and their child processes. Loopback connections and Unix sockets in
-the temporary directory remain available for fixtures. It supplies isolated
+the per-user temporary directory and `/tmp` remain available for fixtures,
+including the process guardian. It supplies isolated
 configuration and state directories, an empty AWS configuration, and an absent
 Docker socket; it also denies reads of the user's AWS/SSH directories and
 execution of `/usr/bin/ssh` and `/usr/bin/rsync`.

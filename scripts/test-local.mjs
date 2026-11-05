@@ -11,6 +11,7 @@ if (process.platform !== 'darwin') {
 
 const directory = await mkdtemp(join(tmpdir(), 'chs-local-tests-'));
 const temporaryRoot = await realpath(tmpdir());
+const systemTemporaryRoot = await realpath('/tmp');
 const environment = {
     PATH: process.env.PATH,
     TMPDIR: tmpdir(),
@@ -32,6 +33,7 @@ const policy = `
 (deny network-outbound)
 (allow network-outbound (remote ip "localhost:*"))
 (allow network-outbound (remote unix-socket (path-prefix (param "TEST_TMP"))))
+(allow network-outbound (remote unix-socket (path-prefix (param "SYSTEM_TMP"))))
 (deny file-read* (subpath (param "AWS_HOME")) (subpath (param "SSH_HOME")))
 (deny process-exec (literal "/usr/bin/ssh") (literal "/usr/bin/rsync"))
 `;
@@ -51,6 +53,8 @@ try {
         [
             '-D',
             `TEST_TMP=${temporaryRoot}`,
+            '-D',
+            `SYSTEM_TMP=${systemTemporaryRoot}`,
             '-D',
             `AWS_HOME=${join(homedir(), '.aws')}`,
             '-D',
