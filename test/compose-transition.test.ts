@@ -79,7 +79,7 @@ test('legacy ownership blocks Apply and Reload before any executable is invoked'
             /pre-upgrade.*Stop environment/,
         );
         await assert.rejects(
-            f.runtime.reload(f.project, ['api'], {}),
+            f.runtime.reloadApplied('api', {}),
             /pre-upgrade.*Stop environment/,
         );
         assert.deepEqual(f.requests, []);
@@ -108,7 +108,7 @@ test('native Docker containers, including stopped containers, block creation for
         /Native containers still exist/,
     );
     await assert.rejects(
-        f.runtime.reload(f.project, ['api'], {}),
+        f.runtime.reloadApplied('api', {}),
         /Native containers still exist/,
     );
     const namespace = `chs-native-${createHash('sha256').update('/canonical').digest('hex').slice(0, 12)}`;

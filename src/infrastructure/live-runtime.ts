@@ -323,7 +323,7 @@ export class DockerLiveRuntime implements LiveRuntime {
     private async appliedProject(
         service: string,
         context: OperationContext,
-    ): Promise<PreparedProject> {
+    ): Promise<{ project: PreparedProject; targets: string[] }> {
         const observed = await this.snapshot(context.signal);
         const container = observed.containers.find(
             (entry) => entry.service === service,
@@ -340,22 +340,42 @@ export class DockerLiveRuntime implements LiveRuntime {
             throw new LifecycleBlocked(
                 'Applied Compose artifacts do not match the owned project. Apply configuration before starting or reloading services.',
             );
+        const targets = Object.entries(
+            document.services as Record<
+                string,
+                { labels?: Record<string, string> }
+            >,
+        )
+            .filter(
+                ([name, spec]) =>
+                    name === service ||
+                    spec.labels?.['chs.dev.owner-service'] === service,
+            )
+            .map(([name]) => name)
+            .sort();
         return {
-            protocolVersion: 1,
-            projectName: observed.projectName,
-            projectDirectory: observed.projectDirectory,
-            configurationIdentity: container.configurationIdentity ?? 'applied',
-            composeFiles: [file],
-            inventory: [],
-            environmentRequirements: requiredEnvironment(document),
+            targets,
+            project: {
+                protocolVersion: 1,
+                projectName: observed.projectName,
+                projectDirectory: observed.projectDirectory,
+                configurationIdentity:
+                    container.configurationIdentity ?? 'applied',
+                composeFiles: [file],
+                inventory: [],
+                environmentRequirements: requiredEnvironment(document),
+            },
         };
     }
 
     async startApplied(
         service: string,
         context: OperationContext,
+        action: 'start' | 'restart' = 'start',
     ): Promise<RuntimeOperationResult> {
-        const project = await this.appliedProject(service, context);
+        const applied = await this.appliedProject(service, context);
+        const { project } = applied;
+        const targets = action === 'restart' ? applied.targets : [service];
         context.signal?.throwIfAborted();
         checkResult(
             await this.run(
@@ -363,20 +383,20 @@ export class DockerLiveRuntime implements LiveRuntime {
                     ...composeArguments(project),
                     'up',
                     '--detach',
-                    '--no-recreate',
+                    action === 'restart' ? '--force-recreate' : '--no-recreate',
                     '--no-build',
                     '--pull',
                     'never',
-                    service,
+                    ...targets,
                 ],
                 context,
                 project.environmentRequirements,
             ),
-            'Compose cold start',
+            `Compose ${action}`,
         );
         return {
             outcome: 'success',
-            message: `Started ${service} from applied configuration.`,
+            message: `${action === 'restart' ? 'Restarted' : 'Started'} ${service} from applied configuration.`,
             affectedServices: [service],
         };
     }
@@ -385,11 +405,11 @@ export class DockerLiveRuntime implements LiveRuntime {
         service: string,
         context: OperationContext,
     ): Promise<RuntimeOperationResult> {
-        return this.reload(
-            await this.appliedProject(service, context),
-            [service],
+        const { project, targets } = await this.appliedProject(
+            service,
             context,
         );
+        return this.reload(project, targets, context);
     }
 
     async apply(
@@ -480,28 +500,12 @@ export class DockerLiveRuntime implements LiveRuntime {
                 'Compose create',
             );
     }
-    async reload(
+    protected async reload(
         project: PreparedProject,
-        services: readonly string[],
+        targets: string[],
         context: OperationContext,
     ): Promise<RuntimeOperationResult> {
         await this.owned(project);
-        const current = await this.snapshot(context.signal);
-        const targets = [
-            ...new Set(
-                current.containers
-                    .filter((container) =>
-                        services.includes(
-                            container.ownerService ?? container.service,
-                        ),
-                    )
-                    .map((container) => container.service),
-            ),
-        ].sort();
-        if (!targets.length)
-            throw new LiveFailure(
-                `${services.join(', ')} has no containers to reload.`,
-            );
         context.signal?.throwIfAborted();
         // Listing builders explicitly with --force-recreate re-runs them; the
         // services still wait for their builders through depends_on.
@@ -513,7 +517,6 @@ export class DockerLiveRuntime implements LiveRuntime {
                     '--detach',
                     '--build',
                     '--force-recreate',
-                    '--no-deps',
                     ...targets,
                 ],
                 context,

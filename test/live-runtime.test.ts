@@ -235,6 +235,10 @@ test('reload rebuilds and force-recreates the service and its builder only', asy
         inspect({
             'chs.dev.mode': 'Development',
             'chs.dev.owner-service': 'api',
+            'com.docker.compose.project.config_files':
+                '/state/operations/one/docker-compose.yaml',
+            'chs.dev.lifecycle':
+                '{"version":1,"lazy":false,"reclaimable":false,"dependencies":[]}',
         }),
         {
             ...inspect({
@@ -249,26 +253,27 @@ test('reload rebuilds and force-recreates the service and its builder only', asy
             Id: 'c'.repeat(64),
         },
     ]);
-    const result = await f.runtime.reload(project, ['api'], {});
+    f.artifact(
+        'name: chs\nservices:\n  api:\n    image: api:applied\n    environment:\n      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?login}\n    depends_on:\n      api-builder:\n        condition: service_completed_successfully\n  api-builder:\n    image: builder:applied\n    labels:\n      chs.dev.owner-service: api\n',
+    );
+    const result = await f.runtime.reloadApplied('api', {});
     assert.deepEqual(result.affectedServices, ['api', 'api-builder']);
     assert.deepEqual(f.requests.at(-1)?.args, [
-        ...composeArguments(project),
+        ...composeArguments({
+            ...project,
+            composeFiles: ['/state/operations/one/docker-compose.yaml'],
+        }),
         'up',
         '--detach',
         '--build',
         '--force-recreate',
-        '--no-deps',
         'api',
         'api-builder',
     ]);
     assert.deepEqual(f.requirements.at(-1), ['AWS_ACCESS_KEY_ID']);
     await assert.rejects(
-        f.runtime.reload(project, ['missing'], {}),
-        /no containers to reload/,
-    );
-    await assert.rejects(
-        f.runtime.reload({ ...project, projectName: 'foreign' }, ['api'], {}),
-        /does not belong/,
+        f.runtime.reloadApplied('missing', {}),
+        /Apply configuration/,
     );
 });
 
@@ -794,4 +799,33 @@ test('automatic startup rejects missing, foreign and unowned applied artifacts b
         f.requests.some((request) => request.args.includes('up')),
         false,
     );
+});
+
+test('Restart and Reload select current applied helpers instead of historical orphan containers', async () => {
+    const f = runtimeFixture();
+    f.set([
+        inspect({
+            'com.docker.compose.project.config_files':
+                '/state/operations/current/docker-compose.yaml',
+            'chs.dev.owner-service': 'api',
+            'chs.dev.lifecycle':
+                '{"version":1,"lazy":false,"reclaimable":false,"dependencies":[]}',
+        }),
+        {
+            ...inspect({
+                'com.docker.compose.service': 'obsolete-builder',
+                'chs.dev.owner-service': 'api',
+            }),
+            Id: 'b'.repeat(64),
+        },
+    ]);
+    f.artifact(
+        'name: chs\nservices:\n  api:\n    image: api:applied\n    labels:\n      chs.dev.owner-service: api\n    depends_on:\n      current-builder:\n        condition: service_completed_successfully\n  current-builder:\n    image: builder:applied\n    labels:\n      chs.dev.owner-service: api\n',
+    );
+    await f.runtime.startApplied('api', {}, 'restart');
+    assert.equal(f.requests.at(-1)!.args.includes('obsolete-builder'), false);
+    assert.equal(f.requests.at(-1)!.args.includes('current-builder'), true);
+    await f.runtime.reloadApplied('api', {});
+    assert.equal(f.requests.at(-1)!.args.includes('obsolete-builder'), false);
+    assert.equal(f.requests.at(-1)!.args.includes('current-builder'), true);
 });

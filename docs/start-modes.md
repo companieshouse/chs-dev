@@ -35,9 +35,18 @@ Base infrastructure and Development-mode services are never lazy.
 A request to a stopped lazy service starts it **and its dependency chain**
 (dependencies first) and is held for up to ~90 seconds for the whole chain;
 past that it returns a "still starting" 503 and a retry succeeds once things
-are up. Starting a service manually from the TUI starts the same chain.
-One-shot jobs in the chain run as part of it. The Services list shows each
-service's effective mode in the START column, and the service modal shows
+are up. Readiness includes configured container health, not just an open TCP port.
+Healthcheck traffic never cold-starts a service or refreshes its idle timer; active
+requests and streams protect the service and its applied dependency chain.
+
+Manual Start and Restart from the TUI or CLI use the applied Compose artifacts,
+including Mock runtime and Development builder dependencies. Compose preserves
+started, healthy and completed-successfully conditions. These actions release
+manual holds only for the applied chain they actually need; pending saved edits
+and refreshed version metadata remain inactive until Apply. Traffic never releases
+a manual hold. Stop also creates a hold for an already idle or created service.
+
+The Services selection details show the effective start mode, and the service modal shows
 where it came from (override, label, inherited, learned, default).
 
 ## For service authors

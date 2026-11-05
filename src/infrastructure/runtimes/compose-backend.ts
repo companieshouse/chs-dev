@@ -7,7 +7,11 @@ import {
 } from '../live-runtime.js';
 import { optionalJson } from '../state-files.js';
 import { projectStateDirectory } from '../settings.js';
-import { LiveFailure, type PreparedProject } from '../../domain/live.js';
+import {
+    LiveFailure,
+    type PreparedProject,
+    type LiveApplyContext,
+} from '../../domain/live.js';
 import type { OperationContext } from '../../domain/runtime-strategy.js';
 
 const transition =
@@ -87,20 +91,20 @@ export class ComposeBackend extends DockerLiveRuntime {
                 'blocked',
             );
     }
-    override async startApplied(service: string, context: OperationContext) {
+    override async startApplied(
+        service: string,
+        context: OperationContext,
+        action: 'start' | 'restart' = 'start',
+    ) {
         await this.checkLegacy(context);
-        return super.startApplied(service, context);
+        return super.startApplied(service, context, action);
     }
-    override async apply(project: PreparedProject, context: OperationContext) {
+    override async apply(project: PreparedProject, context: LiveApplyContext) {
         await this.checkLegacy(context);
         return super.apply(project, context);
     }
-    override async reload(
-        project: PreparedProject,
-        services: readonly string[],
-        context: OperationContext,
-    ) {
+    override async reloadApplied(service: string, context: OperationContext) {
         await this.checkLegacy(context);
-        return super.reload(project, services, context);
+        return super.reloadApplied(service, context);
     }
 }

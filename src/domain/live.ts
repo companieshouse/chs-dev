@@ -391,6 +391,7 @@ export interface LiveRuntime {
     startApplied(
         service: string,
         context: OperationContext,
+        action?: 'start' | 'restart',
     ): Promise<RuntimeOperationResult>;
     apply(
         project: PreparedProject,
@@ -405,12 +406,6 @@ export interface LiveRuntime {
     containerAction(
         action: ContainerAction,
         containers: RuntimeContainer[],
-        context: OperationContext,
-    ): Promise<RuntimeOperationResult>;
-    /** Rebuilds images and recreates every container owned by the given services, builders included. */
-    reload(
-        project: PreparedProject,
-        services: readonly string[],
         context: OperationContext,
     ): Promise<RuntimeOperationResult>;
     logs(

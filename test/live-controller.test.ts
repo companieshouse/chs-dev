@@ -116,9 +116,9 @@ function fixture() {
                     containers: [...containers],
                 };
             },
-            startApplied: async (service, context) => {
+            startApplied: async (service, context, action = 'start') => {
                 context.signal?.throwIfAborted();
-                calls.push(`cold:${service}`);
+                calls.push(`activate:${action}:${service}`);
                 containers = containers.map((entry) => ({
                     ...entry,
                     lifecycle: 'running',
@@ -894,11 +894,8 @@ test('service actions restart, stop and start containers and track services stop
         ok: true,
         message: 'Restarted api.',
     });
-    assert.ok(f.calls.includes('restart:api'));
-    assert.equal(
-        (await f.controller.serviceAction(['api'], 'start')).ok,
-        false,
-    );
+    assert.ok(f.calls.includes('activate:restart:api'));
+    assert.equal((await f.controller.serviceAction(['api'], 'start')).ok, true);
     assert.equal((await f.controller.serviceAction(['api'], 'stop')).ok, true);
     assert.deepEqual(f.controller.getSnapshot().stoppedByUser, ['api']);
     await f.controller.poll();
@@ -1257,7 +1254,7 @@ test('traffic cannot release a manual dependency stop or start a stopped environ
     assert.match(blocked.message, /database.*manually stopped/);
     assert.deepEqual(f.controller.getSnapshot().stoppedByUser, ['database']);
     assert.equal(
-        f.calls.some((call) => call.startsWith('cold:')),
+        f.calls.some((call) => call.startsWith('activate:')),
         false,
     );
     await f.controller.stop();
@@ -1334,7 +1331,7 @@ test('traffic waiting behind Apply expires without starting after the deadline',
     release();
     await applying;
     assert.equal(
-        f.calls.some((call) => call.startsWith('cold:')),
+        f.calls.some((call) => call.startsWith('activate:')),
         false,
     );
 });
@@ -1431,7 +1428,7 @@ test('manual Stop holds an already idle or created owned service without first s
             false,
         );
         assert.equal(
-            f.calls.some((call) => call.startsWith('cold:')),
+            f.calls.some((call) => call.startsWith('activate:')),
             false,
         );
         assert.equal(f.calls.includes('stop:api'), false);

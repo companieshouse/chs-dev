@@ -100,20 +100,37 @@ function appliedChain(service: string, observed: RuntimeSnapshot) {
     });
 }
 
-function actionTargets(
-    observed: RuntimeSnapshot,
-    services: readonly string[],
-    action: ContainerAction,
-) {
-    return observed.containers.filter((container) => {
-        if (
-            !services.includes(container.ownerService ?? container.service) &&
-            !services.includes(container.service)
-        )
-            return false;
-        if (action === 'start') return !isActive(container);
-        return action !== 'stop' || isActive(container);
-    });
+function logicalRoots(services: readonly string[], observed: RuntimeSnapshot) {
+    const owners = new Map<string, string>();
+    for (const container of observed.containers) {
+        const owner = container.ownerService ?? container.service;
+        owners.set(container.service, owner);
+        owners.set(owner, owner);
+    }
+    return [
+        ...new Set(
+            services.map((service) => {
+                const owner = owners.get(service);
+                if (!owner)
+                    throw new LifecycleBlocked(
+                        `${service} has no owned container. Apply configuration before starting it.`,
+                    );
+                return owner;
+            }),
+        ),
+    ];
+}
+
+function appliedOwners(roots: readonly string[], observed: RuntimeSnapshot) {
+    return [
+        ...new Set(
+            roots.flatMap((root) =>
+                appliedChain(root, observed).map(
+                    (container) => container.ownerService ?? container.service,
+                ),
+            ),
+        ),
+    ];
 }
 
 function assertIdleTarget(service: string, observed: RuntimeSnapshot) {
@@ -709,7 +726,83 @@ export class LiveController {
         services: readonly string[],
         action: ContainerAction,
     ): Promise<ServiceResult> {
-        return this.changeServices(services, action, true);
+        return action === 'stop'
+            ? this.stopServices(services, true)
+            : this.activateServices(services, action);
+    }
+
+    private async activateServices(
+        services: readonly string[],
+        action: 'start' | 'restart',
+    ): Promise<ServiceResult> {
+        if (this.state.busy || this.closed || !services.length)
+            return { ok: false, message: 'The environment is busy or closed.' };
+        if (!this.state.running)
+            return {
+                ok: false,
+                message:
+                    'Start the environment before starting individual services.',
+            };
+        this.update({
+            busy: true,
+            activity: `${action === 'start' ? 'Starting' : 'Restarting'} services…`,
+        });
+        this.abort = new AbortController();
+        const signal = this.abort.signal;
+        const context = {
+            signal,
+            onOutput: (entry: { text: string }) => this.log(entry.text),
+        };
+        let result: ServiceResult = {
+            ok: false,
+            message: 'The service action did not complete.',
+        };
+        await this.run_(async () => {
+            try {
+                await this.lock();
+                signal.throwIfAborted();
+                const observed =
+                    await this.dependencies.runtime.snapshot(signal);
+                const roots = logicalRoots(services, observed);
+                const owners = new Map(
+                    roots.map((root) => [
+                        root,
+                        appliedOwners([root], observed),
+                    ]),
+                );
+                for (const root of roots) {
+                    signal.throwIfAborted();
+                    this.accept(
+                        await this.dependencies.runtime.startApplied(
+                            root,
+                            context,
+                            action,
+                        ),
+                    );
+                    this.updateManualStops(owners.get(root)!, action);
+                }
+
+                result = {
+                    ok: true,
+                    message: `${action === 'start' ? 'Started' : 'Restarted'} ${roots.join(', ')}.`,
+                };
+            } catch (error) {
+                result = {
+                    ok: false,
+                    message: safeLog(
+                        error instanceof Error ? error.message : String(error),
+                    ),
+                };
+                this.log(
+                    `${action} did not complete; some services may already have changed. ${result.message}`,
+                );
+            } finally {
+                await this.refresh();
+                this.update({ busy: false, activity: undefined });
+                await this.unlock();
+            }
+        });
+        return result;
     }
 
     /** Idle unload never creates a manual hold or breaks a running dependent. */
@@ -719,98 +812,70 @@ export class LiveController {
                 ok: false,
                 message: 'The environment is stopped or paused.',
             });
-        return this.changeServices([service], 'stop', false);
+        return this.stopServices([service], false);
     }
 
-    private async serviceTargets(
+    private async stopTargets(
         services: readonly string[],
-        action: ContainerAction,
         manual: boolean,
         signal: AbortSignal,
     ) {
         const observed = await this.dependencies.runtime.snapshot(signal);
-        if (manual && action === 'stop') {
-            const known = new Set(
-                observed.containers.flatMap((container) => [
-                    container.service,
-                    container.ownerService ?? container.service,
-                ]),
-            );
-            const unknown = services.find((service) => !known.has(service));
-            if (unknown)
-                throw new Error(`${unknown} has no owned container to stop.`);
-        }
-        const targets = actionTargets(observed, services, action);
+        const roots = manual ? logicalRoots(services, observed) : services;
+        const targets = observed.containers.filter(
+            (container) =>
+                (roots.includes(container.ownerService ?? container.service) ||
+                    roots.includes(container.service)) &&
+                isActive(container),
+        );
         if (!manual && targets.length) assertIdleTarget(services[0]!, observed);
-        return targets;
+        return { targets, roots };
     }
 
-    private async changeServices(
+    private async stopServices(
         services: readonly string[],
-        action: ContainerAction,
         manual: boolean,
     ): Promise<ServiceResult> {
         if (this.state.busy || this.closed || !services.length)
             return { ok: false, message: 'The environment is busy.' };
-
-        const verb = { restart: 'Restart', stop: 'Stop', start: 'Start' }[
-            action
-        ];
-        const names =
-            services.length === 1
-                ? services[0]!
-                : `${services.length} services`;
         let outcome = { ok: false, message: '' };
-
         const work = async () => {
             this.update({
                 busy: true,
-                activity: `${verb === 'Stop' ? 'Stopping' : `${verb}ing`} ${names}…`,
+                activity: `Stopping ${services.join(', ')}…`,
             });
             this.abort = new AbortController();
             const signal = this.abort.signal;
-
             try {
                 await this.lock();
-                const containers = await this.serviceTargets(
+                const { targets, roots } = await this.stopTargets(
                     services,
-                    action,
                     manual,
                     signal,
                 );
-                if (!containers.length && action === 'stop') {
-                    this.updateManualStops(services, action, manual);
-                    outcome = { ok: true, message: `Kept ${names} stopped.` };
+                if (!targets.length) {
+                    this.updateManualStops(roots, 'stop', manual);
+                    outcome = {
+                        ok: true,
+                        message: `Kept ${roots.join(', ')} stopped.`,
+                    };
                     return;
                 }
-                if (!containers.length)
-                    throw new Error(
-                        action === 'start'
-                            ? `${names} has no stopped container to start. Start or apply the environment instead.`
-                            : `${names} has no running container.`,
-                    );
-
-                this.log(`${verb}: ${services.join(', ')}`);
+                this.log(`Stop: ${roots.join(', ')}`);
                 this.accept(
                     await this.dependencies.runtime.containerAction(
-                        action,
-                        containers,
-                        {
-                            signal,
-                            onOutput: (entry) => this.log(entry.text),
-                        },
+                        'stop',
+                        targets,
+                        { signal, onOutput: (entry) => this.log(entry.text) },
                     ),
                 );
-                this.updateManualStops(services, action, manual);
-                outcome = {
-                    ok: true,
-                    message: `${verb === 'Stop' ? 'Stopped' : `${verb}ed`} ${names}.`,
-                };
+                this.updateManualStops(roots, 'stop', manual);
+                outcome = { ok: true, message: `Stopped ${roots.join(', ')}.` };
             } catch (error) {
                 const message = safeLog(
                     error instanceof Error ? error.message : String(error),
                 );
-                this.log(`${verb} failed: ${message}`);
+                this.log(`Stop failed: ${message}`);
                 outcome = { ok: false, message };
             } finally {
                 await this.refresh();
@@ -818,7 +883,6 @@ export class LiveController {
                 await this.unlock();
             }
         };
-
         await this.run_(work);
         return outcome;
     }

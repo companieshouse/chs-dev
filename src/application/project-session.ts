@@ -26,39 +26,8 @@ import type {
 } from '../domain/settings.js';
 import type { Operations } from './operations.js';
 import type { LiveController } from './live-controller.js';
-import {
-    dependencyOrder,
-    serviceDependencies,
-} from '../domain/service-dependencies.js';
 
 type Dispatch = { handled: true; value?: unknown } | { handled: false };
-
-/**
- * Expands a manual start into its dependency chain, dependencies first, so
- * starting a service also starts the (possibly lazy) services beneath it.
- */
-function startChain(
-    services: readonly string[],
-    groups: BackendSession['groups'],
-): string[] {
-    const names = new Set(services);
-    for (const name of services)
-        for (const dependency of serviceDependencies(name, groups))
-            names.add(dependency.name);
-    const dependencies = new Map(
-        [...names].map((name) => [
-            name,
-            serviceDependencies(name, groups).map(
-                (dependency) => dependency.name,
-            ),
-        ]),
-    );
-    return [
-        ...new Set(
-            services.flatMap((name) => dependencyOrder(name, dependencies)),
-        ),
-    ];
-}
 
 export class ProjectSession {
     private backend?: BackendSession;
@@ -519,9 +488,7 @@ export class ProjectSession {
             return {
                 handled: true,
                 value: await requireController().serviceAction(
-                    a.action === 'start'
-                        ? startChain(a.services, backend.groups)
-                        : a.services,
+                    a.services,
                     a.action,
                 ),
             };

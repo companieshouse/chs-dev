@@ -35,6 +35,7 @@ export async function daemonFixture(
     options: {
         mock?: MockSupport;
         image?: string;
+        runtime?: (base: LiveRuntime) => LiveRuntime;
         intentStore?: Pick<ApplicationHost, 'readIntent' | 'writeIntent'>;
         completed?: (completion: OperationCompletion) => void;
         configure?: (backend: BackendSession) => void;
@@ -178,7 +179,7 @@ export async function daemonFixture(
                     message: 'Done.',
                     affectedServices: ['api'],
                 });
-                const runtime: LiveRuntime = {
+                const baseRuntime: LiveRuntime = {
                     checkAvailability: async () => ({
                         available: true,
                         message: 'Ready',
@@ -253,6 +254,7 @@ export async function daemonFixture(
                         engine.monitors++;
                     },
                 };
+                const runtime = options.runtime?.(baseRuntime) ?? baseRuntime;
                 const controller = new LiveController({
                     runtime,
                     explicitStart: true,
