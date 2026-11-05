@@ -35,7 +35,7 @@ export function WorkspaceTabs({
     rows: number;
     columns: number;
 }) {
-    const screens = screenProps(workspace, ui, editors, rows);
+    const screens = screenProps(workspace, ui, editors, rows, columns);
     return (
         <>
             <TabBar active={ui.activeTab} width={columns} />
@@ -53,6 +53,7 @@ function screenProps(
     ui: WorkspaceUi,
     editors: ScreenEditors,
     rows: number,
+    columns: number,
 ) {
     const {
         project,
@@ -74,6 +75,9 @@ function screenProps(
     return {
         primary: {
             ...navigation,
+            columns,
+            live,
+            environment,
             project,
             runtimeStatus,
             runtime,
@@ -121,7 +125,10 @@ type PrimaryProps = Pick<
     | 'containerManager'
     | 'settings'
     | 'discovery'
+    | 'live'
+    | 'environment'
 > & {
+    columns: number;
     rows: number;
     activeTab: Tab;
     overlayOpen: boolean;
@@ -158,6 +165,9 @@ function PrimaryScreens(props: PrimaryProps) {
                 <ServicesScreen
                     {...project}
                     {...runtimeStatus}
+                    width={props.columns - 6}
+                    live={props.live.state}
+                    environment={props.environment}
                     runtimeName={runtimeDisplayName(runtime.name)}
                     active={activeTab === 'Services' && !overlayOpen}
                     height={screenHeight(rows, 'Services')}

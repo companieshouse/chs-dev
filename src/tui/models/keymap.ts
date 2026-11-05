@@ -65,6 +65,8 @@ export function bindingsForTab(
     const screen: Record<Tab, KeyBinding[]> = {
         Services: [
             binding('↑ ↓', 'select'),
+            binding('PgUp PgDn', 'page'),
+            binding('i', 'details'),
             binding('Enter', 'actions'),
             binding('c', 'container'),
             binding('e', 'state filter'),
@@ -170,6 +172,13 @@ export function footerBindingsForTab(
     context: KeymapContext = 'normal',
 ) {
     const bindings = bindingsForTab(tab, context);
+    if (tab === 'Services') {
+        const keys =
+            context === 'search'
+                ? ['Type', 'Enter', 'Esc', 'Ctrl+U']
+                : ['↑ ↓', 'Enter', 'i', '/', '?', 'q'];
+        return bindings.filter(({ key }) => keys.includes(key));
+    }
     if (context === 'search')
         return bindings.filter(({ key }) =>
             ['Type', '↑ ↓', 'Enter', 'Esc', 'Ctrl+U', '← →', 'Tab'].includes(

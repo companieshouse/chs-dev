@@ -39,52 +39,45 @@ test('long log entries wrap into scrollable rows and keep the footer in a narrow
     assert.match(term.frame(), /FINAL_MARKER/);
 });
 
-// Skipped: intermittently fails in the full suite (the full log line is not in a
-// single row of the rendered frame) but never in isolation. Re-enable once the
-// cause is found; the failure output now prints the last frame.
-test(
-    'logs use the entire wide window and rewrap embedded newlines, tabs and Unicode after resize',
-    { skip: true },
-    async (t) => {
-        const line = `2026-10-02T12:32:00Z ${'x'.repeat(110)} END_OF_LONG_LINE`;
-        const term = terminal(
-            createElement(ServiceLogs, {
-                name: 'api',
-                fullScreen: true,
-                load: async () => [
-                    line,
-                    'first\r\nsecond\nthird',
-                    '\twide: 界界 café 👩‍💻',
-                ],
-                onClose: () => {},
-            }),
-            { columns: 180, rows: 18 },
-        );
-        t.after(() => term.app.unmount());
-        await term.waitFor(new RegExp(line));
-        assert.ok(
-            term
-                .frame()
-                .split('\n')
-                .some((row) => row.includes(line)),
-            `Expected one row to contain the full line. Frame:\n${term.frame()}`,
-        );
-        assert.match(term.frame(), /first\s*\n.*second\s*\n.*third/);
-        assert.match(term.frame(), /界界 café 👩‍💻/);
-        assert.doesNotMatch(term.frame(), /\t/);
-        term.resize(50, 12);
-        await delay(100);
-        await term.waitFor(/END_OF_LONG_LINE/);
-        const rows = term.frame().split('\n');
-        assert.equal(rows.length, 12);
-        assert.match(rows[0], /← Back \(Esc\).*Containers \/ Logs/);
-        assert.match(rows.at(-1)!, /Esc back/);
-        assert.ok(rows.every((row) => row.length <= 50));
-        assert.match(term.frame(), /END_OF_LONG_LINE/);
-        assert.match(term.frame(), /first\s*\n.*second\s*\n.*third/);
-        assert.match(term.frame(), /界界 café 👩‍💻/);
-    },
-);
+test('logs use the entire wide window and rewrap embedded newlines, tabs and Unicode after resize', async (t) => {
+    const line = `2026-10-02T12:32:00Z ${'x'.repeat(110)} END_OF_LONG_LINE`;
+    const term = terminal(
+        createElement(ServiceLogs, {
+            name: 'api',
+            fullScreen: true,
+            load: async () => [
+                line,
+                'first\r\nsecond\nthird',
+                '\twide: 界界 café 👩‍💻',
+            ],
+            onClose: () => {},
+        }),
+        { columns: 180, rows: 18 },
+    );
+    t.after(() => term.app.unmount());
+    await term.waitFor(new RegExp(line));
+    assert.ok(
+        term
+            .frame()
+            .split('\n')
+            .some((row) => row.includes(line)),
+        `Expected one row to contain the full line. Frame:\n${term.frame()}`,
+    );
+    assert.match(term.frame(), /first\s*\n.*second\s*\n.*third/);
+    assert.match(term.frame(), /界界 café 👩‍💻/);
+    assert.doesNotMatch(term.frame(), /\t/);
+    term.resize(50, 12);
+    await delay(100);
+    await term.waitFor(/END_OF_LONG_LINE/);
+    const rows = term.frame().split('\n');
+    assert.equal(rows.length, 12);
+    assert.match(rows[0], /← Back \(Esc\).*Containers \/ Logs/);
+    assert.match(rows.at(-1)!, /Esc back/);
+    assert.ok(rows.every((row) => row.length <= 50));
+    assert.match(term.frame(), /END_OF_LONG_LINE/);
+    assert.match(term.frame(), /first\s*\n.*second\s*\n.*third/);
+    assert.match(term.frame(), /界界 café 👩‍💻/);
+});
 
 test('log failures and empty results stay within the viewport with back and refresh controls visible', async (t) => {
     let fail = true;

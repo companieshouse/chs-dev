@@ -1,13 +1,18 @@
 import { Box, Text } from 'ink';
-import type { ServiceGroup } from '../../domain/services.js';
-import type { ServiceDetails } from '../../domain/services.js';
+import type { ServiceGroup, ServiceDetails } from '../../domain/services.js';
 import type { ServiceStatus } from '../../domain/runtime.js';
+import { middleEllipsis } from '../models/formatting.js';
 import { theme, statusColor } from './theme.js';
+
+export function serviceVersion(detail?: ServiceDetails): string {
+    return detail?.versionLabel ?? detail?.image ?? '—';
+}
 
 export default function ServiceList({
     groups,
     selected,
     height,
+    width,
     details,
     statuses,
     defaultStatus,
@@ -15,248 +20,95 @@ export default function ServiceList({
     groups: ServiceGroup[];
     selected: number;
     height: number;
+    width: number;
     details: Record<string, ServiceDetails>;
     statuses: Record<string, ServiceStatus>;
     defaultStatus: ServiceStatus;
 }) {
-    const hasScenarios = Object.values(details).some(
-        (detail) => detail.mockScenario,
-    );
-    const hasStartModes = Object.values(details).some(
-        (detail) =>
-            detail.effectiveStartMode === 'lazy' ||
-            detail.startModeOverride ||
-            detail.startModeLabel,
-    );
-    let serviceIndex = 0;
-    const lines = groups.flatMap((group) => [
-        { label: group.name, group: group.name, index: -1 },
-        ...group.services.map((label) => ({
-            label,
-            group: group.name,
-            index: serviceIndex++,
-        })),
-    ]);
-    const selectedLine = lines.findIndex((line) => line.index === selected);
-    const capacity = Math.max(1, height - 1);
+    const names = groups.flatMap((group) => group.services);
+    const capacity = Math.max(1, height - 2);
     const start = Math.max(
         0,
-        capacity === 1 ? selectedLine : selectedLine - capacity + 2,
+        Math.min(selected - Math.floor(capacity / 2), names.length - capacity),
     );
-    const visible = lines.slice(start, start + capacity);
-    // Keep the module name visible when the selected service scrolls past its heading.
-    if (capacity > 1 && start > 0 && visible[0]?.index !== -1) {
-        visible.unshift({
-            label: visible[0]!.group,
-            group: visible[0]!.group,
-            index: -1,
-        });
-        visible.length = Math.min(visible.length, capacity);
-    }
-
+    const visible = names.slice(start, start + capacity);
+    const nameWidth = Math.max(1, width - 35);
     return (
         <Box flexDirection="column" height={height} overflow="hidden">
-            <ServiceRow
+            <Row
                 name="SERVICE"
-                enabled="ENABLED"
-                status="STATUS"
-                mode="MODE"
-                start={hasStartModes ? 'START' : undefined}
-                scenario={hasScenarios ? 'SCENARIO' : undefined}
+                saved="SAVED"
+                runtime="RUNTIME"
+                version="SAVED VER"
+                nameWidth={nameWidth}
                 heading
             />
-            {visible.map((line, index) => (
-                <ServiceListItem
-                    key={index}
-                    line={line}
-                    selected={selected}
-                    details={details[line.label]}
-                    status={statuses[line.label] ?? defaultStatus}
-                    hasScenarios={hasScenarios}
-                    start={
-                        hasStartModes
-                            ? startText(details[line.label])
-                            : undefined
-                    }
-                />
-            ))}
+            {visible.map((name, offset) => {
+                const detail = details[name];
+                const mode = {
+                    Service: 'Service',
+                    Development: 'Dev',
+                    Mock: 'Mock',
+                    Unknown: '?',
+                }[detail?.mode ?? 'Unknown'];
+                const enabled =
+                    detail?.enabled === 'Unknown'
+                        ? '?'
+                        : (detail?.enabled ?? '?');
+                return (
+                    <Row
+                        key={name}
+                        name={`${start + offset === selected ? '›' : ' '} ${name}`}
+                        saved={`${enabled} ${mode}`}
+                        runtime={statuses[name] ?? defaultStatus}
+                        version={serviceVersion(detail)}
+                        nameWidth={nameWidth}
+                        selected={start + offset === selected}
+                    />
+                );
+            })}
+            <Box flexGrow={1} />
+            <Text color={theme.muted}>
+                {start + 1}–{Math.min(start + capacity, names.length)} of{' '}
+                {names.length} · PgUp/PgDn page
+            </Text>
         </Box>
     );
 }
 
-function ServiceListItem({
-    line,
-    selected,
-    details,
-    status,
-    hasScenarios,
-    start,
-}: {
-    line: { label: string; index: number };
-    selected: number;
-    details?: ServiceDetails;
-    status: ServiceStatus;
-    hasScenarios: boolean;
-    start?: string;
-}) {
-    if (line.index === -1)
-        return (
-            <Text bold color={theme.accent} wrap="truncate-end">
-                {line.label}
-            </Text>
-        );
-    return (
-        <ServiceRow
-            name={`${line.index === selected ? '›' : ' '} ${line.label}`}
-            selected={line.index === selected}
-            enabled={details?.enabled ?? 'Unknown'}
-            mode={details?.mode ?? 'Unknown'}
-            start={start}
-            scenario={hasScenarios ? (details?.mockScenario ?? '—') : undefined}
-            status={status}
-        />
-    );
-}
-
-function enabledColor(enabled: string) {
-    if (enabled === 'Yes') return theme.enabled;
-    if (enabled === 'No') return theme.disabled;
-    return theme.muted;
-}
-
-function modeColor(mode: string) {
-    if (mode === 'Development') return theme.development;
-    if (mode === 'Mock') return theme.mocked;
-    return theme.muted;
-}
-
-function serviceNameColor(heading: boolean, selected: boolean) {
-    if (heading) return theme.columnHeading;
-    return selected ? theme.selectionText : theme.foreground;
-}
-
-function ServiceRow({
+function Row({
     name,
-    enabled,
-    status,
-    mode,
-    start,
-    scenario,
+    saved,
+    runtime,
+    version,
+    nameWidth,
     selected = false,
     heading = false,
 }: {
     name: string;
-    enabled: string;
-    status: string;
-    mode: string;
-    start?: string;
-    scenario?: string;
+    saved: string;
+    runtime: string;
+    version: string;
+    nameWidth: number;
     selected?: boolean;
     heading?: boolean;
 }) {
-    const nameContent = selected ? (
-        <>
-            <Text bold color={theme.accent}>
-                ›
-            </Text>
-            {name.slice(1)}
-        </>
-    ) : (
-        name
-    );
-
     return (
-        <Box
-            flexShrink={0}
+        <Text
+            wrap="truncate-end"
             backgroundColor={selected ? theme.selectionBackground : undefined}
         >
-            <Box flexGrow={1} flexBasis={0} minWidth={1} marginRight={1}>
-                <Text
-                    bold={Boolean(heading || selected)}
-                    color={serviceNameColor(heading, selected)}
-                    wrap="truncate-end"
-                >
-                    {nameContent}
-                </Text>
-            </Box>
-            <Box width={9} flexShrink={0}>
-                <Text
-                    bold={heading || enabled === 'Yes'}
-                    color={
-                        heading ? theme.columnHeading : enabledColor(enabled)
-                    }
-                >
-                    {enabled}
-                </Text>
-            </Box>
-            <Box width={12} flexShrink={0}>
-                <Text
-                    bold={heading}
-                    color={heading ? theme.columnHeading : statusColor(status)}
-                >
-                    {status}
-                </Text>
-            </Box>
-            <Box width={11} flexShrink={0}>
-                <Text
-                    bold={heading}
-                    color={heading ? theme.columnHeading : modeColor(mode)}
-                >
-                    {mode}
-                </Text>
-            </Box>
-            <StartCell start={start} heading={heading} />
-            <ScenarioCell scenario={scenario} heading={heading} />
-        </Box>
-    );
-}
-
-function StartCell({ start, heading }: { start?: string; heading: boolean }) {
-    if (start === undefined) return null;
-    return (
-        <Box width={8} flexShrink={0}>
             <Text
-                bold={heading}
-                color={
-                    heading
-                        ? theme.columnHeading
-                        : start === 'lazy'
-                          ? theme.development
-                          : theme.muted
-                }
+                bold={selected || heading}
+                color={selected ? theme.accent : theme.foreground}
             >
-                {start}
+                {middleEllipsis(name, nameWidth).padEnd(nameWidth)}{' '}
             </Text>
-        </Box>
-    );
-}
-
-/** The START column value for one service row. */
-function startText(details?: ServiceDetails): string {
-    return (
-        details?.effectiveStartMode ??
-        details?.startModeOverride ??
-        details?.startModeLabel ??
-        '—'
-    );
-}
-
-function ScenarioCell({
-    scenario,
-    heading,
-}: {
-    scenario?: string;
-    heading: boolean;
-}) {
-    if (scenario === undefined) return null;
-    return (
-        <Box width={14} flexShrink={0}>
-            <Text
-                color={heading ? theme.columnHeading : theme.mocked}
-                wrap="truncate-end"
-            >
-                {scenario}
+            <Text color={theme.muted}>{saved.padEnd(12)} </Text>
+            <Text color={heading ? theme.muted : statusColor(runtime)}>
+                {runtime.padEnd(11)}{' '}
             </Text>
-        </Box>
+            <Text color={theme.muted}>{middleEllipsis(version, 9)}</Text>
+        </Text>
     );
 }
