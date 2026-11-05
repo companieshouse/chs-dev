@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { expandHome } from '../infrastructure/settings.js';
+import { telemetryEnvironment } from '../infrastructure/telemetry.js';
 import {
     resolveSettings,
     retiredEnvironmentWarnings,
@@ -35,6 +36,7 @@ export function daemonEnvironment(env: NodeJS.ProcessEnv = process.env) {
     const selected: NodeJS.ProcessEnv = Object.fromEntries(
         names.flatMap((name) => (env[name] ? [[name, env[name]]] : [])),
     );
+    Object.assign(selected, telemetryEnvironment(env));
     if (selected.CHS_DEV_PROJECT)
         selected.CHS_DEV_PROJECT = resolve(
             expandHome(selected.CHS_DEV_PROJECT),

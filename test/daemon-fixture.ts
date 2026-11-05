@@ -1,3 +1,4 @@
+import type { OperationCompletion } from '../src/domain/telemetry.js';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -34,6 +35,7 @@ export async function daemonFixture(
     options: {
         mock?: MockSupport;
         image?: string;
+        completed?: (completion: OperationCompletion) => void;
         configure?: (backend: BackendSession) => void;
     } = {},
 ) {
@@ -407,7 +409,11 @@ export async function daemonFixture(
             randomUUID,
         );
         app = new ProjectSession(host, interactions);
-        operations = new Operations(state, () => app.changed());
+        operations = new Operations(
+            state,
+            () => app.changed(),
+            options.completed,
+        );
         app.operations = operations;
         await operations.initialize();
         await app.initialize();

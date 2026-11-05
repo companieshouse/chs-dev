@@ -1,3 +1,7 @@
+import {
+    createTelemetry,
+    telemetryConfiguration,
+} from '../infrastructure/telemetry.js';
 import { shutdown } from './shutdown.js';
 import { startProcessGuard } from '../infrastructure/process-guard.js';
 import { createHash, randomUUID } from 'node:crypto';
@@ -520,9 +524,15 @@ export async function createApplication(
     );
     const application = new ProjectSession(host, interactions);
     application.usage = usage;
-    const operations = new Operations(state, () => application.changed());
+    const telemetry = createTelemetry(telemetryConfiguration());
+    const operations = new Operations(
+        state,
+        () => application.changed(),
+        (completion) => telemetry.record(completion),
+    );
     application.operations = operations;
     const closeSteps = [
+        async () => telemetry.close(),
         () => operations.close(),
         () => application.close(),
         () => proxy.close(),

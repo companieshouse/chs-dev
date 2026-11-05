@@ -1,3 +1,4 @@
+import type { OperationCompletion } from '../domain/telemetry.js';
 import { safeLog } from '../domain/live-logs.js';
 import {
     ClientError,
@@ -26,6 +27,7 @@ export class Operations {
     constructor(
         private readonly store: OperationStore,
         private readonly changed: () => void,
+        private readonly completed?: (completion: OperationCompletion) => void,
     ) {}
     async initialize() {
         this.records = await this.store.read();
@@ -123,6 +125,7 @@ export class Operations {
                     'Cannot save operation state. Check permissions and free space.',
             };
             this.changed();
+            this.reportCompletion(record);
         });
         this.tasks.add(task);
         void task.finally(() => this.tasks.delete(task));
@@ -195,6 +198,26 @@ export class Operations {
             this.controllers.delete(record.id);
             await this.save();
             this.changed();
+            this.reportCompletion(record);
+        }
+    }
+
+    private reportCompletion(record: OperationRecord): void {
+        if (!['succeeded', 'failed', 'cancelled'].includes(record.state))
+            return;
+        try {
+            const observation = this.completed?.({
+                command: record.kind,
+                state: record.state as OperationCompletion['state'],
+                durationMs: Math.max(
+                    0,
+                    Date.parse(record.updatedAt) - Date.parse(record.createdAt),
+                ),
+                errorCode: record.error?.code,
+            });
+            void Promise.resolve(observation).catch(() => {});
+        } catch {
+            /* Observers never change accepted operation outcomes. */
         }
     }
 
