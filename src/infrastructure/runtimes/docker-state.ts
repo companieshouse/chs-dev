@@ -40,12 +40,11 @@ function exitedStatus(
     state: ContainerSnapshot['state'],
 ): ServiceStatus | undefined {
     if (state.Status === 'exited' && state.ExitCode !== undefined) {
-        // One-shot jobs exit 0 without a healthcheck; SIGTERM/SIGKILL exits
-        // come from `docker stop` rather than a crash.
+        // Missing OOM evidence must not turn exit 137 into a benign stop.
         if (state.ExitCode === 0) return state.Health ? 'Stopped' : 'Completed';
         if (
             state.ExitCode === 143 ||
-            (state.ExitCode === 137 && !state.OOMKilled)
+            (state.ExitCode === 137 && state.OOMKilled === false)
         )
             return 'Stopped';
     }

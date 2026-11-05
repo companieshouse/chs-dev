@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+    environmentSummary,
+    serviceBlockers,
+} from '../src/domain/environment.js';
+import {
     containerStatus,
     statusesForProject,
     type ContainerSnapshot,
@@ -48,6 +52,10 @@ test('distinguishes completed jobs, stopped services and crashes by exit code', 
     );
     assert.equal(
         containerStatus({ Status: 'exited', ExitCode: 137 }),
+        'Exited',
+    );
+    assert.equal(
+        containerStatus({ Status: 'exited', ExitCode: 137, OOMKilled: false }),
         'Stopped',
     );
     assert.equal(
@@ -55,6 +63,43 @@ test('distinguishes completed jobs, stopped services and crashes by exit code', 
         'Exited',
     );
     assert.equal(containerStatus({ Status: 'exited', ExitCode: 1 }), 'Exited');
+});
+
+test('project diagnostics keep unconfirmed exit 137 visible without inventing OOM evidence', async () => {
+    const directory = process.cwd();
+    const statuses = await statusesForProject(directory, [
+        {
+            labels: {
+                'com.docker.compose.service': 'api',
+                'com.docker.compose.project.working_dir': directory,
+            },
+            state: { Status: 'exited', ExitCode: 137 },
+        },
+    ]);
+    assert.equal(
+        environmentSummary(
+            { api: { enabled: 'Yes', mode: 'Service' } },
+            statuses,
+            'ready',
+        ).state,
+        'Issues',
+    );
+    const blockers = serviceBlockers({
+        enabled: ['api'],
+        statuses,
+        containers: [
+            {
+                id: 'api-1',
+                service: 'api',
+                projectName: 'fixture',
+                projectDirectory: directory,
+                lifecycle: 'exited',
+                exitCode: 137,
+            },
+        ],
+    });
+    assert.equal(blockers[0]?.state, 'failing');
+    assert.match(blockers[0]!.detail, /code 137.*did not confirm an OOM/);
 });
 
 test('scopes containers by project path, ignores one-offs, and reports unhealthy replicas', async () => {
