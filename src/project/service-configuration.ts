@@ -12,6 +12,7 @@ import {
 } from './provider-configuration.js';
 import { serviceDefinitions } from '../domain/services.js';
 import type { ServiceProvider } from '../domain/providers.js';
+import { validImage } from '../domain/image-versions.js';
 
 export interface SaveServiceChangesOptions {
     directory: string;
@@ -23,6 +24,7 @@ export interface SaveServiceChangesOptions {
     groups: ServiceGroup[];
     exclusions?: Record<string, boolean>;
     expectedRevision?: string;
+    image?: string | null;
 }
 
 function validateSaveRequest(
@@ -168,10 +170,13 @@ export async function saveServiceChanges({
     expectedRevision,
     provider,
     mockScenario,
+    image,
 }: SaveServiceChangesOptions) {
     validateSaveRequest(name, enabled, development, groups, exclusions);
     const providerEdit = { name, development, provider, mockScenario };
     validateProviderEdit(providerEdit, serviceDefinitions(groups)[name]);
+    if (image !== undefined && image !== null && !validImage(image))
+        throw new Error('Supply a valid container image reference.');
     const path = join(directory, '.chs-dev.yaml');
     logValidated(name, enabled, development, exclusions);
     const read = () =>
@@ -185,6 +190,9 @@ export async function saveServiceChanges({
     resolveServiceState(document.toJS(), groups);
     applyChanges(document, name, enabled, development, exclusions);
     applyProviderEdit(document, providerEdit);
+    if (image === null) document.deleteIn(['serviceImages', name]);
+    else if (image !== undefined)
+        document.setIn(['serviceImages', name], image);
     const details = resolveServiceState(document.toJS(), groups);
     await writeAtomically(path, read, original, document);
     return details;

@@ -85,7 +85,13 @@ function serviceEdit(context: CliContext) {
                 : options.enabled === 'true',
         ...providerEdit(context),
         exclusions,
+        ...imageEdit(options.image),
     };
+}
+
+function imageEdit(image: unknown): { image?: string | null } {
+    if (image === undefined) return {};
+    return { image: image === 'default' ? null : String(image) };
 }
 
 function servicesText(rows: ReturnType<typeof serviceRows>) {

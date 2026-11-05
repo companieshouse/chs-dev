@@ -394,6 +394,7 @@ interface PrepareContext {
     output: string;
     dependencies: ProjectDependencies;
     mockDirectory: string;
+    images: Record<string, string>;
 }
 
 async function resolveOutput(
@@ -453,6 +454,7 @@ async function generateServices(
                 );
             if (item.mode !== 'Development')
                 normalizePaths(spec, dirname(definition.source), output);
+            applyImagePin(spec, item.mode, context.images[service]);
             spec.labels = {
                 ...labels(spec.labels),
                 'chs.dev.mode': item.mode,
@@ -462,6 +464,15 @@ async function generateServices(
             sources[service] = definition.source;
         }
     }
+}
+
+function applyImagePin(
+    spec: Mapping,
+    mode: InventoryEntry['mode'],
+    image?: string,
+) {
+    if (mode !== 'Service' || !image) return;
+    spec.image = image;
 }
 
 function pruneDependencies(document: Mapping): void {
@@ -549,6 +560,7 @@ export async function prepareProject(
         project,
         output,
         dependencies,
+        images: state.serviceImages ?? {},
         mockDirectory:
             request.mockRuntimeDirectory ?? join(output, 'mock-config'),
     });

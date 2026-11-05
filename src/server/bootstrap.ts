@@ -192,6 +192,7 @@ function createHostOpen(
                     development: edit.development,
                     provider: edit.provider,
                     mockScenario: edit.mockScenario,
+                    image: edit.image,
                     groups,
                     exclusions: edit.exclusions,
                     expectedRevision: revision,

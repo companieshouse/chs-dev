@@ -14,6 +14,7 @@ const options: NonNullable<ParseArgsConfig['options']> = {
     development: { type: 'string' },
     provider: { type: 'string' },
     scenario: { type: 'string' },
+    image: { type: 'string' },
     exclude: { type: 'string', multiple: true },
     allow: { type: 'string', multiple: true },
     tail: { type: 'string', short: 'n' },
@@ -117,6 +118,7 @@ function validateConfigurationOptions(invocation: Invocation) {
             'development',
             'provider',
             'scenario',
+            'image',
             'exclude',
             'allow',
         ].some((key) => invocation.options[key] !== undefined)

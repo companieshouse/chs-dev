@@ -7,6 +7,7 @@ export interface ServiceDefinition {
     deprecated: boolean;
     development?: boolean;
     mock?: MockSupport;
+    image?: string;
 }
 
 export interface ServiceGroup {
@@ -21,6 +22,8 @@ export interface ServiceDetails {
     excluded?: boolean;
     mockScenario?: string;
     savedMockScenario?: string;
+    image?: string;
+    imagePinned?: boolean;
 }
 
 export interface ServiceEdit {
@@ -30,6 +33,7 @@ export interface ServiceEdit {
     provider?: ServiceProvider;
     mockScenario?: string;
     exclusions: Record<string, boolean>;
+    image?: string | null;
 }
 
 export type SaveService = (edit: ServiceEdit) => Promise<void>;

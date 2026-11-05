@@ -50,6 +50,9 @@ function serviceDefinition(
                       /^chs\.local\.builder=.+/.test(label),
               )
             : isRecord(labels) && Boolean(labels['chs.local.builder']),
+        ...(typeof definition.image === 'string'
+            ? { image: definition.image }
+            : {}),
     };
 }
 

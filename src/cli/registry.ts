@@ -36,6 +36,7 @@ export const commands: CommandDefinition[] = [
         'development',
         'provider',
         'scenario',
+        'image',
         'exclude',
         'allow',
     ]),

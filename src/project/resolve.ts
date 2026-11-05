@@ -13,6 +13,11 @@ import { serviceMode } from '../domain/services.js';
 import { readMockCatalogue } from './mock-catalogue.js';
 import { labels, mapping, ProjectError, type Mapping } from './compose.js';
 import type { ProjectEntry, ProjectFs } from './files.js';
+import {
+    imageSelections,
+    validateImageSelections,
+    type ImageSelections,
+} from '../domain/image-versions.js';
 
 export interface ServiceDefinition {
     spec: Mapping;
@@ -27,7 +32,7 @@ export type Resources = Record<
     'networks' | 'volumes' | 'secrets' | 'configs',
     Mapping
 >;
-export interface ProjectState extends ProviderSelections {
+export interface ProjectState extends ProviderSelections, ImageSelections {
     modules: string[];
     services: string[];
     servicesWithLiveUpdate: string[];
@@ -58,7 +63,11 @@ export function readState(raw: string): ProjectState {
         }
         state[key] = [...new Set(entries as string[])];
     }
-    return { ...state, ...providerSelections(value) };
+    return {
+        ...state,
+        ...providerSelections(value),
+        ...imageSelections(value),
+    };
 }
 
 export function dependencyClosure(
@@ -86,6 +95,21 @@ function validateConfiguredServices(
     state: ProjectState,
 ) {
     validateConfiguredProviders(definitions, state);
+    validateImageSelections(
+        state,
+        Object.fromEntries(
+            [...definitions].map(([name, definition]) => [
+                name,
+                {
+                    deprecated: definition.labels['chs.deprecated'] === 'true',
+                    image:
+                        typeof definition.spec.image === 'string'
+                            ? definition.spec.image
+                            : undefined,
+                },
+            ]),
+        ),
+    );
     for (const name of [...state.services, ...state.servicesWithLiveUpdate]) {
         if (!definitions.has(name))
             throw new ProjectError(

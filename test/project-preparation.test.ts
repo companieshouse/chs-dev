@@ -22,6 +22,24 @@ const sha = (text: string) => createHash('sha256').update(text).digest('hex');
 const standardInit =
     '#!/usr/bin/env bash\nSCRIPT_DIR=$(cd "$(dirname -- "$0")" && pwd)\nCUSTOM_SCRPTS_DIR=\'custom-init-scripts\'\n"${SCRIPT_DIR}/${CUSTOM_SCRPTS_DIR}/set_aws_session_vars.sh" > aws-session.env\n';
 
+test('image pins reach generated services without changing project source definitions', async () => {
+    const image = 'registry.example/app@sha256:' + 'a'.repeat(64);
+    const f = fixture({ services: ['app'], serviceImages: { app: image } });
+    const prepared = await prepareProject(f.request, f.dependencies);
+    assert.equal(
+        parse(f.files.get(prepared.composeFiles[0]!)!).services.app.image,
+        image,
+    );
+    assert.equal(
+        parse(
+            f.files.get(
+                '/project/services/modules/example/app.docker-compose.yaml',
+            )!,
+        ).services.app.image,
+        'app:${TAG:-latest}',
+    );
+});
+
 function fixture(state: unknown = { services: ['app'] }) {
     const files = new Map<string, string>();
     const directories = new Set([

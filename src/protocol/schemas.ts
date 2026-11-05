@@ -125,6 +125,7 @@ function argsConfigurationSave(a: Args) {
         'exclusions',
         'provider',
         'mockScenario',
+        'image',
     ]);
     string(e.name, 256);
     bool(e.enabled);
@@ -135,6 +136,7 @@ function argsConfigurationSave(a: Args) {
     )
         invalid('Invalid service provider.');
     if (e.mockScenario !== undefined) string(e.mockScenario, 256);
+    if (e.image !== undefined && e.image !== null) string(e.image, 1024);
     const exclusions = object(e.exclusions);
     if (Object.keys(exclusions).length > 500) invalid('Too many exclusions.');
     for (const [k, v] of Object.entries(exclusions)) {

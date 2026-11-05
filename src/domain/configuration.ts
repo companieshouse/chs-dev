@@ -1,12 +1,14 @@
 import { serviceDefinitions, type ServiceGroup } from './services.js';
 import { resolveServiceState } from './service-state.js';
 import { providerSelections, type ProviderSelections } from './providers.js';
+import { imageSelections, type ImageSelections } from './image-versions.js';
 
-export interface ProjectSelections extends ProviderSelections {
+export interface ProjectSelections extends ProviderSelections, ImageSelections {
     modules: string[];
     services: string[];
     servicesWithLiveUpdate: string[];
     excludedServices: string[];
+    excludedFiles?: string[];
 }
 
 export interface LegacyEdit {
@@ -37,7 +39,20 @@ export function projectSelections(value: unknown): ProjectSelections {
             throw new Error(`Invalid ${key} in .chs-dev.yaml`);
         result[key] = [...names];
     }
-    return { ...result, ...providerSelections(record) };
+    if (record.excludedFiles !== undefined) {
+        result.excludedFiles = excludedFiles(record.excludedFiles);
+    }
+    return {
+        ...result,
+        ...providerSelections(record),
+        ...imageSelections(record),
+    };
+}
+
+function excludedFiles(value: unknown): string[] {
+    if (!Array.isArray(value) || value.some((name) => typeof name !== 'string'))
+        throw new Error('Invalid excludedFiles in .chs-dev.yaml');
+    return [...value];
 }
 
 export function moduleNames(groups: ServiceGroup[]) {

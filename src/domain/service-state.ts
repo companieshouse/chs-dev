@@ -10,6 +10,7 @@ import {
     validateProviderSelections,
     type ProviderSelections,
 } from './providers.js';
+import { imageSelections, validateImageSelections } from './image-versions.js';
 
 export function resolveServiceState(
     value: unknown,
@@ -30,9 +31,14 @@ export function resolveServiceState(
     const modules = names('modules');
     const requested = names('services');
     const development = names('servicesWithLiveUpdate');
-    const excluded = names('excludedServices');
+    const excluded = new Set([
+        ...names('excludedServices'),
+        ...names('excludedFiles'),
+    ]);
     const definitions = serviceDefinitions(groups);
     const providers = providerSelections(state);
+    const images = imageSelections(state);
+    validateImageSelections(images, definitions);
     const selections = {
         ...providers,
         servicesWithLiveUpdate: [...development],
@@ -63,13 +69,21 @@ export function resolveServiceState(
         groups.flatMap((group) =>
             group.services.map((name) => [
                 name,
-                resolvedDetails(name, {
-                    enabled,
-                    development,
-                    excluded,
-                    providers,
-                    definitions,
-                }),
+                {
+                    ...resolvedDetails(name, {
+                        enabled,
+                        development,
+                        excluded,
+                        providers,
+                        definitions,
+                    }),
+                    ...(images.serviceImages?.[name]
+                        ? {
+                              image: images.serviceImages[name],
+                              imagePinned: true,
+                          }
+                        : {}),
+                },
             ]),
         ),
     );
