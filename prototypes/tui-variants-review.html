@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PROTOTYPE — chs-dev TUI review and variants J/K/L</title>
-<!--
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>PROTOTYPE — chs-dev TUI review and variants J/K/L</title>
+        <!--
 PROTOTYPE, THROWAWAY. 2026-11-05.
 Question: which successor to H preserves service names and useful context with the least new production code?
 Three variants, ?variant=J|K|L. Open this file directly; no build or server.
@@ -12,255 +12,493 @@ Existing screen captures use actual TabBar + ServicesScreen with the same synthe
 No daemon, Docker, persistence, production mutations, or new provider types.
 The terminal renders fixed character cells; browser controls and review notes are outside the proposed TUI.
 -->
-<style>
-:root { color-scheme:dark; font-family:system-ui,sans-serif; background:#141920; color:#d8e0e9; }
-* { box-sizing:border-box; }
-body { margin:0 auto; padding:24px 24px 110px; max-width:1500px; line-height:1.5; }
-h1 { font-size:24px; margin:4px 0 8px; } h2 { font-size:19px; margin:24px 0 8px; }
-p { max-width:100ch; margin:8px 0; } a { color:#8bd5ff; }
-button,select { font:inherit; padding:5px 10px; color:inherit; background:#263140; border:1px solid #556477; border-radius:4px; }
-button { cursor:pointer; } button[aria-pressed=true] { background:#184961; border-color:#83d8ff; }
-label { display:inline-flex; align-items:center; gap:7px; }
-.eyebrow { color:#edbc64; font-size:12px; letter-spacing:1px; }
-.controls { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:16px 0 10px; }
-.muted { color:#9eacbd; } .note { border-left:3px solid #edbc64; padding-left:14px; }
-#summary { max-width:110ch; min-height:3em; }
-.viewport { overflow:auto; max-width:100%; background:#090e14; border:1px solid #536276; padding:12px; }
-#terminal { font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; width:max-content; margin:0; }
-.line { height:1.4em; white-space:pre; } .line[data-name] { cursor:pointer; }
-.selected { background:#203b50; color:#e3f4ff; } .heading { color:#83d8ff; }
-.warning { color:#edbc64; } .error { color:#ff9393; }
-details { margin-top:16px; } summary { cursor:pointer; color:#a9dfff; }
-table { border-collapse:collapse; width:100%; max-width:1150px; margin:12px 0; }
-th,td { text-align:left; vertical-align:top; border-bottom:1px solid #374253; padding:9px 12px 9px 0; }
-th { color:#a9dfff; } code { color:#bae4ff; }
-#state { white-space:pre-wrap; font:12px/1.5 ui-monospace,monospace; color:#aebdce; }
-#switcher { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:12px; align-items:center; padding:8px; background:#edf2f6; color:#11202e; border-radius:28px; box-shadow:0 8px 30px #0008; }
-#switcher button { background:#162b3d; color:white; border:0; border-radius:50%; width:34px; height:34px; padding:0; }
-#variant-label { min-width:210px; text-align:center; }
-</style>
-</head>
-<body>
-<div class="eyebrow">THROWAWAY PROTOTYPE · REVIEW · 5 NOVEMBER 2026</div>
-<h1>Useful context, readable service names, less code</h1>
-<p>Three alternatives to the earlier <a href="tui-screens-prototype.html?variant=H">H command centre</a>. All use the same fixture and current provider model: Service, Development and Mock. Evaluate the information hierarchy at <b>80 × 24 first</b>, then try a larger terminal.</p>
-<div class="controls">
-  <label>Terminal <select id="size"><option value="80">80 × 24</option><option value="120" selected>120 × 34</option><option value="160">160 × 45</option></select></label>
-  <label>Fixture <select id="fixture"><option value="12">12 services</option><option value="266">266 services (synthetic stress case)</option><option value="0">Empty catalogue</option></select></label>
-  <button id="baseline" aria-pressed="false">Show current Services screen</button>
-  <button id="reset">Reset simulation</button>
-</div>
-<p id="summary"></p>
-<div class="viewport"><div id="terminal" role="region" aria-label="Simulated terminal" tabindex="0"></div></div>
-<p id="budget" class="muted"></p>
-<div class="controls" aria-label="Simulation shortcuts">
-  <button data-key="ArrowUp">↑</button><button data-key="ArrowDown">↓</button>
-  <button data-key="Enter">Enter actions / save</button><button data-key="i">i inspect</button>
-  <button data-key="j">j journeys</button><button data-key="e" data-ctrl="true">Ctrl+E environment</button>
-  <button data-key="m">m toggle Run / Configure (L)</button><button data-key="Escape">Esc back</button>
-</div>
-<p class="muted">Keyboard: ↑↓ select, PgUp/PgDn page, / filter, Enter actions, Esc back. ←→ switch prototype variants. Browser buttons duplicate keys. Simulation controls are outside the TUI. The proposed app retains its existing global tab shortcuts.</p>
-<details><summary>Relevant simulation state</summary><pre id="state"></pre></details>
+        <style>
+            :root { color-scheme:dark; font-family:system-ui,sans-serif; background:#141920; color:#d8e0e9; }
+            * { box-sizing:border-box; }
+            body { margin:0 auto; padding:24px 24px 110px; max-width:1500px; line-height:1.5; }
+            h1 { font-size:24px; margin:4px 0 8px; } h2 { font-size:19px; margin:24px 0 8px; }
+            p { max-width:100ch; margin:8px 0; } a { color:#8bd5ff; }
+            button,select { font:inherit; padding:5px 10px; color:inherit; background:#263140; border:1px solid #556477; border-radius:4px; }
+            button { cursor:pointer; } button[aria-pressed=true] { background:#184961; border-color:#83d8ff; }
+            label { display:inline-flex; align-items:center; gap:7px; }
+            .eyebrow { color:#edbc64; font-size:12px; letter-spacing:1px; }
+            .controls { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:16px 0 10px; }
+            .muted { color:#9eacbd; } .note { border-left:3px solid #edbc64; padding-left:14px; }
+            #summary { max-width:110ch; min-height:3em; }
+            .viewport { overflow:auto; max-width:100%; background:#090e14; border:1px solid #536276; padding:12px; }
+            #terminal { font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; width:max-content; margin:0; }
+            .line { height:1.4em; white-space:pre; } .line[data-name] { cursor:pointer; }
+            .selected { background:#203b50; color:#e3f4ff; } .heading { color:#83d8ff; }
+            .warning { color:#edbc64; } .error { color:#ff9393; }
+            details { margin-top:16px; } summary { cursor:pointer; color:#a9dfff; }
+            table { border-collapse:collapse; width:100%; max-width:1150px; margin:12px 0; }
+            th,td { text-align:left; vertical-align:top; border-bottom:1px solid #374253; padding:9px 12px 9px 0; }
+            th { color:#a9dfff; } code { color:#bae4ff; }
+            #state { white-space:pre-wrap; font:12px/1.5 ui-monospace,monospace; color:#aebdce; }
+            #switcher { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:12px; align-items:center; padding:8px; background:#edf2f6; color:#11202e; border-radius:28px; box-shadow:0 8px 30px #0008; }
+            #switcher button { background:#162b3d; color:white; border:0; border-radius:50%; width:34px; height:34px; padding:0; }
+            #variant-label { min-width:210px; text-align:center; }
+        </style>
+    </head>
+    <body>
+        <div class="eyebrow">
+            THROWAWAY PROTOTYPE · REVIEW · 5 NOVEMBER 2026
+        </div>
+        <h1>Useful context, readable service names, less code</h1>
+        <p>
+            Three alternatives to the earlier
+            <a href="tui-screens-prototype.html?variant=H">H command centre</a>.
+            All use the same fixture and current provider model: Service,
+            Development and Mock. Evaluate the information hierarchy at
+            <b>80 × 24 first</b>, then try a larger terminal.
+        </p>
+        <div class="controls">
+            <label
+                >Terminal
+                <select id="size">
+                    <option value="80">80 × 24</option>
+                    <option value="120" selected>120 × 34</option>
+                    <option value="160">160 × 45</option>
+                </select></label
+            >
+            <label
+                >Fixture
+                <select id="fixture">
+                    <option value="12">12 services</option>
+                    <option value="266">
+                        266 services (synthetic stress case)
+                    </option>
+                    <option value="0">Empty catalogue</option>
+                </select></label
+            >
+            <button id="baseline" aria-pressed="false">
+                Show current Services screen
+            </button>
+            <button id="reset">Reset simulation</button>
+        </div>
+        <p id="summary"></p>
+        <div class="viewport">
+            <div
+                id="terminal"
+                role="region"
+                aria-label="Simulated terminal"
+                tabindex="0"
+            ></div>
+        </div>
+        <p id="budget" class="muted"></p>
+        <div class="controls" aria-label="Simulation shortcuts">
+            <button data-key="ArrowUp">↑</button
+            ><button data-key="ArrowDown">↓</button>
+            <button data-key="Enter">Enter actions / save</button
+            ><button data-key="i">i inspect</button>
+            <button data-key="j">j journeys</button
+            ><button data-key="e" data-ctrl="true">Ctrl+E environment</button>
+            <button data-key="m">m toggle Run / Configure (L)</button
+            ><button data-key="Escape">Esc back</button>
+        </div>
+        <p class="muted">
+            Keyboard: ↑↓ select, PgUp/PgDn page, / filter, Enter actions, Esc
+            back. ←→ switch prototype variants. Browser buttons duplicate keys.
+            Simulation controls are outside the TUI. The proposed app retains
+            its existing global tab shortcuts.
+        </p>
+        <details>
+            <summary>Relevant simulation state</summary>
+            <pre id="state"></pre>
+        </details>
 
-<h2>What the existing prototypes get right</h2>
-<p>H's strongest ideas are the grouped service list, visible version, selected-service context and environment change summary. These answer useful questions: what am I working on, what is running, and what will applying do? F/G also reduce the need to open a modal just to read a service.</p>
-<table>
-<thead><tr><th>Existing family</th><th>Keep</th><th>Improve for a real terminal</th></tr></thead>
-<tbody>
-<tr><td>A / E: full table</td><td>Simple selection, full width, lowest layout cost.</td><td>Bound the inspector height; move long config and logs to existing screens. E's journey modal suits an occasional task.</td></tr>
-<tr><td>B / D: journey rail</td><td>Journey context is easy to find.</td><td>The permanent rail repeats the active journey header and takes width from long names. Journey management already has a screen.</td></tr>
-<tr><td>F / G: two panes</td><td>Useful service context beside a browsable list.</td><td>Specify a minimum table width and a narrow-terminal fallback. G's picker replacing the inspector changes focus; Enter should retain the existing actions model.</td></tr>
-<tr><td>H: three panes</td><td>Changes and runtime context stay visible.</td><td>A fixed 250px rail plus table plus inspector has no character budget. Changes appear twice. The displayed “118×36” label does not constrain the browser layout.</td></tr>
-<tr><td>I: table + console</td><td>Preserves table width; closest to a practical successor to H.</td><td>A permanent console uses scarce rows. Use a small selected-service summary and open detailed changes only when requested.</td></tr>
-</tbody></table>
+        <h2>What the existing prototypes get right</h2>
+        <p>
+            H's strongest ideas are the grouped service list, visible version,
+            selected-service context and environment change summary. These
+            answer useful questions: what am I working on, what is running, and
+            what will applying do? F/G also reduce the need to open a modal just
+            to read a service.
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Existing family</th>
+                    <th>Keep</th>
+                    <th>Improve for a real terminal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>A / E: full table</td>
+                    <td>Simple selection, full width, lowest layout cost.</td>
+                    <td>
+                        Bound the inspector height; move long config and logs to
+                        existing screens. E's journey modal suits an occasional
+                        task.
+                    </td>
+                </tr>
+                <tr>
+                    <td>B / D: journey rail</td>
+                    <td>Journey context is easy to find.</td>
+                    <td>
+                        The permanent rail repeats the active journey header and
+                        takes width from long names. Journey management already
+                        has a screen.
+                    </td>
+                </tr>
+                <tr>
+                    <td>F / G: two panes</td>
+                    <td>Useful service context beside a browsable list.</td>
+                    <td>
+                        Specify a minimum table width and a narrow-terminal
+                        fallback. G's picker replacing the inspector changes
+                        focus; Enter should retain the existing actions model.
+                    </td>
+                </tr>
+                <tr>
+                    <td>H: three panes</td>
+                    <td>Changes and runtime context stay visible.</td>
+                    <td>
+                        A fixed 250px rail plus table plus inspector has no
+                        character budget. Changes appear twice. The displayed
+                        “118×36” label does not constrain the browser layout.
+                    </td>
+                </tr>
+                <tr>
+                    <td>I: table + console</td>
+                    <td>
+                        Preserves table width; closest to a practical successor
+                        to H.
+                    </td>
+                    <td>
+                        A permanent console uses scarce rows. Use a small
+                        selected-service summary and open detailed changes only
+                        when requested.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
-<h2>Comparison with the current implementation</h2>
-<p>The current TUI already has filtering, grouped rows, service actions, mock scenarios, versions, service logs, journey editing, runtime changes and auto-apply. The main opportunity is to make that information easier to see. The captured baseline uses the actual Ink <a href="../src/tui/components/services-screen.tsx">ServicesScreen</a> and <a href="../src/tui/components/tab-bar.tsx">TabBar</a>, with synthetic data. It omits the outer app status/footer wiring; it is a screen capture, not a full live session. The app preview was blocked by the sandbox's Unix socket restriction.</p>
-<p>At 80 columns, the current optional columns reserve 54 cells before the service name and outer spacing. With both Start and Scenario present, the two accounts-filing services truncate to the same name. Development and always also touch because their column widths have no separating gap. Seven boxed tabs clip at that width. The new variants keep full names in a selection summary and show a short mode label in rows.</p>
-<p>J and K retain a compact version column: 12 cells in the full-width table, 8 in K's split table, with the full version in the selection summary/inspector. Start mode and scenario remain accessible through the existing editor. L displays desired configuration separately from observed runtime state. A stopped lazy service is labelled “Idle (lazy)” for readability; a real implementation must also consult intent, exclusions and user-stopped state before making that classification.</p>
+        <h2>Comparison with the current implementation</h2>
+        <p>
+            The current TUI already has filtering, grouped rows, service
+            actions, mock scenarios, versions, service logs, journey editing,
+            runtime changes and auto-apply. The main opportunity is to make that
+            information easier to see. The captured baseline uses the actual Ink
+            <a href="../src/tui/components/services-screen.tsx"
+                >ServicesScreen</a
+            >
+            and <a href="../src/tui/components/tab-bar.tsx">TabBar</a>, with
+            synthetic data. It omits the outer app status/footer wiring; it is a
+            screen capture, not a full live session. The app preview was blocked
+            by the sandbox's Unix socket restriction.
+        </p>
+        <p>
+            At 80 columns, the current optional columns reserve 54 cells before
+            the service name and outer spacing. With both Start and Scenario
+            present, the two accounts-filing services truncate to the same name.
+            Development and always also touch because their column widths have
+            no separating gap. Seven boxed tabs clip at that width. The new
+            variants keep full names in a selection summary and show a short
+            mode label in rows.
+        </p>
+        <p>
+            J and K retain a compact version column: 12 cells in the full-width
+            table, 8 in K's split table, with the full version in the selection
+            summary/inspector. Start mode and scenario remain accessible through
+            the existing editor. L displays desired configuration separately
+            from observed runtime state. A stopped lazy service is labelled
+            “Idle (lazy)” for readability; a real implementation must also
+            consult intent, exclusions and user-stopped state before making that
+            classification.
+        </p>
 
-<h2>Three new directions and their implementation cost</h2>
-<table>
-<thead><tr><th>Variant</th><th>Structure / benefit</th><th>Estimated new production SLOC</th><th>Main tradeoff</th></tr></thead>
-<tbody>
-<tr><td><b>J · Compact workspace</b></td><td>One full-width table, one environment line, two selection lines. Reuses the current editor, journeys and environment panel.</td><td><b>150–300</b></td><td>Detailed reading still opens another view. Best starting point for code size and 80×24.</td></tr>
-<tr><td><b>K · Focus inspector</b></td><td>List + read-only inspector at 120+ columns. At 80, i opens a dedicated detail view; Enter opens existing actions.</td><td><b>350–650</b></td><td>More layout states and selection plumbing. Inspector includes summary fields only; embedded live logs would increase this estimate.</td></tr>
-<tr><td><b>L · Run / Configure</b></td><td>Runtime monitoring and desired configuration use separate full-width views. Journey and service editors retain their current save behaviour.</td><td><b>250–500</b></td><td>Clearer task focus, with a view change to compare desired and observed values. Highest navigation change.</td></tr>
-</tbody></table>
-<p class="muted">These are rough source-line ranges for frontend changes, including integration and a width-aware table, excluding tests and backend changes. They are estimates, not measured implementation patches or net growth. Deleting replaced code could reduce net growth. Existing TUI: 66 TS/TSX files, 12,360 physical lines, 11,859 nonblank lines. Services screen/list: 473 physical lines; service modal: 903; journey screen: 1,347. Counts describe this development copy on 5 November.</p>
-<p><b>Recommended next experiment:</b> start with J at 80×24. Compare how quickly you can find the failing service, read an exact version, change one provider, and understand saved changes before applying. Keep K only if seeing details beside selection saves enough navigation to justify its extra layout code. L is worth choosing if switching between runtime diagnosis and journey editing is the dominant workflow.</p>
+        <h2>Three new directions and their implementation cost</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Variant</th>
+                    <th>Structure / benefit</th>
+                    <th>Estimated new production SLOC</th>
+                    <th>Main tradeoff</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><b>J · Compact workspace</b></td>
+                    <td>
+                        One full-width table, one environment line, two
+                        selection lines. Reuses the current editor, journeys and
+                        environment panel.
+                    </td>
+                    <td><b>150–300</b></td>
+                    <td>
+                        Detailed reading still opens another view. Best starting
+                        point for code size and 80×24.
+                    </td>
+                </tr>
+                <tr>
+                    <td><b>K · Focus inspector</b></td>
+                    <td>
+                        List + read-only inspector at 120+ columns. At 80, i
+                        opens a dedicated detail view; Enter opens existing
+                        actions.
+                    </td>
+                    <td><b>350–650</b></td>
+                    <td>
+                        More layout states and selection plumbing. Inspector
+                        includes summary fields only; embedded live logs would
+                        increase this estimate.
+                    </td>
+                </tr>
+                <tr>
+                    <td><b>L · Run / Configure</b></td>
+                    <td>
+                        Runtime monitoring and desired configuration use
+                        separate full-width views. Journey and service editors
+                        retain their current save behaviour.
+                    </td>
+                    <td><b>250–500</b></td>
+                    <td>
+                        Clearer task focus, with a view change to compare
+                        desired and observed values. Highest navigation change.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="muted">
+            These are rough source-line ranges for frontend changes, including
+            integration and a width-aware table, excluding tests and backend
+            changes. They are estimates, not measured implementation patches or
+            net growth. Deleting replaced code could reduce net growth. Existing
+            TUI: 66 TS/TSX files, 12,360 physical lines, 11,859 nonblank lines.
+            Services screen/list: 473 physical lines; service modal: 903;
+            journey screen: 1,347. Counts describe this development copy on 5
+            November.
+        </p>
+        <p>
+            <b>Recommended next experiment:</b> start with J at 80×24. Compare
+            how quickly you can find the failing service, read an exact version,
+            change one provider, and understand saved changes before applying.
+            Keep K only if seeing details beside selection saves enough
+            navigation to justify its extra layout code. L is worth choosing if
+            switching between runtime diagnosis and journey editing is the
+            dominant workflow.
+        </p>
 
-<h2>Keep the scope small</h2>
-<p>Use one selected service name, one filter and one visible list. Share the current snapshot and action handlers; keep row layout and width rules in one place. Reuse <a href="../src/tui/components/service-modal.tsx">ServiceModal</a>, <a href="../src/tui/components/journeys-screen.tsx">JourneysScreen</a> and <a href="../src/tui/components/environment-panel.tsx">EnvironmentPanel</a>. Avoid introducing a layout engine or a second settings editor. The prototype's compact tab line can be implemented with plain Ink Text; the full seven-tab layout must still be evaluated independently.</p>
-<p>The existing domain already exposes <a href="../src/domain/live.ts">LiveState.changes</a>, start/stop/recreate plans, exclusions and auto-apply. Feed the visible summary from that state and reuse <a href="../src/tui/models/environment.ts">the existing environment formatting</a>. “Draft edits”, “saved changes awaiting apply” and “runtime failures” need separate labels. The earlier prototype changes observed status immediately when a provider is selected, then calls it pending; that would give misleading feedback in the real TUI.</p>
-<p class="note">Recorded and remote providers, seed management, general undo, config provenance and exact CLI echoes need their own capability review. The current provider enum supports service, development and mock; disabling is a separate setting. Mock execution can also require infrastructure. A provider change is not proof that a service became healthy or that no containers are needed. These features are excluded from all three layout estimates.</p>
-<p class="muted">The simulation uses local fake actions and a reduced service editor. Production should reuse its existing complete editor, validation, revision checks, confirmations, auto-apply and error handling. Baseline captures are fixed to the original 12-service fixture; select a new variant for interactive and stress scenarios.</p>
-<div id="switcher"><button id="prev" aria-label="Previous variant">←</button><span id="variant-label"></span><button id="next" aria-label="Next variant">→</button></div>
+        <h2>Keep the scope small</h2>
+        <p>
+            Use one selected service name, one filter and one visible list.
+            Share the current snapshot and action handlers; keep row layout and
+            width rules in one place. Reuse
+            <a href="../src/tui/components/service-modal.tsx">ServiceModal</a>,
+            <a href="../src/tui/components/journeys-screen.tsx"
+                >JourneysScreen</a
+            >
+            and
+            <a href="../src/tui/components/environment-panel.tsx"
+                >EnvironmentPanel</a
+            >. Avoid introducing a layout engine or a second settings editor.
+            The prototype's compact tab line can be implemented with plain Ink
+            Text; the full seven-tab layout must still be evaluated
+            independently.
+        </p>
+        <p>
+            The existing domain already exposes
+            <a href="../src/domain/live.ts">LiveState.changes</a>,
+            start/stop/recreate plans, exclusions and auto-apply. Feed the
+            visible summary from that state and reuse
+            <a href="../src/tui/models/environment.ts"
+                >the existing environment formatting</a
+            >. “Draft edits”, “saved changes awaiting apply” and “runtime
+            failures” need separate labels. The earlier prototype changes
+            observed status immediately when a provider is selected, then calls
+            it pending; that would give misleading feedback in the real TUI.
+        </p>
+        <p class="note">
+            Recorded and remote providers, seed management, general undo, config
+            provenance and exact CLI echoes need their own capability review.
+            The current provider enum supports service, development and mock;
+            disabling is a separate setting. Mock execution can also require
+            infrastructure. A provider change is not proof that a service became
+            healthy or that no containers are needed. These features are
+            excluded from all three layout estimates.
+        </p>
+        <p class="muted">
+            The simulation uses local fake actions and a reduced service editor.
+            Production should reuse its existing complete editor, validation,
+            revision checks, confirmations, auto-apply and error handling.
+            Baseline captures are fixed to the original 12-service fixture;
+            select a new variant for interactive and stress scenarios.
+        </p>
+        <div id="switcher">
+            <button id="prev" aria-label="Previous variant">←</button
+            ><span id="variant-label"></span
+            ><button id="next" aria-label="Next variant">→</button>
+        </div>
 
-<script id="capture-data" type="application/json">{"services":[{"name":"accounts-filing-web","mode":"Development","status":"Running","start":"always","version":"local","enabled":true},{"name":"accounts-filing-api","mode":"Development","status":"Running","start":"always","version":"local","enabled":true},{"name":"account-validator-api","mode":"Service","status":"Stopped","start":"lazy","version":"1.4.2","enabled":true},{"name":"account-validator-web","mode":"Service","status":"Running","start":"always","version":"1.4.2","enabled":true},{"name":"transactions-api","mode":"Service","status":"Running","start":"always","version":"2.18.0","enabled":true},{"name":"company-profile-api","mode":"Service","status":"Stopped","start":"lazy","version":"3.5.1","enabled":true},{"name":"felixvalidator","mode":"Mock","status":"Running","start":"always","version":"mock image","enabled":true},{"name":"payments-api","mode":"Service","status":"Stopped","start":"lazy","version":"1.9.0","enabled":true},{"name":"authentication-service","mode":"Service","status":"Running","start":"always","version":"3.9.1","enabled":true},{"name":"company-accounts-api","mode":"Service","status":"Stopped","start":"always","version":"2.1.0","enabled":false},{"name":"mongo","mode":"Service","status":"Running","start":"always","version":"8","enabled":true},{"name":"kafka","mode":"Service","status":"Exited","start":"always","version":"3.9","enabled":true}],"frames":{"80":"  \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2026\n  \u2502 Services \u2502 \u2502 Containers \u2502 \u2502 Modules \u2502 \u2502 Enabled \u2502 \u2502 Journeys \u2502 \u2502 Logs \u2502 \u2502 C\u2026\n\u256d\u2500\u256f          \u2570\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2026\n\u2502  Show: All \u00b7 12 services \u00b7 e enabled/disabled                                \u2502\n\u2502  / to filter                                                                 \u2502\n\u2502  SERVICE             ENABLED  STATUS      MODE       START   SCENARIO        \u2502\n\u2502  accounts                                                                    \u2502\n\u2502  \u203a accounts-filing-\u2026 Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    accounts-filing-\u2026 Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    account-validato\u2026 Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    account-validato\u2026 Yes      Running     Service    always  \u2014               \u2502\n\u2502    transactions-api  Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-profile-\u2026 Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    felixvalidator    Yes      Running     Mock       always  validation-fa\u2026  \u2502\n\u2502    payments-api      Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    authentication-s\u2026 Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-accounts\u2026 No       Stopped     Service    always  \u2014               \u2502\n\u2502  Infrastructure                                                              \u2502\n\u2502                                                                              \u2502\n\u2502                                                                              \u2502\n\u2502  q quit \u00b7 ? help \u00b7 \u2190 \u2192 switch tabs \u00b7 Tab switch tabs \u00b7 Ctrl+N/P switch tab\u2026  \u2502\n\u2502                                                                              \u2502\n\u2502                                                                              \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f","120":"  \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n  \u2502 Services \u2502 \u2502 Containers \u2502 \u2502 Modules \u2502 \u2502 Enabled \u2502 \u2502 Journeys \u2502 \u2502 Logs \u2502 \u2502 Config \u2502\n\u256d\u2500\u256f          \u2570\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502  Show: All \u00b7 12 services \u00b7 e enabled/disabled                                                                        \u2502\n\u2502  / to filter                                                                                                         \u2502\n\u2502  SERVICE                                                     ENABLED  STATUS      MODE       START   SCENARIO        \u2502\n\u2502  accounts                                                                                                            \u2502\n\u2502  \u203a accounts-filing-web                                       Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    accounts-filing-api                                       Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    account-validator-api                                     Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    account-validator-web                                     Yes      Running     Service    always  \u2014               \u2502\n\u2502    transactions-api                                          Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-profile-api                                       Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    felixvalidator                                            Yes      Running     Mock       always  validation-fa\u2026  \u2502\n\u2502    payments-api                                              Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    authentication-service                                    Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-accounts-api                                      No       Stopped     Service    always  \u2014               \u2502\n\u2502  Infrastructure                                                                                                      \u2502\n\u2502    mongo                                                     Yes      Running     Service    always  \u2014               \u2502\n\u2502    kafka                                                     Yes      Exited      Service    always  \u2014               \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502  q quit \u00b7 ? help \u00b7 \u2190 \u2192 switch tabs \u00b7 Tab switch tabs \u00b7 Ctrl+N/P switch tabs \u00b7 Ctrl+Tab switch tabs \u00b7 \u2191 \u2193 select \u00b7 \u2026  \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f","160":"  \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n  \u2502 Services \u2502 \u2502 Containers \u2502 \u2502 Modules \u2502 \u2502 Enabled \u2502 \u2502 Journeys \u2502 \u2502 Logs \u2502 \u2502 Config \u2502\n\u256d\u2500\u256f          \u2570\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502  Show: All \u00b7 12 services \u00b7 e enabled/disabled                                                                                                                \u2502\n\u2502  / to filter                                                                                                                                                 \u2502\n\u2502  SERVICE                                                                                             ENABLED  STATUS      MODE       START   SCENARIO        \u2502\n\u2502  accounts                                                                                                                                                    \u2502\n\u2502  \u203a accounts-filing-web                                                                               Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    accounts-filing-api                                                                               Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    account-validator-api                                                                             Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    account-validator-web                                                                             Yes      Running     Service    always  \u2014               \u2502\n\u2502    transactions-api                                                                                  Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-profile-api                                                                               Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    felixvalidator                                                                                    Yes      Running     Mock       always  validation-fa\u2026  \u2502\n\u2502    payments-api                                                                                      Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    authentication-service                                                                            Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-accounts-api                                                                              No       Stopped     Service    always  \u2014               \u2502\n\u2502  Infrastructure                                                                                                                                              \u2502\n\u2502    mongo                                                                                             Yes      Running     Service    always  \u2014               \u2502\n\u2502    kafka                                                                                             Yes      Exited      Service    always  \u2014               \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502  q quit \u00b7 ? help \u00b7 \u2190 \u2192 switch tabs \u00b7 Tab switch tabs \u00b7 Ctrl+N/P switch tabs \u00b7 Ctrl+Tab switch tabs \u00b7 \u2191 \u2193 select \u00b7 Enter actions \u00b7 c container \u00b7 e state fi\u2026  \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f"}}</script>
-<script>
-'use strict';
-const captured = JSON.parse(document.getElementById('capture-data').textContent);
-const names = ['J', 'K', 'L'];
-const descriptions = {
-    J: ['Compact workspace', '150–300 estimated production SLOC. Full-width table, small selection summary, existing editors.'],
-    K: ['Focus inspector', '350–650 estimated production SLOC. Read-only inspector at 120+ columns; dedicated detail view at 80.'],
-    L: ['Run / Configure', '250–500 estimated production SLOC. Separate observed runtime and desired configuration views; existing editors.'],
-};
-const initialVariant = new URLSearchParams(location.search).get('variant');
-const state = { variant: names.includes(initialVariant) ? initialVariant : 'J', columns:120, rows:34, count:12, selected:0, filter:'', filtering:false, overlay:null, configure:false, autoApply:false, baseline:false, notice:'Fixture only; nothing connects to Docker.', draft:null, choice:0 };
-let services;
-const byId = id => document.getElementById(id);
-const clip = (text, width) => String(text).length > width ? String(text).slice(0, Math.max(0, width - 1)) + '…' : String(text);
-const cell = (text, width) => clip(text, width).padEnd(width);
-const modeLabel = mode => ({Service:'Service', Development:'Dev', Mock:'Mock'})[mode];
-function resetServices() {
-    services = structuredClone(captured.services).map(s => ({...s, appliedMode:s.mode, appliedEnabled:s.enabled, supportsDev:s.mode === 'Development', supportsMock:s.mode === 'Mock'}));
-    for (let i = services.length; i < state.count; i++) services.push({name:'sample-service-' + String(i + 1).padStart(3,'0'), mode:'Service', appliedMode:'Service', status:'Stopped', start:'lazy', version:'1.0.0', enabled:true, appliedEnabled:true, supportsDev:false, supportsMock:false});
-    services = services.slice(0, state.count);
-    state.selected = 0; state.overlay = null; state.draft = null; state.filter = ''; state.filtering = false;
-}
-function visibleServices() {
-    let list = services.filter(s => s.name.includes(state.filter.toLowerCase()));
-    if (state.variant === 'L' && !state.configure) list = [...list].sort((a,b) => Number(b.status === 'Exited') - Number(a.status === 'Exited') || a.name.localeCompare(b.name));
-    return list;
-}
-function selectedService() { const list = visibleServices(); state.selected = Math.max(0, Math.min(state.selected, list.length - 1)); return list[state.selected]; }
-function changes() { return services.filter(s => s.mode !== s.appliedMode || s.enabled !== s.appliedEnabled); }
-function observed(s) {
-    if (!s.appliedEnabled) return s.status === 'Running' ? 'Running*' : 'Stopped (off)';
-    if (s.status === 'Stopped' && s.start === 'lazy') return 'Idle (lazy)';
-    return s.status;
-}
-function tabs() { return state.columns === 80 ? '[Svc] Ctr Mod Ena Jny Log Cfg | Ctrl+E environment' : '[Services] Containers Modules Enabled Journeys Logs Config | Ctrl+E environment'; }
-function envLine() { return 'Journey: accounts | ' + changes().length + ' saved change(s) | ' + services.filter(s => s.status === 'Exited').length + ' failed | auto-apply ' + (state.autoApply ? 'on' : 'off'); }
-function detailLines(s) {
-    if (!s) return ['No service selected.'];
-    return [s.name, 'Observed: ' + observed(s), 'Saved mode: ' + s.mode, 'Runtime mode: ' + s.appliedMode, 'Enabled: ' + (s.enabled ? 'Yes' : 'No'), 'Start: ' + s.start, 'Version: ' + s.version, ...(s.supportsMock ? ['Scenario: validation-failed'] : []), ...(s.status === 'Exited' ? ['Container exited.', 'Open logs to investigate.'] : []), '', 'Enter actions', 'Ctrl+E environment'];
-}
-function tableRows(width, capacity, desired = false) {
-    const versionWidth = width >= 100 ? 16 : width >= 75 ? 12 : 8;
-    const nameWidth = width - (desired ? 7 + 8 + 8 : 7 + 13 + versionWidth) - 3;
-    const header = desired ? cell('SERVICE',nameWidth) + ' ' + cell('ENABLE',7) + ' ' + cell('MODE',8) + ' START' : cell('SERVICE',nameWidth) + ' ' + cell('MODE',7) + ' ' + cell('OBSERVED',13) + ' VERSION';
-    const list = visibleServices();
-    const room = Math.max(1,capacity - 2);
-    const start = Math.max(0, Math.min(state.selected - Math.floor(room / 2), list.length - room));
-    const rows = [{text:clip(header,width),kind:'heading'}];
-    for (const [offset,s] of list.slice(start,start + room).entries()) {
-        const index = start + offset;
-        const prefix = index === state.selected ? '> ' : '  ';
-        const tail = desired ? cell(s.enabled ? 'Yes' : 'No',7) + ' ' + cell(modeLabel(s.mode),8) + ' ' + s.start : cell(modeLabel(s.appliedMode),7) + ' ' + cell(observed(s),13) + ' ' + clip(s.version,versionWidth);
-        rows.push({text:cell(prefix + s.name,nameWidth) + ' ' + tail, kind:index === state.selected ? 'selected' : s.status === 'Exited' ? 'error' : '', name:s.name});
-    }
-    if (!list.length) rows.push({text:'No matching services. Esc clears the filter.'});
-    rows.push({text:list.length ? `${start + 1}–${Math.min(start + room,list.length)} of ${list.length} | PgUp/PgDn page | / filter` : '0 services',kind:'muted'});
-    return rows;
-}
-function workspaceLines() {
-    const s = selectedService(), width = state.columns;
-    const top = [{text:tabs(),kind:'heading'}, {text:envLine(),kind:changes().length ? 'warning' : ''}, {text:state.filtering || state.filter ? 'Filter: /' + state.filter + (state.filtering ? '_' : '') : state.variant === 'L' ? (state.configure ? 'Run  [Configure] | m runtime view' : '[Run]  Configure | m configuration view') : 'Services | Enter actions | j journeys'}];
-    const footer = [{text:state.notice,kind:'muted'}, {text:'↑↓ select | Enter actions | / filter | Ctrl+E env | ? help',kind:'heading'}];
-    if (state.variant === 'K' && width >= 120) {
-        const left = Math.floor(width * 0.62), right = width - left - 3;
-        const table = tableRows(left,state.rows - top.length - footer.length);
-        const detail = detailLines(s);
-        const body = Array.from({length:Math.max(table.length,detail.length)},(_,i) => ({text:cell(table[i]?.text ?? '',left) + ' | ' + clip(detail[i] ?? '',right),kind:table[i]?.kind,name:table[i]?.name}));
-        return [...top,...body,...footer];
-    }
-    const selection = s ? [{text:'Selected: ' + s.name,kind:'heading'}, {text:'Version: ' + s.version + ' | ' + (state.variant === 'L' && state.configure ? 'Runtime: ' + observed(s) : 'Start: ' + s.start) + (s.supportsMock ? ' | scenario: validation-failed' : '')}] : [{text:'No selection.'},{text:''}];
-    return [...top,...tableRows(width,state.rows - top.length - selection.length - footer.length,state.variant === 'L' && state.configure),...selection,...footer];
-}
-function overlayLines() {
-    const s = selectedService();
-    if (state.overlay === 'detail') return ['SERVICE DETAILS',...detailLines(s),'Esc back'];
-    if (state.overlay === 'journeys') return ['JOURNEYS — existing screen in production','','> accounts (active)','  confirmation','  + New journey','','Enter returns to accounts in this simulation.','Production retains the current journey editor,','preview, saved file and switch confirmations.','Esc back'];
-    if (state.overlay === 'environment') return ['ENVIRONMENT — existing panel in production',envLine(),'',...(changes().length ? changes().map(s => s.name + ': ' + s.appliedMode + ' -> ' + s.mode + (s.enabled !== s.appliedEnabled ? ' | enabled=' + s.enabled : '')) : ['No saved configuration changes.']), '', 'a apply saved changes (fake successful apply)', 't toggle auto-apply', 'Esc back', '', 'Fixture: applying changes does not repair exited kafka.'];
-    if (state.overlay === 'help') return ['KEYS','↑↓ select / edit choice | PgUp/PgDn page','Enter actions / save | / filter | Esc back','Ctrl+E environment | j journeys','K: i details on a narrow terminal','L: m Run / Configure','←→ switch prototype variants (browser only)','', 'The real app keeps its global tab shortcuts.'];
-    if (state.overlay === 'actions' && s) {
-        const d = state.draft;
-        return ['SERVICE ACTIONS — reduced simulation',s.name,'',...['Enabled: ' + (d.enabled ? 'Yes' : 'No'),'Provider: ' + d.mode,'Save' + (state.autoApply ? ' & apply' : ''),'Cancel'].map((label,i)=>(state.choice === i ? '> ' : '  ') + label),'','↑↓ choose | Space change | Enter change/save','Esc cancels draft; no configuration is written.','', 'Production reuses the full current ServiceModal.'];
-    }
-    return [];
-}
-function render() {
-    const s = selectedService();
-    let lines = state.baseline ? captured.frames[state.columns].split('\n').map(text=>({text})) : state.overlay ? overlayLines().map(text=>({text})) : workspaceLines();
-    const footer = !state.baseline && !state.overlay ? lines.splice(-2) : [];
-    const room = state.rows - footer.length;
-    const hidden = Math.max(0,lines.length - room);
-    lines = lines.slice(0,room);
-    if (hidden) lines[room - 1] = {text:`… ${hidden + 1} more lines; use a larger terminal`,kind:'warning'};
-    while (lines.length < room) lines.push({text:''});
-    lines.push(...footer);
-    byId('terminal').replaceChildren(...lines.map(row=>{
-        const div = document.createElement('div'); div.className = 'line ' + (row.kind ?? ''); div.textContent = cell(row.text,state.columns);
-        if (row.name) { div.dataset.name = row.name; div.onclick = () => {state.selected = visibleServices().findIndex(s=>s.name === row.name); render();}; }
-        return div;
-    }));
-    byId('summary').textContent = state.baseline ? 'Current Ink Services screen: fixed synthetic data; actual rendering at the selected width. Interactions and fixture changes are available in J/K/L.' : state.variant + ' · ' + descriptions[state.variant][0] + '. ' + descriptions[state.variant][1];
-    byId('variant-label').textContent = state.variant + ' · ' + descriptions[state.variant][0];
-    byId('budget').textContent = `${state.columns} columns × ${state.rows} rows. One browser character = one terminal cell; overflow is truncated explicitly. ` + (state.variant === 'K' && !state.baseline ? (state.columns >= 120 ? 'Inspector visible; one selectable list.' : 'Inspector opens with i; no third pane.') : 'Full-width list; full selected name remains visible.');
-    byId('baseline').setAttribute('aria-pressed',String(state.baseline));
-    byId('state').textContent = JSON.stringify({variant:state.variant,size:[state.columns,state.rows],fixture:state.count,filter:state.filter,selected:s?.name,overlay:state.overlay,draft:state.draft,configure:state.configure,autoApply:state.autoApply,savedChanges:changes().map(s=>s.name),observed:s ? {mode:s.appliedMode,status:s.status} : null},null,2);
-}
-function changeVariant(direction) {
-    const selectedName = selectedService()?.name;
-    state.variant = names[(names.indexOf(state.variant) + direction + names.length) % names.length]; state.baseline = false; state.overlay = null; state.draft = null;
-    state.selected = Math.max(0,visibleServices().findIndex(s=>s.name === selectedName));
-    const url = new URL(location.href); url.searchParams.set('variant',state.variant); history.replaceState(null,'',url); render();
-}
-function applySaved() {
-    for (const s of changes()) { s.appliedMode = s.mode; s.appliedEnabled = s.enabled; if (s.status !== 'Exited') s.status = s.enabled ? (s.start === 'lazy' ? 'Stopped' : 'Running') : 'Stopped'; }
-    state.notice = 'Fake apply completed. Existing runtime failures stay visible.';
-}
-function editChoice() {
-    if (state.choice === 0) state.draft.enabled = !state.draft.enabled;
-    if (state.choice === 1) { const s = selectedService(); const modes = ['Service',...(s.supportsDev ? ['Development'] : []),...(s.supportsMock ? ['Mock'] : [])]; state.draft.mode = modes[(modes.indexOf(state.draft.mode) + 1) % modes.length]; }
-}
-function keypress(key,ctrl = false) {
-    if (key === 'ArrowLeft' || key === 'ArrowRight') return changeVariant(key === 'ArrowLeft' ? -1 : 1);
-    if (state.baseline) return;
-    if (key === 'Escape') { state.overlay = null; state.draft = null; state.filter = ''; state.filtering = false; return render(); }
-    if (state.filtering) {
-        if (key === 'Enter') state.filtering = false;
-        else if (key === 'Backspace') state.filter = state.filter.slice(0,-1);
-        else if (!ctrl && key.length === 1) state.filter += key;
-        state.selected = 0; return render();
-    }
-    if (state.overlay === 'actions') {
-        if (key === 'ArrowUp' || key === 'ArrowDown') state.choice = (state.choice + (key === 'ArrowUp' ? 3 : 1)) % 4;
-        if (key === ' ' || key === 'Enter' && state.choice < 2) editChoice();
-        if (key === 'Enter' && state.choice >= 2) {
-            if (state.choice === 2) { Object.assign(selectedService(),state.draft); state.notice = 'Configuration saved in memory' + (state.autoApply ? '; applying.' : '; runtime unchanged until apply.'); if (state.autoApply) applySaved(); }
-            state.overlay = null; state.draft = null;
-        }
-        return render();
-    }
-    if (state.overlay === 'environment') { if (key === 'a') applySaved(); if (key === 't') state.autoApply = !state.autoApply; return render(); }
-    if (state.overlay) { if (key === 'Enter' && state.overlay === 'journeys') state.overlay = null; return render(); }
-    if (key === 'ArrowUp' || key === 'ArrowDown') state.selected += key === 'ArrowUp' ? -1 : 1;
-    if (key === 'PageUp' || key === 'PageDown') state.selected += (key === 'PageUp' ? -1 : 1) * Math.max(1,state.rows - 10);
-    if (key === '/') state.filtering = true;
-    if (key === 'Enter' && selectedService()) { state.overlay = 'actions'; state.choice = 0; const s = selectedService(); state.draft = {mode:s.mode,enabled:s.enabled}; }
-    if (key === 'i' && state.variant === 'K') state.overlay = 'detail';
-    if (key === 'm' && state.variant === 'L') { const name = selectedService()?.name; state.configure = !state.configure; state.selected = Math.max(0,visibleServices().findIndex(s=>s.name === name)); }
-    if (key === 'j') state.overlay = 'journeys';
-    if (ctrl && key.toLowerCase() === 'e') state.overlay = 'environment';
-    if (key === '?') state.overlay = 'help';
-    render();
-}
-byId('size').onchange = event => { state.columns = Number(event.target.value); state.rows = ({80:24,120:34,160:45})[state.columns]; render(); };
-byId('fixture').onchange = event => {state.count = Number(event.target.value); resetServices(); state.baseline = false; render();};
-byId('baseline').onclick = () => {state.baseline = !state.baseline; render();};
-byId('reset').onclick = () => {state.autoApply = false; state.configure = false; state.notice = 'Fixture reset.'; resetServices(); render();};
-byId('prev').onclick = () => changeVariant(-1); byId('next').onclick = () => changeVariant(1);
-document.querySelectorAll('[data-key]').forEach(button=>button.onclick = () => keypress(button.dataset.key,Boolean(button.dataset.ctrl)));
-document.addEventListener('keydown', event => {
-    if (event.target.closest('input,select,textarea,[contenteditable]')) return;
-    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown','Enter','Escape','Backspace',' '].includes(event.key) || event.ctrlKey && event.key.toLowerCase() === 'e' || event.key === '/') event.preventDefault();
-    if (!event.metaKey) keypress(event.key,event.ctrlKey);
-});
-resetServices(); render();
-</script>
-</body>
+        <script id="capture-data" type="application/json">
+            {"services":[{"name":"accounts-filing-web","mode":"Development","status":"Running","start":"always","version":"local","enabled":true},{"name":"accounts-filing-api","mode":"Development","status":"Running","start":"always","version":"local","enabled":true},{"name":"account-validator-api","mode":"Service","status":"Stopped","start":"lazy","version":"1.4.2","enabled":true},{"name":"account-validator-web","mode":"Service","status":"Running","start":"always","version":"1.4.2","enabled":true},{"name":"transactions-api","mode":"Service","status":"Running","start":"always","version":"2.18.0","enabled":true},{"name":"company-profile-api","mode":"Service","status":"Stopped","start":"lazy","version":"3.5.1","enabled":true},{"name":"felixvalidator","mode":"Mock","status":"Running","start":"always","version":"mock image","enabled":true},{"name":"payments-api","mode":"Service","status":"Stopped","start":"lazy","version":"1.9.0","enabled":true},{"name":"authentication-service","mode":"Service","status":"Running","start":"always","version":"3.9.1","enabled":true},{"name":"company-accounts-api","mode":"Service","status":"Stopped","start":"always","version":"2.1.0","enabled":false},{"name":"mongo","mode":"Service","status":"Running","start":"always","version":"8","enabled":true},{"name":"kafka","mode":"Service","status":"Exited","start":"always","version":"3.9","enabled":true}],"frames":{"80":"  \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2026\n  \u2502 Services \u2502 \u2502 Containers \u2502 \u2502 Modules \u2502 \u2502 Enabled \u2502 \u2502 Journeys \u2502 \u2502 Logs \u2502 \u2502 C\u2026\n\u256d\u2500\u256f          \u2570\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2026\n\u2502  Show: All \u00b7 12 services \u00b7 e enabled/disabled                                \u2502\n\u2502  / to filter                                                                 \u2502\n\u2502  SERVICE             ENABLED  STATUS      MODE       START   SCENARIO        \u2502\n\u2502  accounts                                                                    \u2502\n\u2502  \u203a accounts-filing-\u2026 Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    accounts-filing-\u2026 Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    account-validato\u2026 Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    account-validato\u2026 Yes      Running     Service    always  \u2014               \u2502\n\u2502    transactions-api  Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-profile-\u2026 Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    felixvalidator    Yes      Running     Mock       always  validation-fa\u2026  \u2502\n\u2502    payments-api      Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    authentication-s\u2026 Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-accounts\u2026 No       Stopped     Service    always  \u2014               \u2502\n\u2502  Infrastructure                                                              \u2502\n\u2502                                                                              \u2502\n\u2502                                                                              \u2502\n\u2502  q quit \u00b7 ? help \u00b7 \u2190 \u2192 switch tabs \u00b7 Tab switch tabs \u00b7 Ctrl+N/P switch tab\u2026  \u2502\n\u2502                                                                              \u2502\n\u2502                                                                              \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f","120":"  \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n  \u2502 Services \u2502 \u2502 Containers \u2502 \u2502 Modules \u2502 \u2502 Enabled \u2502 \u2502 Journeys \u2502 \u2502 Logs \u2502 \u2502 Config \u2502\n\u256d\u2500\u256f          \u2570\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502  Show: All \u00b7 12 services \u00b7 e enabled/disabled                                                                        \u2502\n\u2502  / to filter                                                                                                         \u2502\n\u2502  SERVICE                                                     ENABLED  STATUS      MODE       START   SCENARIO        \u2502\n\u2502  accounts                                                                                                            \u2502\n\u2502  \u203a accounts-filing-web                                       Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    accounts-filing-api                                       Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    account-validator-api                                     Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    account-validator-web                                     Yes      Running     Service    always  \u2014               \u2502\n\u2502    transactions-api                                          Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-profile-api                                       Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    felixvalidator                                            Yes      Running     Mock       always  validation-fa\u2026  \u2502\n\u2502    payments-api                                              Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    authentication-service                                    Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-accounts-api                                      No       Stopped     Service    always  \u2014               \u2502\n\u2502  Infrastructure                                                                                                      \u2502\n\u2502    mongo                                                     Yes      Running     Service    always  \u2014               \u2502\n\u2502    kafka                                                     Yes      Exited      Service    always  \u2014               \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2502  q quit \u00b7 ? help \u00b7 \u2190 \u2192 switch tabs \u00b7 Tab switch tabs \u00b7 Ctrl+N/P switch tabs \u00b7 Ctrl+Tab switch tabs \u00b7 \u2191 \u2193 select \u00b7 \u2026  \u2502\n\u2502                                                                                                                      \u2502\n\u2502                                                                                                                      \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f","160":"  \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u256e \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n  \u2502 Services \u2502 \u2502 Containers \u2502 \u2502 Modules \u2502 \u2502 Enabled \u2502 \u2502 Journeys \u2502 \u2502 Logs \u2502 \u2502 Config \u2502\n\u256d\u2500\u256f          \u2570\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502  Show: All \u00b7 12 services \u00b7 e enabled/disabled                                                                                                                \u2502\n\u2502  / to filter                                                                                                                                                 \u2502\n\u2502  SERVICE                                                                                             ENABLED  STATUS      MODE       START   SCENARIO        \u2502\n\u2502  accounts                                                                                                                                                    \u2502\n\u2502  \u203a accounts-filing-web                                                                               Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    accounts-filing-api                                                                               Yes      Running     Developmentalways  \u2014               \u2502\n\u2502    account-validator-api                                                                             Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    account-validator-web                                                                             Yes      Running     Service    always  \u2014               \u2502\n\u2502    transactions-api                                                                                  Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-profile-api                                                                               Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    felixvalidator                                                                                    Yes      Running     Mock       always  validation-fa\u2026  \u2502\n\u2502    payments-api                                                                                      Yes      Stopped     Service    lazy    \u2014               \u2502\n\u2502    authentication-service                                                                            Yes      Running     Service    always  \u2014               \u2502\n\u2502    company-accounts-api                                                                              No       Stopped     Service    always  \u2014               \u2502\n\u2502  Infrastructure                                                                                                                                              \u2502\n\u2502    mongo                                                                                             Yes      Running     Service    always  \u2014               \u2502\n\u2502    kafka                                                                                             Yes      Exited      Service    always  \u2014               \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502  q quit \u00b7 ? help \u00b7 \u2190 \u2192 switch tabs \u00b7 Tab switch tabs \u00b7 Ctrl+N/P switch tabs \u00b7 Ctrl+Tab switch tabs \u00b7 \u2191 \u2193 select \u00b7 Enter actions \u00b7 c container \u00b7 e state fi\u2026  \u2502\n\u2502                                                                                                                                                              \u2502\n\u2502                                                                                                                                                              \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f"}}
+        </script>
+        <script>
+            'use strict';
+            const captured = JSON.parse(document.getElementById('capture-data').textContent);
+            const names = ['J', 'K', 'L'];
+            const descriptions = {
+                J: ['Compact workspace', '150–300 estimated production SLOC. Full-width table, small selection summary, existing editors.'],
+                K: ['Focus inspector', '350–650 estimated production SLOC. Read-only inspector at 120+ columns; dedicated detail view at 80.'],
+                L: ['Run / Configure', '250–500 estimated production SLOC. Separate observed runtime and desired configuration views; existing editors.'],
+            };
+            const initialVariant = new URLSearchParams(location.search).get('variant');
+            const state = { variant: names.includes(initialVariant) ? initialVariant : 'J', columns:120, rows:34, count:12, selected:0, filter:'', filtering:false, overlay:null, configure:false, autoApply:false, baseline:false, notice:'Fixture only; nothing connects to Docker.', draft:null, choice:0 };
+            let services;
+            const byId = id => document.getElementById(id);
+            const clip = (text, width) => String(text).length > width ? String(text).slice(0, Math.max(0, width - 1)) + '…' : String(text);
+            const cell = (text, width) => clip(text, width).padEnd(width);
+            const modeLabel = mode => ({Service:'Service', Development:'Dev', Mock:'Mock'})[mode];
+            function resetServices() {
+                services = structuredClone(captured.services).map(s => ({...s, appliedMode:s.mode, appliedEnabled:s.enabled, supportsDev:s.mode === 'Development', supportsMock:s.mode === 'Mock'}));
+                for (let i = services.length; i < state.count; i++) services.push({name:'sample-service-' + String(i + 1).padStart(3,'0'), mode:'Service', appliedMode:'Service', status:'Stopped', start:'lazy', version:'1.0.0', enabled:true, appliedEnabled:true, supportsDev:false, supportsMock:false});
+                services = services.slice(0, state.count);
+                state.selected = 0; state.overlay = null; state.draft = null; state.filter = ''; state.filtering = false;
+            }
+            function visibleServices() {
+                let list = services.filter(s => s.name.includes(state.filter.toLowerCase()));
+                if (state.variant === 'L' && !state.configure) list = [...list].sort((a,b) => Number(b.status === 'Exited') - Number(a.status === 'Exited') || a.name.localeCompare(b.name));
+                return list;
+            }
+            function selectedService() { const list = visibleServices(); state.selected = Math.max(0, Math.min(state.selected, list.length - 1)); return list[state.selected]; }
+            function changes() { return services.filter(s => s.mode !== s.appliedMode || s.enabled !== s.appliedEnabled); }
+            function observed(s) {
+                if (!s.appliedEnabled) return s.status === 'Running' ? 'Running*' : 'Stopped (off)';
+                if (s.status === 'Stopped' && s.start === 'lazy') return 'Idle (lazy)';
+                return s.status;
+            }
+            function tabs() { return state.columns === 80 ? '[Svc] Ctr Mod Ena Jny Log Cfg | Ctrl+E environment' : '[Services] Containers Modules Enabled Journeys Logs Config | Ctrl+E environment'; }
+            function envLine() { return 'Journey: accounts | ' + changes().length + ' saved change(s) | ' + services.filter(s => s.status === 'Exited').length + ' failed | auto-apply ' + (state.autoApply ? 'on' : 'off'); }
+            function detailLines(s) {
+                if (!s) return ['No service selected.'];
+                return [s.name, 'Observed: ' + observed(s), 'Saved mode: ' + s.mode, 'Runtime mode: ' + s.appliedMode, 'Enabled: ' + (s.enabled ? 'Yes' : 'No'), 'Start: ' + s.start, 'Version: ' + s.version, ...(s.supportsMock ? ['Scenario: validation-failed'] : []), ...(s.status === 'Exited' ? ['Container exited.', 'Open logs to investigate.'] : []), '', 'Enter actions', 'Ctrl+E environment'];
+            }
+            function tableRows(width, capacity, desired = false) {
+                const versionWidth = width >= 100 ? 16 : width >= 75 ? 12 : 8;
+                const nameWidth = width - (desired ? 7 + 8 + 8 : 7 + 13 + versionWidth) - 3;
+                const header = desired ? cell('SERVICE',nameWidth) + ' ' + cell('ENABLE',7) + ' ' + cell('MODE',8) + ' START' : cell('SERVICE',nameWidth) + ' ' + cell('MODE',7) + ' ' + cell('OBSERVED',13) + ' VERSION';
+                const list = visibleServices();
+                const room = Math.max(1,capacity - 2);
+                const start = Math.max(0, Math.min(state.selected - Math.floor(room / 2), list.length - room));
+                const rows = [{text:clip(header,width),kind:'heading'}];
+                for (const [offset,s] of list.slice(start,start + room).entries()) {
+                    const index = start + offset;
+                    const prefix = index === state.selected ? '> ' : '  ';
+                    const tail = desired ? cell(s.enabled ? 'Yes' : 'No',7) + ' ' + cell(modeLabel(s.mode),8) + ' ' + s.start : cell(modeLabel(s.appliedMode),7) + ' ' + cell(observed(s),13) + ' ' + clip(s.version,versionWidth);
+                    rows.push({text:cell(prefix + s.name,nameWidth) + ' ' + tail, kind:index === state.selected ? 'selected' : s.status === 'Exited' ? 'error' : '', name:s.name});
+                }
+                if (!list.length) rows.push({text:'No matching services. Esc clears the filter.'});
+                rows.push({text:list.length ? `${start + 1}–${Math.min(start + room,list.length)} of ${list.length} | PgUp/PgDn page | / filter` : '0 services',kind:'muted'});
+                return rows;
+            }
+            function workspaceLines() {
+                const s = selectedService(), width = state.columns;
+                const top = [{text:tabs(),kind:'heading'}, {text:envLine(),kind:changes().length ? 'warning' : ''}, {text:state.filtering || state.filter ? 'Filter: /' + state.filter + (state.filtering ? '_' : '') : state.variant === 'L' ? (state.configure ? 'Run  [Configure] | m runtime view' : '[Run]  Configure | m configuration view') : 'Services | Enter actions | j journeys'}];
+                const footer = [{text:state.notice,kind:'muted'}, {text:'↑↓ select | Enter actions | / filter | Ctrl+E env | ? help',kind:'heading'}];
+                if (state.variant === 'K' && width >= 120) {
+                    const left = Math.floor(width * 0.62), right = width - left - 3;
+                    const table = tableRows(left,state.rows - top.length - footer.length);
+                    const detail = detailLines(s);
+                    const body = Array.from({length:Math.max(table.length,detail.length)},(_,i) => ({text:cell(table[i]?.text ?? '',left) + ' | ' + clip(detail[i] ?? '',right),kind:table[i]?.kind,name:table[i]?.name}));
+                    return [...top,...body,...footer];
+                }
+                const selection = s ? [{text:'Selected: ' + s.name,kind:'heading'}, {text:'Version: ' + s.version + ' | ' + (state.variant === 'L' && state.configure ? 'Runtime: ' + observed(s) : 'Start: ' + s.start) + (s.supportsMock ? ' | scenario: validation-failed' : '')}] : [{text:'No selection.'},{text:''}];
+                return [...top,...tableRows(width,state.rows - top.length - selection.length - footer.length,state.variant === 'L' && state.configure),...selection,...footer];
+            }
+            function overlayLines() {
+                const s = selectedService();
+                if (state.overlay === 'detail') return ['SERVICE DETAILS',...detailLines(s),'Esc back'];
+                if (state.overlay === 'journeys') return ['JOURNEYS — existing screen in production','','> accounts (active)','  confirmation','  + New journey','','Enter returns to accounts in this simulation.','Production retains the current journey editor,','preview, saved file and switch confirmations.','Esc back'];
+                if (state.overlay === 'environment') return ['ENVIRONMENT — existing panel in production',envLine(),'',...(changes().length ? changes().map(s => s.name + ': ' + s.appliedMode + ' -> ' + s.mode + (s.enabled !== s.appliedEnabled ? ' | enabled=' + s.enabled : '')) : ['No saved configuration changes.']), '', 'a apply saved changes (fake successful apply)', 't toggle auto-apply', 'Esc back', '', 'Fixture: applying changes does not repair exited kafka.'];
+                if (state.overlay === 'help') return ['KEYS','↑↓ select / edit choice | PgUp/PgDn page','Enter actions / save | / filter | Esc back','Ctrl+E environment | j journeys','K: i details on a narrow terminal','L: m Run / Configure','←→ switch prototype variants (browser only)','', 'The real app keeps its global tab shortcuts.'];
+                if (state.overlay === 'actions' && s) {
+                    const d = state.draft;
+                    return ['SERVICE ACTIONS — reduced simulation',s.name,'',...['Enabled: ' + (d.enabled ? 'Yes' : 'No'),'Provider: ' + d.mode,'Save' + (state.autoApply ? ' & apply' : ''),'Cancel'].map((label,i)=>(state.choice === i ? '> ' : '  ') + label),'','↑↓ choose | Space change | Enter change/save','Esc cancels draft; no configuration is written.','', 'Production reuses the full current ServiceModal.'];
+                }
+                return [];
+            }
+            function render() {
+                const s = selectedService();
+                let lines = state.baseline ? captured.frames[state.columns].split('\n').map(text=>({text})) : state.overlay ? overlayLines().map(text=>({text})) : workspaceLines();
+                const footer = !state.baseline && !state.overlay ? lines.splice(-2) : [];
+                const room = state.rows - footer.length;
+                const hidden = Math.max(0,lines.length - room);
+                lines = lines.slice(0,room);
+                if (hidden) lines[room - 1] = {text:`… ${hidden + 1} more lines; use a larger terminal`,kind:'warning'};
+                while (lines.length < room) lines.push({text:''});
+                lines.push(...footer);
+                byId('terminal').replaceChildren(...lines.map(row=>{
+                    const div = document.createElement('div'); div.className = 'line ' + (row.kind ?? ''); div.textContent = cell(row.text,state.columns);
+                    if (row.name) { div.dataset.name = row.name; div.onclick = () => {state.selected = visibleServices().findIndex(s=>s.name === row.name); render();}; }
+                    return div;
+                }));
+                byId('summary').textContent = state.baseline ? 'Current Ink Services screen: fixed synthetic data; actual rendering at the selected width. Interactions and fixture changes are available in J/K/L.' : state.variant + ' · ' + descriptions[state.variant][0] + '. ' + descriptions[state.variant][1];
+                byId('variant-label').textContent = state.variant + ' · ' + descriptions[state.variant][0];
+                byId('budget').textContent = `${state.columns} columns × ${state.rows} rows. One browser character = one terminal cell; overflow is truncated explicitly. ` + (state.variant === 'K' && !state.baseline ? (state.columns >= 120 ? 'Inspector visible; one selectable list.' : 'Inspector opens with i; no third pane.') : 'Full-width list; full selected name remains visible.');
+                byId('baseline').setAttribute('aria-pressed',String(state.baseline));
+                byId('state').textContent = JSON.stringify({variant:state.variant,size:[state.columns,state.rows],fixture:state.count,filter:state.filter,selected:s?.name,overlay:state.overlay,draft:state.draft,configure:state.configure,autoApply:state.autoApply,savedChanges:changes().map(s=>s.name),observed:s ? {mode:s.appliedMode,status:s.status} : null},null,2);
+            }
+            function changeVariant(direction) {
+                const selectedName = selectedService()?.name;
+                state.variant = names[(names.indexOf(state.variant) + direction + names.length) % names.length]; state.baseline = false; state.overlay = null; state.draft = null;
+                state.selected = Math.max(0,visibleServices().findIndex(s=>s.name === selectedName));
+                const url = new URL(location.href); url.searchParams.set('variant',state.variant); history.replaceState(null,'',url); render();
+            }
+            function applySaved() {
+                for (const s of changes()) { s.appliedMode = s.mode; s.appliedEnabled = s.enabled; if (s.status !== 'Exited') s.status = s.enabled ? (s.start === 'lazy' ? 'Stopped' : 'Running') : 'Stopped'; }
+                state.notice = 'Fake apply completed. Existing runtime failures stay visible.';
+            }
+            function editChoice() {
+                if (state.choice === 0) state.draft.enabled = !state.draft.enabled;
+                if (state.choice === 1) { const s = selectedService(); const modes = ['Service',...(s.supportsDev ? ['Development'] : []),...(s.supportsMock ? ['Mock'] : [])]; state.draft.mode = modes[(modes.indexOf(state.draft.mode) + 1) % modes.length]; }
+            }
+            function keypress(key,ctrl = false) {
+                if (key === 'ArrowLeft' || key === 'ArrowRight') return changeVariant(key === 'ArrowLeft' ? -1 : 1);
+                if (state.baseline) return;
+                if (key === 'Escape') { state.overlay = null; state.draft = null; state.filter = ''; state.filtering = false; return render(); }
+                if (state.filtering) {
+                    if (key === 'Enter') state.filtering = false;
+                    else if (key === 'Backspace') state.filter = state.filter.slice(0,-1);
+                    else if (!ctrl && key.length === 1) state.filter += key;
+                    state.selected = 0; return render();
+                }
+                if (state.overlay === 'actions') {
+                    if (key === 'ArrowUp' || key === 'ArrowDown') state.choice = (state.choice + (key === 'ArrowUp' ? 3 : 1)) % 4;
+                    if (key === ' ' || key === 'Enter' && state.choice < 2) editChoice();
+                    if (key === 'Enter' && state.choice >= 2) {
+                        if (state.choice === 2) { Object.assign(selectedService(),state.draft); state.notice = 'Configuration saved in memory' + (state.autoApply ? '; applying.' : '; runtime unchanged until apply.'); if (state.autoApply) applySaved(); }
+                        state.overlay = null; state.draft = null;
+                    }
+                    return render();
+                }
+                if (state.overlay === 'environment') { if (key === 'a') applySaved(); if (key === 't') state.autoApply = !state.autoApply; return render(); }
+                if (state.overlay) { if (key === 'Enter' && state.overlay === 'journeys') state.overlay = null; return render(); }
+                if (key === 'ArrowUp' || key === 'ArrowDown') state.selected += key === 'ArrowUp' ? -1 : 1;
+                if (key === 'PageUp' || key === 'PageDown') state.selected += (key === 'PageUp' ? -1 : 1) * Math.max(1,state.rows - 10);
+                if (key === '/') state.filtering = true;
+                if (key === 'Enter' && selectedService()) { state.overlay = 'actions'; state.choice = 0; const s = selectedService(); state.draft = {mode:s.mode,enabled:s.enabled}; }
+                if (key === 'i' && state.variant === 'K') state.overlay = 'detail';
+                if (key === 'm' && state.variant === 'L') { const name = selectedService()?.name; state.configure = !state.configure; state.selected = Math.max(0,visibleServices().findIndex(s=>s.name === name)); }
+                if (key === 'j') state.overlay = 'journeys';
+                if (ctrl && key.toLowerCase() === 'e') state.overlay = 'environment';
+                if (key === '?') state.overlay = 'help';
+                render();
+            }
+            byId('size').onchange = event => { state.columns = Number(event.target.value); state.rows = ({80:24,120:34,160:45})[state.columns]; render(); };
+            byId('fixture').onchange = event => {state.count = Number(event.target.value); resetServices(); state.baseline = false; render();};
+            byId('baseline').onclick = () => {state.baseline = !state.baseline; render();};
+            byId('reset').onclick = () => {state.autoApply = false; state.configure = false; state.notice = 'Fixture reset.'; resetServices(); render();};
+            byId('prev').onclick = () => changeVariant(-1); byId('next').onclick = () => changeVariant(1);
+            document.querySelectorAll('[data-key]').forEach(button=>button.onclick = () => keypress(button.dataset.key,Boolean(button.dataset.ctrl)));
+            document.addEventListener('keydown', event => {
+                if (event.target.closest('input,select,textarea,[contenteditable]')) return;
+                if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown','Enter','Escape','Backspace',' '].includes(event.key) || event.ctrlKey && event.key.toLowerCase() === 'e' || event.key === '/') event.preventDefault();
+                if (!event.metaKey) keypress(event.key,event.ctrlKey);
+            });
+            resetServices(); render();
+        </script>
+    </body>
 </html>
