@@ -36,7 +36,7 @@ External: versioned config/branch compatibility and ownership across three repos
 
 ### image-version-visibility
 
-W2/W4 / RAND-736: saved version provenance, explicit source refresh, pins and export. Observed image/digest visibility and stale-image evidence must remain distinct.
+W2/W4 / RAND-736: `f90b861` distinguishes saved preferences from observed image references and engine IDs, including dormant Development/Mock preferences. Explicit metadata refresh does not change runtime; Apply reevaluates the selection, while Reload retains applied artifacts. Local ECS/cache/client/Ink evidence does not establish live image availability.
 
 ### local-automated-testing
 
@@ -68,7 +68,7 @@ Platform/image-publisher work: suitable manifests and native/emulated validation
 
 ### configurable-mocks
 
-W2/W4 / RAND-737: declarative Service/Development/Mock, OpenAPI scenarios and callback fixtures. Starter contracts are not comprehensive service fidelity.
+W2/W4 / RAND-737: declarative Service/Development/Mock, OpenAPI scenarios and callbacks. `1049258` preserves split UTF-8 callback bodies and tests cancellation/redacted failures; `92eb203` removes a duplicate retry path. Starter contracts are not comprehensive service fidelity; two live Microcks tests remain opt-in.
 
 ### feature-flag-management
 
@@ -80,7 +80,11 @@ W3: safe lazy startup/idle behavior and fixture closure sizes. Real RAM/startup 
 
 ### docgen-regression-scenario
 
-W3: representative docgen/GCI/Kafka composition/control fixture required. Real snapshot generation remains unverified.
+W3/W7: `cd0183e` tests representative docgen dual-Kafka composition, health/job conditions, host proxy routing and causal missing-configuration exclusions. Generic controller/runtime fixtures cover shared control. Real GCI company-snapshot generation remains unverified; [dependency findings](dependency-findings.md) record the narrower evidence.
+
+### tester-friendly-interface
+
+W2: `fc5822d` delivers the compact TUI with exact details, clear saved/observed state, visible failures, help and paging. Real Ink interactions and 80/120/160-column frames are reviewed. This partially addresses usability; it does not deliver the originally requested graphical application or establish usability with testers outside the fixture scenarios.
 
 ### dotfiles-for-remote-environments
 
@@ -109,12 +113,16 @@ Superseded proposal in this archive: later Platform guidance favors SSM retrieva
   116 focused tests passed; independent Spec and Standards rounds completed.
 - W2: `fc5822d` compact real Ink TUI; full exact details, saved version labels,
   failure hints and restored logs/resize regression. 18 focused tests passed.
-- W3/W4: `a1e2594` applied proxy policy (67 focused tests), `eec38d1` actual
-  container image identity (18 runtime tests). Remaining lifecycle/cache/mock
-  audit is in progress. [Dependency findings](dependency-findings.md) record
+- W3/W4: `2c655fa` applies shared lifecycle guards and immutable Reload artifacts
+  (103 focused tests). `f90b861` completes version provenance/cache acceptance;
+  combined W4 suite: 84 pass, two intended live skips, 18 real Ink frames reviewed.
+  Durable Stop/recovery and final independent review remain active. [Dependency findings](dependency-findings.md) record
   actual local closures and ten dual-Kafka declarations without changing them.
-- W5: `55c3d09` SSM CRUD, 30 focused tests/check passed; telemetry in progress; operational decisions stay
-  explicit in [delivery plan](../../DELIVERY-PLAN.md).
+- W5: `55c3d09` SSM CRUD; `ad526de` bounded opt-in operation telemetry.
+  Independent review correction `68e9739` canonicalizes startup URLs and adds
+  real process privacy and negative telemetry evidence; 32 focused tests/check
+  pass. Operational decisions remain explicit in [secrets](secrets.md),
+  [telemetry](telemetry.md) and the [delivery plan](../../DELIVERY-PLAN.md).
 - W6: `59fbe4c`, [workspace/platform spike](workspaces-and-platforms.md), 29 local
   discovery/preparation tests passed. No live platform compatibility claimed.
 - [Local verification](local-verification.md) explains the enforced test boundary.
