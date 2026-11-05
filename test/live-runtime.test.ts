@@ -155,7 +155,6 @@ test('Compose creates lazy services without starting them', async () => {
 
 test('Compose Apply leaves manually stopped services stopped while starting other configured services', async () => {
     const f = runtimeFixture();
-    f.runtime.stoppedServices = ['api'];
     await f.runtime.apply(
         {
             ...project,
@@ -164,7 +163,7 @@ test('Compose Apply leaves manually stopped services stopped while starting othe
                 { service: 'worker', mode: 'Service' },
             ],
         },
-        {},
+        { stoppedServices: ['api'] },
     );
     assert.deepEqual(
         f.requests.map((request) =>
@@ -177,11 +176,16 @@ test('Compose Apply leaves manually stopped services stopped while starting othe
             ['up', '--no-start', '--no-deps', 'api'],
         ],
     );
+    f.requests.length = 0;
+    await f.runtime.apply(project, {});
+    assert.deepEqual(
+        f.requests.at(-1)?.args.slice(composeArguments(project).length),
+        ['up', '--detach'],
+    );
 });
 
 test('Compose Apply keeps a manually stopped Development service and its new builder stopped', async () => {
     const f = runtimeFixture();
-    f.runtime.stoppedServices = ['api'];
     f.composeServices({
         api: { labels: { 'chs.dev.owner-service': 'api' } },
         'build-api': { labels: { 'chs.dev.owner-service': 'api' } },
@@ -195,7 +199,7 @@ test('Compose Apply keeps a manually stopped Development service and its new bui
                 { service: 'worker', mode: 'Service' },
             ],
         },
-        {},
+        { stoppedServices: ['api'] },
     );
     const calls = f.requests.map((request) =>
         request.args.slice(composeArguments(project).length),

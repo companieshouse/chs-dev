@@ -333,19 +333,19 @@ export interface RuntimeSnapshot {
     projectDirectory: string;
     containers: RuntimeContainer[];
 }
+export interface LiveApplyContext extends OperationContext {
+    stoppedServices?: readonly string[];
+}
+
 export interface LiveRuntime {
     probe?(context: OperationContext): Promise<void>;
     monitor?(context: OperationContext): Promise<void>;
     close?(): Promise<void>;
-    readonly reconciles?: boolean;
-    stoppedServices?: readonly string[];
-    reloadTargets?: readonly string[];
-    allowedRemovals?: readonly string[];
     checkAvailability(signal?: AbortSignal): Promise<RuntimeAvailability>;
     snapshot(signal?: AbortSignal): Promise<RuntimeSnapshot>;
     apply(
         project: PreparedProject,
-        context: OperationContext,
+        context: LiveApplyContext,
     ): Promise<RuntimeOperationResult>;
     stop(
         containers: RuntimeContainer[],

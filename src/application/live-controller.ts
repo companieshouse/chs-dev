@@ -951,7 +951,7 @@ export class LiveController {
         let partial: PreparedProject | undefined;
         if (this.needsApply(revision, observed, changes, reloading))
             partial = await this.applyChanges(
-                { ...plan, changes },
+                plan,
                 reloading,
                 signal,
                 context,
@@ -1178,8 +1178,7 @@ export class LiveController {
 
         return (
             revision.inventory.length > 0 &&
-            (this.dependencies.runtime.reconciles ||
-                reloading.size > 0 ||
+            (reloading.size > 0 ||
                 (!unchanged &&
                     (!stopOnly ||
                         (this.applied !== revision.identity &&
@@ -1210,7 +1209,7 @@ export class LiveController {
     }
 
     private async applyChanges(
-        plan: RevisionPlan & { changes: LivePreview },
+        plan: RevisionPlan,
         reloading: Map<string, ((result: ServiceResult) => void)[]>,
         signal: AbortSignal,
         context: {
@@ -1219,7 +1218,7 @@ export class LiveController {
         },
         progress: { reloaded: boolean },
     ): Promise<PreparedProject | undefined> {
-        const { revision, resolved, observed, changes } = plan;
+        const { revision, resolved, observed } = plan;
         await this.ensureSshSetup(resolved.sshRequirements, signal);
         await this.verifyApplyAuthentication(revision, signal);
 
@@ -1243,22 +1242,14 @@ export class LiveController {
         await this.verifyFreshAws(revision, signal);
 
         this.update({ phase: 'Applying' });
-        this.dependencies.runtime.stoppedServices = this.state.stoppedByUser;
-        this.dependencies.runtime.reloadTargets = [...reloading.keys()];
-        this.dependencies.runtime.allowedRemovals = changes.stop;
-        try {
-            this.accept(
-                await this.dependencies.runtime.apply(prepared, context),
-            );
-        } finally {
-            this.dependencies.runtime.stoppedServices = undefined;
-            this.dependencies.runtime.reloadTargets = undefined;
-            this.dependencies.runtime.allowedRemovals = undefined;
-        }
+        this.accept(
+            await this.dependencies.runtime.apply(prepared, {
+                ...context,
+                stoppedServices: this.state.stoppedByUser,
+            }),
+        );
 
-        if (reloading.size && this.dependencies.runtime.reconciles)
-            progress.reloaded = true;
-        if (reloading.size && !this.dependencies.runtime.reconciles) {
+        if (reloading.size) {
             signal.throwIfAborted();
             const services = [...reloading.keys()].sort();
             this.log(`Reload: ${services.join(', ')}`);

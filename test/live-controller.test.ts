@@ -41,14 +41,13 @@ const container = (
     projectDirectory: '/project',
     lifecycle: 'running',
 });
-function fixture(options: { native?: boolean } = {}) {
+function fixture() {
     let revision: ConfigurationRevision = {
         identity: 'one',
         yaml: 'one',
         inventory: [{ service: 'api', mode: 'Service' }],
     };
     let containers: RuntimeContainer[] = [];
-    let stoppedServices: readonly string[] | undefined;
     let aws = 'active';
     let preparationFailure: Error | undefined;
     let applyFailure: Error | undefined;
@@ -101,7 +100,6 @@ function fixture(options: { native?: boolean } = {}) {
     const controller = new LiveController({
         eventSink: (event, fields) => events.push({ event, fields }),
         runtime: {
-            reconciles: options.native,
             checkAvailability: async () => ({
                 available,
                 message: 'Docker unavailable',
@@ -111,12 +109,6 @@ function fixture(options: { native?: boolean } = {}) {
                 projectDirectory: '/project',
                 containers: [...containers],
             }),
-            get stoppedServices() {
-                return stoppedServices;
-            },
-            set stoppedServices(value) {
-                stoppedServices = value;
-            },
             apply: async (project, context) => {
                 calls.push('apply');
                 if (output)
@@ -125,7 +117,7 @@ function fixture(options: { native?: boolean } = {}) {
                 context.signal?.throwIfAborted();
                 if (applyFailure) throw applyFailure;
                 containers = project.inventory.map((entry) =>
-                    stoppedServices?.includes(entry.service)
+                    context.stoppedServices?.includes(entry.service)
                         ? {
                               ...container(entry.service, entry.mode),
                               lifecycle: 'exited',
@@ -1104,19 +1096,6 @@ test('shutdown cancels an owned operation, waits for termination, releases owner
         f.calls.some((call) => call.startsWith('stopProject')),
         false,
     );
-});
-
-test('native apply always evaluates resolved configuration while polling remains read-only', async () => {
-    const f = fixture({ native: true });
-    await f.controller.start();
-    await settle();
-    const first = f.calls.filter((call) => call === 'apply').length;
-    await f.controller.apply();
-    await settle();
-    assert.equal(f.calls.filter((call) => call === 'apply').length, first + 1);
-    await f.controller.poll();
-    assert.equal(f.calls.filter((call) => call === 'apply').length, first + 1);
-    await f.controller.shutdown();
 });
 
 test('stop starts a new progress window while keeping earlier operation logs', async () => {

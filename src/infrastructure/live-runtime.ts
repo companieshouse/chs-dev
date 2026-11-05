@@ -3,6 +3,7 @@ import {
     LiveFailure,
     type ContainerAction,
     type LiveRuntime,
+    type LiveApplyContext,
     type PreparedProject,
     type RuntimeContainer,
     type RuntimeSnapshot,
@@ -87,7 +88,6 @@ interface DockerInspection {
     };
 }
 export class DockerLiveRuntime implements LiveRuntime {
-    stoppedServices?: readonly string[];
     constructor(private readonly dependencies: DockerLiveDependencies) {}
     private async run(
         args: string[],
@@ -265,7 +265,7 @@ export class DockerLiveRuntime implements LiveRuntime {
     }
     async apply(
         project: PreparedProject,
-        context: OperationContext,
+        context: LiveApplyContext,
     ): Promise<RuntimeOperationResult> {
         await this.owned(project);
         const args = composeArguments(project);
@@ -282,7 +282,7 @@ export class DockerLiveRuntime implements LiveRuntime {
             ...project.inventory
                 .filter((entry) => entry.lazy)
                 .map((entry) => entry.service),
-            ...(this.stoppedServices ?? []),
+            ...(context.stoppedServices ?? []),
         ];
         if (!deferred.length) {
             checkResult(
