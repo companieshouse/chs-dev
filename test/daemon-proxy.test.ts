@@ -107,4 +107,8 @@ test('daemon proxy uses applied route metadata across repeated requests and save
     await writeFile(join(f.directory, '.chs-dev.yaml'), 'services: []\n');
     assert.deepEqual(await request(port), { status: 200, body: 'applied api' });
     assert.deepEqual(proxy.state().lazy, ['api']);
+    await f.restart();
+    assert.deepEqual(proxy.state().lazy, []);
+    assert.deepEqual(await request(port), { status: 200, body: 'applied api' });
+    assert.deepEqual(proxy.state().lazy, ['api']);
 });

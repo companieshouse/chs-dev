@@ -108,17 +108,20 @@ export function startDaemonProxy(
         });
     });
     server.listen(port);
-    const sweeper = startIdleSweeper(lifecycle, accounting);
+    const sweeper = startIdleSweeper(lifecycle, accounting, routing.refresh);
     return {
         accounting,
         listening: new Promise<void>((resolve) => {
             server.once('listening', () => resolve());
         }),
-        state: () => ({
-            ...accounting.snapshot(),
-            coldStarting: lifecycle.coldStarting(),
-            lazy: [...routing.knownLazy].sort(),
-        }),
+        state: () => {
+            routing.synchronize();
+            return {
+                ...accounting.snapshot(),
+                coldStarting: lifecycle.coldStarting(),
+                lazy: [...routing.knownLazy].sort(),
+            };
+        },
         close: async () => {
             clearInterval(sweeper);
             await new Promise<void>((resolve) => {
@@ -135,6 +138,8 @@ function daemonLifecycle(
     routingRef: { current?: ReturnType<typeof createRouting> },
 ): ServiceLifecycle {
     return createLazyLifecycle({
+        chainFor: (service) =>
+            routingRef.current?.chainFor(service) ?? [service],
         isLazy: (service) =>
             routingRef.current?.knownLazy.has(service) ?? false,
         ...controllerLifecycle(controller, log, (service) =>
@@ -158,12 +163,23 @@ function createRouting(deps: {
 }) {
     const knownLazy = new Set<string>();
     let active: { directory: string; manager: ContainerManager } | undefined;
+    let activeController: LiveController | undefined;
     let builder: ReturnType<typeof createRouteBuilder> | undefined;
     let dependencies = new Map<string, readonly string[]>();
 
+    const reset = () => {
+        deps.lifecycle.reset();
+        knownLazy.clear();
+        dependencies.clear();
+        active = undefined;
+        builder = undefined;
+    };
     const currentBuilder = () => {
-        const directory = deps.controller?.()?.getSnapshot()
-            .observed?.projectDirectory;
+        const controller = deps.controller?.();
+        const directory = observedDirectory(controller);
+        if (activeController !== controller || active?.directory !== directory)
+            reset();
+        activeController = controller;
         if (!directory) return undefined;
         if (active?.directory === directory) return builder;
         const manager = deps.runtime.containers?.({ directory });
@@ -176,6 +192,7 @@ function createRouting(deps: {
         const current = currentBuilder();
         if (!current) return undefined;
         const resolved = await current.current();
+        if (current !== currentBuilder()) return undefined;
         dependencies = resolved.dependencies;
         knownLazy.clear();
         for (const service of resolved.lazy) knownLazy.add(service);
@@ -203,7 +220,18 @@ function createRouting(deps: {
     };
     const chainFor = (service: string): string[] =>
         lazyChain(service, dependencies);
-    return { routes, upstream, knownLazy, chainFor };
+    return {
+        routes,
+        upstream,
+        knownLazy,
+        chainFor,
+        refresh,
+        synchronize: currentBuilder,
+    };
+}
+
+function observedDirectory(controller: LiveController | undefined) {
+    return controller?.getSnapshot().observed?.projectDirectory;
 }
 
 /**
@@ -246,10 +274,11 @@ function bindFailureMessage(
 function startIdleSweeper(
     lifecycle: ServiceLifecycle,
     accounting: RequestAccounting,
+    refresh: () => Promise<unknown>,
 ): NodeJS.Timeout {
     const sweeper = setInterval(() => {
-        void lifecycle
-            .sweep(Date.now())
+        void refresh()
+            .then(() => lifecycle.sweep(Date.now()))
             .then((unloaded) => {
                 for (const service of unloaded) accounting.reset(service);
             })

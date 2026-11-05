@@ -207,6 +207,9 @@ test('cold starts and hold caps emit structured proxy events', async (t) => {
             isLazy: () => true,
             touch: () => {},
             seen: () => {},
+            request: () => () => {},
+            settled: async () => {},
+            reset: () => {},
             start: async () => {},
             stop: async () => {},
             sweep: async () => [],
@@ -248,6 +251,9 @@ test('a stopped lazy service cold-starts, holds, and is served once reachable', 
             isLazy: (service) => service === 'felixvalidator',
             touch: () => {},
             seen: () => {},
+            request: () => () => {},
+            settled: async () => {},
+            reset: () => {},
             start: async (service) => {
                 startCalls++;
                 upstreamAvailable = true;
@@ -319,6 +325,9 @@ test('an upstream that never becomes reachable returns 503 still starting', asyn
             isLazy: () => true,
             touch: () => {},
             seen: () => {},
+            request: () => () => {},
+            settled: async () => {},
+            reset: () => {},
             start: async () => {
                 startCalls++;
             },
@@ -350,6 +359,9 @@ test('a failed cold start answers 502', async (t) => {
             isLazy: () => true,
             touch: () => {},
             seen: () => {},
+            request: () => () => {},
+            settled: async () => {},
+            reset: () => {},
             start: async () => {
                 throw new Error('start failed');
             },
@@ -503,4 +515,113 @@ test('proxy failure diagnostics exclude request queries and arbitrary adapter er
         /private-oauth-code|\?code=|provider response/,
     );
     assert.doesNotMatch(response.body, /private-oauth-code|provider response/);
+});
+
+test('a streaming request protects its root and transitive dependencies from idle unload', async (t) => {
+    const stopped: string[] = [];
+    const lifecycle = createLazyLifecycle({
+        isLazy: () => true,
+        chainFor: () => ['database', 'api'],
+        start: async () => {},
+        stop: async (service) => {
+            stopped.push(service);
+        },
+    });
+    lifecycle.seen('database');
+    lifecycle.seen('api');
+    let finish!: () => void;
+    const upstream = http.createServer((_request, response) => {
+        response.writeHead(200);
+        response.write('streaming');
+        finish = () => response.end('complete');
+    });
+    const upstreamPort = await listen(upstream);
+    t.after(() => upstream.close());
+    const proxy = createProxyServer({
+        routes: async () => [route('api', 'api.chs.local')],
+        upstream: async () => ({ host: '127.0.0.1', port: upstreamPort }),
+        lifecycle,
+    });
+    const port = await listen(proxy);
+    t.after(() => proxy.close());
+    let stream!: http.ClientRequest;
+    const received = new Promise<void>((resolve, reject) => {
+        stream = http.get(
+            { host: '127.0.0.1', port, headers: { host: 'api.chs.local' } },
+            (response) => {
+                response.once('data', () => resolve());
+                response.on('error', reject);
+            },
+        );
+        stream.on('error', reject);
+    });
+    await received;
+    try {
+        assert.deepEqual(
+            await lifecycle.sweep(Date.now() + 2 * 60 * 60_000),
+            [],
+        );
+        assert.deepEqual(stopped, []);
+    } finally {
+        finish();
+        stream.destroy();
+    }
+});
+
+test('a request arriving during idle unload waits for stop and then cold-starts', async (t) => {
+    let available = true;
+    let started = 0;
+    let releaseStop!: () => void;
+    let stopAccepted!: () => void;
+    const accepted = new Promise<void>((resolve) => {
+        stopAccepted = resolve;
+    });
+    const stopGate = new Promise<void>((resolve) => {
+        releaseStop = resolve;
+    });
+    const lifecycle = createLazyLifecycle({
+        isLazy: () => true,
+        start: async () => {
+            started++;
+            available = true;
+        },
+        stop: async () => {
+            stopAccepted();
+            await stopGate;
+            available = false;
+        },
+    });
+    lifecycle.seen('api');
+    const upstream = http.createServer((_request, response) =>
+        response.end('restarted'),
+    );
+    const upstreamPort = await listen(upstream);
+    t.after(() => upstream.close());
+    const proxy = createProxyServer({
+        routes: async () => [route('api', 'api.chs.local')],
+        upstream: async () =>
+            available ? { host: '127.0.0.1', port: upstreamPort } : undefined,
+        lifecycle,
+        holdMs: 500,
+        pollMs: 5,
+    });
+    const port = await listen(proxy);
+    t.after(() => proxy.close());
+    const sweeping = lifecycle.sweep(Date.now() + 2 * 60 * 60_000);
+    await accepted;
+    const response = get(port, 'api.chs.local', '/');
+    try {
+        assert.equal(
+            await Promise.race([
+                response.then(() => 'forwarded'),
+                delay(20).then(() => 'waiting'),
+            ]),
+            'waiting',
+        );
+    } finally {
+        releaseStop();
+        await sweeping;
+    }
+    assert.equal((await response).status, 200);
+    assert.equal(started, 1);
 });

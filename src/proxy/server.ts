@@ -78,7 +78,16 @@ async function respond(
         return;
     }
     observeTraffic(options, route, path);
-    await serveRoute(options, request, response, route, deadline);
+    const release = !isHealthcheck(path, route.healthcheckPaths)
+        ? options.lifecycle?.request(route.service)
+        : undefined;
+    if (release) response.once('close', release);
+    try {
+        await serveRoute(options, request, response, route, deadline);
+    } finally {
+        if (release) response.off('close', release);
+        release?.();
+    }
 }
 
 async function serveRoute(
@@ -88,6 +97,11 @@ async function serveRoute(
     route: Route,
     deadline: number,
 ) {
+    await waitForUnload(options.lifecycle, route.service, deadline);
+    if (Date.now() >= deadline) {
+        holdExpired(options, route, response);
+        return;
+    }
     const path = request.url ?? '/';
     let upstream = await beforeDeadline(options.upstream(route), deadline);
     if (Date.now() >= deadline) {
@@ -109,6 +123,14 @@ async function serveRoute(
     await forward(request, response, upstream, route);
 }
 
+async function waitForUnload(
+    lifecycle: ServiceLifecycle | undefined,
+    service: string,
+    deadline: number,
+) {
+    if (lifecycle) await beforeDeadline(lifecycle.settled(service), deadline);
+}
+
 /**
  * Records one proxied request: the counters keep healthcheck traffic
  * separate, while the idle timer and the usage ledger only see real traffic.
@@ -120,7 +142,6 @@ function observeTraffic(
 ): void {
     options.accounting?.record(route.service, path, route.healthcheckPaths);
     if (isHealthcheck(path, route.healthcheckPaths)) return;
-    options.lifecycle?.touch(route.service);
     options.usage?.record(route.service);
 }
 
@@ -272,6 +293,12 @@ async function forward(
                 upstreamResponse.on('error', reject);
             },
         );
+        const disconnected = () => {
+            target.destroy();
+            resolve();
+        };
+        response.once('close', disconnected);
+        target.once('close', () => response.off('close', disconnected));
         target.on('error', reject);
         request.pipe(target);
         request.on('error', reject);

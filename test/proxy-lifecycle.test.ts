@@ -107,3 +107,100 @@ test('stop clears the activity entry so a restart re-seeds', async () => {
     assert.deepEqual(unloaded, []);
     assert.deepEqual(events, ['start felixvalidator', 'stop felixvalidator']);
 });
+
+test('a failed idle unload retains activity so the next sweep retries', async () => {
+    let attempts = 0;
+    const lifecycle = createLazyLifecycle({
+        isLazy: () => true,
+        start: async () => {},
+        stop: async () => {
+            attempts++;
+            if (attempts === 1) throw new Error('engine busy');
+        },
+    });
+    lifecycle.seen('api');
+    const idle = Date.now() + IDLE_UNLOAD_MS + 1;
+    assert.deepEqual(await lifecycle.sweep(idle), []);
+    assert.deepEqual(await lifecycle.sweep(idle + 1), ['api']);
+    assert.equal(attempts, 2);
+});
+
+test('reset discards old activity and late start completion cannot replace a new checkout start', async () => {
+    const releases: (() => void)[] = [];
+    const lifecycle = createLazyLifecycle({
+        isLazy: () => true,
+        start: () =>
+            new Promise<void>((resolve) => {
+                releases.push(resolve);
+            }),
+        stop: async () => {
+            throw new Error('Old activity must not unload the new checkout');
+        },
+    });
+    const oldStart = lifecycle.start('api');
+    await Promise.resolve();
+    lifecycle.reset();
+    const newStart = lifecycle.start('api');
+    await Promise.resolve();
+    releases[0]!();
+    await oldStart;
+    assert.deepEqual(lifecycle.coldStarting(), ['api']);
+    releases[1]!();
+    await newStart;
+    lifecycle.reset();
+    assert.deepEqual(
+        await lifecycle.sweep(Date.now() + IDLE_UNLOAD_MS + 1),
+        [],
+    );
+});
+
+test('an idle stop completing after reset cannot clear new checkout activity', async () => {
+    let release!: () => void;
+    let stops = 0;
+    const lifecycle = createLazyLifecycle({
+        isLazy: () => true,
+        start: async () => {},
+        stop: async () => {
+            stops++;
+            if (stops === 1)
+                await new Promise<void>((resolve) => {
+                    release = resolve;
+                });
+        },
+    });
+    lifecycle.seen('api');
+    const sweeping = lifecycle.sweep(Date.now() + IDLE_UNLOAD_MS + 1);
+    lifecycle.reset();
+    lifecycle.seen('api');
+    release();
+    assert.deepEqual(await sweeping, []);
+    assert.deepEqual(await lifecycle.sweep(Date.now() + IDLE_UNLOAD_MS + 1), [
+        'api',
+    ]);
+    assert.equal(stops, 2);
+});
+
+test('idle unload cannot erase newer request activity recorded in the same millisecond', async (t) => {
+    t.mock.timers.enable({ apis: ['Date'], now: 1000 });
+    let releaseStop!: () => void;
+    let stops = 0;
+    const lifecycle = createLazyLifecycle({
+        isLazy: () => true,
+        start: async () => {},
+        stop: async () => {
+            stops++;
+            if (stops === 1)
+                await new Promise<void>((resolve) => {
+                    releaseStop = resolve;
+                });
+        },
+    });
+    lifecycle.seen('api');
+    const stopping = lifecycle.stop('api');
+    const releaseRequest = lifecycle.request('api');
+    releaseRequest();
+    releaseStop();
+    await stopping;
+    assert.deepEqual(await lifecycle.sweep(1000 + IDLE_UNLOAD_MS + 1), ['api']);
+    assert.equal(stops, 2);
+});
