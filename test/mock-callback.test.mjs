@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -242,7 +242,9 @@ test('rejected callbacks report failure without changing the accepted HTTP respo
         createServer((request, response) => {
             request.resume();
             response.writeHead(500);
-            response.end();
+            response.end(
+                `untrusted ${request.headers.authorization} ${request.url}`,
+            );
         }),
     );
     let report;
@@ -260,11 +262,22 @@ test('rejected callbacks report failure without changing the accepted HTTP respo
     );
     const response = await fetch(`${proxy}/validate-async`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ fileId: 'mock-accounts', callbackUrl }),
+        headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer callback-private-token',
+        },
+        body: JSON.stringify({
+            fileId: 'mock-accounts',
+            callbackUrl: `${callbackUrl}?token=callback-query-secret`,
+        }),
     });
     assert.equal(response.status, 200);
-    assert.match(await failure, /callback returned HTTP 500/);
+    const message = await failure;
+    assert.match(message, /callback returned HTTP 500/);
+    assert.doesNotMatch(
+        message,
+        /callback-private-token|callback-query-secret|untrusted/,
+    );
 });
 
 test(
@@ -285,3 +298,98 @@ test(
         await validateCompletion(t, endpoint, 'validation-failed');
     },
 );
+
+test('async callback requests preserve UTF-8 characters split between HTTP body chunks', async (t) => {
+    const f = await fakeMicrocks(t);
+    const callback = completion();
+    const callbackUrl = `${await listen(t, callback.server)}/café`;
+    const proxy = await listen(
+        t,
+        createMockServer({
+            ...contract,
+            endpoint: f.endpoint,
+            scenario: 'success',
+        }),
+    );
+    const body = Buffer.from(JSON.stringify({ fileId: 'café', callbackUrl }));
+    const split = body.indexOf(Buffer.from('é')) + 1;
+    const status = await new Promise((resolve, reject) => {
+        const request = httpRequest(
+            `${proxy}/validate-async`,
+            {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+            },
+            (response) => {
+                response.resume();
+                response.once('end', () => resolve(response.statusCode));
+            },
+        );
+        request.once('error', reject);
+        request.write(body.subarray(0, split));
+        request.end(body.subarray(split));
+    });
+    assert.equal(status, 200);
+    const result = await receivedCallback(callback);
+    assert.equal(JSON.parse(f.calls[0].body).fileId, 'café');
+    assert.equal(result.path, '/caf%C3%A9');
+});
+
+test('shutdown aborts an in-flight result read without sending a callback or logging credentials', async (t) => {
+    let entered;
+    const reading = new Promise((resolve) => {
+        entered = resolve;
+    });
+    let disconnected;
+    const closed = new Promise((resolve) => {
+        disconnected = resolve;
+    });
+    const endpoint = await listen(
+        t,
+        createServer((request, response) => {
+            request.resume();
+            if (request.url.endsWith('/validate')) {
+                response.once('close', disconnected);
+                entered();
+                return;
+            }
+            response.end();
+        }),
+    );
+    let callbacks = 0;
+    const callbackUrl = await listen(
+        t,
+        createServer((request, response) => {
+            callbacks++;
+            request.resume();
+            response.end();
+        }),
+    );
+    const abort = new AbortController();
+    const reports = [];
+    const proxy = await listen(
+        t,
+        createMockServer({
+            ...contract,
+            endpoint,
+            scenario: 'success',
+            signal: abort.signal,
+            onCallbackError: (message) => reports.push(message),
+        }),
+    );
+    const accepted = await fetch(`${proxy}/validate-async`, {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer callback-private-token',
+        },
+        body: JSON.stringify({ fileId: 'fixture', callbackUrl }),
+    });
+    assert.equal(accepted.status, 200);
+    await accepted.text();
+    await receivedCallback({ received: reading });
+    abort.abort();
+    await receivedCallback({ received: closed });
+    assert.equal(callbacks, 0);
+    assert.deepEqual(reports, []);
+});

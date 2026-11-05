@@ -8,7 +8,7 @@ import { mockProviderSpec } from '../src/project/mock-provider.js';
 import { nodeProjectFs } from '../src/project/files.js';
 import { readMockCatalogue } from '../src/project/mock-catalogue.js';
 import type { ServiceDefinition } from '../src/project/resolve.js';
-import type { InventoryEntry } from '../src/domain/live.js';
+import { lifecycleLabel, type InventoryEntry } from '../src/domain/live.js';
 import { createRouteBuilder } from '../src/proxy/builder.js';
 import { createAccounting } from '../src/proxy/accounting.js';
 import type {
@@ -68,6 +68,7 @@ test('the proxy honours a mock container’s declared health paths', async () =>
         'traefik.http.routers.felixvalidator.rule=Host(`api.chs.local`) && PathPrefix(`/xbrl-validate`)',
         'traefik.http.services.felixvalidator.loadbalancer.server.port=8080',
         'chs.dev.mock.health-paths=/xbrl-validate/health,/ready',
+        `${lifecycleLabel}=${JSON.stringify({ version: 1, lazy: false, reclaimable: false, dependencies: [] })}`,
     ];
     const inspection = {
         Config: {
@@ -90,6 +91,7 @@ test('the proxy honours a mock container’s declared health paths', async () =>
         status: 'running',
         service: 'felixvalidator',
         project: 'checkout',
+        currentProject: true,
     };
     const details: ContainerDetails = {
         ...summary,

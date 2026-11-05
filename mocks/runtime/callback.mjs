@@ -1,12 +1,14 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
 async function callbackRequest(incoming, policy) {
-    let body = '';
+    const chunks = [];
+    let size = 0;
     for await (const chunk of incoming) {
-        body += chunk;
-        if (Buffer.byteLength(body) > 65536)
-            throw new Error('The callback request is too large.');
+        size += chunk.length;
+        if (size > 65536) throw new Error('The callback request is too large.');
+        chunks.push(chunk);
     }
+    const body = Buffer.concat(chunks).toString('utf8');
     const value = JSON.parse(body);
     const address = policy.urlFields
         .map((field) => value?.[field])

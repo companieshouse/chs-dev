@@ -27,7 +27,7 @@ environment needs Start. Save
 success reports configuration acceptance; explicit Apply waits for reconciliation.
 
 In the TUI, open a service with Enter, cycle **Provider**, choose **Mock scenario**,
-then **Save** and choose **Apply changes** in the Environment panel. The Services list shows the active scenario. Closing the
+then **Save** and choose **Apply changes** in the Environment panel. The Services selection shows the saved scenario; it may still be pending Apply. Closing the
 modal discards edits. Unsupported Development/Mock choices are omitted. The previous
 scenario is remembered when switching away from Mock and back.
 
@@ -66,7 +66,12 @@ The callback forwards the incoming Authorization header; requests without that
 header produce an unauthenticated callback. Callback URLs must be reachable from
 the mock container. Failures appear in the `felixvalidator` logs. The `error`
 scenario does not accept the request or send a callback. Accepted work retains its
-scenario if the selection changes while it is waiting.
+scenario if the selection changes while it is waiting. UTF-8 request bodies are
+decoded after all bounded request chunks have arrived, so a multibyte character
+split between chunks is preserved. Shutdown cancels waiting and in-flight result
+reads; an already accepted HTTP response is not rolled back. Callback failure
+messages report the failing stage/status without echoing callback credentials,
+URL query values or an untrusted response body.
 
 No files are downloaded from file transfer, and no TNDP, antivirus, Keycloak or
 database connections are made. The mock sends the final validation result rather
@@ -153,3 +158,16 @@ execution backend is supported.
 Microcks references: [Uber deployment](https://microcks.io/documentation/explanations/deployment-options/),
 [artifact upload](https://microcks.io/documentation/guides/usage/importing-content/),
 [header dispatching](https://microcks.io/documentation/explanations/dispatching/).
+
+Local acceptance runs `node scripts/test-local.mjs test/mock-runtime.test.mjs test/mock-callback.test.mjs test/mock-routing.test.ts test/mock-provider-tui.test.ts test/providers.test.ts`.
+These tests use the real HTTP adapter/importer and production provider/UI paths,
+with local HTTP endpoints standing in for Microcks and callback recipients. They
+verify scenario selection/replacement, contract import sequencing, dependency
+resolution, owned applied routing and health-path accounting, callback status and
+body forwarding, cancellation and credential-safe error messages.
+
+The two tests requiring `CHS_MICROCKS_URL` remain skipped during local-only
+acceptance. Their OpenAPI dispatch/template fidelity against a real Microcks
+instance, and real Docker container reuse, remain unverified in this delivery.
+Starter examples are synthetic; tooling fixtures do not certify every business
+endpoint or real-service behavior.
