@@ -50,6 +50,7 @@ function runtimeFixture() {
     const requirements: readonly string[][] = [];
     let inspections = [inspect()];
     let failure = '';
+    let composeServices = { api: {}, worker: {} } as Record<string, object>;
     const runtime = new DockerLiveRuntime({
         directory: '/checkout',
         projectName: 'chs',
@@ -79,13 +80,20 @@ function runtimeFixture() {
                     stdout: JSON.stringify(inspections),
                     stderr: '',
                 };
-            if (request.args.includes('--services'))
-                return { code: 0, stdout: 'api\nworker\n', stderr: '' };
+            if (request.args.includes('json'))
+                return {
+                    code: 0,
+                    stdout: JSON.stringify({ services: composeServices }),
+                    stderr: '',
+                };
             return { code: failure ? 1 : 0, stdout: '', stderr: failure };
         },
     });
     return {
         runtime,
+        composeServices: (services: Record<string, object>) => {
+            composeServices = services;
+        },
         requests,
         requirements,
         set: (next: typeof inspections) => {
@@ -138,11 +146,70 @@ test('Compose creates lazy services without starting them', async () => {
         ),
         [
             ['config', '--quiet'],
-            ['config', '--services'],
+            ['config', '--format', 'json'],
             ['up', '--detach', '--no-deps', 'api'],
             ['up', '--no-start', '--no-deps', 'worker'],
         ],
     );
+});
+
+test('Compose Apply leaves manually stopped services stopped while starting other configured services', async () => {
+    const f = runtimeFixture();
+    f.runtime.stoppedServices = ['api'];
+    await f.runtime.apply(
+        {
+            ...project,
+            inventory: [
+                { service: 'api', mode: 'Service' },
+                { service: 'worker', mode: 'Service' },
+            ],
+        },
+        {},
+    );
+    assert.deepEqual(
+        f.requests.map((request) =>
+            request.args.slice(composeArguments(project).length),
+        ),
+        [
+            ['config', '--quiet'],
+            ['config', '--format', 'json'],
+            ['up', '--detach', '--no-deps', 'worker'],
+            ['up', '--no-start', '--no-deps', 'api'],
+        ],
+    );
+});
+
+test('Compose Apply keeps a manually stopped Development service and its new builder stopped', async () => {
+    const f = runtimeFixture();
+    f.runtime.stoppedServices = ['api'];
+    f.composeServices({
+        api: { labels: { 'chs.dev.owner-service': 'api' } },
+        'build-api': { labels: { 'chs.dev.owner-service': 'api' } },
+        worker: { depends_on: { api: { condition: 'service_started' } } },
+    });
+    await f.runtime.apply(
+        {
+            ...project,
+            inventory: [
+                { service: 'api', mode: 'Development' },
+                { service: 'worker', mode: 'Service' },
+            ],
+        },
+        {},
+    );
+    const calls = f.requests.map((request) =>
+        request.args.slice(composeArguments(project).length),
+    );
+    assert.deepEqual(calls.at(-2), ['up', '--detach', '--no-deps', 'worker']);
+    assert.deepEqual(calls.at(-1), [
+        'up',
+        '--no-start',
+        '--no-deps',
+        'api',
+        'build-api',
+    ]);
+    const listing = f.requests.find((request) => request.args.includes('json'));
+    assert.equal(listing?.privateOutput, true);
 });
 
 test('reload rebuilds and force-recreates the service and its builder only', async () => {

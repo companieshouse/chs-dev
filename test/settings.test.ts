@@ -101,8 +101,8 @@ test('invalid files and entries are reported without failing', () => {
         project: '/home/me/checkout',
         ecrProfiles: ['one', 'two'],
     });
-    assert.equal(mixed.errors.length, 2);
-    assert.match(mixed.errors.join('\n'), /autoApply/);
+    assert.equal(mixed.errors.length, 1);
+    assert.match(mixed.warnings.join('\n'), /autoApply.*retired/);
     assert.match(mixed.errors.join('\n'), /aws\.profile/);
 });
 
@@ -223,25 +223,52 @@ test('retired backend configuration is ignored with persistent warnings and no f
     const env = { CHS_DEV_RUNTIME: 'apple', CHS_DEV_ORCHESTRATOR: 'native' };
     const store = await SettingsStore.load(path, env, root);
     const snapshot = store.getSnapshot();
-    assert.equal(snapshot.warnings.length, 4);
+    assert.equal(snapshot.warnings.length, 5);
     assert.deepEqual(snapshot.errors, []);
     assert.deepEqual(snapshot.restartPending, []);
     assert.equal('runtime' in snapshot.resolved, false);
     assert.equal('orchestrator' in snapshot.resolved, false);
-    assert.equal(snapshot.resolved.autoApply.value, false);
+    assert.equal('autoApply' in snapshot.resolved, false);
     assert.equal(await readFile(path, 'utf8'), raw);
-    await store.save('autoApply', true);
+    await store.save('awsProfile', 'development');
     assert.match(
         await readFile(path, 'utf8'),
         /# preserve me\nruntime: apple\norchestrator: native/,
     );
-    assert.equal(store.getSnapshot().warnings.length, 4);
+    assert.equal(store.getSnapshot().warnings.length, 5);
     await writeFile(path, 'autoApply: false\n');
     await store.refresh();
+    assert.equal(store.getSnapshot().warnings.length, 3);
+    assert.ok(
+        store
+            .getSnapshot()
+            .warnings.some((warning) =>
+                warning.includes('autoApply is retired'),
+            ),
+    );
+});
+
+test('retired autoApply file and environment settings warn without changing saved files', async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'chs-explicit-apply-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const path = join(root, 'tui.yaml');
+    const raw = '# keep me\nautoApply: true\n';
+    await writeFile(path, raw);
+    const store = await SettingsStore.load(
+        path,
+        { CHS_DEV_AUTO_APPLY: 'true' },
+        root,
+    );
+    assert.equal('autoApply' in store.getSnapshot().resolved, false);
     assert.equal(store.getSnapshot().warnings.length, 2);
     assert.ok(
         store
             .getSnapshot()
-            .warnings.every((warning) => warning.startsWith('CHS_DEV_')),
+            .warnings.every((warning) =>
+                /retired and ignored.*Apply/.test(warning),
+            ),
     );
+    assert.equal(await readFile(path, 'utf8'), raw);
+    await store.save('awsProfile', 'development');
+    assert.match(await readFile(path, 'utf8'), /# keep me\nautoApply: true/);
 });

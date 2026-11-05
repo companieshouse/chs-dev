@@ -29,7 +29,6 @@ export type EnvironmentActionId =
     | 'apply'
     | 'restart-failing'
     | 'stop'
-    | 'auto-apply'
     | 'login-aws'
     | 'login-registry'
     | 'ssh'
@@ -249,10 +248,7 @@ const stopAction: EnvironmentActionItem = {
     label: 'Stop environment',
 };
 
-function blockedFailedActions(
-    state: LiveState,
-    auto: EnvironmentActionItem,
-): EnvironmentActionItem[] {
+function blockedFailedActions(state: LiveState): EnvironmentActionItem[] {
     const actions: EnvironmentActionItem[] = [];
     if (state.blocked === 'aws')
         actions.push({ id: 'login-aws', label: 'Log in to AWS' });
@@ -268,28 +264,26 @@ function blockedFailedActions(
         label: state.blocked === 'cancelled' ? 'Resume' : 'Try again',
     });
     if (state.running) actions.push(stopAction);
-    actions.push(logsAction, auto, closeAction);
+    actions.push(logsAction, closeAction);
     return actions;
 }
 
 function stoppedActions(
     state: LiveState,
     summary: Summary | undefined,
-    auto: EnvironmentActionItem,
 ): EnvironmentActionItem[] {
     const actions: EnvironmentActionItem[] = [
         { id: 'start', label: 'Start environment' },
     ];
     if (summary?.up) actions.push(stopAction);
     else if (state.observed?.containers.length) actions.push(stopAction);
-    actions.push(auto, logsAction, closeAction);
+    actions.push(logsAction, closeAction);
     return actions;
 }
 
 function runningActions(
     state: LiveState,
     summary: Summary | undefined,
-    auto: EnvironmentActionItem,
 ): EnvironmentActionItem[] {
     const actions: EnvironmentActionItem[] = [
         {
@@ -307,7 +301,7 @@ function runningActions(
             label: `Restart failing services (${summary.failed.length})`,
         });
     actions.push(stopAction);
-    actions.push(auto, logsAction, closeAction);
+    actions.push(logsAction, closeAction);
     return actions;
 }
 
@@ -317,10 +311,6 @@ export function environmentActions(
     available = true,
 ): EnvironmentActionItem[] {
     if (!available) return [{ id: 'close', label: 'Close' }];
-    const auto: EnvironmentActionItem = {
-        id: 'auto-apply',
-        label: `Auto-apply edits: ${state.autoApply ? 'On' : 'Off'}`,
-    };
     if (state.busy)
         return [
             ...(state.phase === 'Cancelling'
@@ -336,9 +326,9 @@ export function environmentActions(
             logsAction,
         ];
     if (state.phase === 'Blocked' || state.phase === 'Failed')
-        return blockedFailedActions(state, auto);
-    if (!state.running) return stoppedActions(state, summary, auto);
-    return runningActions(state, summary, auto);
+        return blockedFailedActions(state);
+    if (!state.running) return stoppedActions(state, summary);
+    return runningActions(state, summary);
 }
 
 /** Recent output from this operation, without unrelated messages from earlier work. */
@@ -403,12 +393,6 @@ function blockedFailedRows(state: LiveState): {
     return rows;
 }
 
-function pendingSuffix(state: LiveState) {
-    if (state.deferredConfigurationRevision)
-        return ' · saved changes wait for Apply';
-    return state.autoApply ? '' : ' · auto-apply is off';
-}
-
 /** Per-service first causal blockers, for the environment panel. */
 export function blockerRows(
     state: LiveState,
@@ -465,7 +449,7 @@ function runningRows(
     if (state.running && state.changes) {
         if (state.changes.edited)
             rows.push({
-                text: `${plural(pendingCount(state.changes), 'change')} pending: ${changeSummary(state.changes)}${pendingSuffix(state)}`,
+                text: `${plural(pendingCount(state.changes), 'change')} pending: ${changeSummary(state.changes)} · saved changes wait for Apply`,
                 tone: 'warning',
             });
         else
@@ -488,9 +472,7 @@ function idleRow(state: LiveState): {
 } {
     return {
         text: state.running
-            ? state.autoApply
-                ? 'Saved service edits are applied automatically.'
-                : 'Saved service edits wait until you choose Apply changes.'
+            ? 'Saved service edits wait until you choose Apply changes.'
             : 'Start brings containers in line with your saved configuration.',
         tone: 'muted',
     };

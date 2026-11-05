@@ -42,11 +42,9 @@ export interface LiveDependencies {
     lock: { acquire(): Promise<() => Promise<void>> };
     clock: {
         now(): Date;
-        schedule(callback: () => void, delay: number): () => void;
     };
     eventSink?(event: LogEvent, fields?: LogFields): void;
     operation?(work: () => Promise<void>): Promise<void>;
-    autoApply?: boolean;
     /** The daemon requires a Start in this login session before adopting running intent. */
     explicitStart?: boolean;
     initialIntent?: LiveIntent;
@@ -57,8 +55,6 @@ export interface LiveIntent {
     paused: boolean;
     applied?: string;
     baseline?: string;
-    lastRead?: string;
-    deferredConfigurationRevision?: string;
     stoppedByUser: readonly string[];
 }
 
@@ -152,7 +148,6 @@ export class LiveController {
     private operation?: Promise<void>;
     private release?: () => Promise<void>;
     private releasing?: Promise<void>;
-    private debounce?: () => void;
     private queued = false;
     private paused = false;
     private closed = false;
@@ -161,10 +156,8 @@ export class LiveController {
     private approvedStops: readonly string[] = [];
     /** Configuration identity when a running environment was detected at launch. */
     private baseline?: string;
-    private lastRead?: string;
     private polling = false;
     private configurationEpoch = 0;
-    private configurationCommitPending = false;
     /** This checkout's Compose project identity has been confirmed. */
     private identified = false;
     private pollError?: string;
@@ -177,7 +170,7 @@ export class LiveController {
     constructor(private readonly dependencies: LiveDependencies) {
         this.state = {
             running: false,
-            autoApply: dependencies.autoApply ?? true,
+            autoApply: false,
             phase: 'Stopped',
             message: '',
             stoppedByUser: [],
@@ -191,9 +184,6 @@ export class LiveController {
             this.paused = intent.paused;
             this.applied = intent.applied;
             this.baseline = intent.baseline;
-            this.lastRead = intent.lastRead;
-            this.state.deferredConfigurationRevision =
-                intent.deferredConfigurationRevision;
             this.state.running = intent.running;
             this.state.stoppedByUser = intent.stoppedByUser;
             this.state.phase = intent.running
@@ -216,9 +206,6 @@ export class LiveController {
             paused: this.paused,
             applied: this.applied,
             baseline: this.baseline,
-            lastRead: this.lastRead,
-            deferredConfigurationRevision:
-                this.state.deferredConfigurationRevision,
             stoppedByUser: [...this.state.stoppedByUser],
         };
     }
@@ -344,8 +331,10 @@ export class LiveController {
      */
     async start(): Promise<void> {
         if (this.state.busy || this.closed) return;
-        this.update({ deferredConfigurationRevision: undefined });
-        if (this.state.running) return this.apply();
+        if (this.state.running) {
+            this.update({ stoppedByUser: [] });
+            return this.apply();
+        }
 
         this.dependencies.eventSink?.('live.preview', { status: 'start' });
         this.update({
@@ -442,12 +431,11 @@ export class LiveController {
     /** Applies the saved configuration now (also used for Try again and fixes). */
     apply(): Promise<void> {
         if (this.closed) return Promise.resolve();
-        this.update({ deferredConfigurationRevision: undefined });
         if (!this.state.running) return this.start();
 
         this.dependencies.eventSink?.('live.retry');
         this.paused = false;
-        this.update({ action: 'apply', stoppedByUser: [] });
+        this.update({ action: 'apply' });
         this.request();
         return this.operation ?? Promise.resolve();
     }
@@ -456,48 +444,11 @@ export class LiveController {
         void this.apply();
     }
 
-    setAutoApply(autoApply: boolean) {
-        if (autoApply === this.state.autoApply) return;
-
-        this.update({ autoApply });
-        if (!autoApply) {
-            this.debounce?.();
-            this.queued = false;
-        }
-    }
-
+    /** Saved changes remain pending until an explicit Apply or Start. */
     saved() {
         if (this.closed) return;
         this.configurationEpoch++;
-        this.configurationCommitPending = false;
-        this.update({ deferredConfigurationRevision: undefined });
-
-        if (!this.state.running || !this.state.autoApply) {
-            void this.poll();
-            return;
-        }
-
-        this.paused = false;
-        this.debounce?.();
-        this.debounce = this.dependencies.clock.schedule(() => {
-            this.update({ action: 'apply' });
-            this.request();
-        }, 250);
-    }
-
-    deferConfiguration(revision: string, pending = false) {
-        this.configurationEpoch++;
-        this.configurationCommitPending = pending;
-        this.debounce?.();
-        this.debounce = undefined;
-        this.queued = false;
-        this.lastRead = revision;
-        this.update({ deferredConfigurationRevision: revision });
-    }
-    restoreConfigurationDeferral(revision?: string) {
-        this.configurationCommitPending = false;
-        if (revision) this.deferConfiguration(revision);
-        else this.saved();
+        void this.poll();
     }
 
     /** Stops and removes this checkout's containers, while keeping data volumes. */
@@ -505,7 +456,6 @@ export class LiveController {
         if (this.closed) return;
 
         this.dependencies.eventSink?.('live.disable');
-        this.debounce?.();
         this.queued = false;
         this.paused = false;
         this.dropReloads('Reload cancelled: the environment was stopped.');
@@ -853,7 +803,6 @@ export class LiveController {
         this.dependencies.eventSink?.('live.cancel');
         this.paused = true;
         this.queued = false;
-        this.debounce?.();
         this.dropReloads('Reload cancelled.');
 
         if (this.state.busy) {
@@ -978,6 +927,14 @@ export class LiveController {
         const { revision, observed } = plan;
         this.update({ observed });
         this.assertIdentity(plan.resolved, revision, observed);
+        if (
+            reloading.size &&
+            revision.identity !== (this.applied ?? this.baseline)
+        )
+            throw new LiveFailure(
+                'Apply saved changes before reloading a service.',
+                'blocked',
+            );
 
         const changes = previewChanges(revision, observed);
         if (
@@ -1047,7 +1004,6 @@ export class LiveController {
                 read.inventory.map((entry) => Object.freeze({ ...entry })),
             ),
         });
-        this.lastRead = revision.identity;
         this.dependencies.eventSink?.('live.revision', {
             revision: revision.identity,
         });
@@ -1287,6 +1243,7 @@ export class LiveController {
         await this.verifyFreshAws(revision, signal);
 
         this.update({ phase: 'Applying' });
+        this.dependencies.runtime.stoppedServices = this.state.stoppedByUser;
         this.dependencies.runtime.reloadTargets = [...reloading.keys()];
         this.dependencies.runtime.allowedRemovals = changes.stop;
         try {
@@ -1294,6 +1251,7 @@ export class LiveController {
                 await this.dependencies.runtime.apply(prepared, context),
             );
         } finally {
+            this.dependencies.runtime.stoppedServices = undefined;
             this.dependencies.runtime.reloadTargets = undefined;
             this.dependencies.runtime.allowedRemovals = undefined;
         }
@@ -1456,7 +1414,6 @@ export class LiveController {
 
     private async observeOnce(signal: AbortSignal) {
         const epoch = this.configurationEpoch;
-        if (this.configurationCommitPending) return;
         // Container state is scoped by the project's Compose name.
         if (!this.identified) {
             await this.dependencies.preparation.check(signal);
@@ -1467,9 +1424,6 @@ export class LiveController {
         if (this.closed || this.state.busy) return;
         if (!(await this.startMonitor(signal))) return;
 
-        const changed =
-            this.lastRead !== undefined && revision.identity !== this.lastRead;
-        this.lastRead = revision.identity;
         const observed: RuntimeSnapshot =
             await this.dependencies.runtime.snapshot(signal);
         if (this.observationObsolete(epoch)) return;
@@ -1479,19 +1433,11 @@ export class LiveController {
         update.changes = this.observeDifferences(update, revision, observed);
         this.pollError = undefined;
         this.update(update);
-        if (
-            changed &&
-            revision.identity !== this.state.deferredConfigurationRevision
-        )
-            this.saved();
     }
 
     private observationObsolete(epoch: number) {
         return (
-            this.closed ||
-            this.state.busy ||
-            this.configurationCommitPending ||
-            epoch !== this.configurationEpoch
+            this.closed || this.state.busy || epoch !== this.configurationEpoch
         );
     }
 
@@ -1599,7 +1545,6 @@ export class LiveController {
 
     async shutdown() {
         this.closed = true;
-        this.debounce?.();
         this.queued = false;
         this.paused = true;
         this.dropReloads('Reload cancelled: chs-dev is closing.');

@@ -275,14 +275,8 @@ function createHostOpen(
                 readProjectConfiguration(project, groups, versions),
             configurationSnapshot: () =>
                 configurationSnapshot(project.directory),
-            saveLegacy: (edit, revision, beforeCommit) =>
-                saveLegacyChanges(
-                    project.directory,
-                    groups,
-                    edit,
-                    revision,
-                    beforeCommit,
-                ),
+            saveLegacy: (edit, revision) =>
+                saveLegacyChanges(project.directory, groups, edit, revision),
             dependencyDiagram: (services, signal) =>
                 dependencyDiagrams(project.directory, groups, services, signal),
             measure: measureCapability(project, usage.enabled),

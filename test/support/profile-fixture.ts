@@ -61,9 +61,6 @@ export async function profileFixture() {
                     options.versionsOnly,
                 );
                 validateEnvironmentSelections(next, backend.groups);
-                await options.beforeCommit?.(
-                    `revision-${current().revision + 1}`,
-                );
                 current().selections = next;
                 current().enabled =
                     resolveServiceState(next, backend.groups).api.enabled ===

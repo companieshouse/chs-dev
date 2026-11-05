@@ -762,11 +762,10 @@ export class ProjectSession {
                     code: 'UNSUPPORTED',
                     message: 'Legacy configuration edits are unavailable.',
                 });
-            const result = await this.saveDeferredConfiguration(
-                request,
-                backend,
+            const result = await backend.saveLegacy(
+                request.args.edit,
+                request.args.revision,
             );
-            backend.controller?.deferConfiguration(result.revision);
             await this.refreshConfiguration();
             return result;
         });
@@ -792,43 +791,9 @@ export class ProjectSession {
         this.assertScope(request.scope);
         if (!backend.profiles)
             throw new Error('Restart the daemon to use environment profiles.');
-        const previous =
-            backend.controller?.getSnapshot().deferredConfigurationRevision;
-        try {
-            const result = await backend.profiles.save({
-                ...request.args,
-                beforeCommit: async (revision) => {
-                    backend.controller?.deferConfiguration(revision, true);
-                    await this.checkpoint();
-                },
-            });
-            backend.controller?.deferConfiguration(result.revision);
-            await this.refreshConfiguration();
-            return result;
-        } catch (error) {
-            backend.controller?.restoreConfigurationDeferral(previous);
-            throw error;
-        }
-    }
-    private async saveDeferredConfiguration(
-        request: CommandRequest<'configuration.legacyEdit'>,
-        backend: BackendSession,
-    ) {
-        const previous =
-            backend.controller?.getSnapshot().deferredConfigurationRevision;
-        try {
-            return await backend.saveLegacy!(
-                request.args.edit,
-                request.args.revision,
-                async (revision) => {
-                    backend.controller?.deferConfiguration(revision, true);
-                    await this.checkpoint();
-                },
-            );
-        } catch (error) {
-            backend.controller?.restoreConfigurationDeferral(previous);
-            throw error;
-        }
+        const result = await backend.profiles.save(request.args);
+        await this.refreshConfiguration();
+        return result;
     }
     private async login(
         request: CommandRequest<'authentication.login'>,
@@ -907,7 +872,6 @@ export class ProjectSession {
             });
         if (!ProjectSession.settingSwitches(key, next, previous)) {
             await this.host.saveSetting(key, value);
-            this.backend?.controller?.setAutoApply(next.autoApply.value);
             return;
         }
         await this.switchCheckout(key, value, previous, next, signal);
@@ -1037,9 +1001,6 @@ export class ProjectSession {
     }
     private async refreshSettings() {
         await this.host.refreshSettings?.();
-        this.backend?.controller?.setAutoApply(
-            this.host.settings().resolved.autoApply.value,
-        );
         this.update({
             settings: this.host.settings(),
             settingsRevision: this.host.settingsRevision(),

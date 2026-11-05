@@ -338,6 +338,7 @@ export interface LiveRuntime {
     monitor?(context: OperationContext): Promise<void>;
     close?(): Promise<void>;
     readonly reconciles?: boolean;
+    stoppedServices?: readonly string[];
     reloadTargets?: readonly string[];
     allowedRemovals?: readonly string[];
     checkAvailability(signal?: AbortSignal): Promise<RuntimeAvailability>;
@@ -422,8 +423,8 @@ export interface EnvironmentChanges extends LivePreview {
 export interface LiveState {
     /** The user's intent: the environment should be running. */
     running: boolean;
+    /** Compatibility field: saves always wait for explicit Apply or Start. */
     autoApply: boolean;
-    deferredConfigurationRevision?: string;
     phase: LivePhase;
     action?: EnvironmentAction;
     blocked?: BlockedReason;

@@ -236,7 +236,6 @@ export class EnvironmentProfiles {
         profile: EnvironmentProfile;
         versionsOnly: boolean;
         revision: string;
-        beforeCommit?: (revision: string) => Promise<void>;
     }) {
         const path = join(this.directory, '.chs-dev.yaml');
         const read = () =>
@@ -257,10 +256,6 @@ export class EnvironmentProfiles {
             if (next[key] === undefined) document.delete(key);
             else document.set(key, next[key]);
         }
-        const revision = createHash('sha256')
-            .update(document.toString())
-            .digest('hex');
-        await options.beforeCommit?.(revision);
         await writeAtomically(path, read, original, document);
         return configurationSnapshot(this.directory);
     }

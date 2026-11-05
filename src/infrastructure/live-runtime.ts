@@ -87,6 +87,7 @@ interface DockerInspection {
     };
 }
 export class DockerLiveRuntime implements LiveRuntime {
+    stoppedServices?: readonly string[];
     constructor(private readonly dependencies: DockerLiveDependencies) {}
     private async run(
         args: string[],
@@ -100,7 +101,8 @@ export class DockerLiveRuntime implements LiveRuntime {
             captureStdout:
                 args[0] === 'ps' ||
                 args[0] === 'inspect' ||
-                args.includes('--services'),
+                args.includes('json'),
+            privateOutput: args.includes('json'),
             cwd: this.dependencies.directory,
             env: await this.dependencies.environment.resolve(
                 requirements,
@@ -276,10 +278,13 @@ export class DockerLiveRuntime implements LiveRuntime {
             'Compose validation',
         );
         context.signal?.throwIfAborted();
-        const lazy = project.inventory
-            .filter((entry) => entry.lazy)
-            .map((entry) => entry.service);
-        if (!lazy.length) {
+        const deferred = [
+            ...project.inventory
+                .filter((entry) => entry.lazy)
+                .map((entry) => entry.service),
+            ...(this.stoppedServices ?? []),
+        ];
+        if (!deferred.length) {
             checkResult(
                 await this.run(
                     [...args, 'up', '--detach'],
@@ -289,7 +294,7 @@ export class DockerLiveRuntime implements LiveRuntime {
                 'Compose apply',
             );
         } else {
-            await this.applyWithLazy(project, args, lazy, context);
+            await this.applyWithDeferred(project, args, deferred, context);
         }
         return {
             outcome: 'success',
@@ -298,29 +303,34 @@ export class DockerLiveRuntime implements LiveRuntime {
         };
     }
     /**
-     * Applies with lazy services deferred: everything else starts, lazy
-     * containers are created but not started until first use. Listing the
-     * non-lazy services explicitly (with --no-deps) stops Compose pulling a
-     * lazy dependency up with an eager dependent.
+     * Applies with lazy and manually stopped services held. Owner labels include
+     * Development helpers in the same hold, even before they exist. Explicit
+     * --no-deps targets prevent Compose from reviving a held dependency.
      */
-    private async applyWithLazy(
+    private async applyWithDeferred(
         project: PreparedProject,
         args: string[],
-        lazy: readonly string[],
+        held: readonly string[],
         context: OperationContext,
     ): Promise<void> {
         const listing = await this.run(
-            [...args, 'config', '--services'],
+            [...args, 'config', '--format', 'json'],
             context,
             project.environmentRequirements,
         );
         checkResult(listing, 'Compose service listing');
-        const services = listing.stdout
-            .split(/\r?\n/)
-            .map((name) => name.trim())
-            .filter(Boolean);
-        const deferred = services.filter((name) => lazy.includes(name));
-        const starting = services.filter((name) => !lazy.includes(name));
+        const configuration = JSON.parse(listing.stdout) as {
+            services: Record<string, { labels?: Record<string, string> }>;
+        };
+        const entries = Object.entries(configuration.services);
+        const deferred = entries
+            .filter(([name, spec]) =>
+                held.includes(spec.labels?.['chs.dev.owner-service'] ?? name),
+            )
+            .map(([name]) => name);
+        const starting = entries
+            .map(([name]) => name)
+            .filter((name) => !deferred.includes(name));
         if (starting.length)
             checkResult(
                 await this.run(

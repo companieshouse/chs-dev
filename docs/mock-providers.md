@@ -22,12 +22,12 @@ chs-dev service configure company-profile-api --provider service
 ```
 
 Use `npm run dev -- <command>` if the executable is not linked. Configuration saves
-apply automatically while the environment is running and auto-apply is on. Otherwise
-choose Apply or run `chs-dev apply --yes`; a stopped environment needs Start. Save
+remain pending until you choose Apply or run `chs-dev apply --yes`; a stopped
+environment needs Start. Save
 success reports configuration acceptance; explicit Apply waits for reconciliation.
 
 In the TUI, open a service with Enter, cycle **Provider**, choose **Mock scenario**,
-then **Save & apply**. The Services list shows the active scenario. Closing the
+then **Save** and choose **Apply changes** in the Environment panel. The Services list shows the active scenario. Closing the
 modal discards edits. Unsupported Development/Mock choices are omitted. The previous
 scenario is remembered when switching away from Mock and back.
 

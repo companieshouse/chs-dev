@@ -70,7 +70,6 @@ interface EnvironmentPanelProps {
     onSetupSsh(): void;
     onLogin(kind: 'aws' | 'registry'): void;
     onViewLogs(problems: boolean): void;
-    onAutoApply(value: boolean): void | Promise<void>;
     onProfiles?(): void;
     onVersions?(): void;
 }
@@ -315,23 +314,6 @@ function panelActions(
         stop: () => {
             clearSelection();
             void controller?.stop();
-        },
-        'auto-apply': () => {
-            void Promise.resolve(props.onAutoApply(!state.autoApply)).then(
-                () =>
-                    notify({
-                        text: `Auto-apply ${state.autoApply ? 'disabled' : 'enabled'}.`,
-                        ok: true,
-                    }),
-                (error) =>
-                    notify({
-                        text:
-                            error instanceof Error
-                                ? error.message
-                                : String(error),
-                        ok: false,
-                    }),
-            );
         },
         'login-aws': () => props.onLogin('aws'),
         'login-registry': () => props.onLogin('registry'),

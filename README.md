@@ -92,21 +92,21 @@ Up/Down leaves search without Enter. Enter on a service in either panel opens th
 configuration modal. Scrolling stays centered except at list boundaries.
 
 Press Enter on a service to open its configuration modal. Up/Down selects a row;
-Enter or Space toggles Enabled or the supported mode. **Save & apply** (while the
-environment is running with auto-apply on) or **Save** writes the changes to
+Enter or Space toggles Enabled or the supported mode. **Save** writes the changes to
 `.chs-dev.yaml` and refreshes the list. Escape or Close asks before discarding
 unsaved edits. The modal captures navigation so the background list stays selected.
 The Provider row cycles Service, Development (with a builder label), and Mock (with
 a checked-in contract). Mock adds a scenario selector and explains dependency
 behaviour. Scenario changes take effect without restarting containers when applied.
 Base infrastructure cannot be disabled.
-Saving applies the change straight away only while the environment is running and
-auto-apply is on; otherwise the edit is shown as a pending change (see
+Saving stages a pending configuration change until explicit Apply or Start (see
 [Environment](#environment)). When the service has a container, the modal also offers
 **Restart**, **Stop** or **Start** container and **Show container logs** (last 200 lines,
 `r` refreshes). Services running in Development mode also offer **Reload (rebuild from
 source)**, which rebuilds the image and re-runs the builder while the environment is
-running. The modal stays usable during the rebuild; progress is shown in Ctrl+E.
+running. Apply pending configuration before reloading, so a rebuild cannot activate
+unrelated saved edits. The modal stays usable during the rebuild; progress is shown
+in Ctrl+E.
 
 The modal's Dependencies submenu shows a tree of direct and indirect dependencies.
 Shared dependencies expand once and subsequent references are marked `(shared)`;
@@ -173,7 +173,6 @@ aws:
   ecrProfiles:
     - development-eu-west-2
     - shared-services-ecr-eu-west-2-ro
-autoApply: true
 login:
   action: registry # aws | registry | ask (default)
   auto: needed # off | needed (default) | expired
@@ -189,9 +188,12 @@ does not override an existing daemon.
 | Project directory  | `CHS_DEV_PROJECT`                         | current working directory                 | reconfigure |
 | AWS profile        | `AWS_PROFILE` / `AWS_DEFAULT_PROFILE`     | `default`                                 | now         |
 | ECR login profiles | `CHS_DEV_ECR_PROFILES` (comma list)       | profiles detected from project registries | now         |
-| Auto-apply edits   | `CHS_DEV_AUTO_APPLY` (true/false)         | on                                        | now         |
 | Ctrl+L login       | `CHS_DEV_LOGIN` (aws/registry/ask)        | ask every time                            | now         |
 | Automatic login    | `CHS_DEV_AUTO_LOGIN` (off/needed/expired) | when needed                               | now         |
+
+`autoApply` and `CHS_DEV_AUTO_APPLY` are retired and ignored with warnings. Saved
+configuration always waits for explicit Apply or Start. Old settings files remain
+readable, and unrelated saves preserve retired keys and comments.
 
 Blank environment values are ignored. File paths must be absolute or start with `~/`.
 A relative `CHS_DEV_PROJECT` resolves from the app's working directory; note that
@@ -273,8 +275,7 @@ npm start
 - `dist/` contains the compiled application after building.
 
 The UI saves configuration and reads Docker state. Containers change only when you start,
-stop or apply from the Environment panel, use a per-service action, or save an edit while
-the environment is running with auto-apply on.
+stop or apply from the Environment panel, or use a per-service action.
 
 See [architecture](docs/architecture.md) for data flow, input ownership, and extension guidance.
 
@@ -349,7 +350,7 @@ the actions that apply now, with the recommended one first:
 - **Apply changes** applies saved edits that are pending.
 - **Stop environment** stops and removes this checkout's containers; data volumes are kept.
   It requires an explicit confirmation.
-- **Restart failing services**, **Auto-apply edits: On/Off** and **View logs**.
+- **Restart failing services** and **View logs**.
   Restarting failing services also asks for confirmation.
 
 While an operation runs, the panel shows its steps and the last output lines. Esc closes the
@@ -357,9 +358,10 @@ panel without cancelling; `x` cancels. When something needs you, the panel expla
 cause and offers the fix directly: **Log in to AWS + registry**, **Set up SSH access**,
 **Try again** or **View logs** (Logs with the Problems filter).
 
-**Auto-apply edits** (Config, default on): while the environment is running, saving a
-service edit applies it straight away. When off, or while stopped, edits are saved and
-shown as pending changes until you apply or start.
+Saving through the TUI, CLI, legacy commands or an external editor stages pending
+configuration. Apply or Start activates saved changes. Ordinary Apply preserves
+manual service stops; service Start releases one, and Environment Start releases
+all manual stops.
 
 On launch the environment counts as running if this checkout's containers are up;
 nothing is started or stopped automatically. Containers stopped or started outside

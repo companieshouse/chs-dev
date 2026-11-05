@@ -68,8 +68,7 @@ interface ServiceModalProps {
     onClose: () => void;
     onContainer?: () => void;
     onApply: SaveService;
-    /** Saving also applies the change to the running environment. */
-    applyOnSave?: boolean;
+    /** Explains when saved configuration will be activated. */
     saveHint?: string;
     controls?: ServiceContainerControls;
 }
@@ -91,7 +90,6 @@ interface OptionLabelView {
     modeFixed: boolean;
     dependencyCount: number;
     busy: boolean;
-    applyOnSave: boolean;
     reloading: boolean;
     actionBusy?: ContainerAction;
     savingLabel: string;
@@ -168,7 +166,7 @@ function stateOptionLabel(
         case 'save':
             return view.busy
                 ? view.savingLabel
-                : `${view.applyOnSave ? 'Save & apply' : 'Save'}${!view.changed ? ' (no changes)' : ''}`;
+                : `Save${!view.changed ? ' (no changes)' : ''}`;
     }
 }
 
@@ -680,7 +678,6 @@ function serviceLabelView(
         modeFixed: configuration.modeFixed,
         dependencyCount: serviceDependencies(props.name, props.groups).length,
         busy: operations.busy,
-        applyOnSave: props.applyOnSave ?? false,
         reloading: operations.reloading,
         actionBusy: operations.actionBusy,
         savingLabel: `${spinner} Saving`,

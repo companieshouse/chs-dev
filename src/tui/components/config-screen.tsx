@@ -54,11 +54,6 @@ const detailBuilders: Record<
     awsProfile: ({ resolved }) => ({
         value: resolved.awsProfile.value,
     }),
-    autoApply: ({ resolved }) => ({
-        value: resolved.autoApply.value
-            ? 'On — saved edits apply while the environment runs'
-            : 'Off — saved edits wait for Apply changes',
-    }),
     usageCache: ({ resolved }) => ({
         value: resolved.usageCache.value
             ? 'On — services unused for a run start lazy next time'

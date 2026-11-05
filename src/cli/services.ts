@@ -122,8 +122,7 @@ async function configure(context: CliContext) {
     });
     if (context.invocation.options.detach) return result;
     const state = await context.client.refreshSession(context.signal);
-    const application =
-        state.live.running && state.live.autoApply ? 'queued' : 'pending';
+    const application = 'pending';
     return {
         data: {
             saved: true,

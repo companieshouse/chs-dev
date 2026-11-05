@@ -108,36 +108,6 @@ function EcrProfilesSetting({
     );
 }
 
-function AutoApplySetting({ settings, save, onClose }: SettingEditorProps) {
-    const { autoApply } = settings.resolved;
-    return (
-        <ChoiceModal
-            title="Auto-apply edits"
-            detail={`When on, saving a service edit applies it straight away while the environment is running. When off, edits wait until you choose Apply changes. Overridden by ${settingEnvironment.autoApply.join(' or ')}.`}
-            choices={[
-                { value: 'on', label: 'On' },
-                { value: 'off', label: 'Off' },
-                { value: undefined, label: 'Use default (on)' },
-            ]}
-            current={
-                autoApply.file === undefined
-                    ? undefined
-                    : autoApply.file
-                      ? 'on'
-                      : 'off'
-            }
-            notes={[envOverride(autoApply)]}
-            onChoose={(value) =>
-                save(
-                    'autoApply',
-                    value === undefined ? undefined : value === 'on',
-                )
-            }
-            onClose={onClose}
-        />
-    );
-}
-
 function UsageCacheSetting({ settings, save, onClose }: SettingEditorProps) {
     const { usageCache } = settings.resolved;
     return (
@@ -232,8 +202,6 @@ export default function SettingEditor(props: SettingEditorProps) {
             return <AwsProfileSetting {...props} />;
         case 'ecrProfiles':
             return <EcrProfilesSetting {...props} />;
-        case 'autoApply':
-            return <AutoApplySetting {...props} />;
         case 'usageCache':
             return <UsageCacheSetting {...props} />;
         case 'loginAction':

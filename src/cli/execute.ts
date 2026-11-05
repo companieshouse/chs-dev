@@ -139,7 +139,7 @@ function statusText(
         `Environment: ${state.live.phase}`,
         state.project.valid ? '' : state.project.message,
         state.live.message,
-        state.live.deferredConfigurationRevision
+        state.live.changes?.edited
             ? 'Configuration changes pending; run chs-dev apply or choose Apply / Start.'
             : '',
         `Active operations: ${active.length}`,

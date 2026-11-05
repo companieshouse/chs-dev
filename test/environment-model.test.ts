@@ -136,7 +136,6 @@ test('status bar shows one state with one hint', () => {
 test('the panel offers only actions that apply, recommended first', () => {
     assert.deepEqual(ids(base, summary('Stopped', 0)), [
         'start',
-        'auto-apply',
         'logs',
         'close',
     ]);
@@ -159,7 +158,6 @@ test('the panel offers only actions that apply, recommended first', () => {
     assert.deepEqual(ids(leftovers, summary('Stopped', 0)), [
         'start',
         'stop',
-        'auto-apply',
         'logs',
         'close',
     ]);
@@ -167,7 +165,6 @@ test('the panel offers only actions that apply, recommended first', () => {
     assert.deepEqual(ids(running, summary('Ready', 3)), [
         'apply',
         'stop',
-        'auto-apply',
         'logs',
         'close',
     ]);
@@ -200,7 +197,6 @@ test('the panel offers only actions that apply, recommended first', () => {
         'login-aws',
         'retry',
         'logs',
-        'auto-apply',
         'close',
     ]);
     const cancelled = environmentActions({
@@ -210,11 +206,6 @@ test('the panel offers only actions that apply, recommended first', () => {
     });
     assert.equal(cancelled[0]?.label, 'Resume');
     assert.ok(cancelled.some((action) => action.id === 'stop'));
-    assert.equal(
-        environmentActions(running).find((action) => action.id === 'auto-apply')
-            ?.label,
-        'Auto-apply edits: On',
-    );
     assert.deepEqual(ids(base, undefined).includes('stop'), false);
     assert.deepEqual(
         environmentActions(base, undefined, false).map((action) => action.id),
@@ -252,7 +243,7 @@ test('details describe plans, pending changes and problems in plain words', () =
     });
     assert.equal(
         pending[0]?.text,
-        '1 change pending: start 1 · auto-apply is off',
+        '1 change pending: start 1 · saved changes wait for Apply',
     );
     assert.match(
         environmentDetails({ ...base, phase: 'Failed', message: '' })[0]!.text,

@@ -77,14 +77,9 @@ export function createLiveSession(
         ),
         verifyAws: readAwsStatus,
         ssh,
-        autoApply: activeSettings().autoApply.value,
         lock: projectLock(state, liveFiles),
         clock: {
             now: () => new Date(),
-            schedule: (callback, delay) => {
-                const timer = setTimeout(callback, delay);
-                return () => clearTimeout(timer);
-            },
         },
         ...options,
     });

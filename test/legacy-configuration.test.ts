@@ -13,6 +13,10 @@ import {
     configurationSnapshot,
     saveLegacyChanges,
 } from '../src/project/configuration.js';
+import {
+    loadDocument,
+    writeAtomically,
+} from '../src/project/service-configuration.js';
 import { dependencyDot } from '../src/infrastructure/dependency-diagrams.js';
 import type { ServiceGroup } from '../src/domain/services.js';
 
@@ -135,18 +139,12 @@ test('legacy batch saves validate before writing and preserve YAML comments and 
             /Unknown service/,
         );
         assert.equal(await readFile(path, 'utf8'), original);
-        let checkpoint = '';
         const saved = await saveLegacyChanges(
             directory,
             groups,
             { topic: 'services', action: 'enable', names: ['api', 'worker'] },
             initial.revision,
-            async (revision) => {
-                checkpoint = revision;
-                assert.equal(await readFile(path, 'utf8'), original);
-            },
         );
-        assert.equal(checkpoint, saved.revision);
         const contents = await readFile(path, 'utf8');
         assert.match(contents, /keep header/);
         assert.match(contents, /keep selections/);
@@ -171,21 +169,22 @@ test('legacy batch saves validate before writing and preserve YAML comments and 
     }
 });
 
-test('external writes during a batch save are preserved and temporary files are removed', async () => {
+test('atomic configuration writes preserve concurrent external edits and remove temporary files', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'chs-legacy-conflict-'));
     const path = join(directory, '.chs-dev.yaml');
     try {
-        await writeFile(path, '{}\n');
-        const initial = await configurationSnapshot(directory);
+        const original = '{}\n';
+        await writeFile(path, original);
+        const readChangedFile = async () => {
+            await writeFile(path, 'services: [worker]\n');
+            return readFile(path, 'utf8');
+        };
         await assert.rejects(
-            saveLegacyChanges(
-                directory,
-                groups,
-                { topic: 'services', action: 'enable', names: ['api'] },
-                initial.revision,
-                async () => {
-                    await writeFile(path, 'services: [worker]\n');
-                },
+            writeAtomically(
+                path,
+                readChangedFile,
+                original,
+                loadDocument('services: [api]\n'),
             ),
             /Configuration changed/,
         );

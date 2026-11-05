@@ -71,11 +71,12 @@ history. Clients should retain the returned operation ID.
 The operation completes independently of its HTTP connection. Explicit cancellation
 signals the operation; closing the TUI does not. Conflicting work returns `BUSY`
 with the active operation ID when available. Configuration saves can queue during
-an apply; the controller preserves immutable apply inputs and coalesces later edits.
+an apply; the controller preserves immutable apply inputs, and later edits wait
+for the next explicit Apply or Start.
 Stop cancels or drains environment work and prevents automatic restart or apply.
-Legacy configuration edits set a durable per-revision deferral before writing
-the YAML file, so polling cannot race the save into automatic application. Apply
-and ordinary saves restore normal shared auto-apply behaviour.
+Every configuration save stages changes, including external edits discovered by
+polling. No automatic-apply timer or special legacy deferral is required. Ordinary
+Apply preserves manual service stops.
 
 SSE delivers a full snapshot followed by sequenced state and log deltas. Subscription
 flushes pending changes before attaching, avoiding a snapshot/subscription gap.

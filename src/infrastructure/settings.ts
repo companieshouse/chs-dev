@@ -22,7 +22,6 @@ const paths: Record<SettingKey, readonly string[]> = {
     project: ['project'],
     awsProfile: ['aws', 'profile'],
     ecrProfiles: ['aws', 'ecrProfiles'],
-    autoApply: ['autoApply'],
     usageCache: ['usageCache'],
     loginAction: ['login', 'action'],
     autoLogin: ['login', 'auto'],
@@ -100,10 +99,6 @@ const settingValidators: Record<
         Array.isArray(value) && value.length > 0 && value.every(isProfileName)
             ? { value: [...new Set(value)] }
             : { error: 'must be a non-empty list of AWS profile names' },
-    autoApply: (value) =>
-        typeof value === 'boolean'
-            ? { value }
-            : { error: 'must be true or false' },
     usageCache: (value) =>
         typeof value === 'boolean'
             ? { value }
@@ -182,6 +177,10 @@ export function parseSettings(
         .map(
             (key) =>
                 `Settings file key ${key} is retired and ignored; chs-dev always uses Docker Compose. Remove it from the settings file.`,
+        );
+    if (document.has('autoApply'))
+        warnings.push(
+            'Settings file key autoApply is retired and ignored; saved changes wait for explicit Apply or Start. Remove it from the settings file.',
         );
     return { values, raw, errors, warnings };
 }

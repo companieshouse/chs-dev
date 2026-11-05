@@ -19,8 +19,8 @@ Open a service with Enter and select its **Versions** row to override the defaul
   digest, or a full image reference. Empty input resets to the environment default.
 - **Project default** uses the image reference from the project's Compose file.
 
-Choose Save in the service modal after editing. Service edits follow the existing
-auto-apply setting; the global source choice waits for an explicit Apply or Start.
+Choose Save in the service modal after editing. Service edits and the global
+source choice wait for an explicit Apply or Start.
 Version settings are retained while the service uses Mock or Development. Those
 providers continue using their mock contract or local source and do not fetch
 environment versions for that service.

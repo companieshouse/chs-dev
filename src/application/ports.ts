@@ -55,7 +55,6 @@ export interface EnvironmentProfileStore {
         profile: EnvironmentProfile;
         versionsOnly: boolean;
         revision: string;
-        beforeCommit?: (revision: string) => Promise<void>;
     }): Promise<{ revision: string; selections: ProjectSelections }>;
 }
 
@@ -94,7 +93,6 @@ export interface BackendSession {
     saveLegacy?(
         edit: LegacyEdit,
         revision: string,
-        beforeCommit?: (revision: string) => Promise<void>,
     ): Promise<{ revision: string; selections: ProjectSelections }>;
     dependencyDiagram?(
         services: string[],

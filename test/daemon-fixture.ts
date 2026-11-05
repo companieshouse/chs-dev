@@ -248,10 +248,6 @@ export async function daemonFixture(
                     lock: { acquire: async () => async () => {} },
                     clock: {
                         now: () => new Date(),
-                        schedule: (callback, delay) => {
-                            const timer = setTimeout(callback, delay);
-                            return () => clearTimeout(timer);
-                        },
                     },
                 });
                 currentController = controller;
@@ -344,16 +340,13 @@ export async function daemonFixture(
                         revision: revision().identity,
                         selections: projectSelections(actual!.selections),
                     }),
-                    saveLegacy: async (edit, expected, beforeCommit) => {
+                    saveLegacy: async (edit, expected) => {
                         if (expected !== revision().identity)
                             throw new Error('Configuration changed');
                         const next = editSelections(
                             actual!.selections,
                             edit,
                             groups,
-                        );
-                        await beforeCommit?.(
-                            `revision-${actual!.revision + 1}`,
                         );
                         await engine.legacySaveGate;
                         actual!.selections = next;

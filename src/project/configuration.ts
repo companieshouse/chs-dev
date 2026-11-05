@@ -37,7 +37,6 @@ export async function saveLegacyChanges(
     groups: ServiceGroup[],
     edit: LegacyEdit,
     revision: string,
-    beforeCommit?: (revision: string) => Promise<void>,
 ) {
     const path = join(directory, '.chs-dev.yaml');
     const read = () => readState(path);
@@ -57,10 +56,6 @@ export async function saveLegacyChanges(
                 next.serviceProviders[name],
             );
     }
-    const nextRevision = createHash('sha256')
-        .update(document.toString())
-        .digest('hex');
-    await beforeCommit?.(nextRevision);
     await writeAtomically(path, read, original, document);
     return configurationSnapshot(directory);
 }

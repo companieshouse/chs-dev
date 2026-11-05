@@ -41,13 +41,14 @@ const container = (
     projectDirectory: '/project',
     lifecycle: 'running',
 });
-function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
+function fixture(options: { native?: boolean } = {}) {
     let revision: ConfigurationRevision = {
         identity: 'one',
         yaml: 'one',
         inventory: [{ service: 'api', mode: 'Service' }],
     };
     let containers: RuntimeContainer[] = [];
+    let stoppedServices: readonly string[] | undefined;
     let aws = 'active';
     let preparationFailure: Error | undefined;
     let applyFailure: Error | undefined;
@@ -71,7 +72,6 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
         keyPath: 'local/.ssh_key',
         passphrasePath: 'local/.ssh_key_passphrase',
     };
-    const scheduled = new Set<() => void>();
     const prepared = (revision: ConfigurationRevision): PreparedProject => ({
         protocolVersion: 1,
         projectName: 'chs',
@@ -99,7 +99,6 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
             : {}),
     });
     const controller = new LiveController({
-        autoApply: options.autoApply,
         eventSink: (event, fields) => events.push({ event, fields }),
         runtime: {
             reconciles: options.native,
@@ -112,6 +111,12 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
                 projectDirectory: '/project',
                 containers: [...containers],
             }),
+            get stoppedServices() {
+                return stoppedServices;
+            },
+            set stoppedServices(value) {
+                stoppedServices = value;
+            },
             apply: async (project, context) => {
                 calls.push('apply');
                 if (output)
@@ -120,7 +125,13 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
                 context.signal?.throwIfAborted();
                 if (applyFailure) throw applyFailure;
                 containers = project.inventory.map((entry) =>
-                    container(entry.service, entry.mode),
+                    stoppedServices?.includes(entry.service)
+                        ? {
+                              ...container(entry.service, entry.mode),
+                              lifecycle: 'exited',
+                              exitCode: 143,
+                          }
+                        : container(entry.service, entry.mode),
                 );
                 return {
                     outcome: 'success',
@@ -235,13 +246,6 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
         },
         clock: {
             now: () => new Date(0),
-            schedule: (callback, delay) => {
-                assert.equal(delay, 250);
-                scheduled.add(callback);
-                return () => {
-                    scheduled.delete(callback);
-                };
-            },
         },
     });
     return {
@@ -295,12 +299,6 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
         hold: (fn: () => Promise<void>) => {
             hold = fn;
         },
-        flush: () => {
-            for (const callback of [...scheduled]) {
-                scheduled.delete(callback);
-                callback();
-            }
-        },
     };
 }
 
@@ -326,7 +324,7 @@ test('mock-only environments start and change scenarios without requesting AWS a
         ),
     );
     f.controller.saved();
-    f.flush();
+    await f.controller.apply();
     await f.controller.waitUntilIdle();
     assert.equal(f.calls.filter((call) => call === 'apply').length, 2);
     assert.equal(f.calls.includes('aws'), false);
@@ -360,7 +358,7 @@ test('a scenario change is applied when the same configuration also removes anot
             ),
     );
     f.controller.saved();
-    f.flush();
+    await f.controller.apply();
     await f.controller.waitUntilIdle();
     assert.equal(f.calls.filter((call) => call === 'apply').length, 2);
     assert.equal(f.snapshots.at(-1)?.inventory[0].mockScenario, 'error');
@@ -385,7 +383,6 @@ test('starts stopped; saves while stopped do nothing; a plan that stops others w
     const f = fixture();
     f.containers([container('old')]);
     f.controller.saved();
-    f.flush();
     await settle();
     assert.equal(f.controller.getSnapshot().phase, 'Stopped');
     assert.equal(f.controller.getSnapshot().running, false);
@@ -401,7 +398,6 @@ test('starts stopped; saves while stopped do nothing; a plan that stops others w
     assert.equal(f.controller.getSnapshot().plan, undefined);
     assert.equal(f.controller.getSnapshot().running, false);
     assert.deepEqual(f.calls, ['lock']);
-    assert.equal(f.controller.getIntent().lastRead, 'one');
     assert.equal(f.resolved.length, 1);
     assert.ok(Object.isFrozen(f.resolved[0]));
     assert.ok(Object.isFrozen(f.resolved[0].inventory));
@@ -619,7 +615,7 @@ test('development builder helpers remain while their owner is desired', async ()
     assert.equal(f.calls.includes('aws'), false);
 });
 
-test('rapid edits coalesce and active immutable revision is not changed by queued saves', async () => {
+test('saves during Apply preserve its immutable input and wait for the next explicit Apply', async () => {
     const f = fixture();
     let release!: () => void;
     f.hold(
@@ -634,7 +630,6 @@ test('rapid edits coalesce and active immutable revision is not changed by queue
     f.controller.saved();
     f.edit('three', [{ service: 'api', mode: 'Development' }]);
     f.controller.saved();
-    f.flush();
     assert.equal(applies(f), 1);
     assert.equal(f.snapshots[0].identity, 'one');
     assert.ok(Object.isFrozen(f.snapshots[0].inventory[0]));
@@ -643,9 +638,16 @@ test('rapid edits coalesce and active immutable revision is not changed by queue
     await settle();
     assert.deepEqual(
         f.snapshots.map((revision) => revision.identity),
-        ['one', 'three'],
+        ['one'],
     );
     assert.equal(f.controller.getSnapshot().phase, 'Running');
+    await f.controller.poll();
+    assert.equal(f.controller.getSnapshot().changes?.edited, true);
+    await f.controller.apply();
+    assert.deepEqual(
+        f.snapshots.map((revision) => revision.identity),
+        ['one', 'three'],
+    );
 });
 
 test('stopping cancels the current operation, drops queued work, stops containers and releases the lock', async () => {
@@ -660,7 +662,6 @@ test('stopping cancels the current operation, drops queued work, stops container
     await start(f);
     f.edit('two');
     f.controller.saved();
-    f.flush();
     const stopping = f.controller.stop();
     release();
     await stopping;
@@ -769,25 +770,26 @@ test('a crashed environment stays running; one stopped everywhere becomes stoppe
     assert.equal(applies(f), 1);
 });
 
-test('poll detects external configuration changes, but never repeats failed revisions', async () => {
+test('poll stages external configuration changes without retrying failed revisions', async () => {
     const f = fixture();
     f.fail(new Error('Build failed'));
     await start(f);
     await f.controller.poll();
-    f.flush();
     await settle();
     assert.equal(applies(f), 1);
     f.fail();
     f.edit('external');
     await f.controller.poll();
-    f.flush();
     await settle();
+    assert.equal(f.snapshots.at(-1)?.identity, 'one');
+    assert.equal(f.controller.getSnapshot().phase, 'Failed');
+    assert.equal(f.controller.getSnapshot().changes?.edited, false);
+    await f.controller.apply();
     assert.equal(f.snapshots.at(-1)?.identity, 'external');
-    assert.equal(f.controller.getSnapshot().phase, 'Running');
 });
 
 test('a running environment is detected at launch without applying anything', async () => {
-    const f = fixture({ autoApply: false });
+    const f = fixture();
     f.containers([container('api')]);
     await f.controller.poll();
     let state = f.controller.getSnapshot();
@@ -803,31 +805,60 @@ test('a running environment is detected at launch without applying anything', as
     assert.equal(applies(f), 0);
 });
 
-test('with auto-apply off, edits wait as pending changes until Apply', async () => {
-    const f = fixture({ autoApply: false });
-    await start(f);
-    f.edit('two', [
+test('saved edits wait for Apply and ordinary Apply preserves manual stops', async () => {
+    const f = fixture();
+    f.edit('one', [
         { service: 'api', mode: 'Service' },
         { service: 'db', mode: 'Service' },
     ]);
+    await start(f);
+    await f.controller.serviceAction(['api'], 'stop');
+    f.edit('two', [
+        { service: 'api', mode: 'Service' },
+        { service: 'db', mode: 'Development' },
+    ]);
     f.controller.saved();
-    f.flush();
     await settle();
-    let state = f.controller.getSnapshot();
     assert.equal(applies(f), 1);
-    assert.equal(state.changes?.edited, true);
-    assert.deepEqual(state.changes?.start, ['db']);
+    assert.equal(f.controller.getSnapshot().changes?.edited, true);
     await f.controller.apply();
     await settle();
-    state = f.controller.getSnapshot();
     assert.equal(applies(f), 2);
-    assert.equal(state.changes, undefined);
-    f.controller.setAutoApply(true);
-    f.edit('three');
-    f.controller.saved();
-    f.flush();
-    await settle();
-    assert.equal(applies(f), 3);
+    assert.deepEqual(f.controller.getSnapshot().stoppedByUser, ['api']);
+    assert.equal(
+        f.controller
+            .getSnapshot()
+            .observed?.containers.find((entry) => entry.service === 'api')
+            ?.lifecycle,
+        'exited',
+    );
+    assert.equal(
+        f.controller
+            .getSnapshot()
+            .observed?.containers.find((entry) => entry.service === 'db')
+            ?.lifecycle,
+        'running',
+    );
+});
+
+test('explicit Start releases manual stops while the environment is already running', async () => {
+    const f = fixture();
+    f.edit('one', [
+        { service: 'api', mode: 'Service' },
+        { service: 'db', mode: 'Service' },
+    ]);
+    await start(f);
+    await f.controller.serviceAction(['api'], 'stop');
+    await f.controller.start();
+    await f.controller.waitUntilIdle();
+    assert.deepEqual(f.controller.getSnapshot().stoppedByUser, []);
+    assert.equal(
+        f.controller
+            .getSnapshot()
+            .observed?.containers.find((entry) => entry.service === 'api')
+            ?.lifecycle,
+        'running',
+    );
 });
 
 test('service actions restart, stop and start containers and track services stopped by the user', async () => {
@@ -901,6 +932,60 @@ test('reload rebuilds a running development service through a full apply', async
     await f.controller.shutdown();
 });
 
+test('Reload cannot activate saved pending configuration for other services', async () => {
+    const f = fixture();
+    f.edit('one', [{ service: 'api', mode: 'Development' }]);
+    await start(f);
+    f.edit('two', [
+        { service: 'api', mode: 'Development' },
+        { service: 'db', mode: 'Service' },
+    ]);
+    f.controller.saved();
+    const result = await f.controller.reloadService('api');
+    assert.equal(result.ok, false);
+    assert.match(result.message, /Apply saved changes/);
+    assert.deepEqual(
+        f.snapshots.map((revision) => revision.identity),
+        ['one'],
+    );
+    assert.equal(
+        f.controller
+            .getSnapshot()
+            .observed?.containers.some((entry) => entry.service === 'db'),
+        false,
+    );
+});
+
+test('Reload rechecks pending configuration after waiting for another Apply', async () => {
+    const f = fixture();
+    const inventory = [{ service: 'api', mode: 'Development' as const }];
+    f.edit('one', inventory);
+    await start(f);
+    let release!: () => void;
+    f.hold(
+        () =>
+            new Promise<void>((resolve) => {
+                release = resolve;
+            }),
+    );
+    f.edit('two', inventory);
+    const applying = f.controller.apply();
+    await settle();
+    const reloading = f.controller.reloadService('api');
+    f.edit('three', [...inventory, { service: 'db', mode: 'Service' }]);
+    f.controller.saved();
+    release();
+    await applying;
+    await f.controller.waitUntilIdle();
+    const result = await reloading;
+    assert.equal(result.ok, false);
+    assert.match(result.message, /Apply saved changes/);
+    assert.deepEqual(
+        f.snapshots.map((revision) => revision.identity),
+        ['one', 'two'],
+    );
+});
+
 test('logs strip terminal controls, redact secrets, truncate lines, and support follow-tail', () => {
     assert.equal(safeLog('\x1b[31mhello\x1b[0m\x00'), 'hello');
     assert.equal(safeLog('secret=abc ******'), 'secret=[REDACTED] ******');
@@ -920,7 +1005,6 @@ test('unchanged saved revisions need no AWS, preparation, or restart', async () 
     f.calls.length = 0;
     f.aws('expired');
     f.controller.saved();
-    f.flush();
     await settle();
     assert.equal(f.calls.includes('aws'), false);
     assert.equal(f.calls.includes('prepare'), false);
@@ -1127,7 +1211,6 @@ test('start cannot resolve or mutate without ownership', async () => {
     f.rejectLock(new LiveFailure('Already owned', 'blocked'));
     await f.controller.start();
     assert.equal(f.controller.getSnapshot().phase, 'Blocked');
-    assert.equal(f.controller.getIntent().lastRead, undefined);
     assert.deepEqual(f.calls, ['lock']);
     assert.deepEqual(f.resolved, []);
     assert.deepEqual(f.snapshots, []);

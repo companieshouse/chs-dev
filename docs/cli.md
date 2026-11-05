@@ -96,7 +96,7 @@ per-service environment, latest or image pins. See [service versions](service-ve
 See [environment files and CIDEV versions](environment-profiles.md) for sharing
 enabled services, providers and mock scenarios, or copying versions only.
 Profile import and CIDEV copying preview by default; `--yes` saves local changes
-pending until an explicit Apply or Start, preserving this deferral across restarts.
+pending until an explicit Apply or Start, preserving pending changes across restarts.
 
 Mutations wait for their operation by default. `--detach` returns the accepted
 operation ID and leaves execution in the daemon. `--timeout SECONDS` limits the
@@ -112,10 +112,11 @@ startup without `--yes` performs a read-only preview before acceptance; the daem
 still checks actual state during execution. With `--yes`, the daemon owns approval
 and execution, so a detached client need not stay connected.
 
-`service configure` preserves omitted fields and respects shared `autoApply`.
-It reports configuration saved and application `queued` or `pending`; success of
-that save does not promise completion of a later automatic apply. Use explicit
-`apply` to wait for environment reconciliation.
+`service configure` preserves omitted fields and stages saved configuration. It
+reports configuration saved and application `pending`; success of that save does
+not change running containers. Use explicit `apply` to wait for reconciliation.
+Ordinary Apply preserves manual stops; service Start releases one, and Environment
+Start releases all manual stops.
 
 Providers are `service`, `development`, and `mock`. Development requires a builder;
 Mock requires a contract in this repository's `mocks/` catalogue. `--development`
@@ -212,12 +213,12 @@ daemon builder support, which can be narrower than the old repository-based list
 Required infrastructure cannot be disabled or excluded.
 
 Each batch validates all names before one atomic YAML save. Comments and unknown
-keys are retained. Legacy saves wait for `legacy up` or TUI Apply even when shared
-auto-apply is on. That pending revision is checkpointed across daemon restarts.
-A later ordinary service save or external configuration edit restores ordinary
-auto-apply behaviour. `legacy up` applies saved state using current daemon
+keys are retained. All saves remain pending across daemon restarts until Apply or
+Start, including later ordinary service saves and external edits. `legacy up`
+applies saved state using current daemon
 preparation; it shares its clone/pull timing. Reload uses the daemon's current
-development rebuild semantics.
+development rebuild semantics and rejects pending saved changes with an instruction
+to Apply them first.
 
 Exclusions `-d` affects direct dependencies and retains dependencies still required
 by other enabled services. Streaming logs support multiple services, `-C` for
@@ -267,10 +268,12 @@ compatibility scope and return usage errors.
 CLI envelope version 1 is separate from Unix-socket protocol version 5. Existing
 older daemons need an explicit restart after their work finishes; clients
 report a version mismatch and do not replace a working daemon automatically.
-Legacy deferral is an optional checkpoint field, so old checkpoints remain readable.
+Old auto-apply settings and checkpoint deferral fields are ignored. The snapshot
+`live.autoApply` compatibility field is always false; settings expose retirement
+warnings for `autoApply` and `CHS_DEV_AUTO_APPLY`.
 
 `npm test`, `npm run check` and `npm run build` cover command parsing, Unix-socket
-dispatch, legacy selection semantics, atomic saves, deferral/restarts, confirmation,
+dispatch, legacy selection semantics, atomic saves, staged configuration/restarts, confirmation,
 detachment, cancellation, wait deadlines, log streaming and architecture boundaries.
 Compose lifecycle, container-management and mock-provider integration suites
 remain opt-in and require Docker with Compose. See the

@@ -20,7 +20,7 @@ Press **Ctrl+E**, then **p** for **Share environment**. Use **v** to select vers
   Select **Save environment** to replace your local selections.
 
 Use PgUp/PgDn to scroll reviews. Back is selected initially. Saving keeps changes
-pending, including when auto-apply is enabled and across daemon restarts. Return
+pending across daemon restarts. Return
 to the Environment panel and choose **Apply** or **Start** when ready.
 
 File paths default to `environments/environment.yaml` in the selected checkout;
@@ -78,7 +78,7 @@ npm run dev -- service configure felixvalidator --image default
 
 Pins apply to the Service provider. Mock and Development retain their selected
 provider; stored image pins become active when switching back to Service.
-`service configure` follows your normal auto-apply setting.
+`service configure` stages changes until explicit Apply or Start.
 
 ## What is portable
 

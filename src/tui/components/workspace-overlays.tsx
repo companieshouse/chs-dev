@@ -33,7 +33,6 @@ export function WorkspaceOverlays({
                 workspace={workspace}
                 ui={ui}
                 quickLogin={flows.quickLogin}
-                saveSetting={flows.editors.saveSetting}
             />
             {ui.helpOpen && (
                 <HelpModal
@@ -71,12 +70,10 @@ function EnvironmentOverlays({
     workspace,
     ui,
     quickLogin,
-    saveSetting,
 }: {
     workspace: WorkspaceData;
     ui: WorkspaceUi;
     quickLogin: WorkspaceFlows['quickLogin'];
-    saveSetting: WorkspaceFlows['editors']['saveSetting'];
 }) {
     const { live, environment } = workspace;
     return (
@@ -105,7 +102,6 @@ function EnvironmentOverlays({
                         }));
                         ui.setActiveTab('Logs');
                     }}
-                    onAutoApply={(value) => saveSetting('autoApply', value)}
                 />
             )}
             {ui.sshSetupOpen && live.state.sshSetup && live.controller && (
@@ -272,9 +268,7 @@ function serviceSaveHint(live: WorkspaceData['live']) {
         return 'Saves configuration only; containers are unchanged.';
     if (!live.state.running)
         return 'Saved changes apply when you start the environment (Ctrl+E).';
-    return live.state.autoApply
-        ? 'Saving applies the change to the running environment.'
-        : 'Auto-apply is off: apply saved changes from Ctrl+E.';
+    return 'Saved changes wait for Apply changes (Ctrl+E).';
 }
 
 function serviceControls(
@@ -322,9 +316,6 @@ function ServiceOverlay({
             onApply={async (edit) => {
                 await saveConfiguration(edit);
             }}
-            applyOnSave={
-                !!live.controller && live.state.running && live.state.autoApply
-            }
             saveHint={serviceSaveHint(live)}
             controls={serviceControls(live, modalService)}
         />

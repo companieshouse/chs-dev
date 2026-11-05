@@ -86,7 +86,7 @@ test('CLI CIDEV copying is preview-only by default and version-only saves stay d
     await f.restart();
     await f.controller.poll();
     assert.equal(f.engine.applies, applies);
-    assert.ok(f.app.snapshot().live.deferredConfigurationRevision);
+    assert.equal(f.app.snapshot().live.changes?.edited, true);
     await invoke(['apply'], f);
     assert.equal(f.engine.applies, applies + 1);
 });

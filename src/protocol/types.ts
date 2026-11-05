@@ -279,7 +279,7 @@ export interface LogRequest {
 
 export const emptyLive: LiveState = {
     running: false,
-    autoApply: true,
+    autoApply: false,
     phase: 'Stopped',
     message: '',
     stoppedByUser: [],

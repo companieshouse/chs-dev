@@ -123,8 +123,10 @@ test('CLI mock discovery, provider switching and scenario edits use shared daemo
             dependencies,
         );
         assert.equal(changed.code, 0, changed.errors);
-        assert.equal(changed.json().data.application, 'queued');
-        await eventually(() => f.engine.applies === 2);
+        assert.equal(changed.json().data.application, 'pending');
+        assert.equal(f.engine.applies, 1);
+        await invoke(['apply', '--json'], dependencies);
+        assert.equal(f.engine.applies, 2);
         assert.match(
             (await invoke(['service', 'mocks', 'api'], dependencies)).output,
             /success \(active\)/,
@@ -372,7 +374,7 @@ test('wait deadlines and interrupts disconnect without cancelling accepted work'
     }
 });
 
-test('legacy edits stay deferred across observation and daemon restart until up applies them', async () => {
+test('legacy edits stay pending across observation and daemon restart until up applies them', async () => {
     const f = await daemonFixture();
     try {
         const dependencies = { connect: f.client };
@@ -387,11 +389,8 @@ test('legacy edits stay deferred across observation and daemon restart until up 
             ).code,
             0,
         );
-        assert.equal(f.app.snapshot().live.autoApply, true);
-        assert.equal(
-            f.app.snapshot().live.deferredConfigurationRevision,
-            'revision-2',
-        );
+        assert.equal(f.app.snapshot().live.autoApply, false);
+        assert.equal(f.app.snapshot().configurationRevision, 'revision-2');
         await f.controller.poll();
         await f.restart();
         await f.controller.poll();
@@ -399,26 +398,20 @@ test('legacy edits stay deferred across observation and daemon restart until up 
             setTimeout(resolve, 350);
         });
         assert.equal(f.engine.applies, applied);
-        assert.equal(
-            f.app.snapshot().live.deferredConfigurationRevision,
-            'revision-2',
-        );
+        assert.equal(f.app.snapshot().configurationRevision, 'revision-2');
         assert.equal(
             (await invoke(['legacy', 'up', '--yes', '--json'], dependencies))
                 .code,
             0,
         );
         assert.equal(f.engine.applies, applied + 1);
-        assert.equal(
-            f.app.snapshot().live.deferredConfigurationRevision,
-            undefined,
-        );
+        assert.equal(f.app.snapshot().live.changes, undefined);
     } finally {
         await f.close();
     }
 });
 
-test('ordinary configuration edits retain shared auto-apply and report save separately', async () => {
+test('ordinary configuration saves and later external edits wait for explicit Apply across restart', async () => {
     const f = await daemonFixture();
     try {
         const dependencies = { connect: f.client };
@@ -429,14 +422,24 @@ test('ordinary configuration edits retain shared auto-apply and report save sepa
         );
         assert.equal(configured.code, 0);
         assert.equal(configured.json().data.saved, true);
-        assert.equal(configured.json().data.application, 'queued');
-        await eventually(() => f.engine.applies === 2);
+        assert.equal(configured.json().data.application, 'pending');
+        await f.controller.poll();
+        await f.restart();
+        f.stores.get(f.directory)!.revision++;
+        await f.controller.poll();
+        await new Promise((resolve) => {
+            setTimeout(resolve, 350);
+        });
+        assert.equal(f.engine.applies, 1);
+        assert.equal(f.app.snapshot().live.changes?.edited, true);
+        assert.equal((await invoke(['apply', '--json'], dependencies)).code, 0);
+        assert.equal(f.engine.applies, 2);
     } finally {
         await f.close();
     }
 });
 
-test('polling cannot apply a legacy save during its commit and later external edits restore auto-apply', async () => {
+test('legacy saves and later external edits remain pending during and after commit', async () => {
     const f = await daemonFixture();
     let release!: () => void;
     try {
@@ -449,14 +452,19 @@ test('polling cannot apply a legacy save during its commit and later external ed
             revision: 'revision-1',
             edit: { topic: 'development', action: 'enable', names: ['api'] },
         });
-        await eventually(
-            () =>
-                f.app.snapshot().live.deferredConfigurationRevision ===
-                'revision-2',
+        await eventually(() =>
+            f.app
+                .snapshot()
+                .operations.some(
+                    (entry) =>
+                        entry.kind === 'configuration.legacyEdit' &&
+                        entry.state === 'running',
+                ),
         );
         const observations = f.engine.observations;
         await f.controller.poll();
-        assert.equal(f.engine.observations, observations);
+        assert.ok(f.engine.observations >= observations);
+        assert.equal(f.engine.applies, 1);
         assert.equal(f.stores.get(f.directory)!.revision, 1);
         await assert.rejects(
             client.submit('settings.save', {
@@ -472,11 +480,9 @@ test('polling cannot apply a legacy save during its commit and later external ed
         assert.equal(f.engine.applies, 1);
         f.stores.get(f.directory)!.revision++;
         await f.controller.poll();
-        await eventually(() => f.engine.applies === 2);
-        assert.equal(
-            f.app.snapshot().live.deferredConfigurationRevision,
-            undefined,
-        );
+        assert.equal(f.engine.applies, 1);
+        await client.command('environment.apply', {});
+        assert.equal(f.engine.applies, 2);
     } finally {
         release?.();
         await f.close();
