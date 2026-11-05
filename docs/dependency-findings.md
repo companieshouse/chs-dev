@@ -47,10 +47,14 @@ issues rather than being attributed to selection alone.
 
 The resolved docgen selection includes both brokers, their ZooKeeper services,
 the Kafka initialization job, Oracle query and authentication/identity services.
-This supports a representative tooling fixture for condition ordering, missing
-dependencies, first causal failures, reload/ingress and stop behavior. Such a
-fixture cannot prove GCI generates a valid company snapshot or that intermittent
-Oracle/identity failures are fixed. Authentication cycle presentation is covered
+Permanent representative docgen fixtures now preserve list-form dual brokers,
+mapping-form health and job-completion conditions, applied lifecycle dependencies
+and routing to the host proxy. A missing broker variable identifies the causal
+variable and dependent exclusions while retaining the unaffected broker. Generic
+controller/runtime tests cover applied Reload, manual Stop and priority cleanup;
+the docgen fixture does not execute those business services. These tests cannot
+prove GCI generates a valid company snapshot or that intermittent Oracle/identity
+failures are fixed. Authentication cycle presentation is covered
 by finite dependency traversal; changing a real service cycle requires its
 owners to agree the runtime contract.
 

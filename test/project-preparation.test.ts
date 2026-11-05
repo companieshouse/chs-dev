@@ -1091,3 +1091,102 @@ test('prepared lifecycle metadata records resolved lazy policy and generated dep
         condition: 'service_healthy',
     });
 });
+
+function docgenFixture() {
+    const f = fixture({ modules: ['docgen'], versionSource: 'compose' });
+    f.put('/project/services/modules/docgen/services.docker-compose.yaml', {
+        services: {
+            'document-generator-consumer': {
+                image: 'fixture/consumer:1',
+                depends_on: ['kafka', 'kafka3'],
+            },
+            'data-document-rendering-api': {
+                image: 'fixture/rendering:1',
+                depends_on: {
+                    kafka: { condition: 'service_healthy' },
+                    kafka3: { condition: 'service_healthy' },
+                    'kafka-init': {
+                        condition: 'service_completed_successfully',
+                    },
+                },
+                environment: { PROXY_TARGET_URLS: 'http://ingress-proxy' },
+            },
+            kafka: {
+                image: 'fixture/kafka:1',
+                healthcheck: { test: ['CMD', 'true'] },
+            },
+            kafka3: {
+                image: 'fixture/kafka:3',
+                environment: { PASSWORD: '${KAFKA_TEST_PASSWORD}' },
+                healthcheck: { test: ['CMD', 'true'] },
+            },
+            'kafka-init': {
+                image: 'fixture/init:1',
+                depends_on: { kafka3: { condition: 'service_healthy' } },
+            },
+        },
+    });
+    return f;
+}
+
+test('representative docgen selection preserves both Kafka generations, readiness conditions and host ingress', async () => {
+    const f = docgenFixture();
+    const prepared = await prepareProject(f.request, f.dependencies);
+    const services = parse(f.files.get(prepared.composeFiles[0]!)!).services;
+    assert.deepEqual(Object.keys(services).sort(), [
+        'data-document-rendering-api',
+        'document-generator-consumer',
+        'kafka',
+        'kafka-init',
+        'kafka3',
+    ]);
+    const consumer = services['document-generator-consumer'];
+    assert.deepEqual(consumer.depends_on, ['kafka', 'kafka3']);
+    const api = services['data-document-rendering-api'];
+    assert.deepEqual(api.depends_on, {
+        kafka: { condition: 'service_healthy' },
+        kafka3: { condition: 'service_healthy' },
+        'kafka-init': { condition: 'service_completed_successfully' },
+    });
+    assert.deepEqual(
+        JSON.parse(api.labels['chs.dev.lifecycle']).dependencies.sort(),
+        ['kafka', 'kafka-init', 'kafka3'],
+    );
+    assert.equal(
+        api.environment.PROXY_TARGET_URLS,
+        'http://host.docker.internal',
+    );
+    assert.equal(services['ingress-proxy'], undefined);
+});
+
+test('docgen missing Kafka configuration identifies the causal variable and dependent exclusions', async () => {
+    const f = docgenFixture();
+    const prepared = await prepareProject(f.request, {
+        ...f.dependencies,
+        environment: {
+            enforce: async () =>
+                assert.fail('missing configuration cannot be enforced'),
+            missing: async () => ['KAFKA_TEST_PASSWORD'],
+        },
+    });
+    assert.deepEqual(
+        prepared.inventory.map((entry) => entry.service),
+        ['kafka'],
+    );
+    assert.deepEqual(prepared.exclusions, [
+        {
+            variable: 'KAFKA_TEST_PASSWORD',
+            services: [
+                'data-document-rendering-api',
+                'document-generator-consumer',
+                'kafka-init',
+                'kafka3',
+            ],
+            cause: 'KAFKA_TEST_PASSWORD is not set',
+            remediation:
+                "Set KAFKA_TEST_PASSWORD in this checkout's .env file, then apply the environment again.",
+        },
+    ]);
+    const services = parse(f.files.get(prepared.composeFiles[0]!)!).services;
+    assert.deepEqual(Object.keys(services), ['kafka']);
+});
