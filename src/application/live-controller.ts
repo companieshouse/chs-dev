@@ -692,7 +692,9 @@ export class LiveController {
     private updateManualStops(
         services: readonly string[],
         action: ContainerAction,
+        manual = true,
     ) {
+        if (!manual) return;
         const stopped = new Set(this.state.stoppedByUser);
         for (const service of services) {
             if (action === 'stop') stopped.add(service);
@@ -727,6 +729,17 @@ export class LiveController {
         signal: AbortSignal,
     ) {
         const observed = await this.dependencies.runtime.snapshot(signal);
+        if (manual && action === 'stop') {
+            const known = new Set(
+                observed.containers.flatMap((container) => [
+                    container.service,
+                    container.ownerService ?? container.service,
+                ]),
+            );
+            const unknown = services.find((service) => !known.has(service));
+            if (unknown)
+                throw new Error(`${unknown} has no owned container to stop.`);
+        }
         const targets = actionTargets(observed, services, action);
         if (!manual && targets.length) assertIdleTarget(services[0]!, observed);
         return targets;
@@ -765,8 +778,9 @@ export class LiveController {
                     manual,
                     signal,
                 );
-                if (!manual && !containers.length) {
-                    outcome = { ok: true, message: 'Already stopped.' };
+                if (!containers.length && action === 'stop') {
+                    this.updateManualStops(services, action, manual);
+                    outcome = { ok: true, message: `Kept ${names} stopped.` };
                     return;
                 }
                 if (!containers.length)
@@ -787,7 +801,7 @@ export class LiveController {
                         },
                     ),
                 );
-                if (manual) this.updateManualStops(services, action);
+                this.updateManualStops(services, action, manual);
                 outcome = {
                     ok: true,
                     message: `${verb === 'Stop' ? 'Stopped' : `${verb}ed`} ${names}.`,

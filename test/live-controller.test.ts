@@ -1402,3 +1402,43 @@ test('cancelling Stop during persistence prevents later cleanup while retaining 
     assert.equal(f.controller.getSnapshot().running, false);
     assert.equal(f.controller.getSnapshot().blocked, 'cancelled');
 });
+
+test('manual Stop holds an already idle or created owned service without first starting it', async () => {
+    for (const lifecycle of ['created', 'exited']) {
+        const f = fixture();
+        await start(f);
+        f.containers([
+            {
+                ...container('api'),
+                lifecycle,
+                policy: {
+                    version: 1,
+                    lazy: true,
+                    reclaimable: false,
+                    dependencies: [],
+                },
+            },
+        ]);
+        const stopped = await f.controller.serviceAction(['api'], 'stop');
+        assert.equal(stopped.ok, true);
+        assert.deepEqual(f.controller.getSnapshot().stoppedByUser, ['api']);
+        assert.equal(
+            (await f.controller.serviceAction(['api'], 'stop')).ok,
+            true,
+        );
+        assert.equal(
+            (await f.controller.coldStart('api', Date.now() + 1000)).ok,
+            false,
+        );
+        assert.equal(
+            f.calls.some((call) => call.startsWith('cold:')),
+            false,
+        );
+        assert.equal(f.calls.includes('stop:api'), false);
+        assert.equal(
+            (await f.controller.serviceAction(['missing'], 'stop')).ok,
+            false,
+        );
+        assert.deepEqual(f.controller.getSnapshot().stoppedByUser, ['api']);
+    }
+});
