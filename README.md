@@ -1,954 +1,525 @@
 # chs-dev
 
-A CLI tool for spinning up a CHS like system local in a Docker environment
-orchestrated using Docker Compose.
+A persistent local CHS development daemon with a CLI and an interactive terminal frontend using [Ink](https://github.com/vadimdemedes/ink) and React.
 
-## Table of Contents
-
-1. [Installing](#installing)
-1. [Usage](#usage)
-1. [chs-dev Configuration](#chs-dev-configuration)
-
-    1. [Environment configuration](#environment-configuration)
-    1. [Service configuration](#service-configuration)
-    1. [Builders](#builders)
-
-## Installing
-
-To install the latest version CLI run the following command:
+Requires Node.js 22.18 or later and npm. With no arguments `chs-dev` opens the TUI;
+arguments run CLI commands, including `chs-dev legacy …` compatibility commands.
 
 ```sh
-curl -s -L \
-    https://raw.githubusercontent.com/companieshouse/chs-dev/main/install.sh |
-    bash -s
-```
-
-If using other options append following a `--` i.e.:
-
-```sh
-curl -s -L \
-    https://raw.githubusercontent.com/companieshouse/chs-dev/main/install.sh |
-    bash -s -- uninstall
-```
-
-You will need to add `${HOME}/.companies_house_config/bin` to your path:
-
-```sh
-$ printf -- 'export PATH="${PATH}":"${HOME}"/.companies_house_config/bin' >> ~/.bashrc # or ~/.zshrc if using Zsh
-
-$
-```
-
-To verify installation open a new terminal and run:
-
-```sh
-$ chs-dev --version
-chs-dev/0.1.0 darwin-arm64 node-v20.10.0
-$
-```
-
-### Installing a local copy of your changes
-
-To test out development changes you likely will want to install a development
-copy like so:
-
-```sh
-$ ./install.sh -B -d "${HOME}"/.devchs-dev -n devchs-dev
-$ devchs-dev --version
-...
-$
-```
-
-Provided you've configured your path properly with the default Symlink
-directory you should be able to run:
-
-```sh
-devchs-dev --version
-```
-
-### `install.sh` usage
-
-The install script can manage the installation/uninstallation (or
-reinstallation) of the chs-dev CLI. It can be use as follows
-
-```sh
-./install [OPTIONS] [COMMAND]
-```
-
-#### Options
-
-* `-B` - installs current directory to local user profile (for testing)
-* `-d <directory>` - specifies the installation directory (*Defaults to*
-  *`${HOME}/.chs-dev`*)
-* `-f` - forces the command and does not prompt user for input
-* `-l <DEBUG|INFO|WARN|ERROR>` - specifies the Logging level (*Defaults to*
-  *`INFO`*)
-* `-n <name>` - specifies the name of the symlink created in the symlink
-  directory (*Defaults to* *`chs-dev`*)
-* `-S` - will prevent the Symlink file to be created
-* `-s <directory>` - specifies the directory to add the symlink to, if there is
-  already a local directory on your `PATH` which you can add symlinks to
-  (*Defaults to `${HOME}/.companies_house_config/bin`*)
-* `-v <version>` - when installing specifies the version of the CLI to use
-  (*Defaults to the latest version*)
-* `-W` - suppresses the warning about the `chs-dev` executable not being on the
-  path
-* `-h` - prints usage information and exits
-
-#### COMMAND
-
-Can be either:
-
-* `install` - installs the CLI
-* `uninstall` - removes the CLI and related files
-
-#### Example usage
-
-##### Install latest version
-
-```sh
-$ ./install.sh
-[2024-06-13T13:30:49] - [INFO] - Installing version 1.1.4
-[2024-06-13T13:30:49] - [INFO] - Downloading CLI tarball. Will take a few moments...
-[2024-06-13T13:31:13] - [INFO] - chs-dev CLI installed successfully.
-```
-
-##### Install an explicit version (overwriting previous install)
-
-```sh
-$./install.sh -v 1.0.0  # installs version 1.0.0 of the CLI
-[2024-06-13T13:32:04] - [WARN] - chs-dev (version chs-dev/1.1.4 darwin-arm64 node-v20.10.0) already installed
-Do you want to reinstall chs-dev?
--- To continue press y
-y
-[2024-06-13T13:32:06] - [INFO] - Uninstalling CLI tool
-[2024-06-13T13:32:07] - [INFO] - chs-dev CLI uninstalled successfully
-[2024-06-13T13:32:07] - [INFO] - Installing version 1.0.0
-[2024-06-13T13:32:07] - [INFO] - Downloading CLI tarball. Will take a few moments...
-[2024-06-13T13:32:31] - [INFO] - chs-dev CLI installed successfully.
-```
-
-##### Uninstalling cli
-
-```sh
-$ ./install.sh uninstall
-[2024-06-13T13:34:31] - [INFO] - Uninstalling CLI tool
-This will uninstall chs-dev CLI do you want to continue?
--- To continue press y
-y
-[2024-06-13T13:34:34] - [INFO] - chs-dev CLI uninstalled successfully
-```
-
-##### Installing to different location (Without symlink)
-
-```sh
-$ ./install.sh -d "${HOME}"/.local/lib/chs-dev -S
-...
-$
-```
-
-## Usage
-
-The chs-dev cli can be used with projects containing Docker Compose spec files.
-It expects a directory `services` which contains `modules` directory and any
-other directories containing services. `modules` contains directories
-corresponding to modules, within the module directory are Docker Compose spec
-files corresponding to services.
-
-<!-- usage -->
-```sh-session
-$ npm install -g chs-dev
-$ chs-dev COMMAND
-running command...
-$ chs-dev (--version)
-chs-dev/3.0.0 darwin-arm64 node-v20.18.0
-$ chs-dev --help [COMMAND]
-USAGE
-  $ chs-dev COMMAND
-...
-```
-<!-- usagestop -->
-
-### Commands
-
-<!-- commands -->
-* [`chs-dev autocomplete [SHELL]`](#chs-dev-autocomplete-shell)
-* [`chs-dev dependency service SERVICE`](#chs-dev-dependency-service-service)
-* [`chs-dev dependency system`](#chs-dev-dependency-system)
-* [`chs-dev development disable SERVICES`](#chs-dev-development-disable-services)
-* [`chs-dev development enable SERVICES`](#chs-dev-development-enable-services)
-* [`chs-dev development services`](#chs-dev-development-services)
-* [`chs-dev down`](#chs-dev-down)
-* [`chs-dev exclude SERVICE`](#chs-dev-exclude-service)
-* [`chs-dev exclusions add SERVICE`](#chs-dev-exclusions-add-service)
-* [`chs-dev exclusions list`](#chs-dev-exclusions-list)
-* [`chs-dev exclusions remove SERVICE`](#chs-dev-exclusions-remove-service)
-* [`chs-dev help [COMMAND]`](#chs-dev-help-command)
-* [`chs-dev include SERVICE`](#chs-dev-include-service)
-* [`chs-dev logs [SERVICENAME]`](#chs-dev-logs-servicename)
-* [`chs-dev modules available`](#chs-dev-modules-available)
-* [`chs-dev modules disable MODULES`](#chs-dev-modules-disable-modules)
-* [`chs-dev modules enable MODULES`](#chs-dev-modules-enable-modules)
-* [`chs-dev reload SERVICE`](#chs-dev-reload-service)
-* [`chs-dev services available`](#chs-dev-services-available)
-* [`chs-dev services disable SERVICES`](#chs-dev-services-disable-services)
-* [`chs-dev services enable SERVICES`](#chs-dev-services-enable-services)
-* [`chs-dev state cache [NAME]`](#chs-dev-state-cache-name)
-* [`chs-dev state clean`](#chs-dev-state-clean)
-* [`chs-dev state export NAME`](#chs-dev-state-export-name)
-* [`chs-dev state restore [NAME]`](#chs-dev-state-restore-name)
-* [`chs-dev status`](#chs-dev-status)
-* [`chs-dev sync`](#chs-dev-sync)
-* [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
-* [`chs-dev troubleshoot report OUTPUTDIRECTORY`](#chs-dev-troubleshoot-report-outputdirectory)
-* [`chs-dev up`](#chs-dev-up)
-
-## `chs-dev autocomplete [SHELL]`
-
-Display autocomplete installation instructions.
-
-```
-USAGE
-  $ chs-dev autocomplete [SHELL] [-r]
-
-ARGUMENTS
-  SHELL  (zsh|bash|powershell) Shell type
-
-FLAGS
-  -r, --refresh-cache  Refresh cache (ignores displaying instructions)
-
-DESCRIPTION
-  Display autocomplete installation instructions.
-
-EXAMPLES
-  $ chs-dev autocomplete
-
-  $ chs-dev autocomplete bash
-
-  $ chs-dev autocomplete zsh
-
-  $ chs-dev autocomplete powershell
-
-  $ chs-dev autocomplete --refresh-cache
-```
-
-_See code: [@oclif/plugin-autocomplete](https://github.com/oclif/plugin-autocomplete/blob/v3.1.11/src/commands/autocomplete/index.ts)_
-
-## `chs-dev dependency service SERVICE`
-
-Generates a dependency diagram / tree for the specified service
-
-```
-USAGE
-  $ chs-dev dependency service SERVICE... -t diagram|tree|flattree
-
-ARGUMENTS
-  SERVICE...  names of service to be graphed
-
-FLAGS
-  -t, --type=<option>  (required) diagram / tree / flattree
-                       <options: diagram|tree|flattree>
-
-DESCRIPTION
-  Generates a dependency diagram / tree for the specified service
-```
-
-## `chs-dev dependency system`
-
-Generates a System dependency Diagram
-
-```
-USAGE
-  $ chs-dev dependency system
-
-DESCRIPTION
-  Generates a System dependency Diagram
-```
-
-## `chs-dev development disable SERVICES`
-
-Removes a service from development mode
-
-```
-USAGE
-  $ chs-dev development disable SERVICES... [-P]
-
-ARGUMENTS
-  SERVICES...  names of services to be removed to development mode
-
-FLAGS
-  -P, --noPull  Does not perform a docker compose pull to reset the service to what is stored in ECR
-
-DESCRIPTION
-  Removes a service from development mode
-```
-
-## `chs-dev development enable SERVICES`
-
-Adds a service to development mode
-
-```
-USAGE
-  $ chs-dev development enable SERVICES... [-b <value>]
-
-ARGUMENTS
-  SERVICES...  names of services to be added to development mode
-
-FLAGS
-  -b, --builderVersion=<value>  [default: latest] version of the builder to use with service
-
-DESCRIPTION
-  Adds a service to development mode
-```
-
-## `chs-dev development services`
-
-Lists all services which are available to enable in development mode
-
-```
-USAGE
-  $ chs-dev development services [-j]
-
-FLAGS
-  -j, --json  output as json
-
-DESCRIPTION
-  Lists all services which are available to enable in development mode
-```
-
-## `chs-dev down`
-
-Takes down the docker-chs-development environment
-
-```
-USAGE
-  $ chs-dev down [-V] [-I]
-
-FLAGS
-  -I, --removeImages   Will remove all images built by the environment
-  -V, --removeVolumes  Will remove all associated volumes
-
-DESCRIPTION
-  Takes down the docker-chs-development environment
-
-EXAMPLES
-  Take down environment
-
-    $ chs-dev down
-
-  Take down environment, removing all images and volumes created
-
-    $ chs-dev down -I -V
-```
-
-## `chs-dev exclude SERVICE`
-
-Adds a new service to the exclusions list
-
-```
-USAGE
-  $ chs-dev exclude SERVICE... [-d]
-
-ARGUMENTS
-  SERVICE...  name of service being excluded from the docker environment
-
-FLAGS
-  -d, --dependency  Add services dependencies to the exclusion list.
-
-DESCRIPTION
-  Adds a new service to the exclusions list
-
-ALIASES
-  $ chs-dev exclude
-```
-
-## `chs-dev exclusions add SERVICE`
-
-Adds a new service to the exclusions list
-
-```
-USAGE
-  $ chs-dev exclusions add SERVICE... [-d]
-
-ARGUMENTS
-  SERVICE...  name of service being excluded from the docker environment
-
-FLAGS
-  -d, --dependency  Add services dependencies to the exclusion list.
-
-DESCRIPTION
-  Adds a new service to the exclusions list
-
-ALIASES
-  $ chs-dev exclude
-```
-
-## `chs-dev exclusions list`
-
-lists the current list of services which have been excluded
-
-```
-USAGE
-  $ chs-dev exclusions list [-j]
-
-FLAGS
-  -j, --json  Output to log as json
-
-DESCRIPTION
-  lists the current list of services which have been excluded
-```
-
-## `chs-dev exclusions remove SERVICE`
-
-Removes an exclusion for a service.
-
-```
-USAGE
-  $ chs-dev exclusions remove SERVICE... [-d]
-
-ARGUMENTS
-  SERVICE...  name of service being reincluded in the docker environment
-
-FLAGS
-  -d, --dependency  Remove service and its dependencies from the exclusion list.
-
-DESCRIPTION
-  Removes an exclusion for a service.
-
-ALIASES
-  $ chs-dev include
-```
-
-## `chs-dev help [COMMAND]`
-
-Display help for chs-dev.
-
-```
-USAGE
-  $ chs-dev help [COMMAND...] [-n]
-
-ARGUMENTS
-  COMMAND...  Command to show help for.
-
-FLAGS
-  -n, --nested-commands  Include all nested commands in the output.
-
-DESCRIPTION
-  Display help for chs-dev.
-```
-
-_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v6.2.7/src/commands/help.ts)_
-
-## `chs-dev include SERVICE`
-
-Removes an exclusion for a service.
-
-```
-USAGE
-  $ chs-dev include SERVICE... [-d]
-
-ARGUMENTS
-  SERVICE...  name of service being reincluded in the docker environment
-
-FLAGS
-  -d, --dependency  Remove service and its dependencies from the exclusion list.
-
-DESCRIPTION
-  Removes an exclusion for a service.
-
-ALIASES
-  $ chs-dev include
-```
-
-## `chs-dev logs [SERVICENAME]`
-
-Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
-
-```
-USAGE
-  $ chs-dev logs [SERVICENAME...] [-C] [-f] [-n <value>]
-
-ARGUMENTS
-  SERVICENAME...  specify the service names of the logs to follow, when not specified follows aggregated logs
-
-FLAGS
-  -C, --compose       View the compose logs rather than service logs
-  -f, --follow        Follow the logs
-  -n, --tail=<value>  [default: all] Number of lines from the end of the logs
-
-DESCRIPTION
-  Outputs the logs for services and compose logs (i.e. logs from 'up' and 'down' commands)
-
-EXAMPLES
-  view all aggregated service logs
-
-    $ chs-dev logs
-
-  follow aggregated service logs
-
-    $ chs-dev logs -f
-
-  follow logs for service
-
-    $ chs-dev logs service-one service-two -f
-
-  load the last line in the aggregated service logs
-
-    $ chs-dev logs -n 1
-
-  view all compose logs
-
-    $ chs-dev logs -C
-
-  follow compose logs
-
-    $ chs-dev logs -C -f
-
-  load the last line in the compose logs
-
-    $ chs-dev logs -C -n 1
-```
-
-## `chs-dev modules available`
-
-Lists the available modules
-
-```
-USAGE
-  $ chs-dev modules available [-j]
-
-FLAGS
-  -j, --json  output as json
-
-DESCRIPTION
-  Lists the available modules
-```
-
-## `chs-dev modules disable MODULES`
-
-Removes the services within the supplied modules from the state and any unnecessary dependencies
-
-```
-USAGE
-  $ chs-dev modules disable MODULES...
-
-ARGUMENTS
-  MODULES...  list of module names
-
-DESCRIPTION
-  Removes the services within the supplied modules from the state and any unnecessary dependencies
-```
-
-## `chs-dev modules enable MODULES`
-
-Enables the services within the supplied modules
-
-```
-USAGE
-  $ chs-dev modules enable MODULES...
-
-ARGUMENTS
-  MODULES...  list of module names
-
-DESCRIPTION
-  Enables the services within the supplied modules
-```
-
-## `chs-dev reload SERVICE`
-
-Rebuilds and restarts the supplied service running in development mode to load in any changes to source code
-
-```
-USAGE
-  $ chs-dev reload SERVICE [-f]
-
-ARGUMENTS
-  SERVICE  Name of the service
-
-FLAGS
-  -f, --force  Forcefully reload service and force a rebuild
-
-DESCRIPTION
-  Rebuilds and restarts the supplied service running in development mode to load in any changes to source code
-```
-
-## `chs-dev services available`
-
-Lists all the available services
-
-```
-USAGE
-  $ chs-dev services available [-j]
-
-FLAGS
-  -j, --json  output as json
-
-DESCRIPTION
-  Lists all the available services
-```
-
-## `chs-dev services disable SERVICES`
-
-Removes the supplied services and any unnecessary dependencies from the Docker environment
-
-```
-USAGE
-  $ chs-dev services disable SERVICES...
-
-ARGUMENTS
-  SERVICES...  names of services to be removed to docker environment
-
-DESCRIPTION
-  Removes the supplied services and any unnecessary dependencies from the Docker environment
-```
-
-## `chs-dev services enable SERVICES`
-
-Enables the services and any dependencies for use within the Docker environment
-
-```
-USAGE
-  $ chs-dev services enable SERVICES...
-
-ARGUMENTS
-  SERVICES...  names of services to be added to development mode
-
-DESCRIPTION
-  Enables the services and any dependencies for use within the Docker environment
-```
-
-## `chs-dev state cache [NAME]`
-
-Cache the state of chs-dev into a saved file
-
-```
-USAGE
-  $ chs-dev state cache [NAME] [-w] [-r] [-a] [-e]
-
-ARGUMENTS
-  NAME  Name of the cache
-
-FLAGS
-  -a, --available    List of saved states.
-  -e, --exportCache  Export a named cache to a file
-  -r, --remove       Remove a specific saved cache
-  -w, --wipe         Delete all saved caches
-
-DESCRIPTION
-  Cache the state of chs-dev into a saved file
-```
-
-## `chs-dev state clean`
-
-Wipes the state of chs-dev and revert to a default state
-
-```
-USAGE
-  $ chs-dev state clean [-p]
-
-FLAGS
-  -p, --purge  Wipe state, volumes and images
-
-DESCRIPTION
-  Wipes the state of chs-dev and revert to a default state
-```
-
-## `chs-dev state export NAME`
-
-Export the current state of chs-dev as a named file into the 'exported_state_cache' directory. This is useful when you need to share your setup with others or for backup purposes. The exported file will contain the current state of chs-dev, including the Docker Compose configuration and the state snapshot.
-
-```
-USAGE
-  $ chs-dev state export NAME
-
-ARGUMENTS
-  NAME  Specify the export file name using letters, numbers, and optional underscores or hypens.
-
-DESCRIPTION
-  Export the current state of chs-dev as a named file into the 'exported_state_cache' directory. This is useful when you
-  need to share your setup with others or for backup purposes. The exported file will contain the current state of
-  chs-dev, including the Docker Compose configuration and the state snapshot.
-```
-
-## `chs-dev state restore [NAME]`
-
-Restore and update the state files from saved cache or imported cache.
-
-```
-USAGE
-  $ chs-dev state restore [NAME] [-i <value>]
-
-ARGUMENTS
-  NAME  Name of the cache
-
-FLAGS
-  -i, --importCacheFrom=<value>  Path to the exported cache
-
-DESCRIPTION
-  Restore and update the state files from saved cache or imported cache.
-```
-
-## `chs-dev status`
-
-print status of an environment
-
-```
-USAGE
-  $ chs-dev status [-j]
-
-FLAGS
-  -j, --json  output as json
-
-DESCRIPTION
-  print status of an environment
-
-EXAMPLES
-  $ chs-dev status
-```
-
-## `chs-dev sync`
-
-Synchronises the local version to the version specifed
-
-```
-USAGE
-  $ chs-dev sync [-v <value>] [-f]
-
-FLAGS
-  -f, --force            Forces all changes without prompting the user.
-  -v, --version=<value>  Specifies the version/version range to sync to. When a range is specified it will select the
-                         most recent that satisfies the range
-
-DESCRIPTION
-  Synchronises the local version to the version specifed
-
-  Calls the GitHub API to resolve the version depending on whether the version specified
-  will depend on the number of calls to the GitHub API, the CLI may require the environment
-  variable 'GITHUB_PAT' set with a PAT capable of calling GitHub. GitHub rate limiting
-  will prevent >60 unauthenticated requests an hour.
-```
-
-## `chs-dev troubleshoot analyse [OUTPUTFILE]`
-
-Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user as to how they can resolve the issues encountered.
-
-```
-USAGE
-  $ chs-dev troubleshoot analyse [OUTPUTFILE] [-q]
-
-ARGUMENTS
-  OUTPUTFILE  Path to output the analysis results (if desired)
-
-FLAGS
-  -q, --quiet  Suppresses log output
-
-DESCRIPTION
-  Provides analyses of the environment to determine root cause of any issues encountered. Providing information to user
-  as to how they can resolve the issues encountered.
-```
-
-## `chs-dev troubleshoot report OUTPUTDIRECTORY`
-
-Produces an artifact containing resources to aid others providing assistance
-
-```
-USAGE
-  $ chs-dev troubleshoot report OUTPUTDIRECTORY [-A] [-a <value>]
-
-ARGUMENTS
-  OUTPUTDIRECTORY  Directory to output the produced report to
-
-FLAGS
-  -A, --skipTroubleshootAnalyses      Whether to skip producing the analyses output if not provided as input (Not
-                                      recommended)
-  -a, --troubleshootAnalyses=<value>  Previously generated analyses of the environment
-
-DESCRIPTION
-  Produces an artifact containing resources to aid others providing assistance
-```
-
-## `chs-dev up`
-
-Brings up the docker-chs-development environment
-
-```
-USAGE
-  $ chs-dev up [--otel] [--no-otel] [--env cidev|staging|live]
-
-FLAGS
-  --env=<option>  Set the environment to mimic, this will determine which versions of images are pulled
-                  <options: cidev|staging|live>
-  --no-otel       Disable OpenTelemetry for tracing
-  --otel          Enable OpenTelemetry for tracing
-
-DESCRIPTION
-  Brings up the docker-chs-development environment
-
-EXAMPLES
-  $ chs-dev up
-
-  $ chs-dev up --otel
-
-  $ chs-dev up --no-otel
-
-  $ chs-dev up --env cidev
-```
-
-DOCUMENTATION
-OpenTelemetry is a framework for collecting and exporting traces, metrics, and logs to observe services in chs-dev. When enabled, service logs and metrics can be processed and viewed in the [Grafana interface](http://api.chs.local/grafana).
-[Link to the Opentelemetry documentation](https://companieshouse.atlassian.net/wiki/spaces/TP/pages/5369659489/OpenTelemetry+Instrumenting+Services+with+docker-chs-development)
-<!-- commandsstop -->
-
-## chs-dev Configuration
-
-### Environment configuration
-
-To configure the environment `chs-dev` looks for a file: `chs-dev/config.yaml`
-within the current working directory.
-
-`chs-dev/config.yaml` file contains:
-
-* `env` - `Mapping<string, string>` - provides environment variables for
-  running the Docker Compose services. Values prepended with `file://` will be
-  assumed to be files (unless the file does not exist) and will be replaced
-  with the contents of the file.
-* `authed_repositories` - `List<string>` - Lists ECR repositories which require
-  authentication
-* `ecr_login_threshold_hours` - `number` - Number of hours between attempting
-  to login to ECR repos.
-
-#### Environment variables
-
-* `CHS_DEV_PROJECT` - specifies the directory containing the project files to
-  use to provision the environment
-* `CHS_DEV_CHECK_VERSION` - when set will check the version is correct
-  regardless of when it was previously run
-* `CHS_DEV_FORCE_ECR_CHECK` - when set will always run ECR login before running
-  up
-* `GITHUB_PAT` - when supplied will use the PAT value to authenticate with
-  Github to reduce the likelihood of encountering rate limits when interacting
-  with GitHub's API.
-* `CHS_DEV_NO_PROJECT_VERSION_MISMATCH_WARNING` - when set does not show any
-  warnings relating to version not being suitable for project.
-* `CHS_DEV_SKIP_PROJECT_STATE_VALIDATION` - when set will not check that the
-  project is valid before running any commands
-* `CHS_DEV_SKIP_ECR_LOGIN_CHECK` - when set will not attempt to login to ECR
-* `CH_IBOSS_TRIAL` - when set will bypass the vpn and proxies checks.
-
-### Service configuration
-
-Services should be configured using standard Docker Compose specification.
-There are a few things specific to chs-dev which need to be defined for the
-environment to work as expected
-
-#### Labels
-
-A service should have labels defined, these provide key/value pairs of
-configuration values to Docker Compose as well as chs-dev. The following labels
-are referenced by chs-dev for the given purposes:
-
-* `chs.description` - meaningful description which describes the service
-* `chs.repository.url` - URL to project which Git can use to clone the
-  repository
-* `chs.repository.branch` - default branch to checkout when the repository is
-  cloned
-* `chs.local.builder` - name of a builder to use to build the service in
-  development mode
-  ([refer to the Builders section for more detail](#builders)). When not
-  supplied defaults to `repository` - i.e. expects the repository to contain a
-  Dockerfile capable of building the application.
-* `chs.local.builder.languageVersion` - passes the *major* language version
-  for the builder which the builder can use to set the major version to use
-* `chs.local.repoContext` - when not specifying a builder or builder is
-  `repository`, specify specific part of the repository to use as the build
-  context for the Docker build
-* `chs.local.dockerfile` - specify the Dockerfile within the repository to use
-  for development mode
-* `chs.local.builder.outputDir` - specifies the value for `OUTDIR` on the
-  builder build arg. Typically for node applications which do not build to
-  standard output directory of `dist`.
-* `chs.local.builder.requiresSecrets` - when set to `true` will apply all the
-  secrets defined in the docker compose spec to the builder service
-* `chs.local.builder.useServiceDockerfile` - when set to `true` will us the
-  Dockerfile for the service rather than the one provided by the builder. The
-  equivalent of merging repository builder with one of the builders within the
-  repository.
-* `chs.local.entrypoint` - specifies the entrypoint script for a given service
-  typically for a node application which does not have a
-  `ecs-image-buid/docker_start.sh` file
-* `chs.local.repositoryRequired` - marks the service as requiring the
-  repository locally in order to be run. This is useful where there may not be
-  a remote repository to use for the service. The service can define its own
-  build configuration referencing its repository/Dockerfile.
-* `chs.deprecated` - when set to `true` the service is deprecated and no longer
-  in use, useful where there are multiple service definitions for the same
-  service and only want to maintain one.
-
-#### Dependencies
-
-chs-dev uses the Docker Compose `depends_on` specification for deriving an
-exhaustive list of services to run as defined by the enabled services/modules
-and their dependencies.
-
-### Builders
-
-In this project, a builder is a template Docker Compose spec with service(s)
-capable of taking a project repository and building it to a runnable service.
-For example, a service which needs compiling before being run a service could
-take care of building it.
-
-A builder is a directory within `local/builders` and versions of the builder
-are sub-directories within it. The spec file must have the name
-`builder.docker-compose.yaml`. The builder spec can have any of the following
-strings which are replaced when a development Docker Compose spec file is
-generated:
-
-* `<service>` becomes the name of the service
-* `<chs_dev_root>` becomes the absolute path to root of the chs-dev project
-* `<repository_path>` becomes the relative path of the repository from the root
-  of the project
-* `<absolute_repository_path>` becomes the absolute path to the repository
-
-An example template spec is below:
+npm install
+npm run dev
+npm run dev -- status --json
+npm run dev -- start --yes
+```
+
+See [CLI commands and compatibility](docs/cli.md) for installation, daemon controls,
+automation, exit codes and legacy behaviour. Both frontends operate the same daemon.
+
+The TUI connects to one daemon per user, which manages one selected checkout.
+On macOS the first launch also installs a login service. Closing the TUI leaves
+accepted operations and health monitoring running. After a new login or reboot,
+starting the environment is explicit. See [daemon operation](docs/daemon.md) for
+service controls, startup environment, recovery and the shared API.
+
+Press `q` outside search or `Ctrl+C` to exit and return to the shell.
+Switch between Services, Containers, Modules, Enabled, Logs, and Config with `Ctrl+N` / `Ctrl+P`
+(or Ctrl+Tab / Ctrl+Shift+Tab where supported). Left/right arrows switch tabs
+everywhere outside modals. Outside Modules, Tab and Shift+Tab also switch tabs.
+Services loads asynchronously after the first screen appears. It reads service names from
+Compose YAML under `services/modules/<module>` and groups them by module. Shared services,
+including nested infrastructure stacks, appear under Infrastructure. Names are sorted and
+deduplicated within each group. Logs shows daemon events and environment output. Config lists and edits the
+TUI settings (see [Settings](#settings)). Invalid projects or unreadable service files show an error.
+
+Each service shows Enabled, Status, and Mode:
+
+- Enabled reads `.chs-dev.yaml` at startup, including module selections, transitive
+  dependencies, and exclusions. Base infrastructure is included. A missing state file
+  means no optional services are selected; an invalid state file shows Unknown.
+- Mode uses `servicesWithLiveUpdate` for Development. The dedicated `ch-service-mock`,
+  `chips-filing-mock`, and `sockpuppet` services show Mock unless in Development.
+  Other services show Service. The current CLI has no generic per-service mock-mode setting.
+- Docker status loads separately and refreshes every five seconds after each completed
+  request. Containers are matched by Compose service and project working-directory labels;
+  one-off containers and other checkouts are ignored. Running means no reported health
+  status; Healthy/Unhealthy come from Docker health checks. No container means Stopped.
+  Exit codes are interpreted: 0 without a health check is Completed (one-shot jobs such
+  as `execute-mongo-scripts`), SIGTERM/SIGKILL exits from `docker stop` are Stopped, and
+  any other exit (including OOM kills) is Exited, shown as an error.
+  Docker failures show Unknown and retry without blocking navigation. Environment state
+  and user intent are checkpointed privately, separately from project configuration.
+
+Use Up/Down to select services and scroll. Press `/` and type to filter service or module
+names immediately. Up/Down leaves search and navigates the matches without Enter.
+Outside search, press **e** to cycle **All → Enabled → Disabled**. The header shows
+the current choice and matching count. This uses configured Enabled values and
+combines with the name/module search; services with Unknown configuration appear
+only under All.
+Escape leaves search, then clears both filters; otherwise it exits the app.
+Tab or Left/Right switches tabs and ends search while keeping the filters.
+
+Modules provides a two-panel explorer. Up/Down browses modules and services;
+Enter expands or collapses a module. Selecting a service shows its
+dependency tree automatically. Tab switches panel focus. Press `d` for Depends on
+or `u` for Used by. Left/Right switches tabs from either panel.
+Both trees include indirect relationships and mark shared references and cycles.
+
+Enabled shows only configured-enabled services as a dependency tree, grouped by the
+module of each root service. Shared dependencies expand once, and cyclic components
+remain visible. Disabled/excluded services are omitted. Up/Down scrolls with a centered
+selection; Enter opens configuration. The tree refreshes after applying modal edits.
+The tree reflects configuration, not which containers happen to be running; each entry
+also shows a coloured status dot and the live Docker status (refreshed with the Services
+tab), and the header shows the Env summary.
+Press `/` to filter module or service names; matching modules expand automatically.
+Up/Down leaves search without Enter. Enter on a service in either panel opens the
+configuration modal. Scrolling stays centered except at list boundaries.
+
+Press Enter on a service to open its configuration modal. Up/Down selects a row;
+Enter or Space toggles Enabled or the supported mode. **Save & apply** (while the
+environment is running with auto-apply on) or **Save** writes the changes to
+`.chs-dev.yaml` and refreshes the list. Escape or Close discards unsaved edits. The modal captures navigation so the background list stays selected.
+Development is offered only for services with a builder label; dedicated mocks
+return to Mock when development is disabled. Base infrastructure cannot be disabled.
+Saving applies the change straight away only while the environment is running and
+auto-apply is on; otherwise the edit is shown as a pending change (see
+[Environment](#environment)). When the service has a container, the modal also offers
+**Restart**, **Stop** or **Start** container and **Show container logs** (last 200 lines,
+`r` refreshes). Services running in Development mode also offer **Reload (rebuild from
+source)**, which rebuilds the image and re-runs the builder while the environment is
+running. The modal stays usable during the rebuild; progress is shown in Ctrl+E.
+
+The modal's Dependencies submenu shows a tree of direct and indirect dependencies.
+Shared dependencies expand once and subsequent references are marked `(shared)`;
+cycles are marked `[Cycle]` and cannot be toggled. Space or Enter
+toggles Allowed/Excluded; Up/Down scrolls through longer lists. Allowed removes an explicit
+exclusion and lets normal dependency resolution decide whether to enable the service.
+Exclusions apply project-wide, including when another service shares the dependency.
+Required base infrastructure cannot be excluded. Escape returns to the main modal with
+edits still staged; Save saves them together, while Close discards them.
+
+Native orchestration supports both Docker and Apple containers. Selecting Apple in
+Config also selects Native. Changing the backend stops the current environment and
+activates the selection; then choose Start when ready. Apple requires
+Apple silicon, macOS 26+ and container CLI/service 1.5.0+. See
+[native runtime setup and limitations](docs/native-orchestration.md#apple-containers).
+
+## Containers
+
+The **Containers** tab lists running and stopped containers from the selected engine.
+It defaults to this checkout (including native containers, Compose services and builder
+jobs). Press **a** to switch to all containers on the engine, **/** to filter by name,
+image, service or status, and **Enter** to open the selected container. The list and
+open details refresh every five seconds; **r** refreshes immediately.
+
+Container details and their logs fill the terminal window. **Esc** returns from
+logs to details, then back to the container list with its filter and selection kept.
+The header identifies Details, Inspect or Logs and shows **← Back (Esc)**.
+
+Details include the full container ID, image reference, version/tag or digest, image ID,
+status and health, timestamps, exit code, published ports, mounts and networks.
+Use **s** to start/stop, **x** to restart, **l** for logs, and **i** for inspection JSON.
+Up/Down and Page Up/Down scroll the details. Logs show the latest 200 lines with **r**
+to refresh. Long log lines wrap to the available width; scrolling and paging count
+the wrapped rows. The view adjusts when the terminal is resized.
+Inspection hides environment values and credential fields; neither
+inspection nor container log output is copied into the TUI diagnostic log.
+
+On **Services**, press **c** on a service or choose **View container details** from its
+Enter menu. A single primary container opens directly; multiple replicas or builder
+containers appear in a service-filtered list. If no container exists, start or apply
+the environment to create it. Escape clears the service filter.
+
+Container controls act on the exact selected ID and never pull images or create
+containers. They affect that container only, without service dependency propagation
+or readiness waits. Use the environment/service controls for orchestration. Actions
+share the environment operation lock; manual stops for this checkout are recorded.
+The All containers view also permits actions on containers outside this checkout.
+A deleted/recreated container must be selected again before acting on its replacement.
+
+`domain/containers.ts` defines the engine-neutral management interface separately from
+orchestration. Both Docker backends supply `DockerContainerManager`; the native
+backend shares its pinned engine connection. Future runtimes can supply another
+manager without changing the tab or details view. Apple supplies its own manager.
+
+## Settings
+
+Settings are stored in `$XDG_CONFIG_HOME/chs-dev/tui.yaml` (default
+`~/.config/chs-dev/tui.yaml`), next to the legacy CLI's `inventory.yaml`, which is never
+read or changed. Edit them on the **Config** tab: Up/Down selects a setting and Enter
+opens its editor. Each value shows where it came from: `env`, `file`, or `default`.
 
 ```yaml
-services:
-  <service>-builder:
-    build:
-      dockerfile: local/builders/my-awesome-builder/v3/build.Dockerfile
-      context: <chs_dev_root>
-      args:
-        one: two three
-    volumes:
-      - <absolute_repository_path>:/opt/out
-      - ${HOME}/.m2:/root/.m2
-    develop:
-      watch:
-        - path: .touch
-          action: rebuild
-
-  <service>:
-    build:
-      dockerfile: local/builders/my-awesome-builder/v3/Dockerfile
-      context: <chs_dev_root>
-      args:
-        one: two three
-    volumes:
-      - <absolute_repository_path>:/opt/out
-    depends_on:
-      <service>-builder:
-        condition: service_completed_successfully
-        restart: true
-
+version: 1
+project: ~/Workspace/docker-chs-development
+runtime: docker # docker | apple (Apple requires native)
+orchestrator: compose # compose | native
+aws:
+  profile: development-eu-west-2
+  ecrProfiles:
+    - development-eu-west-2
+    - shared-services-ecr-eu-west-2-ro
+autoApply: true
+login:
+  action: registry # aws | registry | ask (default)
+  auto: needed # off | needed (default) | expired
 ```
 
-Within these directories can be an useful resources for the images or the
-builder.
+Environment variables override the file. Values from the environment still appear on
+the Config tab. Saving writes the file, and the page warns that the environment value
+stays active until the daemon startup environment is updated. A new frontend shell
+does not override an existing daemon.
 
-To select a builder the service must have a `chs.local.builder` label which is
-the name of the directory. Optionally, it can have a
-`chs.local.builder.languageVersion` to customise the specific major version for
-any language or base image(s) used. When no builder label is supplied the
-generated spec file will point at the root of the repository and expect a
-Dockerfile to be present. This can be further customised with the
-`chs.local.dockerfile` and `chs.local.repoContext` labels.
+| Setting            | Environment override                      | Default                                   | Applies     |
+| ------------------ | ----------------------------------------- | ----------------------------------------- | ----------- |
+| Project directory  | `CHS_DEV_PROJECT`                         | current working directory                 | reconfigure |
+| Container engine   | `CHS_DEV_RUNTIME`                         | `docker`                                  | reconfigure |
+| Orchestration      | `CHS_DEV_ORCHESTRATOR`                    | `compose`                                 | reconfigure |
+| AWS profile        | `AWS_PROFILE` / `AWS_DEFAULT_PROFILE`     | `default`                                 | now         |
+| ECR login profiles | `CHS_DEV_ECR_PROFILES` (comma list)       | profiles detected from project registries | now         |
+| Auto-apply edits   | `CHS_DEV_AUTO_APPLY` (true/false)         | on                                        | now         |
+| Ctrl+L login       | `CHS_DEV_LOGIN` (aws/registry/ask)        | ask every time                            | now         |
+| Automatic login    | `CHS_DEV_AUTO_LOGIN` (off/needed/expired) | when needed                               | now         |
+
+Blank environment values are ignored. File paths must be absolute or start with `~/`.
+A relative `CHS_DEV_PROJECT` resolves from the app's working directory; note that
+`npm run` uses the package directory. Saves preserve comments and unknown keys, and
+use a temporary-file rename. A save is rejected if another client or external edit
+changed the revision; close the editor and review the refreshed values. An invalid file or value is reported on the Config tab and
+ignored, so defaults apply. Changing the project, runtime or orchestration shows
+a stop-and-reconfigure operation. The old checkout must stop successfully before
+the selection changes; data volumes are retained. Start the newly selected
+environment explicitly. External settings edits are refreshed without switching
+a backend automatically; select the pending setting to apply it.
+
+**Project picker.** Editing the project searches your home directory in the background
+(depth 5; hidden directories, symlinks, `~/Library`, `node_modules`, `vendor`,
+`target`, `dist`, `build` and similar trees are skipped). Results appear as they are
+found. A directory counts as a checkout only if its Git `origin` is
+`companieshouse/docker-chs-development` over SSH or HTTPS; worktree `.git` files are
+supported. Choose one with Enter, or:
+
+- **Enter a path manually** accepts `~/` paths and checks the project structure. It asks
+  for confirmation if the checkout's origin does not match.
+- **Clone into a new location** defaults to `~/Workspace/docker-chs-development` (or
+  `~/docker-chs-development` without `~/Workspace`). The parent must exist and the
+  target must not. The TUI hands the terminal to `git clone` so SSH prompts are visible,
+  then selects the new checkout.
+
+If there is no valid project at startup, the TUI still opens. It shows Config with the
+picker open, and other tabs show “No project selected — choose one in Config”. Its
+daemon logs go to `$XDG_STATE_HOME/chs-dev/daemon/`
+(default `~/.local/state/chs-dev/daemon/`).
+
+**State directory.** Everything chs-dev creates for a project (log, lock and prepared
+Compose files) lives in `$XDG_STATE_HOME/chs-dev/projects/NAME-HASH/`, where `NAME` is the
+checkout's directory name and `HASH` identifies its real path. Nothing is written to the
+checkout for chs-dev's own use.
+
+**ECR login profiles.** The checklist lists every AWS profile with its region. Space
+toggles a profile, Enter saves the checked profiles, and `r` returns to automatic
+detection. Automatic detection scans the project's `services/` and `local/builders/`
+files for `<account>.dkr.ecr.<region>.amazonaws.com` registries. It then matches each
+registry to a profile by the account (`sso_account_id` or `role_arn`) and region in
+`AWS_CONFIG_FILE` or `~/.aws/config`, preferring the primary profile. Matched profiles
+are marked **required** and pre-checked. Registries that no profile covers are listed.
+Only profile names, regions and account IDs are read, never credentials.
+
+Select a checkout in Config. `CHS_DEV_PROJECT` can also select one at daemon
+startup; it does not change a daemon that is already running.
+
+Validation checks for readable `global.env` and `bin/chs-dev` files, and accessible
+`services/modules` and `services/infrastructure` directories. The checkout can have
+any directory name. This checks its structure, not whether Docker or services are running.
+
+The UI fills the terminal's alternate screen and resizes with the window, restoring your previous terminal content on exit.
+The development command runs TypeScript directly. Restart the daemon after server
+source changes with `npm run daemon -- restart`; reopen the TUI after frontend changes.
+
+```sh
+npm run typecheck
+npm test
+npm run build
+npm start
+```
+
+- `src/entrypoints/` launches the TUI, daemon and service controls.
+- `src/server/`, `src/protocol/` and `src/client/` implement local IPC.
+- `src/application/` owns operations, checkout sessions and supervision.
+- `src/domain/` contains pure rules and engine-neutral contracts.
+- `src/project/` handles checkout discovery, configuration and preparation.
+- `src/infrastructure/` handles engines, credentials, processes and durable state.
+- `src/tui/` contains frontend hooks, models, screens and keyboard handling.
+- `src/daemon-control/` discovers the daemon and manages its macOS login service.
+- `dist/` contains the compiled application after building.
+
+The UI saves configuration and reads Docker state. Containers change only when you start,
+stop or apply from the Environment panel, use a per-service action, or save an edit while
+the environment is running with auto-apply on.
+
+See [architecture](docs/architecture.md) for data flow, input ownership, and extension guidance.
+
+Native orchestration is available for Docker and Apple. Set **Orchestration**
+to **Native** in Config; the daemon stops the previous backend before switching.
+`CHS_DEV_ORCHESTRATOR=native` is a daemon startup override. Native data is separate
+from Compose data.
+See [native orchestration](docs/native-orchestration.md) for behaviour, requirements
+and the supported feature set. Docker Compose remains the default.
+
+The bottom status bar checks AWS authentication asynchronously on startup and every
+thirty seconds after each completed check. It uses `aws sts get-caller-identity` with the
+configured AWS profile (see [Settings](#settings)), passed
+explicitly to the CLI so status checks and login target the same profile. “Session active”
+means the current credentials work; it does not claim a separate SSO browser session
+or container registry login is active. Expired/missing credentials, missing AWS CLI, profile
+configuration errors, and connection failures have distinct labels. Checks time out
+after 12 seconds. Observation continues when the TUI exits.
+
+Press `Ctrl+L` outside a modal to log in. By default a dialog offers **AWS + registry
+login** (pre-selected) or **AWS login** every time. Tick **Don't ask again** (select the
+row and press Enter, or press Space) to save the chosen login as the **Ctrl+L login**
+setting; later presses then run it straight away with no dialog. The result appears
+briefly in the status bar, and a failure opens the dialog with the details. Set
+**Ctrl+L login** back to **Ask every time** in Config (or `CHS_DEV_LOGIN=ask`) to see
+the dialog again.
+
+**Automatic login** (Config) starts a login without Ctrl+L:
+
+- **When needed** (default): when starting or applying stops for an AWS or ECR login,
+  chs-dev logs in and then continues the operation, including while the Environment
+  window is open. Other dialogs defer automatic login until they close.
+- **As soon as the AWS session expires**: when the background AWS check reports an expired
+  session, and no dialog or operation is in progress.
+- **Off**: only Ctrl+L logs in.
+
+An expired AWS session needs browser approval, so an automatic login hands the
+terminal to the login command with a line explaining why. It uses the Ctrl+L login (AWS +
+registry unless you chose AWS only; ECR failures always use AWS + registry). Each expiry or
+block is tried once: a cancelled or failed login is not repeated until credentials are
+active again or the environment settles. The Environment panel's
+login fixes run the login it needs directly. The two logins are:
+
+- **AWS login** runs `aws sso login --profile <profile>`.
+- **AWS + registry login with Docker** runs `l_docker -p <profile> [-p <profile> …]`, once for each
+  ECR login profile, using the installed `~/.ch_dev/bin/l_docker` when available,
+  otherwise looking on PATH. The dialog shows which profiles will be used. For this
+  project, those are usually `development-eu-west-2` and `shared-services-ecr-eu-west-2-ro`
+  (CI build images). `l_docker` still needs `~/.aws/companies_house/dev.config`.
+- **AWS + registry login with Apple** obtains an ECR password for each selected
+  profile and sends it to `container registry login` through stdin. Expired AWS
+  sessions trigger `aws sso login` for that profile before retrying once; active
+  sessions do not need another browser login. Apple registry credentials are
+  separate from Docker's.
+
+The TUI temporarily attaches its terminal to the daemon-owned command so browser login
+instructions and errors remain visible. Ctrl+C cancels login and restores the
+TUI. Private terminal output is streamed only to the attached frontend; failures
+show a safe result in the login dialog.
+A failure returning to the TUI or resuming the environment does not overwrite a successful login result.
+After completion, AWS credentials are checked immediately; the command result
+stays in the login dialog, separately from AWS status. AWS status is refreshed after login. Closing the dialog preserves the current tab, selection, and filter.
+For Docker, registry login requires the existing dev-env-setup helper and a running
+Docker daemon. Apple uses its own registry login with credentials passed through
+stdin. Neither login action installs tools or starts an engine. If starting or applying fails with an ECR
+`403 Forbidden` or `authorization token has expired`, the Environment panel names the
+registry. It tells you to run **AWS + registry login** and to check the ECR login profiles.
+
+The runtime backend setting defaults to `docker`. The selected backend
+appears in Config and the status bar. Docker and Apple inspection and registry login
+use runtime strategies; AWS SSO login remains shared. Apple requires Native
+orchestration. Unsupported runtimes such as Podman produce an explicit error.
+
+## Environment
+
+Press **Ctrl+E** (Ctrl+R still works) to open the **Environment** panel. It shows only
+the actions that apply now, with the recommended one first:
+
+- **Start environment** checks AWS, prepares images and starts the enabled services.
+  It begins immediately; confirmation is asked only if the plan would stop services
+  that are running. Press `d` for the planned service list.
+- **Apply changes** applies saved edits that are pending.
+- **Stop environment** stops and removes this checkout's containers; data volumes are kept.
+- **Restart failing services**, **Auto-apply edits: On/Off** and **View logs**.
+
+While an operation runs, the panel shows its steps and the last output lines. Esc closes the
+panel without cancelling; `x` cancels. When something needs you, the panel explains the
+cause and offers the fix directly: **Log in to AWS + registry**, **Set up SSH access**,
+**Try again** or **View logs** (Logs with the Problems filter).
+
+**Auto-apply edits** (Config, default on): while the environment is running, saving a
+service edit applies it straight away. When off, or while stopped, edits are saved and
+shown as pending changes until you apply or start.
+
+On launch the environment counts as running if this checkout's containers are up;
+nothing is started or stopped automatically. Containers stopped or started outside
+chs-dev are reported as **Changed outside chs-dev** with an Apply changes fix; this
+never blocks later edits. One-shot jobs that exit 0, such as `execute-mongo-scripts`,
+count as done.
+
+Native initialization uses the same best-effort approach as the Compose script
+runner: a script's nonzero exit code becomes a warning, and the remaining scripts
+and dependent services can start. Warnings identify the script and error in
+**Logs → Environment output** and in the initialization task's logs. An error can
+leave that script's seed data incomplete. Completed attempts are remembered,
+including warnings, so unchanged scripts are not repeated on every start. Edit
+the script or set `FORCE_RUN` on the initialization service to rerun it. Scripts
+also run again when their target's data storage is replaced. Cancellation,
+timeouts and failures to read or execute scripts still stop initialization.
+
+The status bar shows one environment state and its next step:
+
+| Status bar                          | Meaning                                                        |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `○ Stopped · Ctrl+E start`          | No enabled service is running                                  |
+| `◌ Starting 12/33 · pulling images` | An operation is running; the current step is shown             |
+| `● Running 33/33`                   | Every enabled service is Running, Healthy or Completed         |
+| `✕ 2 failing · 31/33 up`            | Some enabled services are Unhealthy, Exited (crashed) or Dead  |
+| `… · 3 changes pending · Ctrl+E`    | Saved edits are not applied yet                                |
+| `▲ Needs AWS + registry login`      | Press Ctrl+L; the pending operation resumes after login        |
+| `▲ Needs SSH access · Ctrl+E`       | Development builders need the Docker SSH secret files          |
+| `✕ Start failed · Ctrl+E details`   | The last operation failed; the panel opens with the error once |
+
+"Running" means configuration applied and containers up, not that every service is
+fully ready; the health columns remain authoritative. Failing services are not
+restarted automatically.
+
+**The project checkout is read-only input.** chs-dev installs nothing in the project and
+runs no code from it. It reads `services/**/*docker-compose.yaml`, `local/builders/*`,
+`global.env`, `.env` and `.chs-dev.yaml`, and generates a self-contained Compose file for
+the current configuration in its own state directory. The only project files it writes are
+the ones the checkout already expects: `.chs-dev.yaml` (your selections), clones in
+`repositories/SERVICE`, and the SSH secret files in `local/`. The project only needs to
+be a docker-chs-development checkout (`bin/chs-dev` and `services/` present).
+After changing service definitions externally, restart the daemon to rediscover them.
+Development services are built by the existing builder templates in `local/builders`.
+**Reload (rebuild from source)** runs a normal apply, then
+`compose up --build --force-recreate --no-deps` for the service and its builder (for
+example `SERVICE-builder`), so Java services re-run Maven and restart on the new jar.
+chs-dev does not run `docker compose watch`.
+The standard `custom-init.sh` (which only exports AWS session credentials) is recognised
+and never run: services reading `aws-session.env` receive the credentials through Compose
+interpolation instead, so nothing is written to disk. A modified or unrecognised
+`custom-init.sh` blocks starting with an explanation.
+
+Preparation and Compose share an in-memory environment snapshot, in increasing
+precedence: `global.env`, project `.env`, the daemon startup environment,
+canonical `CHS_DEV_ROOT`, and freshly exported AWS credentials. Environment files
+are parsed as dotenv data, never sourced as shell scripts. Snapshots are refreshed
+for each operation, not modified by edits during an active operation. Compose's
+implicit `.env` loading is disabled for these commands; declared service `env_file`
+entries remain supported.
+Bare `environment` entries such as `- KEYCLOAK_SECRET` (or `KEYCLOAK_SECRET:`
+in map syntax) inherit a value when available and are omitted when unset, matching
+Compose. A service may still need that value for its own functionality. For a
+service-specific secret, use the selected checkout's `.env`; a connected frontend's
+shell exports do not update the persistent daemon.
+Existing development repositories at `PROJECT/repositories/SERVICE` are reused
+without Git updates or resets; missing repositories are cloned there once.
+
+When a selected development builder declares `requiresSecrets`, starting checks for
+the standard Docker SSH secret files before requesting AWS credentials or
+mutating Compose. If they are missing or invalid, the Environment panel offers a
+TUI-native SSH setup flow. It first uses `ssh -G github.com` to find a usable
+identity and also accepts an explicit key path. Relative paths are resolved
+from the project checkout, while `~` and absolute paths are accepted as written.
+The application creates
+`PROJECT/local/.ssh_key` as a symlink and writes
+`PROJECT/local/.ssh_key_passphrase` atomically with owner-only `0600`
+permissions; it never copies, displays, or logs private-key contents or
+passphrases. Existing valid setup is reused, while repair or replacement always
+requires an explicit confirmation. The legacy `bin/init` flow remains available
+for the separate interactive CLI but is not required here.
+
+Saved edits are debounced by 250 ms. Only one operation runs per checkout; later saves
+replace queued work, never the active snapshot. External configuration edits are detected
+by polling. A `live.lock` in the project's state directory prevents competing TUI sessions. If a session crashes,
+remove that lock only after confirming no session or owned command remains.
+
+Cancel (`x`) terminates owned commands, refreshes actual state, and keeps pending work
+until you try again or save a newer edit. No operation rolls back completed Docker changes.
+Exit cancels commands and releases the lock without stopping containers.
+Failed operations open the Environment panel once with the error highlighted. If another
+modal is open, the notice waits until it closes; Ctrl+E and Logs retain the details.
+Preparation failures show the reason (for example an unknown service or a missing
+`env_file`) in the Environment panel.
+
+Fresh AWS verification is required before preparation and starting/recreating containers.
+Changes waiting for login stay pending; **Ctrl+L** (or the panel's login fix) resumes them
+after successful verification. ECR failures require **AWS + registry login**, not just AWS login.
+Stop-only changes for services with verified matching modes require neither AWS credentials
+nor fresh preparation. Containers without mode metadata are treated conservatively and may
+require preparation. Only verified container IDs belonging to this checkout and Compose
+project are stopped, restarted or removed; chs-dev never runs `down`, deletes volumes, or
+removes broad orphans.
+
+Logs defaults to durable TUI lifecycle events, including errors while the environment is stopped.
+The displayed file is `tui.log` (JSON lines) in the project's state directory. It rotates at
+5 MiB to `.1` and `.2` (oldest removed), uses owner-only `0600` permissions, and
+rejects symbolic links/nonregular log files. Rotation touches only those named files.
+Retention is size-based, not time-based; existing oversized logs rotate on the next write.
+The TUI keeps the latest 500 structured events in memory, independent of file retention.
+Session and operation UUIDs correlate configuration saves, login and environment operations;
+revision hashes identify configuration snapshots. Resolving the service inventory writes
+nothing.
+
+The Logs tab renders each event as a readable line, `time  category  message`, e.g.
+`14:44:09 Env    Start requested` or
+`14:46:02 Docker docker compose up failed with exit code 1 (3m 0s)`. Errors are red and
+warnings amber. Routine detail (command starts/successes, lock and revision events) is
+hidden until you press **v**.
+
+| Key           | Action                                                                    |
+| ------------- | ------------------------------------------------------------------------- |
+| `c` / `C`     | Cycle filter: All, Env, Docker, AWS, Config, App, Problems (errors/warns) |
+| `/`           | Search text; Enter keeps the query, Esc clears it                         |
+| `v`           | Show or hide routine detail                                               |
+| `r`           | Show the raw JSON lines (current filter still applies)                    |
+| `s`           | Switch between TUI events and in-memory environment output                |
+| ↑ ↓ PgUp PgDn | Scroll (pauses following); `f` or End resumes following                   |
+
+Environment output uses the same filters: phase messages are Env, Compose/runtime output is
+Docker, and lines mentioning errors, denials or non-zero exits are Problems.
+
+Structured logging allows only known events, statuses, numeric outcomes, validated service
+identifiers, revision hashes, and for commands the program name plus known verbs (for
+example `docker compose up`; never paths or other arguments). Raw errors, YAML, environment values, AWS output and child
+output are **not persisted** in `tui.log`. Polling logs transitions/recovery, not every poll.
+Initial logging failure prevents startup; later failures warn on stderr and in Logs without
+changing command outcomes or retrying operations. Writes are synchronous and bounded, not
+crash-proof audit storage; concurrent independent writers are not coordinated.
+
+Press `s` in Logs to view environment output instead (memory-only, 5,000 lines, 2,000 characters
+per line, terminal controls removed and credential redaction applied). Redaction is
+best-effort, so this output is deliberately not sent to durable storage.
+Use Up/Down or PgUp/PgDn to scroll and `f`/End to follow the tail.
+Prepared Compose files live under `operations/` in the project's state directory; they are
+retained because containers can reference generated files. Remove them only after those
+containers are no longer using them. Credentials are passed in child-process memory, never
+written to generated files.
+
+Environment validation is deliberately unit-only, using injected fakes and in-memory files:
+
+```sh
+npm run test:unit
+npm run typecheck
+npm run build
+npm run format:check
+```
+
+Real Docker/AWS, browser, subprocess, PTY, and integration compatibility verification is
+deferred to a later phase. The broader legacy `npm test` suite includes subprocess and
+filesystem tests and is not part of the unit-only validation.
+
+For the interactive login regression check on macOS/Linux, run
+`npm run build && python3 test/login-terminal.py`. It uses stub AWS and Docker
+commands without changing credentials or containers.
+
+## Code quality
+
+Run `npm run check` for formatting, lint, complexity, and type checks.
+Run `npm run format` to apply four-space Prettier formatting, or
+`npm run format:check` to verify it. Run `npm test` for application and tooling tests.
+
+Run `npm run complexity:report` to find nesting and complexity hotspots, and
+`npm run complexity:check` to check against the existing warning baseline.
+See [code quality checks](docs/code-quality.md) for thresholds and limitations.

@@ -1,0 +1,368 @@
+{
+    "date": "2026-10-02",
+    "rule": "local/combined-nesting",
+    "limit": 3,
+    "initialCount": 39,
+    "findings": [
+        {
+            "file": "src/application/live-controller.ts",
+            "line": 516,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Manual-stop bookkeeping has one helper shared by container and service actions."
+        },
+        {
+            "file": "src/application/live-controller.ts",
+            "line": 589,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Manual-stop bookkeeping has one helper shared by container and service actions."
+        },
+        {
+            "file": "src/client/client.ts",
+            "line": 181,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Operation subscriptions, timeout and abort cleanup have a dedicated wait boundary."
+        },
+        {
+            "file": "src/client/client.ts",
+            "line": 183,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Operation subscriptions, timeout and abort cleanup have a dedicated wait boundary."
+        },
+        {
+            "file": "src/client/connection.ts",
+            "line": 33,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "JSON and event response readers own buffering, decoding and completion; transport callbacks delegate."
+        },
+        {
+            "file": "src/client/connection.ts",
+            "line": 38,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "JSON and event response readers own buffering, decoding and completion; transport callbacks delegate."
+        },
+        {
+            "file": "src/client/connection.ts",
+            "line": 116,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "JSON and event response readers own buffering, decoding and completion; transport callbacks delegate."
+        },
+        {
+            "file": "src/client/connection.ts",
+            "line": 122,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "JSON and event response readers own buffering, decoding and completion; transport callbacks delegate."
+        },
+        {
+            "file": "src/domain/orchestration.ts",
+            "line": 128,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Dependency existence validation is separate from recursive traversal."
+        },
+        {
+            "file": "src/entrypoints/server.ts",
+            "line": 23,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Ordered shutdown uses the shared cleanup helper; lease release owns signal-handler removal."
+        },
+        {
+            "file": "src/infrastructure/aws-profiles.ts",
+            "line": 139,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Directory traversal uses early continue for files and excluded directories."
+        },
+        {
+            "file": "src/infrastructure/backend-guard.ts",
+            "line": 42,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Proxy selection delegates to named ownership and monitor handlers outside its branches."
+        },
+        {
+            "file": "src/infrastructure/backend-guard.ts",
+            "line": 55,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Proxy selection delegates to named ownership and monitor handlers outside its branches."
+        },
+        {
+            "file": "src/infrastructure/backend-guard.ts",
+            "line": 64,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Proxy selection delegates to named ownership and monitor handlers outside its branches."
+        },
+        {
+            "file": "src/infrastructure/docker-containers.ts",
+            "line": 70,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Connection setup and context pinning have a named boundary outside cached promise handling."
+        },
+        {
+            "file": "src/infrastructure/native/docker-adapter.ts",
+            "line": 723,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Saved-volume validation runs in its own helper before container creation."
+        },
+        {
+            "file": "src/infrastructure/native/docker.ts",
+            "line": 112,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Response buffering and HTTP failure completion are separate from request construction."
+        },
+        {
+            "file": "src/infrastructure/native/docker.ts",
+            "line": 121,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Response buffering and HTTP failure completion are separate from request construction."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 903,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Network alias projection has a helper outside discovery loops."
+        },
+        {
+            "file": "src/infrastructure/native/runtime.ts",
+            "line": 108,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Dependency restart selection has a predicate outside the fixed-point traversal."
+        },
+        {
+            "file": "src/infrastructure/native/state.ts",
+            "line": 82,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Script fingerprinting exits early when no initialization scripts are required."
+        },
+        {
+            "file": "src/infrastructure/native/state.ts",
+            "line": 84,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Script fingerprinting exits early when no initialization scripts are required."
+        },
+        {
+            "file": "src/project/prepare.ts",
+            "line": 309,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Resource file access validation has a helper outside service and resource loops."
+        },
+        {
+            "file": "src/server/bootstrap.ts",
+            "line": 139,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Supervisor lease acquisition, backend close and host-search candidate reads have named boundaries."
+        },
+        {
+            "file": "src/server/bootstrap.ts",
+            "line": 169,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Supervisor lease acquisition, backend close and host-search candidate reads have named boundaries."
+        },
+        {
+            "file": "src/server/bootstrap.ts",
+            "line": 242,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Supervisor lease acquisition, backend close and host-search candidate reads have named boundaries."
+        },
+        {
+            "file": "src/tui/app.tsx",
+            "line": 267,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Login interaction is a named operation outside the terminal handover callback."
+        },
+        {
+            "file": "src/tui/components/container-details.tsx",
+            "line": 115,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Inspection refresh has a stable callback; shared polling owns scheduling and cancellation."
+        },
+        {
+            "file": "src/tui/components/container-details.tsx",
+            "line": 121,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Inspection refresh has a stable callback; shared polling owns scheduling and cancellation."
+        },
+        {
+            "file": "src/tui/components/container-details.tsx",
+            "line": 126,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Inspection refresh has a stable callback; shared polling owns scheduling and cancellation."
+        },
+        {
+            "file": "src/tui/components/logs-screen.tsx",
+            "line": 53,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Diagnostics refresh has a stable callback; shared polling prevents overlapping requests."
+        },
+        {
+            "file": "src/tui/components/modules-browser.tsx",
+            "line": 340,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Search input maps to semantic actions outside the navigation branches."
+        },
+        {
+            "file": "src/tui/components/project-picker-modal.tsx",
+            "line": 134,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Choose and clone are direct async operations with early validation returns and guarded errors."
+        },
+        {
+            "file": "src/tui/components/project-picker-modal.tsx",
+            "line": 135,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Choose and clone are direct async operations with early validation returns and guarded errors."
+        },
+        {
+            "file": "src/tui/components/project-picker-modal.tsx",
+            "line": 169,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Choose and clone are direct async operations with early validation returns and guarded errors."
+        },
+        {
+            "file": "src/tui/components/settings-modals.tsx",
+            "line": 381,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Text-input validation and save use the shared guarded modal-save hook."
+        },
+        {
+            "file": "src/tui/hooks/use-containers.ts",
+            "line": 27,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Container refresh has a stable callback; shared polling owns scheduling and cancellation."
+        },
+        {
+            "file": "src/tui/hooks/use-containers.ts",
+            "line": 32,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Container refresh has a stable callback; shared polling owns scheduling and cancellation."
+        },
+        {
+            "file": "src/tui/hooks/use-containers.ts",
+            "line": 37,
+            "rule": "local/combined-nesting",
+            "message": "Combined nesting depth is 4. Maximum allowed is 3. Flatten the control flow or extract a named operation.",
+            "suggestion": "Separate callback handling from parsing or policy; preserve the operation boundary.",
+            "status": "resolved",
+            "resolution": "Container refresh has a stable callback; shared polling owns scheduling and cancellation."
+        }
+    ],
+    "finalCount": 0,
+    "verifiedWith": [
+        "npm run complexity:json",
+        "npm run check",
+        "npm test",
+        "npm run build",
+        "npm run test:docker",
+        "CHS_APPLE_INTEGRATION=1 node --import tsx --test test/integration/native-apple.test.ts"
+    ]
+}

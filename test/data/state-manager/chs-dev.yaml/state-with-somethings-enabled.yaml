@@ -1,9 +1,0 @@
-modules:
-  - module-one
-services:
-  - service-one
-  - service-four
-servicesWithLiveUpdate:
-  - service-one
-excludedServices:
-  - service-three

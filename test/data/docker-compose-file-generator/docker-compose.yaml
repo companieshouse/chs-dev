@@ -1,6 +1,0 @@
----
-
-services:
-  ingress-proxy:
-    image: "nginx:latest"
-    depends_on: []

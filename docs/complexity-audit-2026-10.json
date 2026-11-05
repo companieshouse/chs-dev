@@ -1,0 +1,997 @@
+{
+    "date": "2026-10-02",
+    "limits": {
+        "complexity": 10,
+        "lines": 80,
+        "depth": 3
+    },
+    "initialCount": 123,
+    "findings": [
+        {
+            "file": "src/application/live-controller.ts",
+            "line": 232,
+            "rule": "complexity",
+            "message": "Method 'report' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share owned immutable revision resolution between Start and Apply; centralize drift, SSH and observation decisions."
+        },
+        {
+            "file": "src/application/live-controller.ts",
+            "line": 286,
+            "rule": "max-lines-per-function",
+            "message": "Async method 'start' has too many lines (81). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Share owned immutable revision resolution between Start and Apply; centralize drift, SSH and observation decisions."
+        },
+        {
+            "file": "src/application/live-controller.ts",
+            "line": 672,
+            "rule": "complexity",
+            "message": "Async method 'setupSsh' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share owned immutable revision resolution between Start and Apply; centralize drift, SSH and observation decisions."
+        },
+        {
+            "file": "src/application/live-controller.ts",
+            "line": 985,
+            "rule": "complexity",
+            "message": "Async method 'applyChanges' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share owned immutable revision resolution between Start and Apply; centralize drift, SSH and observation decisions."
+        },
+        {
+            "file": "src/application/live-controller.ts",
+            "line": 1208,
+            "rule": "complexity",
+            "message": "Method 'observeIntent' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share owned immutable revision resolution between Start and Apply; centralize drift, SSH and observation decisions."
+        },
+        {
+            "file": "src/application/project-session.ts",
+            "line": 106,
+            "rule": "complexity",
+            "message": "Async method 'initialize' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/client/client.ts",
+            "line": 66,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/client/interactions.ts",
+            "line": 25,
+            "rule": "max-lines-per-function",
+            "message": "Async function 'interact' has too many lines (87). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/client/interactions.ts",
+            "line": 25,
+            "rule": "complexity",
+            "message": "Async function 'interact' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/domain/environment.ts",
+            "line": 27,
+            "rule": "complexity",
+            "message": "Function 'environmentSummary' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/domain/log-view.ts",
+            "line": 166,
+            "rule": "complexity",
+            "message": "Method 'process' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/domain/log-view.ts",
+            "line": 278,
+            "rule": "complexity",
+            "message": "Function 'parseLiveOutputLine' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/domain/orchestration.ts",
+            "line": 142,
+            "rule": "complexity",
+            "message": "Function 'planService' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/domain/orchestration.ts",
+            "line": 270,
+            "rule": "complexity",
+            "message": "Async function 'executeGraph' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/aws-profiles.ts",
+            "line": 104,
+            "rule": "complexity",
+            "message": "Async arrow function has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/aws-profiles.ts",
+            "line": 121,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/aws-profiles.ts",
+            "line": 123,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/aws-profiles.ts",
+            "line": 252,
+            "rule": "complexity",
+            "message": "Async function 'planEcrLogin' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/docker-containers.ts",
+            "line": 175,
+            "rule": "complexity",
+            "message": "Async method 'fromInspection' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/interactive-command.ts",
+            "line": 112,
+            "rule": "max-lines-per-function",
+            "message": "Function 'runInteractiveCommand' has too many lines (89). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/live-environment.ts",
+            "line": 42,
+            "rule": "complexity",
+            "message": "Async method 'resolve' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/live-process.ts",
+            "line": 142,
+            "rule": "complexity",
+            "message": "Function 'receiveChunk' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/live-runtime.ts",
+            "line": 174,
+            "rule": "complexity",
+            "message": "Async method 'runtimeContainer' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/native/apple-adapter.ts",
+            "line": 301,
+            "rule": "complexity",
+            "message": "Async method 'ensureResource' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share stop and control persistence; separate execution arguments and resource ownership validation."
+        },
+        {
+            "file": "src/infrastructure/native/apple-adapter.ts",
+            "line": 962,
+            "rule": "complexity",
+            "message": "Async method 'ensureContainerVolumes' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share stop and control persistence; separate execution arguments and resource ownership validation."
+        },
+        {
+            "file": "src/infrastructure/native/apple-adapter.ts",
+            "line": 1041,
+            "rule": "complexity",
+            "message": "Static method 'containerCreateArgs' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share stop and control persistence; separate execution arguments and resource ownership validation."
+        },
+        {
+            "file": "src/infrastructure/native/apple-adapter.ts",
+            "line": 1177,
+            "rule": "complexity",
+            "message": "Async method 'performHealthCheck' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share stop and control persistence; separate execution arguments and resource ownership validation."
+        },
+        {
+            "file": "src/infrastructure/native/apple-adapter.ts",
+            "line": 1227,
+            "rule": "complexity",
+            "message": "Async method 'monitor' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share stop and control persistence; separate execution arguments and resource ownership validation."
+        },
+        {
+            "file": "src/infrastructure/native/apple-client.ts",
+            "line": 105,
+            "rule": "complexity",
+            "message": "Async method 'checked' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/native/apple-client.ts",
+            "line": 178,
+            "rule": "complexity",
+            "message": "Async method 'installation' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/native/apple-client.ts",
+            "line": 220,
+            "rule": "complexity",
+            "message": "Async method 'serviceAvailability' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/native/apple-file-mounts.ts",
+            "line": 99,
+            "rule": "complexity",
+            "message": "Async function 'adaptFileMount' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/native/apple-image-metadata.ts",
+            "line": 16,
+            "rule": "max-lines-per-function",
+            "message": "Async function 'appleImageMetadata' has too many lines (90). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Validate unknown cache/archive data into a typed image-defaults contract."
+        },
+        {
+            "file": "src/infrastructure/native/apple-image-metadata.ts",
+            "line": 16,
+            "rule": "complexity",
+            "message": "Async function 'appleImageMetadata' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Validate unknown cache/archive data into a typed image-defaults contract."
+        },
+        {
+            "file": "src/infrastructure/native/compiler.ts",
+            "line": 75,
+            "rule": "complexity",
+            "message": "Function 'extraHosts' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate mount, port, host and file-resource validation."
+        },
+        {
+            "file": "src/infrastructure/native/compiler.ts",
+            "line": 157,
+            "rule": "complexity",
+            "message": "Function 'serviceSpec' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate mount, port, host and file-resource validation."
+        },
+        {
+            "file": "src/infrastructure/native/compiler.ts",
+            "line": 297,
+            "rule": "complexity",
+            "message": "Function 'applyMounts' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate mount, port, host and file-resource validation."
+        },
+        {
+            "file": "src/infrastructure/native/compiler.ts",
+            "line": 331,
+            "rule": "complexity",
+            "message": "Function 'applyFileResources' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate mount, port, host and file-resource validation."
+        },
+        {
+            "file": "src/infrastructure/native/compiler.ts",
+            "line": 363,
+            "rule": "complexity",
+            "message": "Function 'applyPorts' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate mount, port, host and file-resource validation."
+        },
+        {
+            "file": "src/infrastructure/native/docker-adapter.ts",
+            "line": 58,
+            "rule": "complexity",
+            "message": "Async function 'containerOperation' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/native/docker-adapter.ts",
+            "line": 479,
+            "rule": "complexity",
+            "message": "Async method 'prepareServiceImage' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 441,
+            "rule": "complexity",
+            "message": "Async method 'runScript' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Type discovery routes, isolate task logs and checkpoint handling, and share address, service and socket predicates."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 498,
+            "rule": "complexity",
+            "message": "Async method 'executeTask' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Type discovery routes, isolate task logs and checkpoint handling, and share address, service and socket predicates."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 569,
+            "rule": "complexity",
+            "message": "Method 'configureDns' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Type discovery routes, isolate task logs and checkpoint handling, and share address, service and socket predicates."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 690,
+            "rule": "complexity",
+            "message": "Async method 'publishNow' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Type discovery routes, isolate task logs and checkpoint handling, and share address, service and socket predicates."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 776,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Type discovery routes, isolate task logs and checkpoint handling, and share address, service and socket predicates."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 906,
+            "rule": "complexity",
+            "message": "Async method 'verifyDns' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Type discovery routes, isolate task logs and checkpoint handling, and share address, service and socket predicates."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 931,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Type discovery routes, isolate task logs and checkpoint handling, and share address, service and socket predicates."
+        },
+        {
+            "file": "src/infrastructure/native/portable-chs.ts",
+            "line": 932,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Type discovery routes, isolate task logs and checkpoint handling, and share address, service and socket predicates."
+        },
+        {
+            "file": "src/infrastructure/native/portable-compiler.ts",
+            "line": 40,
+            "rule": "complexity",
+            "message": "Function 'evaluateSubstitution' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate quote parsing, command-word state and normalization; merge interpolation environment once."
+        },
+        {
+            "file": "src/infrastructure/native/portable-compiler.ts",
+            "line": 112,
+            "rule": "complexity",
+            "message": "Function 'commandWords' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate quote parsing, command-word state and normalization; merge interpolation environment once."
+        },
+        {
+            "file": "src/infrastructure/native/portable-compiler.ts",
+            "line": 175,
+            "rule": "complexity",
+            "message": "Function 'envFile' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate quote parsing, command-word state and normalization; merge interpolation environment once."
+        },
+        {
+            "file": "src/infrastructure/native/portable-compiler.ts",
+            "line": 242,
+            "rule": "complexity",
+            "message": "Function 'mount' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate quote parsing, command-word state and normalization; merge interpolation environment once."
+        },
+        {
+            "file": "src/infrastructure/native/portable-compiler.ts",
+            "line": 419,
+            "rule": "complexity",
+            "message": "Function 'normalizeTopLevel' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate quote parsing, command-word state and normalization; merge interpolation environment once."
+        },
+        {
+            "file": "src/infrastructure/native/runtime.ts",
+            "line": 200,
+            "rule": "complexity",
+            "message": "Method 'settlementFor' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share readiness and restart propagation decisions; isolate settlement policies."
+        },
+        {
+            "file": "src/infrastructure/native/runtime.ts",
+            "line": 347,
+            "rule": "complexity",
+            "message": "Method 'assertHealthChecks' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share readiness and restart propagation decisions; isolate settlement policies."
+        },
+        {
+            "file": "src/infrastructure/native/runtime.ts",
+            "line": 593,
+            "rule": "complexity",
+            "message": "Async method 'containerAction' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Share readiness and restart propagation decisions; isolate settlement policies."
+        },
+        {
+            "file": "src/infrastructure/native/runtime.ts",
+            "line": 605,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Share readiness and restart propagation decisions; isolate settlement policies."
+        },
+        {
+            "file": "src/infrastructure/native/state.ts",
+            "line": 47,
+            "rule": "complexity",
+            "message": "Async method 'fingerprint' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/runtimes/apple-native.ts",
+            "line": 212,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Separate profile login, renewal and cancellation/failure outcomes."
+        },
+        {
+            "file": "src/infrastructure/runtimes/apple-native.ts",
+            "line": 238,
+            "rule": "max-lines-per-function",
+            "message": "Async method 'loginRegistry' has too many lines (83). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate profile login, renewal and cancellation/failure outcomes."
+        },
+        {
+            "file": "src/infrastructure/runtimes/apple-native.ts",
+            "line": 238,
+            "rule": "complexity",
+            "message": "Async method 'loginRegistry' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate profile login, renewal and cancellation/failure outcomes."
+        },
+        {
+            "file": "src/infrastructure/runtimes/docker-state.ts",
+            "line": 19,
+            "rule": "complexity",
+            "message": "Function 'containerStatus' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/settings.ts",
+            "line": 154,
+            "rule": "complexity",
+            "message": "Function 'parseSettings' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/infrastructure/ssh-setup.ts",
+            "line": 205,
+            "rule": "complexity",
+            "message": "Async method 'discoverKey' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Track created paths, validate repair before writes and attempt every rollback cleanup."
+        },
+        {
+            "file": "src/infrastructure/ssh-setup.ts",
+            "line": 413,
+            "rule": "complexity",
+            "message": "Async method 'installSecrets' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Track created paths, validate repair before writes and attempt every rollback cleanup."
+        },
+        {
+            "file": "src/infrastructure/ssh-setup.ts",
+            "line": 461,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Track created paths, validate repair before writes and attempt every rollback cleanup."
+        },
+        {
+            "file": "src/infrastructure/ssh-setup.ts",
+            "line": 468,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Track created paths, validate repair before writes and attempt every rollback cleanup."
+        },
+        {
+            "file": "src/infrastructure/ssh-setup.ts",
+            "line": 475,
+            "rule": "max-depth",
+            "message": "Blocks are nested too deeply (4). Maximum allowed is 3.",
+            "status": "resolved",
+            "resolution": "Track created paths, validate repair before writes and attempt every rollback cleanup."
+        },
+        {
+            "file": "src/project/compose.ts",
+            "line": 43,
+            "rule": "complexity",
+            "message": "Function 'normalizePaths' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/project/config.ts",
+            "line": 9,
+            "rule": "complexity",
+            "message": "Async function 'readProjectConfig' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/project/discovery.ts",
+            "line": 150,
+            "rule": "complexity",
+            "message": "Async function 'searchProjects' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate directory inspection and bounded breadth-first traversal."
+        },
+        {
+            "file": "src/project/resolve.ts",
+            "line": 78,
+            "rule": "complexity",
+            "message": "Function 'resolveServices' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/project/resolve.ts",
+            "line": 237,
+            "rule": "complexity",
+            "message": "Async arrow function has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/project/service-configuration.ts",
+            "line": 20,
+            "rule": "complexity",
+            "message": "Function 'validateSaveRequest' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/server/api.ts",
+            "line": 318,
+            "rule": "complexity",
+            "message": "Async function 'routeRequest' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/server/bootstrap.ts",
+            "line": 258,
+            "rule": "max-lines-per-function",
+            "message": "Async function 'createApplication' has too many lines (92). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Share ordered shutdown with complete cleanup and preserved initialization failures."
+        },
+        {
+            "file": "src/tui/app.tsx",
+            "line": 527,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Replace shared AppModel props with scoped screen and overlay inputs; stabilize login and alert callbacks and generation caches."
+        },
+        {
+            "file": "src/tui/app.tsx",
+            "line": 567,
+            "rule": "max-lines-per-function",
+            "message": "Function 'useAppModel' has too many lines (98). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Replace shared AppModel props with scoped screen and overlay inputs; stabilize login and alert callbacks and generation caches."
+        },
+        {
+            "file": "src/tui/app.tsx",
+            "line": 726,
+            "rule": "complexity",
+            "message": "Function 'PrimaryScreens' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Replace shared AppModel props with scoped screen and overlay inputs; stabilize login and alert callbacks and generation caches."
+        },
+        {
+            "file": "src/tui/app.tsx",
+            "line": 986,
+            "rule": "max-lines-per-function",
+            "message": "Function 'ServiceOverlays' has too many lines (97). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Replace shared AppModel props with scoped screen and overlay inputs; stabilize login and alert callbacks and generation caches."
+        },
+        {
+            "file": "src/tui/app.tsx",
+            "line": 986,
+            "rule": "complexity",
+            "message": "Function 'ServiceOverlays' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Replace shared AppModel props with scoped screen and overlay inputs; stabilize login and alert callbacks and generation caches."
+        },
+        {
+            "file": "src/tui/components/aws-login-modal.tsx",
+            "line": 119,
+            "rule": "max-lines-per-function",
+            "message": "Function 'AwsLoginModal' has too many lines (90). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/config-screen.tsx",
+            "line": 170,
+            "rule": "complexity",
+            "message": "Function 'ConfigRowView' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/container-details.tsx",
+            "line": 19,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate inspection/actions from navigation; refresh once after actions, retain details while polling and ignore stale responses."
+        },
+        {
+            "file": "src/tui/components/container-details.tsx",
+            "line": 236,
+            "rule": "complexity",
+            "message": "Function 'DetailStatus' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate inspection/actions from navigation; refresh once after actions, retain details while polling and ignore stale responses."
+        },
+        {
+            "file": "src/tui/components/container-details.tsx",
+            "line": 341,
+            "rule": "max-lines-per-function",
+            "message": "Function 'ContainerDetails' has too many lines (100). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate inspection/actions from navigation; refresh once after actions, retain details while polling and ignore stale responses."
+        },
+        {
+            "file": "src/tui/components/containers-screen.tsx",
+            "line": 74,
+            "rule": "max-lines-per-function",
+            "message": "Function 'useContainersKeys' has too many lines (97). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Own search/scope state and semantic input handlers; share text editing, search headers and centered windows."
+        },
+        {
+            "file": "src/tui/components/containers-screen.tsx",
+            "line": 319,
+            "rule": "max-lines-per-function",
+            "message": "Function 'ContainersScreen' has too many lines (100). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Own search/scope state and semantic input handlers; share text editing, search headers and centered windows."
+        },
+        {
+            "file": "src/tui/components/enabled-browser.tsx",
+            "line": 11,
+            "rule": "max-lines-per-function",
+            "message": "Function 'EnabledBrowser' has too many lines (81). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/environment-panel.tsx",
+            "line": 343,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Select by action ID, preserve no-selection state and dispatch semantic panel actions."
+        },
+        {
+            "file": "src/tui/components/environment-panel.tsx",
+            "line": 482,
+            "rule": "max-lines-per-function",
+            "message": "Function 'EnvironmentPanel' has too many lines (95). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Select by action ID, preserve no-selection state and dispatch semantic panel actions."
+        },
+        {
+            "file": "src/tui/components/logs-screen.tsx",
+            "line": 132,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Remove dead subscriptions and separate log preferences, entries and viewport calculations."
+        },
+        {
+            "file": "src/tui/components/logs-screen.tsx",
+            "line": 171,
+            "rule": "complexity",
+            "message": "Function 'LogStatusLine' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Remove dead subscriptions and separate log preferences, entries and viewport calculations."
+        },
+        {
+            "file": "src/tui/components/logs-screen.tsx",
+            "line": 282,
+            "rule": "max-lines-per-function",
+            "message": "Function 'LogsScreen' has too many lines (84). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Remove dead subscriptions and separate log preferences, entries and viewport calculations."
+        },
+        {
+            "file": "src/tui/components/modules-browser.tsx",
+            "line": 47,
+            "rule": "max-lines-per-function",
+            "message": "Function 'useModulesInput' has too many lines (99). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Own navigation and filtering in a typed reducer with semantic commands and scoped column views."
+        },
+        {
+            "file": "src/tui/components/modules-browser.tsx",
+            "line": 109,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Own navigation and filtering in a typed reducer with semantic commands and scoped column views."
+        },
+        {
+            "file": "src/tui/components/modules-browser.tsx",
+            "line": 244,
+            "rule": "max-lines-per-function",
+            "message": "Function 'ModulesBrowser' has too many lines (94). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Own navigation and filtering in a typed reducer with semantic commands and scoped column views."
+        },
+        {
+            "file": "src/tui/components/modules-browser.tsx",
+            "line": 244,
+            "rule": "complexity",
+            "message": "Function 'ModulesBrowser' has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Own navigation and filtering in a typed reducer with semantic commands and scoped column views."
+        },
+        {
+            "file": "src/tui/components/project-picker-modal.tsx",
+            "line": 190,
+            "rule": "max-lines-per-function",
+            "message": "Function 'usePickerInput' has too many lines (81). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/project-picker-modal.tsx",
+            "line": 306,
+            "rule": "complexity",
+            "message": "Function 'StepView' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/service-list.tsx",
+            "line": 94,
+            "rule": "complexity",
+            "message": "Function 'ServiceRow' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/service-logs.tsx",
+            "line": 65,
+            "rule": "max-lines-per-function",
+            "message": "Function 'ServiceLogs' has too many lines (87). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/service-modal.tsx",
+            "line": 156,
+            "rule": "complexity",
+            "message": "Function 'stateOptionLabel' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate configuration, navigation, operations and presentation; own modal close and consume input while saving."
+        },
+        {
+            "file": "src/tui/components/service-modal.tsx",
+            "line": 192,
+            "rule": "complexity",
+            "message": "Function 'mainOptionLabel' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate configuration, navigation, operations and presentation; own modal close and consume input while saving."
+        },
+        {
+            "file": "src/tui/components/service-modal.tsx",
+            "line": 406,
+            "rule": "complexity",
+            "message": "Function 'runOptionAction' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate configuration, navigation, operations and presentation; own modal close and consume input while saving."
+        },
+        {
+            "file": "src/tui/components/service-modal.tsx",
+            "line": 416,
+            "rule": "complexity",
+            "message": "Function 'handleServiceKey' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate configuration, navigation, operations and presentation; own modal close and consume input while saving."
+        },
+        {
+            "file": "src/tui/components/service-modal.tsx",
+            "line": 457,
+            "rule": "max-lines-per-function",
+            "message": "Function 'ServiceModalView' has too many lines (81). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate configuration, navigation, operations and presentation; own modal close and consume input while saving."
+        },
+        {
+            "file": "src/tui/components/service-modal.tsx",
+            "line": 457,
+            "rule": "complexity",
+            "message": "Function 'ServiceModalView' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate configuration, navigation, operations and presentation; own modal close and consume input while saving."
+        },
+        {
+            "file": "src/tui/components/service-modal.tsx",
+            "line": 539,
+            "rule": "max-lines-per-function",
+            "message": "Function 'useServiceModalState' has too many lines (91). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate configuration, navigation, operations and presentation; own modal close and consume input while saving."
+        },
+        {
+            "file": "src/tui/components/service-modal.tsx",
+            "line": 539,
+            "rule": "complexity",
+            "message": "Function 'useServiceModalState' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate configuration, navigation, operations and presentation; own modal close and consume input while saving."
+        },
+        {
+            "file": "src/tui/components/services-screen.tsx",
+            "line": 75,
+            "rule": "complexity",
+            "message": "Function 'handleServicesCommand' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/services-screen.tsx",
+            "line": 114,
+            "rule": "max-lines-per-function",
+            "message": "Function 'ServicesScreen' has too many lines (90). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/services-screen.tsx",
+            "line": 114,
+            "rule": "complexity",
+            "message": "Function 'ServicesScreen' has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/components/settings-modals.tsx",
+            "line": 173,
+            "rule": "max-lines-per-function",
+            "message": "Function 'ProfileChecklistModal' has too many lines (97). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate checklist presentation and semantic commands; share guarded async action handling."
+        },
+        {
+            "file": "src/tui/components/settings-modals.tsx",
+            "line": 226,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate checklist presentation and semantic commands; share guarded async action handling."
+        },
+        {
+            "file": "src/tui/components/ssh-setup-modal.tsx",
+            "line": 193,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 13. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Replace setter bundles with typed setup transitions and commands; share text editing and modal framing."
+        },
+        {
+            "file": "src/tui/components/ssh-setup-modal.tsx",
+            "line": 223,
+            "rule": "complexity",
+            "message": "Arrow function has a complexity of 11. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Replace setter bundles with typed setup transitions and commands; share text editing and modal framing."
+        },
+        {
+            "file": "src/tui/components/ssh-setup-modal.tsx",
+            "line": 235,
+            "rule": "max-lines-per-function",
+            "message": "Function 'SshSetupModal' has too many lines (82). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Replace setter bundles with typed setup transitions and commands; share text editing and modal framing."
+        },
+        {
+            "file": "src/tui/components/ssh-setup-modal.tsx",
+            "line": 235,
+            "rule": "complexity",
+            "message": "Function 'SshSetupModal' has a complexity of 14. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Replace setter bundles with typed setup transitions and commands; share text editing and modal framing."
+        },
+        {
+            "file": "src/tui/components/tab-bar.tsx",
+            "line": 5,
+            "rule": "max-lines-per-function",
+            "message": "Function 'TabBar' has too many lines (84). Maximum allowed is 80.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/models/environment.ts",
+            "line": 192,
+            "rule": "complexity",
+            "message": "Function 'environmentStatus' has a complexity of 15. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        },
+        {
+            "file": "src/tui/models/navigation.ts",
+            "line": 14,
+            "rule": "complexity",
+            "message": "Function 'tabDirection' has a complexity of 12. Maximum allowed is 10.",
+            "status": "resolved",
+            "resolution": "Separate parsing, policy or presentation responsibilities into focused helpers; passes the strict 10/80/3 audit."
+        }
+    ],
+    "finalCount": 0,
+    "verifiedWith": "npm run complexity:check (inline suppressions disabled; empty baseline)"
+}

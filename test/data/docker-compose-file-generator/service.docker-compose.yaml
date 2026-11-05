@@ -1,8 +1,0 @@
----
-
-services:
-  service-one:
-    image: "my-great-image:latest"
-    depends_on: []
-    labels: 
-      - label-one=true
