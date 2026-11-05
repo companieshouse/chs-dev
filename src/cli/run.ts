@@ -120,6 +120,7 @@ async function performConnected(
         });
     const mismatch = environmentMismatch(snapshot);
     if (mismatch) state.warnings.push(mismatch);
+    state.warnings.push(...snapshot.settings.warnings);
     state.context = {
         invocation,
         client,

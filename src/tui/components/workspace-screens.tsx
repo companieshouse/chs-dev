@@ -188,11 +188,6 @@ function PrimaryScreens(props: PrimaryProps) {
                     active={!overlayOpen}
                     height={screenHeight(rows, 'Config')}
                     onEdit={onSetting}
-                    onStartEngine={
-                        runtime.startService
-                            ? () => runtime.startService!()
-                            : undefined
-                    }
                 />
             )}
             <Box

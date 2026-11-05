@@ -30,7 +30,7 @@ import {
 import { loadUsagePolicy } from '../project/usage-cache.js';
 import { selectedJourney } from '../project/journeys.js';
 import { nodeProjectFs } from '../project/files.js';
-import { selectRuntime } from '../infrastructure/runtimes/select-runtime.js';
+import { DockerComposeStrategy } from '../infrastructure/runtimes/docker-compose.js';
 import { tuiLog } from '../infrastructure/tui-log.js';
 
 /** The host port the current ingress (Traefik) listens on. */
@@ -82,7 +82,7 @@ export function startDaemonProxy(
         portOverride?: number;
     } = {},
 ): DaemonProxy {
-    const runtime = options.runtime?.() ?? selectRuntime();
+    const runtime = options.runtime?.() ?? new DockerComposeStrategy();
     const accounting = options.accounting ?? createAccounting();
     const usageCache = options.usageCache;
     const port = options.portOverride ?? PROXY_PORT;

@@ -6,14 +6,13 @@ import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { DockerComposeStrategy } from '../../src/infrastructure/runtimes/docker-compose.js';
-import { DockerNativeStrategy } from '../../src/infrastructure/runtimes/docker-native.js';
 import { filterContainers } from '../../src/domain/containers.js';
 
 const exec = promisify(execFile);
 test(
-    'container management lists native, Compose and unrelated containers and controls exact IDs',
+    'container management lists Compose and unrelated containers and controls exact IDs',
     {
-        skip: process.env.CHS_NATIVE_INTEGRATION !== '1',
+        skip: process.env.CHS_DOCKER_INTEGRATION !== '1',
         timeout: 120000,
     },
     async () => {
@@ -21,11 +20,7 @@ test(
             await mkdtemp(join(tmpdir(), 'chs-container-management-')),
         );
         const suffix = directory.split('/').at(-1)!;
-        const names = [
-            `${suffix}-native`,
-            `${suffix}-compose`,
-            `${suffix}-other`,
-        ];
+        const names = [`${suffix}-api`, `${suffix}-compose`, `${suffix}-other`];
         const docker = async (...args: string[]) =>
             (await exec('docker', args)).stdout.trim();
         const project = {
@@ -34,7 +29,7 @@ test(
             environment: { resolve: async () => ({ ...process.env }) },
         };
         try {
-            const nativeId = await docker(
+            const apiId = await docker(
                 'run',
                 '--detach',
                 '--name',
@@ -42,11 +37,11 @@ test(
                 '--stop-timeout',
                 '1',
                 '--label',
-                `chs.dev.directory=${directory}`,
+                `com.docker.compose.project.working_dir=${directory}`,
                 '--label',
-                'chs.dev.backend=native',
+                `com.docker.compose.project=${suffix}`,
                 '--label',
-                'chs.dev.service=api',
+                'com.docker.compose.service=api',
                 '--env',
                 'TEST_PASSWORD=hidden-value',
                 '--mount',
@@ -83,10 +78,7 @@ test(
                 'sleep',
                 '300',
             );
-            for (const strategy of [
-                new DockerComposeStrategy(),
-                new DockerNativeStrategy(),
-            ]) {
+            for (const strategy of [new DockerComposeStrategy()]) {
                 const manager = strategy.containers(project);
                 const list = await manager.list();
                 assert.ok(list.some((c) => c.id === foreignId));
@@ -94,9 +86,9 @@ test(
                     filterContainers(list, { all: false, query: '' })
                         .map((c) => c.id)
                         .sort(),
-                    [nativeId, composeId].sort(),
+                    [apiId, composeId].sort(),
                 );
-                const details = await manager.inspect(nativeId);
+                const details = await manager.inspect(apiId);
                 assert.equal(details.image, 'alpine:latest');
                 assert.equal(details.currentProject, true);
                 assert.ok(details.ports.some((p) => p.endsWith('8080/tcp')));
@@ -107,31 +99,25 @@ test(
                     /hidden-value/,
                 );
                 assert.ok(
-                    (await manager.logs(nativeId, 20)).some((line) =>
+                    (await manager.logs(apiId, 20)).some((line) =>
                         line.includes('container-manager-ready'),
                     ),
                 );
                 assert.ok(
-                    (await manager.logs(nativeId, 20)).some((line) =>
+                    (await manager.logs(apiId, 20)).some((line) =>
                         line.includes('container-stderr-ready'),
                     ),
                 );
                 await manager.action('stop', details, {});
-                assert.equal((await manager.inspect(nativeId)).state, 'exited');
+                assert.equal((await manager.inspect(apiId)).state, 'exited');
                 await manager.action('start', details, {});
-                assert.equal(
-                    (await manager.inspect(nativeId)).state,
-                    'running',
-                );
+                assert.equal((await manager.inspect(apiId)).state, 'running');
                 await manager.action('restart', details, {});
-                assert.equal(
-                    (await manager.inspect(nativeId)).state,
-                    'running',
-                );
+                assert.equal((await manager.inspect(apiId)).state, 'running');
             }
             const manager = new DockerComposeStrategy().containers(project);
-            const selected = await manager.inspect(nativeId);
-            await docker('rm', '--force', nativeId);
+            const selected = await manager.inspect(apiId);
+            await docker('rm', '--force', apiId);
             const replacement = await docker(
                 'run',
                 '--detach',

@@ -53,7 +53,7 @@ application itself receives an explicit `ApplicationHost` and a replaceable back
 `Client` connects over a private Unix socket. The parent directory is user-owned
 with mode 0700; the socket is 0600. The server rejects browser-origin requests,
 validates incoming commands, limits JSON requests to 1 MiB and negotiates protocol
-version 2. There is no TCP listener or remote access.
+version 5. There is no TCP listener or remote access.
 
 The initial snapshot includes the active checkout, generation, settings and
 configuration revisions, runtime capabilities, AWS state, containers' service
@@ -99,7 +99,7 @@ External edits are observed; another external writer can still race the final
 comparison and rename. This coordination is between daemon clients, not a global
 lock on unrelated tools.
 
-Project, engine and orchestration changes use one stop-before-reconfigure operation:
+Project changes use one stop-before-reconfigure operation:
 validate the destination; checkpoint switching intent; close old interactions; stop
 and remove owned containers; verify none remain; close the old backend; save and
 activate the setting; open the destination; publish a new generation. Volumes remain
@@ -121,12 +121,10 @@ health probing every two seconds and AWS observation every thirty seconds. The
 schedules do not overlap themselves. Health probes are independent of environment
 build/apply work and remain active without frontends.
 
-Compose and native Docker retain engine-provided health/restart behaviour. Native
-Apple probes use a bounded worker pool, share in-flight checks with readiness, and
-discard results when the container incarnation or start time changes. Apple manual
-stops and restart backoff are stored alongside existing lifecycle metadata.
-Lifecycle restart decisions remain serialized through controller polling and pause
-during mutations; observation can continue independently.
+Docker Compose is the only execution backend. Docker owns container health and
+restart policies; the daemon observes actual state and coordinates explicit
+operations, configuration application and lazy-service requests. There is no
+custom container scheduler, Compose compiler or Apple supervision loop.
 
 Atomic, fsynced private checkpoints retain environment intent, manual service stops,
 backend, checkout, login identity, and interrupted/switching state. Operations are
@@ -168,5 +166,5 @@ CLI uses `Client.submit`, `wait`, `cancel` and queries without importing Ink or
 runtime adapters. Its registry rejects unsupported legacy flags before connection.
 
 See [daemon operation and API](daemon.md) for startup, installation, debugging and
-transport endpoints, and [native orchestration](native-orchestration.md) for engine
-contracts and limitations.
+transport endpoints, and the [Compose transition guide](compose-transition.md)
+for retiring an existing native environment.

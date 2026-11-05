@@ -7,7 +7,6 @@ import {
 } from '../../domain/settings.js';
 import type { OperationResult } from '../../domain/runtime-strategy.js';
 import type { ProfileDiscovery } from '../../domain/aws-profiles.js';
-import { supportedRuntimes } from '../../domain/settings.js';
 import type {
     ResolvedSetting,
     SettingsSnapshot,
@@ -40,14 +39,6 @@ function envOverride(resolved: ResolvedSetting<unknown>): string | undefined {
         : undefined;
 }
 
-function restartNotice(setting: SettingKey): string | undefined {
-    return setting === 'project' ||
-        setting === 'runtime' ||
-        setting === 'orchestrator'
-        ? 'Changing this stops the current environment. Start again when ready.'
-        : undefined;
-}
-
 function ProjectSetting({
     settings,
     projectDirectory,
@@ -60,56 +51,6 @@ function ProjectSetting({
             current={settings.resolved.project.value ?? projectDirectory}
             onSelect={(directory) => save('project', directory)}
             onClone={clone}
-            onClose={onClose}
-        />
-    );
-}
-
-function OrchestratorSetting({ settings, save, onClose }: SettingEditorProps) {
-    const { orchestrator, runtime } = settings.resolved;
-    return (
-        <ChoiceModal
-            title="Orchestration"
-            detail="Native manages Docker or Apple containers directly, with separate data. Stop the previous backend before switching."
-            choices={
-                runtime.value === 'apple'
-                    ? [{ value: 'native', label: 'Native' }]
-                    : [
-                          { value: 'compose', label: 'Docker Compose' },
-                          {
-                              value: 'native',
-                              label: 'Native (experimental)',
-                          },
-                          {
-                              value: undefined,
-                              label: 'Use default (compose)',
-                          },
-                      ]
-            }
-            current={orchestrator.file}
-            notes={[envOverride(orchestrator), restartNotice('orchestrator')]}
-            onChoose={(value) => save('orchestrator', value)}
-            onClose={onClose}
-        />
-    );
-}
-
-function RuntimeSetting({ settings, save, onClose }: SettingEditorProps) {
-    const { runtime } = settings.resolved;
-    return (
-        <ChoiceModal
-            title="Container engine"
-            detail={`Engine that runs the environment's containers. Overridden by ${settingEnvironment.runtime.join(' or ')}.`}
-            choices={[
-                ...supportedRuntimes.map((value) => ({
-                    value,
-                    label: value,
-                })),
-                { value: undefined, label: 'Use default (docker)' },
-            ]}
-            current={runtime.file}
-            notes={[envOverride(runtime), restartNotice('runtime')]}
-            onChoose={(value) => save('runtime', value)}
             onClose={onClose}
         />
     );
@@ -197,6 +138,36 @@ function AutoApplySetting({ settings, save, onClose }: SettingEditorProps) {
     );
 }
 
+function UsageCacheSetting({ settings, save, onClose }: SettingEditorProps) {
+    const { usageCache } = settings.resolved;
+    return (
+        <ChoiceModal
+            title="Usage cache"
+            detail={`Usage is always recorded. When on, services that saw no traffic in the last run start lazy next time. When off, every service keeps its configured start mode. Overridden by ${settingEnvironment.usageCache.join(' or ')}.`}
+            choices={[
+                { value: 'on', label: 'On' },
+                { value: 'off', label: 'Off' },
+                { value: undefined, label: 'Use default (off)' },
+            ]}
+            current={
+                usageCache.file === undefined
+                    ? undefined
+                    : usageCache.file
+                      ? 'on'
+                      : 'off'
+            }
+            notes={[envOverride(usageCache)]}
+            onChoose={(value) =>
+                save(
+                    'usageCache',
+                    value === undefined ? undefined : value === 'on',
+                )
+            }
+            onClose={onClose}
+        />
+    );
+}
+
 function LoginActionSetting({ settings, save, onClose }: SettingEditorProps) {
     const { loginAction } = settings.resolved;
     return (
@@ -257,16 +228,14 @@ export default function SettingEditor(props: SettingEditorProps) {
     switch (props.setting) {
         case 'project':
             return <ProjectSetting {...props} />;
-        case 'orchestrator':
-            return <OrchestratorSetting {...props} />;
-        case 'runtime':
-            return <RuntimeSetting {...props} />;
         case 'awsProfile':
             return <AwsProfileSetting {...props} />;
         case 'ecrProfiles':
             return <EcrProfilesSetting {...props} />;
         case 'autoApply':
             return <AutoApplySetting {...props} />;
+        case 'usageCache':
+            return <UsageCacheSetting {...props} />;
         case 'loginAction':
             return <LoginActionSetting {...props} />;
         case 'autoLogin':

@@ -62,7 +62,8 @@ async function respond(
     path: string,
 ): Promise<void> {
     const routes = await options.routes();
-    const route = lookupRoute(routes, host, path);
+    // Traefik matches Path rules on the pathname, never the query string.
+    const route = lookupRoute(routes, host, path.split('?')[0]!);
     if (!route) {
         notFound(response, host, path);
         return;

@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { createElement } from 'react';
 import { resolveSettings } from '../src/domain/settings.js';
 import type { SettingsSnapshot } from '../src/infrastructure/settings.js';
-import { configRows } from '../src/tui/components/config-screen.js';
+import ConfigScreen, {
+    configRows,
+} from '../src/tui/components/config-screen.js';
 import { editText } from '../src/tui/components/text-input.js';
+import { terminal } from './support/terminal.js';
 
 function snapshot(
     file: Parameters<typeof resolveSettings>[0],
@@ -16,6 +20,7 @@ function snapshot(
         resolved,
         startup,
         errors: [],
+        warnings: [],
         restartPending:
             resolved.project.value === startup.project.value ? [] : ['project'],
     };
@@ -24,7 +29,7 @@ function snapshot(
 test('config rows report sources, overrides, restart markers and project problems', () => {
     const rows = configRows(
         snapshot(
-            { awsProfile: 'file-profile', runtime: 'docker' },
+            { awsProfile: 'file-profile' },
             { AWS_PROFILE: 'env-profile' },
         ),
         { directory: '/work', valid: false, message: 'Missing markers.' },
@@ -40,8 +45,8 @@ test('config rows report sources, overrides, restart markers and project problem
     assert.equal(byKey.awsProfile.value, 'env-profile');
     assert.equal(byKey.awsProfile.source, 'env AWS_PROFILE');
     assert.match(byKey.awsProfile.note ?? '', /file-profile is overridden/);
-    assert.equal(byKey.runtime.source, 'file');
-    assert.equal(byKey.runtime.problem, undefined);
+    assert.equal(byKey.runtime, undefined);
+    assert.equal(byKey.orchestrator, undefined);
     assert.match(byKey.project.problem ?? '', /No project selected/);
     assert.equal(byKey.ecrProfiles.value, 'automatic: development-eu-west-2');
     assert.match(byKey.ecrProfiles.problem ?? '', /No local profile matches/);
@@ -58,13 +63,6 @@ test('config rows report sources, overrides, restart markers and project problem
     assert.equal(pending?.restart, true);
     assert.equal(pending?.problem, undefined);
     assert.equal(pending?.value, '/new');
-
-    const unsupported = configRows(
-        snapshot({ runtime: 'podman' }),
-        undefined,
-        undefined,
-    ).find((row) => row.key === 'runtime');
-    assert.match(unsupported?.problem ?? '', /Unsupported runtime/);
 
     const login = (file: Parameters<typeof snapshot>[0]) =>
         configRows(snapshot(file), undefined, undefined).find(
@@ -86,4 +84,31 @@ test('text editing handles typing, paste, deletion and clearing', () => {
     assert.equal(editText('abc', 'u', { ...none, ctrl: true }), '');
     assert.equal(editText('abc', 'x', { ...none, ctrl: true }), undefined);
     assert.equal(editText('abc', '\r', none), undefined);
+});
+
+test('Config shows retired-setting warnings without offering backend controls', async () => {
+    const settings = {
+        ...snapshot({}),
+        warnings: [
+            'runtime is retired and ignored; Docker Compose is always used.',
+        ],
+    };
+    const term = terminal(
+        createElement(ConfigScreen, {
+            settings,
+            rows: configRows(settings, undefined, undefined),
+            active: true,
+            height: 32,
+            onEdit: () => {},
+        }),
+    );
+    try {
+        await term.waitFor(/runtime is retired and ignored/);
+        assert.doesNotMatch(
+            term.frame(),
+            /Container engine|Orchestration|Start Apple/,
+        );
+    } finally {
+        term.app.unmount();
+    }
 });

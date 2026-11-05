@@ -4,7 +4,7 @@ import { join, dirname } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { flock } from 'fs-ext';
-import { optionalJson } from './native/state-files.js';
+import { optionalJson } from './state-files.js';
 import type {
     OperationRecord,
     OperationStore,

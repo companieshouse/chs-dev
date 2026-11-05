@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — chs-dev TUI screens</title>
+<!--
+  PROTOTYPE, THROWAWAY. Question: "What should the chs-dev TUI main screen look like?"
+  Simulates a terminal in the browser; no Docker, no daemon, in-memory fake state only.
+
+  VERDICT (2026-11-04, user review): Variant H (Command centre) wins.
+  Why: pending-changes + journeys + last-action-as-CLI in the left rail, grouped
+  service table with version column in the centre, tabbed inspector on the right,
+  provider picker as a modal. F was the right backbone; H adds situational
+  awareness without hiding the table. A/B/D/E/F/G/I are losing variants.
+  Next: rebuild H properly as an Ink screen in chs-dev/src/tui (prototype code is
+  not production code). Capture this file on a throwaway branch as primary source.
+-->
+<style>
+  :root{
+    --page:#171a1f; --term:#0c0e12; --panel:#11141a; --line:#2a2f38;
+    --text:#c9d1d9; --dim:#7d8590; --faint:#545d68;
+    --amber:#d29922; --cyan:#39c5cf; --green:#3fb950; --red:#f85149; --orange:#db6d28;
+    --sel:#1c2b3a; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{background:var(--page);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.45;padding:18px 18px 86px}
+  .banner{max-width:1180px;margin:0 auto 12px;border:1px solid var(--amber);color:#e8c476;padding:8px 12px;background:#191510}
+  .banner b{color:var(--amber)}
+  .term{max-width:1180px;margin:0 auto;background:var(--term);border:1px solid var(--line);box-shadow:0 10px 34px rgba(0,0,0,.5)}
+  .term-bar{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:7px 12px;color:var(--dim);white-space:nowrap;overflow:hidden}
+  .term-bar .dot{color:var(--faint)}
+  .screen{padding:10px 12px 12px;min-height:560px}
+  .panel{border:1px solid var(--line);background:var(--panel);padding:8px 10px}
+  .panel h3{margin:0 0 6px;font-size:12px;color:var(--cyan);font-weight:600}
+  .dim{color:var(--dim)} .faint{color:var(--faint)} .ok{color:var(--green)} .bad{color:var(--red)}
+  .warn{color:var(--amber)} .org{color:var(--orange)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{color:var(--faint);font-weight:400;text-align:left;padding:2px 8px 4px 0;border-bottom:1px solid var(--line)}
+  td{padding:3px 8px 3px 0;vertical-align:top;white-space:nowrap}
+  tr.sel td{background:var(--sel)}
+  tr.clickable{cursor:pointer}
+  .pill{display:inline-block;border:1px solid var(--line);padding:0 6px;font-size:11px}
+  .p-source{color:var(--cyan);border-color:#1f4b4f}.p-pinned{color:var(--text)}
+  .p-mock{color:var(--amber);border-color:#4d3c12}.p-recorded{color:#bc8cff;border-color:#3b2d55}
+  .p-remote{color:var(--orange);border-color:#55300f}.p-off{color:var(--faint)}
+  /* variant layouts */
+  .A-strip{display:grid;grid-template-columns:1.6fr 1fr;gap:10px;margin-top:10px}
+  .B-grid{display:grid;grid-template-columns:220px 1fr 360px;gap:10px}
+  .C-flow{max-width:760px}
+  .C-step{color:var(--faint);margin:14px 0 6px}
+  .rowline{display:flex;justify-content:space-between;gap:12px;padding:2px 0}
+  pre{margin:0;font:inherit;font-size:12px;white-space:pre-wrap;word-break:break-word}
+  .keys{border-top:1px solid var(--line);padding:7px 12px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap}
+  .keys b{color:var(--text);font-weight:600}
+  .overlay{margin-top:10px}
+  .hidden{display:none}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:40;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh}
+  .modal{background:var(--panel);border:1px solid var(--cyan);width:min(560px,92vw);padding:14px 16px;box-shadow:0 18px 50px rgba(0,0,0,.7)}
+  .modal h3{margin:0 0 8px;color:var(--cyan);font-size:13px}
+  /* prototype switcher: deliberately not terminal-styled */
+  #switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:#f2f2f2;color:#111;
+    font-family:system-ui,sans-serif;border-radius:999px;padding:6px 8px;display:flex;align-items:center;gap:10px;
+    box-shadow:0 6px 24px rgba(0,0,0,.55);z-index:50}
+  #switcher button{border:0;background:#111;color:#fff;width:30px;height:30px;border-radius:999px;cursor:pointer;font-size:15px}
+  #switcher .lab{font-size:13px;min-width:230px;text-align:center}
+  @media (max-width:900px){.B-grid{grid-template-columns:1fr}.A-strip{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="banner"><b>PROTOTYPE — throwaway. Round 3: F improved.</b> Three new F descendants open by default (<b>G/H/I</b>). All add: a persistent <b>pending-changes strip</b> with <b>A</b> apply (watch services go starting… → running), a <b>provider picker on Enter</b> describing each provider (remote warns about shared cidev), the <b>version column</b> back in the list, <b>/</b> filtering with grouped services, <b>per-service logs</b>, <b>x twice</b> to remove, <b>u</b> undo, and the <b>last action shown as its CLI command</b>. They differ in chrome: <b>G</b> picker replaces the inspector, <b>H</b> adds a changes/CLI rail + picker modal, <b>I</b> puts changes in a bottom console with an inline picker row. F and earlier variants remain via <b>left/right arrows</b>. Nothing touches Docker.</div>
+<div class="term">
+  <div class="term-bar"><span><span class="dot">● ● ●</span>&nbsp; chs-dev — zsh — 118×36</span><span id="termTitle">variant A</span></div>
+  <div class="screen" id="screen"></div>
+  <div class="keys" id="keys"></div>
+</div>
+<div id="switcher">
+  <button id="prev" title="Previous variant">‹</button>
+  <span class="lab" id="switcherLabel"></span>
+  <button id="next" title="Next variant">›</button>
+</div>
+<script>
+"use strict";
+/* Shared fake state: the whole point is that all 3 variants render THIS. */
+const PROVIDERS = ["source","pinned","mock","recorded","remote","off"];
+const state = {
+  variant: new URLSearchParams(location.search).get("variant") || "A",
+  sel: 0, overlay: null, active: null, snapshot: "", versionSource: "cidev", seed: "accounts-baseline",
+  filter: "", pick: 0, saveName: "", hint: "", create: null, pendingSaveCreate: false,
+  view: "main", tab: "detail", baseline: {}, picker: false, filtering: false, filterMain: "",
+  confirmX: "", lastCmd: "", undoStack: [],
+  services: [
+    {n:"accounts-filing-web",  p:"source",   st:"running",  mem:256,  ver:"local · feat/upload-fix", note:"watch: nodemon, debug :9229"},
+    {n:"accounts-filing-api",  p:"source",   st:"running",  mem:512,  ver:"local · main",            note:"watch: compile+restart, JDWP :50092"},
+    {n:"account-validator-api",p:"pinned",   st:"running",  mem:512,  ver:"cidev · 1.4.2 @sha256:9f2c", note:""},
+    {n:"account-validator-web",p:"pinned",   st:"running",  mem:256,  ver:"cidev · 1.4.2 @sha256:71ab", note:""},
+    {n:"transactions-api",     p:"pinned",   st:"running",  mem:1024, ver:"cidev · 2.18.0 @sha256:c41d",note:"stateful core — record/replay not advised"},
+    {n:"company-profile-api",  p:"recorded", st:"replaying",mem:0,    ver:"fixtures 2026-10-30",     note:"3 ops recorded: GET /company/{n} …"},
+    {n:"felixvalidator",       p:"mock",     st:"mocked",   mem:0,    ver:"scenario: validation-failed", note:"bespoke fake (async callback)", scen:"validation-failed"},
+    {n:"payments-api",         p:"remote",   st:"via cidev",mem:0,    ver:"cidev shared",            note:"WRITES go to shared cidev"},
+    {n:"authentication-service",p:"pinned",  st:"running",  mem:512,  ver:"cidev · 3.9.1 @sha256:08e7", note:""},
+    {n:"company-accounts-api", p:"off",      st:"off",      mem:0,    ver:"—",                        note:"not needed for this slice"},
+    {n:"mongo",                p:"pinned",   st:"running",  mem:512,  ver:"mongo:8 ephemeral",       note:"seed accounts-baseline applied"},
+    {n:"kafka",                p:"pinned",   st:"blocked",  mem:1024, ver:"KRaft single broker",     note:"", blocker:"OOMKilled at 512Mi limit — contract says 1024"},
+  ],
+  configExplain: [
+    ["MONGODB_URL","mongodb://mongo:27017/tx_accounts","datastore (generated)"],
+    ["API_URL","http://api.chs.localhost","cidev S3 env, hostname rewritten"],
+    ["LOG_LEVEL","DEBUG","chs.yaml override"],
+    ["CHS_INTERNAL_API_KEY","••••••••","SSM /cidev (runtime only)"],
+  ],
+};
+/* Full catalogue, discovered from service contracts in the real tool (~250 services).
+   Any of these can be added to the workspace at any time — no journey required. */
+const CATALOGUE = {
+  "overseas-entities-api": {mem:512, module:"overseas-entities", deps:["transactions-api","mongo"]},
+  "overseas-entities-web": {mem:256, module:"overseas-entities", deps:["overseas-entities-api","authentication-service"]},
+  "psc-verification-api":  {mem:512, module:"psc-verification", deps:["transactions-api","mongo","kafka"]},
+  "search-api":            {mem:512, module:"search", deps:["opensearch"]},
+  "opensearch":            {mem:1024,module:"infrastructure", deps:[]},
+  "orders-api":            {mem:512, module:"orders", deps:["payments-api","mongo"]},
+  "dissolution-web":       {mem:256, module:"dissolution", deps:["transactions-api","authentication-service"]},
+  "confirmation-statement-api": {mem:512, module:"confirmation-statement", deps:["transactions-api","mongo"]},
+  "document-api":          {mem:512, module:"platform", deps:["mongo"]},
+  "eric":                  {mem:256, module:"platform", deps:["redis"]},
+  "redis":                 {mem:256, module:"infrastructure", deps:[]},
+  "ch-gov-uk":             {mem:1024,module:"platform", deps:["authentication-service","redis","eric"]},
+  "limited-partnerships-api": {mem:512, module:"limited-partnerships", deps:["transactions-api","mongo"]},
+};
+/* A journey is a user-owned document: { serviceName: provider }.
+   One journey is ALWAYS enabled while working. Variations (accounts-remote etc.)
+   are just more journey files the user saved — nothing is built into the UI.
+   A journey may be temporary (created in the flow, discarded on switch) or saved. */
+const JOURNEY_DEFS = {
+  "accounts": { saved:true, services:{
+    "accounts-filing-web":"source","accounts-filing-api":"source","account-validator-api":"pinned",
+    "account-validator-web":"pinned","transactions-api":"pinned","company-profile-api":"recorded",
+    "felixvalidator":"mock","payments-api":"remote","authentication-service":"pinned",
+    "company-accounts-api":"off","mongo":"pinned","kafka":"pinned" } },
+  "accounts-remote": { saved:true, services:{
+    "accounts-filing-web":"source","accounts-filing-api":"source","account-validator-api":"remote",
+    "account-validator-web":"remote","transactions-api":"remote","company-profile-api":"remote",
+    "felixvalidator":"mock","payments-api":"remote","authentication-service":"remote",
+    "company-accounts-api":"off","mongo":"pinned","kafka":"pinned" } },
+  "confirmation": { saved:true, services:{
+    "confirmation-statement-api":"pinned","transactions-api":"pinned","company-profile-api":"recorded",
+    "payments-api":"remote","authentication-service":"pinned","mongo":"pinned" } },
+};
+const DEPS_EXTRA = {
+  "accounts-filing-web":["accounts-filing-api","authentication-service"],
+  "accounts-filing-api":["transactions-api","account-validator-api","mongo","felixvalidator"],
+  "account-validator-api":["mongo"], "account-validator-web":["account-validator-api","authentication-service"],
+  "transactions-api":["mongo","kafka","company-profile-api"], "company-profile-api":["mongo"],
+  "felixvalidator":[], "payments-api":["mongo"], "authentication-service":["mongo"],
+  "company-accounts-api":["transactions-api","mongo"], "mongo":[], "kafka":[],
+};
+function depsOf(name){ return (CATALOGUE[name] && CATALOGUE[name].deps) || DEPS_EXTRA[name] || []; }
+function closureFor(root){ /* root + transitive dependencies */
+  const seen = [], q = [root];
+  while (q.length) { const n = q.shift(); if (seen.includes(n)) continue; seen.push(n); q.push(...depsOf(n)); }
+  return seen;
+}
+/* runtime objects persist per service name across journey switches */
+const SVC = {};
+function svcFor(name){
+  if (!SVC[name]) {
+    const seed = state.services.find(s=>s.n===name);
+    if (seed) SVC[name] = seed;
+    else { const c = CATALOGUE[name] || {mem:512,module:"?"}; SVC[name] = {n:name,p:"pinned",st:"running",mem:c.mem,ver:"cidev · pinned",note:""}; }
+  }
+  return SVC[name];
+}
+function workspaceNames(){ return state.services.map(s=>s.n); }
+function currentDef(){ return state.active ? JOURNEY_DEFS[state.active] : null; }
+function defJson(def){ return def ? JSON.stringify(def.services) : ""; }
+function isModified(){ const d = currentDef(); return !!d && d.saved && defJson(d) !== state.snapshot; }
+function syncFromDef(){
+  const d = currentDef();
+  state.services = d ? Object.keys(d.services).map(n => { const s = svcFor(n); s.p = d.services[n]; return s; }) : [];
+  if (state.sel >= state.services.length) state.sel = Math.max(0, state.services.length-1);
+}
+function snapshotBaseline(){ const d = currentDef(); state.baseline = d ? {...d.services} : {}; }
+function activateJourney(name){
+  if (state.active && state.active !== name && JOURNEY_DEFS[state.active] && !JOURNEY_DEFS[state.active].saved)
+    { delete JOURNEY_DEFS[state.active]; state.hint = "temporary journey discarded · "; } else state.hint = "";
+  const before = workspaceNames();
+  state.active = name; state.snapshot = defJson(currentDef()); state.baseline = {...currentDef().services}; syncFromDef(); state.sel = 0;
+  state.lastCmd = "chs-dev journey enable " + name;
+  const after = workspaceNames();
+  const reused = after.filter(n=>before.includes(n)).length;
+  state.hint += "journey enabled: " + name + (before.length ? ` · plan will reuse ${reused}, start ${after.length-reused}, stop ${before.length-reused}` : "");
+}
+function disableJourney(){
+  if (state.active && JOURNEY_DEFS[state.active] && !JOURNEY_DEFS[state.active].saved) delete JOURNEY_DEFS[state.active];
+  state.active = null; state.services = []; state.hint = "journey disabled — select or create one to continue";
+}
+function addService(name){
+  const d = currentDef(); if (!d) return;
+  if (name in d.services) { state.hint = name + " is already in journey " + state.active; return; }
+  pushUndo("add " + name);
+  d.services[name] = "pinned"; syncFromDef();
+  state.lastCmd = "chs-dev service add " + name + " --provider pinned";
+  state.sel = workspaceNames().indexOf(name);
+  const missing = depsOf(name).filter(x=>!(x in d.services));
+  state.hint = "added " + name + " to journey (modified — S to save)" + (missing.length
+    ? " · deps not in journey: " + missing.join(", ") + " (a to add, or set provider recorded/mock)" : "");
+}
+function allServiceNames(){
+  const s = new Set([...Object.keys(CATALOGUE), ...Object.keys(DEPS_EXTRA), ...state.services.map(x=>x.n)]);
+  Object.values(JOURNEY_DEFS).forEach(d=>Object.keys(d.services).forEach(n=>s.add(n)));
+  return [...s].sort();
+}
+function startCreate(){ state.create = {step:1, root:null, members:{}}; state.view = "create"; state.overlay = null; state.filter=""; state.pick=0; }
+function createStep2(root){
+  const members = {};
+  closureFor(root).forEach(n => members[n] = (n===root ? "source" : "pinned")); /* sensible default: all local */
+  state.create = {step:2, root, members}; state.pick = 0;
+}
+function finishCreateTemporary(){
+  const c = state.create; if (!c) return;
+  let name = "temporary", i = 2;
+  while (JOURNEY_DEFS[name]) name = "temporary-" + (i++);
+  JOURNEY_DEFS[name] = {saved:false, services:{...c.members}};
+  state.create = null; state.overlay = null; state.view = "main";
+  activateJourney(name);
+  state.hint += " · temporary journey from " + c.root + " (S to save it, J to discard by switching)";
+}
+function saveJourneyAs(rawName){
+  const nm = rawName.trim().toLowerCase().replace(/[^a-z0-9-]+/g,"-"); if (!nm) return;
+  if (state.pendingSaveCreate && state.create) {
+    JOURNEY_DEFS[nm] = {saved:true, services:{...state.create.members}};
+    state.create = null; state.pendingSaveCreate = false; state.overlay = null; state.view = "main";
+    activateJourney(nm); state.hint = "saved journeys/" + nm + ".yaml and enabled it";
+    return;
+  }
+  const d = currentDef(); if (!d) return;
+  if (nm === state.active) { d.saved = true; }
+  else { JOURNEY_DEFS[nm] = {saved:true, services:{...d.services}}; }
+  state.overlay = null; activateJourney(nm);
+  state.hint = "saved journeys/" + nm + ".yaml" + (nm===state.active ? "" : "") + " and enabled it";
+}
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pill = p => `<span class="pill p-${p}">${p}</span>`;
+function memUsed(){ return state.services.reduce((a,s)=>a+(s.p==="off"||s.p==="mock"||s.p==="recorded"||s.p==="remote"?0:s.mem),0); }
+function blockers(){ return state.services.filter(s=>s.blocker && s.p!=="off"); }
+function yaml(){
+  const d = currentDef();
+  let y = `# journeys/${state.active || "—"}.yaml${d && !d.saved ? "  (temporary, not written to disk)" : ""}${isModified() ? "  (modified, unsaved)" : ""}\nversionSource: ${state.versionSource}\nseed: ${state.seed}\nservices:\n`;
+  for (const s of state.services) y += `  ${s.n}: { provider: ${s.p}${s.scen&&s.p==="mock" ? ", scenario: "+s.scen : ""} }\n`;
+  return y;
+}
+function journeyBadge(){
+  const d = currentDef(); if (!d) return `<span class="bad">none</span>`;
+  return `${esc(state.active)}${!d.saved?` <span class="warn">[temporary]</span>`:isModified()?` <span class="warn">[modified — S save / save as variation]</span>`:` <span class="faint">[saved]</span>`}`;
+}
+function headerLine(){
+  const b = blockers().length;
+  return `<div class="rowline"><span><b>chs-dev</b> <span class="dim">journey:</span> ${journeyBadge()} <span class="dim">· versions:</span> ${state.versionSource} <span class="dim">· seed:</span> ${esc(state.seed)}</span>
+  <span><span class="dim">mem</span> ${memUsed()}Mi / 8192Mi · ${b?`<span class="bad">${b} blocker</span>`:`<span class="ok">no blockers</span>`}</span></div>
+  ${state.hint?`<div class="rowline"><span class="warn">› ${esc(state.hint)}</span></div>`:""}`;
+}
+function serviceRows(compact){
+  return state.services.map((s,i)=>`<tr class="clickable ${i===state.sel?"sel":""}" data-i="${i}">
+    <td>${i===state.sel?"›":" "} ${esc(s.n)}</td><td>${pill(s.p)}</td>
+    <td class="${s.st==="blocked"?"bad":s.st==="off"?"faint":""}">${esc(s.st)}</td>
+    ${compact?"":`<td class="dim">${esc(s.ver)}</td>`}
+  </tr>`).join("");
+}
+function inspector(){
+  const s = selectedService();
+  if (!s) return `<div class="panel"><h3>journey has no services</h3><span class="faint">Press a to add services to this journey, or J to switch journey.</span></div>`;
+  return `<div class="panel"><h3>${esc(s.n)}</h3>
+  <div class="rowline"><span class="dim">provider</span><span>${pill(s.p)} <span class="faint">(space to cycle)</span></span></div>
+  <div class="rowline"><span class="dim">version</span><span>${esc(s.ver)}</span></div>
+  <div class="rowline"><span class="dim">status</span><span>${esc(s.st)}</span></div>
+  ${s.blocker?`<div class="rowline"><span class="dim">blocker</span><span class="bad">${esc(s.blocker)}</span></div>`:""}
+  ${s.note?`<div class="rowline"><span class="dim">note</span><span>${esc(s.note)}</span></div>`:""}
+  <h3 style="margin-top:8px">effective config (provenance)</h3>
+  ${s.n==="accounts-filing-api" ? state.configExplain.map(c=>`<div class="rowline"><span>${esc(c[0])}=${esc(c[1])}</span><span class="faint">${esc(c[2])}</span></div>`).join("") : `<span class="faint">select accounts-filing-api to see config provenance</span>`}
+  </div>`;
+}
+function journeyRows(){
+  const rows = Object.keys(JOURNEY_DEFS).map(n => ({kind:"journey", name:n,
+    label:`<b>${esc(n)}</b> <span class="faint">${Object.keys(JOURNEY_DEFS[n].services).length} services${JOURNEY_DEFS[n].saved?"":" · temporary"}${n===state.active?" · ENABLED":""}</span>`}));
+  rows.push({kind:"create", name:"", label:`<b>+ Create journey…</b> <span class="faint">pick a service, deps auto-enable (default: all local)</span>`});
+  if (state.active) rows.push({kind:"disable", name:"", label:`<span class="org">Disable journey</span> <span class="faint">no journey enabled; environment stops</span>`});
+  return rows;
+}
+function gateHtml(){
+  const rows = journeyRows();
+  if (state.pick >= rows.length) state.pick = 0;
+  return `<div style="max-width:680px;margin:28px auto">
+  <pre style="font-size:14px">chs-dev
+
+<span class="warn">No journey is enabled.</span> A journey is required to start the environment.
+Select one, or create a new journey.</pre>
+  <div class="panel" style="margin-top:12px"><h3>journeys/</h3>
+  ${rows.map((r,i)=>`<div class="rowline clickable" data-jrow="${i}" style="${i===state.pick?"background:var(--sel)":""}"><span>${i===state.pick?"›":" "} ${r.label}</span><span class="faint">${i===state.pick?"enter":""}</span></div>`).join("")}
+  </div>
+  <pre class="faint" style="margin-top:10px">↑↓ choose · enter or click select · ←→ still flip prototype variant behind this gate</pre>
+  ${state.hint?`<pre class="warn">› ${esc(state.hint)}</pre>`:""}
+  </div>`;
+}
+function planText(){
+  const on = state.services.filter(s=>s.p!=="off");
+  return `PLAN  journey=${state.active || "none"}  versions=${state.versionSource}  seed=${state.seed}
+  start/reuse : ${on.filter(s=>["source","pinned"].includes(s.p)).map(s=>s.n).join(", ")||"—"}
+  no container: ${on.filter(s=>["mock","recorded","remote"].includes(s.p)).map(s=>s.n+" ("+s.p+")").join(", ")||"—"}
+  off         : ${state.services.filter(s=>s.p==="off").map(s=>s.n).join(", ")||"—"}
+  memory      : ${memUsed()}Mi of 8192Mi Docker budget ${memUsed()>8192?"— OVER BUDGET":""}
+  blockers    : ${blockers().map(s=>s.n+": "+s.blocker).join(" | ")||"none"}
+  warnings    : payments-api is remote — writes land in shared cidev
+  [a] apply    [esc] back   (prototype: keys only restyle state)`;
+}
+function overlayHtml(){
+  if (!state.overlay) return "";
+  let body = "";
+  if (state.overlay==="plan") body = `<pre>${esc(planText())}</pre>`;
+  if (state.overlay==="logs") body = `<pre>accounts-filing-api  INFO  Started Application in 6.4s
+accounts-filing-web  ↻ nodemon restart (src/routers/upload.ts)
+kafka                <span class="bad">OOMKilled — see blocker on main screen</span>
+company-profile-api  <span class="warn">RECORDED</span> GET /company/00000006 → 200 (fixture)
+felixvalidator       <span class="warn">MOCK</span> POST /validate-async → callback PATCH 200</pre>`;
+  if (state.overlay==="doctor") body = `<pre>DOCTOR (preflight)
+  <span class="ok">ok</span>   docker 27.x, 8192Mi assigned
+  <span class="ok">ok</span>   aws sso session valid (cidev) · ECR login fresh
+  <span class="ok">ok</span>   ports 80/443 free · *.chs.localhost resolves
+  <span class="bad">FAIL</span> kafka memory limit 512Mi &lt; contract 1024Mi
+  <span class="warn">warn</span> payments-api=remote needs --allow-cidev-writes
+  <span class="ok">ok</span>   all required env present (2 from SSM, runtime only)</pre>`;
+  if (state.overlay==="help") body = `<pre>arrows  move (no vim keys)   enter  provider picker (space = quick cycle)
+slash (/)  filter services    A  apply pending changes    u  undo last edit
+a  add service to journey     x  remove from journey (press twice to confirm)
+J  journeys page: switch / create / disable   S  save journey or variation
+Tab  inspector tabs   p  plan   l  logs   d  doctor   esc  back
+A journey is always required. No journey enabled = selection gate.
+left/right       switch prototype variant (floating bar below)</pre>`;
+  if (state.overlay==="add") {
+    const inWs = {}; workspaceNames().forEach(n=>inWs[n]=1);
+    const all = allServiceNames();
+    const list = all.filter(n=>n.includes(state.filter));
+    if (state.pick >= list.length) state.pick = Math.max(0, list.length-1);
+    body = `<div class="rowline"><span>add service to journey <b>${esc(state.active||"")}</b> — type to filter <span class="faint">(catalogue of ~250 in the real tool; ${all.length} here)</span></span><span class="faint">↑↓ choose · enter add · esc cancel</span></div>
+    <div style="margin:6px 0">&gt; ${esc(state.filter)}<span class="faint">▌</span></div>
+    ${list.slice(0,10).map((n,i)=>`<div class="rowline" style="${i===state.pick?"background:var(--sel)":""}"><span>${i===state.pick?"›":" "} ${esc(n)} <span class="faint">${esc((CATALOGUE[n]||{}).module||"journey/catalogue")}</span></span><span class="${inWs[n]?"faint":"ok"}">${inWs[n]?"already in journey":"enter: add as pinned"}</span></div>`).join("") || `<div class="faint">no services match</div>`}
+    <div class="faint" style="margin-top:6px">Adding edits the enabled journey and marks it modified. Deps are reported, not auto-added — auto-enabling deps happens in Create journey, where you review the closure first.</div>`;
+  }
+  if (state.overlay==="save") {
+    body = `<div class="rowline"><span>${state.pendingSaveCreate ? "save new journey" : "save journey / save as variation"}</span><span class="faint">enter confirm · esc cancel</span></div>
+    <div style="margin:6px 0">name: ${esc(state.saveName)}<span class="faint">▌</span></div>
+    <div class="faint">writes journeys/${esc(state.saveName||"…")}.yaml. Keep the same name to overwrite; a new name creates your variation (e.g. accounts-remote) and enables it. Nothing here is pre-built into the UI.</div>`;
+  }
+  return `<div class="panel overlay"><h3>${state.overlay}</h3>${body}</div>`;
+}
+/* ---------- Variant A: table-first ---------- */
+function VariantA(){
+  return `${headerLine()}
+  <table><tr><th>service</th><th>provider</th><th>status</th><th>version</th></tr>${serviceRows(false)}</table>
+  <div style="margin-top:10px">${inspector()}</div>${overlayHtml()}`;
+}
+/* ---------- Variant B: journey panes ---------- */
+function VariantB(){
+  const tree = ["journeys/ (J to manage)", ...Object.keys(JOURNEY_DEFS).map(n=>"  "+n+(n===state.active?"  ‹ ENABLED":"")+(JOURNEY_DEFS[n].saved?"":" (temp)")+"  · "+Object.keys(JOURNEY_DEFS[n].services).length), "  + Create journey…","","catalogue (a edits journey)","  "+Object.keys(CATALOGUE).length+" extra services here,","  ~250 in the real tool","","platform core","  authentication","  eric / gateway","  mongo · kafka · redis"].join("\n");
+  return `${headerLine()}<div class="B-grid">
+    <div class="panel"><h3>journeys &amp; core</h3><pre>${esc(tree)}</pre><pre class="faint">\nJ opens journeys as\na full page.</pre></div>
+    <div class="panel"><h3>${esc(state.active||"—")} — services (${state.services.filter(s=>s.p!=="off").length} active)</h3>
+      <table><tr><th>service</th><th>provider</th><th>status</th></tr>${serviceRows(true)}</table></div>
+    <div>${inspector()}</div>
+  </div>${overlayHtml()}`;
+}
+/* ---------- shared: journeys & create as full pages / modal ---------- */
+function logsText(){
+  return `accounts-filing-api  INFO  Started Application in 6.4s
+accounts-filing-web  ↻ nodemon restart (src/routers/upload.ts)
+kafka                OOMKilled — see blocker on main screen
+company-profile-api  [recorded] GET /company/00000006 → 200 (fixture)
+felixvalidator       [mock] POST /validate-async → callback PATCH 200`;
+}
+function journeysPage(){
+  const rows = journeyRows();
+  if (state.pick >= rows.length) state.pick = 0;
+  return `<div style="max-width:720px;margin:16px auto">
+  <div class="rowline"><span style="font-size:15px"><b>Journeys</b> <span class="dim">— exactly one enabled${state.active?`: <b>${esc(state.active)}</b>`:""}</span></span><span class="faint">↑↓ choose · enter select · esc back</span></div>
+  <div class="panel" style="margin-top:10px">
+  ${rows.map((r,i)=>`<div class="rowline clickable" data-jrow="${i}" style="${i===state.pick?"background:var(--sel)":""};padding:5px 4px"><span>${i===state.pick?"›":" "} ${r.label}</span><span class="faint">${i===state.pick?"enter":""}</span></div>`).join("")}
+  </div>
+  <div class="faint" style="margin-top:8px">Switching while running re-plans: shared services keep running. Variations are journeys you saved (S on the main screen).</div>
+  ${state.hint?`<div class="warn" style="margin-top:6px">› ${esc(state.hint)}</div>`:""}
+  </div>${overlayHtml()}`;
+}
+function journeysModal(){
+  const rows = journeyRows();
+  if (state.pick >= rows.length) state.pick = 0;
+  return `<div class="scrim"><div class="modal"><h3>Journeys — exactly one enabled</h3>
+  ${rows.map((r,i)=>`<div class="rowline clickable" data-jrow="${i}" style="${i===state.pick?"background:var(--sel)":""};padding:5px 4px"><span>${i===state.pick?"›":" "} ${r.label}</span><span class="faint">${i===state.pick?"enter":""}</span></div>`).join("")}
+  <div class="faint" style="margin-top:8px">↑↓ choose · enter select · esc back</div></div></div>`;
+}
+function createPage(){
+  const c = state.create || {step:1, members:{}};
+  let inner = "";
+  if (c.step === 1) {
+    const list = allServiceNames().filter(n=>n.includes(state.filter));
+    if (state.pick >= list.length) state.pick = Math.max(0, list.length-1);
+    inner = `<div class="rowline"><span><b>Create journey</b> — step 1 of 2: pick the service you are working on</span><span class="faint">type to filter · enter next · esc back</span></div>
+    <div style="margin:8px 0">&gt; ${esc(state.filter)}<span class="faint">▌</span></div>
+    ${list.slice(0,10).map((n,i)=>`<div class="rowline" style="${i===state.pick?"background:var(--sel)":""};padding:3px 4px"><span>${i===state.pick?"›":" "} ${esc(n)}</span><span class="faint">${closureFor(n).length} services with deps</span></div>`).join("") || `<div class="faint">no services match</div>`}`;
+  } else {
+    const names = Object.keys(c.members);
+    if (state.pick >= names.length) state.pick = 0;
+    inner = `<div class="rowline"><span><b>Create journey</b> — step 2 of 2: review auto-enabled dependencies</span><span class="faint">space provider · x exclude · enter start · S save first</span></div>
+    <div class="faint" style="margin:8px 0">Sensible default: your service = source, everything else local (pinned). Adjust before starting.</div>
+    ${names.map((n,i)=>`<div class="rowline" style="${i===state.pick?"background:var(--sel)":""};padding:3px 4px"><span>${i===state.pick?"›":" "} ${esc(n)}${n===c.root?' <span class="faint">(your service)</span>':""}</span><span>${pill(c.members[n])}</span></div>`).join("")}
+    <div class="rowline" style="margin-top:10px"><span><b>[enter]</b> Start as temporary journey</span><span><b>[S]</b> Save as named journey…</span><span><b>[esc]</b> back</span></div>
+    <div class="faint">Temporary journeys are discarded when you switch or disable.</div>`;
+  }
+  return `<div style="max-width:720px;margin:16px auto"><div class="panel">${inner}</div></div>${overlayHtml()}`;
+}
+/* ---------- Variant D: panes, journeys in left rail, page on J ---------- */
+function VariantD(){
+  const rail = ["journeys/ (J for page)", ...Object.keys(JOURNEY_DEFS).map(n=>"  "+n+(n===state.active?"  ‹ ENABLED":"")+(JOURNEY_DEFS[n].saved?"":" (temp)")), "  + Create journey…"].join("\n");
+  return `${headerLine()}<div class="B-grid">
+    <div class="panel"><h3>journeys &amp; core</h3><pre>${esc(rail)}</pre><pre class="faint">\nJ opens journeys as\na full page, not a\npanel down here.</pre></div>
+    <div class="panel"><h3>${esc(state.active||"—")} — services (${state.services.filter(s=>s.p!=="off").length} active)</h3>
+      <table><tr><th>service</th><th>provider</th><th>status</th></tr>${serviceRows(true)}</table></div>
+    <div>${inspector()}</div>
+  </div>${overlayHtml()}`;
+}
+/* ---------- Variant E: A-refined table, journeys as modal ---------- */
+function VariantE(){
+  return `${headerLine()}
+  <table><tr><th>service</th><th>provider</th><th>status</th><th>version</th></tr>${serviceRows(false)}</table>
+  <div style="margin-top:10px">${inspector()}</div>${overlayHtml()}${state.view==="journeys"?journeysModal():""}`;
+}
+/* ---------- Variant F: table + tabbed inspector (details/config/logs) ---------- */
+function VariantF(){
+  const s = state.services[state.sel];
+  const tabs = [["detail","Details"],["config","Config"],["logs","Logs"]];
+  let body = "";
+  if (state.tab === "logs") body = `<pre>${esc(logsText())}</pre>`;
+  else if (state.tab === "config" && s) body = s.n==="accounts-filing-api"
+    ? state.configExplain.map(c=>`<div class="rowline"><span>${esc(c[0])}=${esc(c[1])}</span><span class="faint">${esc(c[2])}</span></div>`).join("")
+    : `<span class="faint">select accounts-filing-api for config provenance</span>`;
+  else body = s ? `<div class="rowline"><span class="dim">provider</span><span>${pill(s.p)}</span></div>
+    <div class="rowline"><span class="dim">version</span><span>${esc(s.ver)}</span></div>
+    <div class="rowline"><span class="dim">status</span><span>${esc(s.st)}</span></div>
+    ${s.blocker?`<div class="rowline"><span class="dim">blocker</span><span class="bad">${esc(s.blocker)}</span></div>`:""}
+    ${s.note?`<div class="rowline"><span class="dim">note</span><span>${esc(s.note)}</span></div>`:""}` : "";
+  return `${headerLine()}<div style="display:grid;grid-template-columns:1.5fr 1fr;gap:10px">
+    <div class="panel"><h3>${esc(state.active||"—")} — services</h3>
+      <table><tr><th>service</th><th>provider</th><th>status</th></tr>${serviceRows(true)}</table></div>
+    <div class="panel"><h3>${s?esc(s.n):"—"}</h3>
+      <div style="margin-bottom:8px">${tabs.map(([k,l])=>`<span class="pill ${state.tab===k?"p-source":""}" style="cursor:pointer" data-tab="${k}">${l}</span>`).join(" ")} <span class="faint">tab key cycles</span></div>
+      ${body}</div>
+  </div>${overlayHtml()}`;
+}
+/* ---------- round 3 shared machinery ---------- */
+const PROVIDER_INFO = {
+  source:  "your checkout, live reload",
+  pinned:  "cidev image in a local container",
+  mock:    "fake responses from a contract/scenario",
+  recorded:"replayed captured responses, no container",
+  remote:  "real cidev service — writes hit shared cidev",
+  off:     "listed in the journey, not run",
+};
+const INFRA = ["mongo","kafka","redis","opensearch","zookeeper"];
+function groupOf(s){ if (INFRA.includes(s.n)) return "infrastructure"; if (s.p==="off") return "off"; if (s.p==="source") return "working on"; return "dependencies"; }
+function displayServices(){
+  const order = ["working on","dependencies","infrastructure","off"];
+  let list = [...state.services].sort((a,b)=> order.indexOf(groupOf(a))-order.indexOf(groupOf(b)) || a.n.localeCompare(b.n));
+  if (state.filterMain) list = list.filter(s=>s.n.includes(state.filterMain));
+  return list;
+}
+function currentList(){ return ["G","H","I"].includes(state.variant) ? displayServices() : state.services; }
+function selectedService(){ const l = currentList(); return l[Math.min(state.sel, Math.max(0,l.length-1))]; }
+function pendingChanges(){
+  const d = currentDef(); if (!d) return [];
+  const out = [], names = new Set([...Object.keys(d.services), ...Object.keys(state.baseline)]);
+  for (const n of names) {
+    if (!(n in state.baseline)) out.push(n + ": added (" + d.services[n] + ")");
+    else if (!(n in d.services)) out.push(n + ": removed");
+    else if (d.services[n] !== state.baseline[n]) out.push(n + ": " + state.baseline[n] + " → " + d.services[n]);
+  }
+  return out;
+}
+function pushUndo(label){ const d = currentDef(); if (d) state.undoStack.push({label, active: state.active, services: {...d.services}}); }
+function doUndo(){
+  const u = state.undoStack.pop(); if (!u) { state.hint = "nothing to undo"; return; }
+  JOURNEY_DEFS[u.active].services = {...u.services}; if (state.active !== u.active) activateJourney(u.active);
+  syncFromDef(); state.hint = "undid: " + u.label; state.lastCmd = "chs-dev undo (prototype)";
+}
+function applyChanges(){
+  const ch = pendingChanges(); if (!ch.length) { state.hint = "already in sync — nothing to apply"; return; }
+  snapshotBaseline();
+  state.services.forEach(s => { if (!["off","mock","recorded","remote"].includes(s.p)) s.st = "starting…"; });
+  state.hint = "applying " + ch.length + " change(s)…"; state.lastCmd = "chs-dev apply";
+  setTimeout(() => {
+    state.services.forEach(s => { if (s.st === "starting…") s.st = s.blocker ? "blocked" : "running"; });
+    state.hint = "applied: " + ch.join(" · "); render();
+  }, 900);
+  render();
+}
+function logsFor(s){
+  if (!s) return "";
+  const L = {
+    off: s.n + "  not running (provider off)",
+    mock: s.n + "  [mock] scenario responses only — no container, no datastore",
+    recorded: s.n + "  [recorded] replaying fixtures · GET /company/00000006 → 200 (fixture, 2026-10-30)",
+    remote: s.n + "  [remote] proxied to cidev · writes land in shared cidev",
+  };
+  if (L[s.p]) return L[s.p];
+  if (s.blocker) return s.n + "  ERROR OOMKilled at memory limit\n" + s.n + "  contract requires more — raise limit or set provider off/mock";
+  return s.n + "  INFO  Started in 6.4s · healthcheck 200\n" + s.n + "  INFO  Watching for changes" + (s.p==="source" ? " (live reload on)" : "");
+}
+function applyStrip(){
+  const ch = pendingChanges();
+  if (!ch.length) return `<div class="rowline" style="border:1px solid var(--line);padding:5px 10px;margin-bottom:10px"><span class="ok">● in sync with the running environment</span><span class="faint">Enter: provider picker · /: filter · J: journeys${state.lastCmd?` · <span style="color:var(--cyan)">${esc(state.lastCmd)}</span>`:""}</span></div>`;
+  const shown = ch.slice(0,3).join(" · ") + (ch.length>3 ? ` · +${ch.length-3} more (p = full plan)` : "");
+  return `<div class="rowline" style="border:1px solid var(--amber);padding:5px 10px;margin-bottom:10px;background:#191510"><span class="warn">● ${ch.length} pending change${ch.length>1?"s":""}: ${esc(shown)}</span><span><b>[A]</b> apply · <b>[p]</b> plan · <b>[u]</b> undo</span></div>`;
+}
+function groupedRows(showVersion){
+  const list = displayServices(); let lastGroup = "";
+  return list.map((s) => {
+    const i = list.indexOf(s); const g = groupOf(s); let gh = "";
+    if (g !== lastGroup && !state.filterMain) { lastGroup = g; gh = `<tr><td colspan="4" class="faint" style="padding-top:7px">${g}</td></tr>`; }
+    return gh + `<tr class="clickable ${i===state.sel?"sel":""}" data-i="${i}">
+      <td>${i===state.sel?"›":" "} ${esc(s.n)}</td><td>${pill(s.p)}</td>
+      <td class="${s.st==="blocked"?"bad":s.st==="off"?"faint":""}">${esc(s.st)}</td>
+      ${showVersion?`<td class="dim">${esc(s.ver)}</td>`:""}</tr>`;
+  }).join("") || `<tr><td class="faint">no services match filter</td></tr>`;
+}
+function pickerRows(){
+  const s = selectedService(); if (!s) return "";
+  return PROVIDERS.map((p,i)=>`<div class="rowline" style="${i===state.pick?"background:var(--sel)":""};padding:4px">
+    <span>${i===state.pick?"›":" "} ${pill(p)} <span class="dim">${esc(PROVIDER_INFO[p])}</span>${p===s.p?' <span class="faint">(current)</span>':""}</span>
+    ${p==="remote"?'<span class="warn">shared-env writes</span>':""}</div>`).join("");
+}
+function tabsHtml(s){
+  if (!s) return `<span class="faint">no service selected</span>`;
+  const tabs = [["detail","Details"],["config","Config"],["logs","Logs"]];
+  let body = "";
+  if (state.tab === "logs") body = `<pre>${esc(logsFor(s))}</pre><div class="faint" style="margin-top:4px">following ${esc(s.n)} · filtered to selected service</div>`;
+  else if (state.tab === "config") body = s.n==="accounts-filing-api"
+    ? state.configExplain.map(c=>`<div class="rowline"><span>${esc(c[0])}=${esc(c[1])}</span><span class="faint">${esc(c[2])}</span></div>`).join("")
+    : `<span class="faint">config provenance renders per service in the real tool</span>`;
+  else body = `<div class="rowline"><span class="dim">provider</span><span>${pill(s.p)} <span class="faint">(Enter: change)</span></span></div>
+    <div class="rowline"><span class="dim">version</span><span>${esc(s.ver)}</span></div>
+    ${s.blocker?`<div class="rowline"><span class="dim">blocker</span><span class="bad">${esc(s.blocker)}</span></div>`:""}
+    ${s.note?`<div class="rowline"><span class="dim">note</span><span>${esc(s.note)}</span></div>`:""}`;
+  return `<div class="rowline"><span><b>${esc(s.n)}</b> · <span class="${s.st==="blocked"?"bad":"dim"}">${esc(s.st)}</span></span><span>${tabs.map(([k,l])=>`<span class="pill ${state.tab===k?"p-source":""}" style="cursor:pointer" data-tab="${k}">${l}</span>`).join(" ")}</span></div>
+  <div style="margin-top:8px">${body}</div>`;
+}
+/* ---------- Variant G: F refined (picker replaces inspector) ---------- */
+function VariantG(){
+  const s = selectedService();
+  return `${headerLine()}${applyStrip()}
+  ${state.filtering||state.filterMain?`<div class="rowline"><span>filter: ${esc(state.filterMain)}<span class="faint">▌ (esc clears)</span></span></div>`:""}
+  <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:10px">
+    <div class="panel"><h3>${esc(state.active||"—")} — services</h3>
+      <table><tr><th>service</th><th>provider</th><th>status</th><th>version</th></tr>${groupedRows(true)}</table></div>
+    <div class="panel">${state.picker
+      ? `<h3>provider for ${s?esc(s.n):""}</h3>${pickerRows()}<div class="faint" style="margin-top:6px">↑↓ choose · enter select · esc cancel · takes effect on apply (A)</div>`
+      : tabsHtml(s)}</div>
+  </div>${overlayHtml()}`;
+}
+/* ---------- Variant H: command centre (changes left, picker modal) ---------- */
+function VariantH(){
+  const s = selectedService(); const ch = pendingChanges();
+  return `${headerLine()}${applyStrip()}
+  <div style="display:grid;grid-template-columns:250px 1.4fr 1fr;gap:10px">
+    <div class="panel"><h3>pending changes (${ch.length})</h3>
+      ${ch.length?ch.map(c=>`<div class="rowline"><span class="warn">● ${esc(c)}</span></div>`).join(""):`<span class="ok">in sync</span>`}
+      <h3 style="margin-top:10px">journeys (J)</h3>
+      ${Object.keys(JOURNEY_DEFS).map(n=>`<div class="rowline"><span>${n===state.active?"› ":"  "}${esc(n)}${JOURNEY_DEFS[n].saved?"":" (temp)"}</span></div>`).join("")}
+      ${state.lastCmd?`<h3 style="margin-top:10px">last action as CLI</h3><pre style="color:var(--cyan)">${esc(state.lastCmd)}</pre>`:""}</div>
+    <div class="panel"><h3>${esc(state.active||"—")} — services ${state.filterMain?`(filter: ${esc(state.filterMain)})`:""}</h3>
+      <table><tr><th>service</th><th>provider</th><th>status</th><th>version</th></tr>${groupedRows(true)}</table></div>
+    <div class="panel">${tabsHtml(s)}</div>
+  </div>${overlayHtml()}${state.picker?`<div class="scrim"><div class="modal"><h3>provider for ${s?esc(s.n):""}</h3>${pickerRows()}<div class="faint" style="margin-top:6px">↑↓ · enter select · esc cancel</div></div></div>`:""}`;
+}
+/* ---------- Variant I: full table + bottom console, inline picker row ---------- */
+function VariantI(){
+  const s = selectedService(); const ch = pendingChanges();
+  const list = displayServices();
+  const rows = list.map((sv,i)=>{
+    const g = groupOf(sv);
+    const main = `<tr class="clickable ${i===state.sel?"sel":""}" data-i="${i}"><td>${i===state.sel?"›":" "} ${esc(sv.n)} <span class="faint">${g}</span></td><td>${pill(sv.p)}</td><td class="${sv.st==="blocked"?"bad":""}">${esc(sv.st)}</td><td class="dim">${esc(sv.ver)}</td></tr>`;
+    const pk = (state.picker && i===state.sel) ? `<tr><td colspan="4" style="background:var(--panel);padding:6px 10px">provider: ${PROVIDERS.map((p,j)=>`<span class="pill ${j===state.pick?"p-source":""}" style="margin-right:6px">${p}</span>`).join("")}<span class="dim">${esc(PROVIDER_INFO[PROVIDERS[state.pick]])}${PROVIDERS[state.pick]==="remote"?' <span class="warn">— shared-env writes</span>':""}</span> <span class="faint">↑↓ choose · enter select · esc cancel</span></td></tr>` : "";
+    return main + pk;
+  }).join("");
+  return `${headerLine()}${applyStrip()}
+  <div class="panel"><h3>${esc(state.active||"—")} — services ${state.filterMain?`(filter: ${esc(state.filterMain)})`:""}</h3>
+    <table><tr><th>service</th><th>provider</th><th>status</th><th>version</th></tr>${rows||'<tr><td class="faint">no services match filter</td></tr>'}</table></div>
+  <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:10px">
+    <div class="panel"><h3>pending changes (${ch.length})</h3>
+      ${ch.length?ch.map(c=>`<div class="warn">● ${esc(c)}</div>`).join(""):`<span class="ok">in sync — nothing to apply</span>`}
+      <div class="faint" style="margin-top:6px">[A] apply · [p] full plan · [u] undo${state.lastCmd?` · CLI: <span style="color:var(--cyan)">${esc(state.lastCmd)}</span>`:""}</div></div>
+    <div class="panel">${tabsHtml(s)}</div>
+  </div>${overlayHtml()}`;
+}
+/* ---------- wiring ---------- */
+const VARIANTS = { G:["G (F refined)",VariantG], H:["H (Command centre)",VariantH], I:["I (Table + console)",VariantI], F:["F (Tabbed inspector)",VariantF], A:["A (Table-first)",VariantA], B:["B (Journey panes)",VariantB], D:["D (Panes + journey page)",VariantD], E:["E (Table + journey modal)",VariantE] };
+const ORDER = ["G","H","I","F","A","B","D","E"];
+if (!VARIANTS[state.variant]) state.variant = "G";
+function render(){
+  if (state.view === "create") $("screen").innerHTML = createPage();
+  else if (state.view === "journeys" && state.variant !== "E") $("screen").innerHTML = journeysPage();
+  else $("screen").innerHTML = state.active ? VARIANTS[state.variant][1]() : gateHtml();
+  $("termTitle").textContent = "chs-dev tui · variant " + state.variant + " · ?variant=" + state.variant;
+  $("switcherLabel").textContent = "Prototype variant: " + VARIANTS[state.variant][0];
+  $("keys").innerHTML = !state.active
+    ? `<span><b>↑↓</b> choose</span><span><b>enter</b> enable / create</span><span><b>←→</b> variant</span><span class="faint">no journey enabled — nothing runs until you pick one</span>`
+    : state.picker ? `<span><b>↑↓</b> choose provider</span><span><b>enter</b> select</span><span><b>esc</b> cancel</span>`
+    : state.filtering ? `<span>filtering… <b>enter/esc</b> done</span>`
+    : `<span><b>↑↓</b> move</span><span><b>enter</b> provider</span><span><b>/</b> filter</span><span><b>A</b> apply</span><span><b>J</b> journeys</span><span><b>?</b> all keys</span><span><b>←→</b> variant</span>`;
+  document.querySelectorAll("[data-i]").forEach(el => el.addEventListener("click", () => {
+    state.sel = Number(el.getAttribute("data-i")); render();
+  }));
+  document.querySelectorAll("[data-jrow]").forEach(el => el.addEventListener("click", () => {
+    state.pick = Number(el.getAttribute("data-jrow")); pickJourneyRow(journeyRows()[state.pick]); render();
+  }));
+  document.querySelectorAll("[data-tab]").forEach(el => el.addEventListener("click", () => {
+    state.tab = el.getAttribute("data-tab"); render();
+  }));
+}
+function setVariant(v){
+  state.variant = v;
+  const u = new URL(location.href); u.searchParams.set("variant", v);
+  history.replaceState(null, "", u.toString()); render();
+}
+function cycleVariant(d){ setVariant(ORDER[(ORDER.indexOf(state.variant) + d + ORDER.length) % ORDER.length]); }
+$("prev").addEventListener("click", () => cycleVariant(-1));
+$("next").addEventListener("click", () => cycleVariant(1));
+function cycleProvider(){
+  const s = selectedService(); const d = currentDef(); if (!s || !d) return;
+  pushUndo("provider " + s.n);
+  s.p = PROVIDERS[(PROVIDERS.indexOf(s.p) + 1) % PROVIDERS.length];
+  d.services[s.n] = s.p; /* editing the enabled journey document */
+  s.st = {source:"running",pinned: s.blocker?"blocked":"running",mock:"mocked",recorded:"replaying",remote:"via cidev",off:"off"}[s.p];
+  state.lastCmd = "chs-dev service configure " + s.n + " --provider " + s.p;
+}
+function selectProvider(p){
+  const s = selectedService(); const d = currentDef(); if (!s || !d) return;
+  if (p === s.p) { state.picker = false; return; }
+  pushUndo("provider " + s.n);
+  s.p = p; d.services[s.n] = p;
+  s.st = {source:"running",pinned: s.blocker?"blocked":"running",mock:"mocked",recorded:"replaying",remote:"via cidev",off:"off"}[p];
+  state.picker = false;
+  state.lastCmd = "chs-dev service configure " + s.n + " --provider " + p;
+  state.hint = s.n + " → " + p + " (pending — A to apply, u to undo)";
+}
+function pickJourneyRow(row){
+  if (!row) return;
+  if (row.kind === "journey") { activateJourney(row.name); state.overlay = null; state.view = "main"; }
+  else if (row.kind === "create") { startCreate(); }
+  else if (row.kind === "disable") { disableJourney(); state.overlay = null; state.view = "main"; state.pick = 0; }
+}
+document.addEventListener("keydown", e => {
+  const tag = (document.activeElement && document.activeElement.tagName) || "";
+  if (["INPUT","TEXTAREA"].includes(tag) || document.activeElement?.isContentEditable) return;
+  const n = state.services.length;
+  if (e.key === "ArrowLeft" && state.view !== "create" && !state.picker && !state.filtering && state.overlay !== "add" && state.overlay !== "save") { cycleVariant(-1); return; }
+  if (e.key === "ArrowRight" && state.view !== "create" && !state.picker && !state.filtering && state.overlay !== "add" && state.overlay !== "save") { cycleVariant(1); return; }
+  /* create flow (full page) */
+  if (state.view === "create" && state.create) {
+    const c = state.create;
+    if (e.key === "Escape") { state.create = null; state.view = "journeys"; render(); return; }
+    if (c.step === 1) {
+      const list = allServiceNames().filter(x=>x.includes(state.filter));
+      if (e.key === "ArrowDown") state.pick = Math.min(state.pick+1, Math.max(0,list.length-1));
+      else if (e.key === "ArrowUp") state.pick = Math.max(state.pick-1, 0);
+      else if (e.key === "Enter") { if (list[state.pick]) createStep2(list[state.pick]); }
+      else if (e.key === "Backspace") { state.filter = state.filter.slice(0,-1); state.pick = 0; }
+      else if (e.key.length === 1) { state.filter += e.key; state.pick = 0; }
+    } else {
+      const names = Object.keys(c.members);
+      if (e.key === "ArrowDown") state.pick = (state.pick+1)%names.length;
+      else if (e.key === "ArrowUp") state.pick = (state.pick-1+names.length)%names.length;
+      else if (e.key === " ") { e.preventDefault(); const nm = names[state.pick]; c.members[nm] = PROVIDERS[(PROVIDERS.indexOf(c.members[nm])+1)%PROVIDERS.length]; }
+      else if (e.key === "x") { if (names.length>1) delete c.members[names[state.pick]]; state.pick = 0; }
+      else if (e.key === "Enter") finishCreateTemporary();
+      else if (e.key === "S") { state.pendingSaveCreate = true; state.overlay = "save"; state.saveName = ""; }
+    }
+    render(); return;
+  }
+  /* text-entry overlays capture typing */
+  if (state.overlay === "add" || state.overlay === "save") {
+    if (e.key === "Escape") { state.overlay = null; if (state.pendingSaveCreate) { state.pendingSaveCreate = false; state.view = "create"; } render(); return; }
+    if (state.overlay === "add") {
+      const list = allServiceNames().filter(x=>x.includes(state.filter));
+      if (e.key === "ArrowDown") state.pick = Math.min(state.pick+1, Math.max(0,list.length-1));
+      else if (e.key === "ArrowUp") state.pick = Math.max(state.pick-1, 0);
+      else if (e.key === "Enter") { if (list[state.pick]) addService(list[state.pick]); state.overlay = null; state.filter=""; state.pick=0; }
+      else if (e.key === "Backspace") { state.filter = state.filter.slice(0,-1); state.pick = 0; }
+      else if (e.key.length === 1) { state.filter += e.key; state.pick = 0; }
+      render(); return;
+    }
+    if (e.key === "Enter" && state.saveName.trim()) saveJourneyAs(state.saveName);
+    else if (e.key === "Backspace") state.saveName = state.saveName.slice(0,-1);
+    else if (e.key.length === 1) state.saveName += e.key;
+    render(); return;
+  }
+  if (state.view === "journeys") {
+    const rows = journeyRows();
+    if (e.key === "Escape") state.view = "main";
+    else if (e.key === "ArrowDown") state.pick = (state.pick+1)%rows.length;
+    else if (e.key === "ArrowUp") state.pick = (state.pick-1+rows.length)%rows.length;
+    else if (e.key === "Enter") pickJourneyRow(rows[state.pick]);
+    render(); return;
+  }
+  /* gate: no journey enabled — selection is mandatory */
+  if (!state.active) {
+    const rows = journeyRows();
+    if (e.key === "ArrowDown") state.pick = (state.pick+1)%rows.length;
+    else if (e.key === "ArrowUp") state.pick = (state.pick-1+rows.length)%rows.length;
+    else if (e.key === "Enter") pickJourneyRow(rows[state.pick]);
+    render(); return;
+  }
+  if (state.picker) {
+    if (e.key === "Escape") state.picker = false;
+    else if (e.key === "ArrowDown") state.pick = (state.pick+1)%PROVIDERS.length;
+    else if (e.key === "ArrowUp") state.pick = (state.pick-1+PROVIDERS.length)%PROVIDERS.length;
+    else if (e.key === "Enter") selectProvider(PROVIDERS[state.pick]);
+    render(); return;
+  }
+  if (state.filtering) {
+    if (e.key === "Escape") { state.filtering = false; state.filterMain = ""; state.sel = 0; }
+    else if (e.key === "Enter") state.filtering = false;
+    else if (e.key === "ArrowDown") { const l = currentList(); if(l.length) state.sel = (state.sel+1)%l.length; }
+    else if (e.key === "ArrowUp") { const l = currentList(); if(l.length) state.sel = (state.sel-1+l.length)%l.length; }
+    else if (e.key === "Backspace") { state.filterMain = state.filterMain.slice(0,-1); state.sel = 0; }
+    else if (e.key.length === 1) { state.filterMain += e.key; state.sel = 0; }
+    render(); return;
+  }
+  if (e.key !== "x") state.confirmX = "";
+  if (e.key === "Tab") { e.preventDefault(); const T=["detail","config","logs"]; state.tab = T[(T.indexOf(state.tab)+1)%3]; render(); }
+  else if (e.key === "Enter") { const s = selectedService(); if (s) { state.picker = true; state.pick = PROVIDERS.indexOf(s.p); } render(); }
+  else if (e.key === "/") { state.filtering = true; render(); }
+  else if (e.key === "A") { applyChanges(); }
+  else if (e.key === "u") { doUndo(); render(); }
+  else if (e.key === "ArrowDown") { const l = currentList(); if(l.length) state.sel = (state.sel+1)%l.length; render(); }
+  else if (e.key === "ArrowUp") { const l = currentList(); if(l.length) state.sel = (state.sel-1+l.length)%l.length; render(); }
+  else if (e.key === " ") { e.preventDefault(); if(n) cycleProvider(); render(); }
+  else if (e.key === "a") { state.overlay = "add"; state.filter=""; state.pick=0; render(); }
+  else if (e.key === "x") {
+    const d = currentDef(); const s = selectedService();
+    if (s && d) {
+      if (state.confirmX !== s.n) { state.confirmX = s.n; state.hint = "remove " + s.n + " from journey? press x again to confirm (any other key cancels, u undoes after)"; }
+      else { pushUndo("remove " + s.n); delete d.services[s.n]; state.confirmX = ""; syncFromDef();
+        state.lastCmd = "chs-dev service remove " + s.n;
+        state.hint = "removed " + s.n + " (u to undo · provider off would have kept it listed)"; }
+    }
+    render();
+  }
+  else if (e.key === "J") { state.view = "journeys"; state.pick = 0; render(); }
+  else if (e.key === "S") { state.overlay = "save"; state.pendingSaveCreate = false; state.saveName = (currentDef() && currentDef().saved) ? state.active : ""; render(); }
+  else if (e.key === "p") { state.overlay = state.overlay==="plan"?null:"plan"; render(); }
+  else if (e.key === "l") { state.overlay = state.overlay==="logs"?null:"logs"; render(); }
+  else if (e.key === "d") { state.overlay = state.overlay==="doctor"?null:"doctor"; render(); }
+  else if (e.key === "?") { state.overlay = state.overlay==="help"?null:"help"; render(); }
+  else if (e.key === "Escape") { state.overlay = null; render(); }
+});
+state.services.forEach(s => { SVC[s.n] = s; });
+state.services = []; /* starts at the gate: no journey enabled */
+render();
+</script>
+</body>
+</html>

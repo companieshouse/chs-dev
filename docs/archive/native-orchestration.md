@@ -1,5 +1,7 @@
 # Native orchestration
 
+Historical design retained for reference. Native Docker and Apple execution have been removed. See the [current transition guide](../compose-transition.md).
+
 The native backend manages Docker or Apple containers directly through a shared
 planner. Docker Compose remains the default execution backend. Both native
 runtimes now compile prepared CHS definitions without invoking Compose.

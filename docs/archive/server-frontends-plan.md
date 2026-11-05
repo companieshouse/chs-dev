@@ -1,5 +1,7 @@
 # Persistent server and frontends plan
 
+Historical design retained for reference. Native Docker and Apple execution have been removed. See the [current transition guide](../compose-transition.md).
+
 Status: implemented in the local package. See [architecture](architecture.md) and
 [daemon operation](daemon.md) for the resulting structure and behaviour. Automated
 verification covers isolated daemon, recovery and terminal workflows; real-engine

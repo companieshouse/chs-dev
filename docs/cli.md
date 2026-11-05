@@ -82,7 +82,7 @@ the environment's containers and keeps volumes; `daemon stop` stops daemon work
 and supervision and leaves containers alone.
 
 The new CLI uses the daemon's selected checkout. A connected shell cannot change
-its project, engine or pinned settings through environment overrides. Differences
+its project or pinned settings through environment overrides. Differences
 produce warnings. Select a different checkout in the TUI or update daemon startup
 settings as described in [daemon operation](daemon.md).
 
@@ -222,7 +222,7 @@ development rebuild semantics.
 Exclusions `-d` affects direct dependencies and retains dependencies still required
 by other enabled services. Streaming logs support multiple services, `-C` for
 retained environment operation output, `-f` to follow, and `-n all` or a nonnegative
-tail. Zero starts without history. Docker and Apple stream actual engine output;
+tail. Zero starts without history. Docker streams actual engine output;
 disconnecting terminates their owned log processes. Streaming output is text and
 does not accept `--json`. Environment output is bounded in-memory history, so
 `-C -n all` means all retained lines. Streams stay on the containers selected when
@@ -254,7 +254,7 @@ Successful compatibility query shapes are:
 `services available` and `development services` share the first shape. In legacy
 status, `transient` means enabled without an explicit `services` root. Runtime
 status maps a stopped/missing container to `Not running`; other states use daemon
-runtime health vocabulary, including Apple containers.
+Docker health vocabulary.
 
 Builder-version/pull-control flags, reload `--force`, down volume/image-removal
 flags, and up telemetry/environment override flags are rejected before connecting
@@ -264,12 +264,14 @@ compatibility scope and return usage errors.
 
 ## Protocol and verification
 
-CLI envelope version 1 is separate from Unix-socket protocol version 2. Existing
-protocol-1 daemons need an explicit restart after their work finishes; clients
+CLI envelope version 1 is separate from Unix-socket protocol version 5. Existing
+older daemons need an explicit restart after their work finishes; clients
 report a version mismatch and do not replace a working daemon automatically.
 Legacy deferral is an optional checkpoint field, so old checkpoints remain readable.
 
 `npm test`, `npm run check` and `npm run build` cover command parsing, Unix-socket
 dispatch, legacy selection semantics, atomic saves, deferral/restarts, confirmation,
 detachment, cancellation, wait deadlines, log streaming and architecture boundaries.
-The existing Docker and Apple integration suites remain opt-in.
+Compose lifecycle, container-management and mock-provider integration suites
+remain opt-in and require Docker with Compose. See the
+[transition guide](compose-transition.md) before upgrading an existing native environment.

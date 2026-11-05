@@ -12,7 +12,6 @@ import { ProjectPreparation } from '../project/preparation.js';
 import { SshSetupService, sshSetupFiles } from './ssh-setup.js';
 import { tuiLog } from './tui-log.js';
 import { activeSettings, projectStateDirectory } from './settings.js';
-import { guardBackend } from './backend-guard.js';
 import type { ServiceVersions } from './service-versions.js';
 
 const sessions = new Set<LiveController>();
@@ -65,19 +64,17 @@ export function createLiveSession(
     const controller = new LiveController({
         eventSink: (event, fields) => tuiLog?.write(event, fields),
         operation: (work) => tuiLog?.scope(work) ?? work(),
-        runtime: guardBackend(
-            runtime.live({
-                directory,
-                environment,
-                get name() {
-                    return preparation.projectName;
-                },
-            }),
-            state,
-            `${runtime.id}/${activeSettings().orchestrator.value}`,
-        ),
+        runtime: runtime.live({
+            directory,
+            environment,
+            get name() {
+                return preparation.projectName;
+            },
+        }),
         preparation,
-        configuration: configurationStore(directory, groups, liveFiles),
+        configuration: configurationStore(directory, groups, liveFiles, () =>
+            Boolean(activeSettings().usageCache.value),
+        ),
         verifyAws: readAwsStatus,
         ssh,
         autoApply: activeSettings().autoApply.value,

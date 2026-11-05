@@ -214,11 +214,13 @@ function argsConfigurationSave(a: Args) {
         'mockScenario',
         'image',
         'versionSource',
+        'startMode',
     ]);
     string(e.name, 256);
     bool(e.enabled);
     bool(e.development);
     argsVersionEdit(e);
+    argsStartModeEdit(e);
     if (
         e.provider !== undefined &&
         !(serviceProviders as readonly unknown[]).includes(e.provider)
@@ -231,6 +233,11 @@ function argsConfigurationSave(a: Args) {
         string(k, 256);
         bool(v);
     }
+}
+function argsStartModeEdit(edit: Args) {
+    if (edit.startMode == null) return;
+    if (edit.startMode !== 'lazy' && edit.startMode !== 'always')
+        invalid('Choose lazy or always for the start mode.');
 }
 function argsVersionEdit(edit: Args) {
     if (edit.versionSource != null && !isVersionSource(edit.versionSource))
@@ -316,7 +323,6 @@ const commandArgValidators = new Map<string, ArgsValidator>([
     ['environment.stop', argsEmpty],
     ['environment.cancel', argsEmpty],
     ['environment.dismiss', argsEmpty],
-    ['runtime.start', argsEmpty],
     ['environment.confirm', argsConfirm],
     ['service.action', argsServiceAction],
     ['service.reload', argsServiceReload],

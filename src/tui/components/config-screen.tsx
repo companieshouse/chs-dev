@@ -8,8 +8,6 @@ import {
 import type { ProfileDiscovery } from '../../domain/aws-profiles.js';
 import type { ProjectConfig } from '../../domain/project.js';
 import type { SettingsSnapshot } from '../../domain/settings.js';
-import { supportedRuntimes } from '../../domain/settings.js';
-import Spinner from './spinner.js';
 import { theme } from './theme.js';
 
 export interface ConfigRow {
@@ -52,24 +50,6 @@ const detailBuilders: Record<
                     ? projectConfig.message
                     : 'No project selected. Press Enter to choose one.'
                 : undefined,
-    }),
-    orchestrator: ({ resolved }) => ({
-        value: resolved.orchestrator.value,
-        problem:
-            resolved.runtime.value === 'apple' &&
-            resolved.orchestrator.value !== 'native'
-                ? 'Apple requires Native orchestration.'
-                : ['compose', 'native'].includes(resolved.orchestrator.value)
-                  ? undefined
-                  : 'Supported orchestration: compose, native.',
-    }),
-    runtime: ({ resolved }) => ({
-        value: resolved.runtime.value,
-        problem: (supportedRuntimes as readonly string[]).includes(
-            resolved.runtime.value,
-        )
-            ? undefined
-            : `Unsupported runtime. Supported: ${supportedRuntimes.join(', ')}.`,
     }),
     awsProfile: ({ resolved }) => ({
         value: resolved.awsProfile.value,
@@ -152,26 +132,6 @@ export function configRows(
         }));
 }
 
-function useEngineStarter(
-    onStartEngine: (() => Promise<{ message: string }>) | undefined,
-) {
-    const [engineMessage, setEngineMessage] = useState('');
-    const [startingEngine, setStartingEngine] = useState(false);
-    const startEngine = () => {
-        if (!onStartEngine || startingEngine) return false;
-        setStartingEngine(true);
-        setEngineMessage('Starting Apple container service…');
-        void onStartEngine()
-            .then(
-                (result) => setEngineMessage(result.message),
-                (error) => setEngineMessage(String(error)),
-            )
-            .finally(() => setStartingEngine(false));
-        return true;
-    };
-    return { engineMessage, startingEngine, startEngine };
-}
-
 function showRowDetail(row: ConfigRow, detailed: boolean) {
     return detailed && Boolean(row.problem || row.note);
 }
@@ -232,38 +192,20 @@ function ConfigRowView({
     );
 }
 
-function ConfigFooter({
-    settings,
-    showEngineHint,
-    startingEngine,
-    engineMessage,
-}: {
-    settings: SettingsSnapshot;
-    showEngineHint: boolean;
-    startingEngine: boolean;
-    engineMessage: string;
-}) {
+function ConfigFooter({ settings }: { settings: SettingsSnapshot }) {
     return (
         <Box marginTop={1} flexDirection="column" flexShrink={0}>
-            {showEngineHint && (
-                <Text color={theme.muted}>
-                    s Start Apple container service · Health monitoring runs
-                    while the daemon is running.
-                </Text>
-            )}
-            {startingEngine ? (
-                <Spinner label="Starting Apple container service" />
-            ) : (
-                engineMessage && (
-                    <Text color={theme.muted}>{engineMessage}</Text>
-                )
-            )}
             {settings.restartPending.length > 0 && (
                 <Text color={theme.development} wrap="truncate-end">
                     Reconfiguration stops the current environment before
                     applying.
                 </Text>
             )}
+            {settings.warnings.map((warning) => (
+                <Text key={warning} color={theme.development} wrap="wrap">
+                    {clean(warning)}
+                </Text>
+            ))}
             {settings.errors.map((error) => (
                 <Text key={error} color={theme.error} wrap="truncate-end">
                     {clean(error)}
@@ -284,21 +226,16 @@ export default function ConfigScreen({
     active,
     height,
     onEdit,
-    onStartEngine,
 }: {
     rows: ConfigRow[];
     settings: SettingsSnapshot;
     active: boolean;
     height: number;
     onEdit(key: SettingKey): void;
-    onStartEngine?(): Promise<{ message: string }>;
 }) {
     const [selected, setSelected] = useState(0);
-    const { engineMessage, startingEngine, startEngine } =
-        useEngineStarter(onStartEngine);
     useInput(
         (_input, key) => {
-            if (_input === 's' && startEngine()) return;
             if (key.upArrow)
                 setSelected((value) => (value - 1 + rows.length) % rows.length);
             else if (key.downArrow)
@@ -321,12 +258,7 @@ export default function ConfigScreen({
                     labelWidth={labelWidth}
                 />
             ))}
-            <ConfigFooter
-                settings={settings}
-                showEngineHint={Boolean(onStartEngine)}
-                startingEngine={startingEngine}
-                engineMessage={engineMessage}
-            />
+            <ConfigFooter settings={settings} />
         </Box>
     );
 }

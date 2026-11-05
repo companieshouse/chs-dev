@@ -24,7 +24,9 @@ In precedence order:
    directly depending on it is lazy, so an exclusive subtree defers with its
    lazy root (`A -> B -> C` with B lazy makes C lazy too).
 6. **The learned usage cache** — services demoted after unused runs, as
-   before, subordinate to every explicit signal above.
+   before, subordinate to every explicit signal above. Usage is always
+   recorded; the `usageCache` setting (default off) decides whether the
+   learned list is applied.
 
 Base infrastructure and Development-mode services are never lazy.
 

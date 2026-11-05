@@ -85,7 +85,8 @@ with the bounded operation history; it is not an exactly-once guarantee against
 external engine side effects. A disconnected client can reconnect and observe
 accepted work; cancellation requires an explicit request.
 
-The TUI and [CLI](cli.md) share this client library. Socket protocol version 2 adds
+The TUI and [CLI](cli.md) share this client library. Socket protocol version 5 removes runtime selection and Apple engine startup.
+Matching frontend/daemon versions are required. Earlier protocol changes added
 legacy configuration edits, startup approval, configuration/preview queries,
 dependency diagrams and log streaming. Environment failures and blocked starts
 produce failed operations; accepting work does not guarantee its success.
@@ -97,7 +98,6 @@ npm run typecheck
 npm test
 npm run build
 python3 test/login-terminal.py
-python3 test/auto-login-terminal.py
 npm run format:check
 ```
 
@@ -105,6 +105,7 @@ Unit and daemon tests use temporary state, fake engines and real Unix sockets.
 Terminal tests run the TUI with fake AWS/registry tools. Crash tests kill isolated
 helper processes and check that their child commands terminate. LaunchAgent tests
 validate generated configuration without installing a service in the user's account.
-Existing Docker and Apple integration suites remain opt-in; they require their
-respective engines. Reboot/login behaviour and a full real-engine daemon run should
+Compose integration suites remain opt-in; they require Docker and Docker Compose.
+Run `npm run test:docker` for lifecycle/container controls and
+`npm run test:docker:mocks` for mock providers. Reboot/login behaviour and a full real-engine daemon run should
 also be checked manually on a development machine before distributing a release.

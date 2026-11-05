@@ -1,11 +1,7 @@
 import { parseAutoLogin, type AutoLoginMode } from './auto-login.js';
 
-export const supportedRuntimes = ['docker', 'apple'] as const;
-
 export const settingKeys = [
     'project',
-    'runtime',
-    'orchestrator',
     'awsProfile',
     'ecrProfiles',
     'autoApply',
@@ -28,8 +24,6 @@ export function parseLoginChoice(value: string): LoginChoice | undefined {
 
 export interface FileSettings {
     project?: string;
-    runtime?: string;
-    orchestrator?: string;
     awsProfile?: string;
     ecrProfiles?: string[];
     autoApply?: boolean;
@@ -39,8 +33,6 @@ export interface FileSettings {
 }
 export interface SettingValues {
     project?: string;
-    runtime: string;
-    orchestrator: string;
     awsProfile: string;
     ecrProfiles?: string[];
     autoApply: boolean;
@@ -61,16 +53,10 @@ export type ResolvedSettings = {
 };
 
 /** Settings read once at startup; changing them needs a restart. */
-export const restartSettings: readonly SettingKey[] = [
-    'project',
-    'runtime',
-    'orchestrator',
-];
+export const restartSettings: readonly SettingKey[] = ['project'];
 
 export const settingLabels: Record<SettingKey, string> = {
     project: 'Project directory',
-    runtime: 'Container engine',
-    orchestrator: 'Orchestration',
     awsProfile: 'AWS profile',
     ecrProfiles: 'ECR login profiles',
     autoApply: 'Auto-apply edits',
@@ -81,8 +67,6 @@ export const settingLabels: Record<SettingKey, string> = {
 
 export const settingEnvironment: Record<SettingKey, readonly string[]> = {
     project: ['CHS_DEV_PROJECT'],
-    runtime: ['CHS_DEV_RUNTIME'],
-    orchestrator: ['CHS_DEV_ORCHESTRATOR'],
     awsProfile: ['AWS_PROFILE', 'AWS_DEFAULT_PROFILE'],
     ecrProfiles: ['CHS_DEV_ECR_PROFILES'],
     autoApply: ['CHS_DEV_AUTO_APPLY'],
@@ -147,14 +131,6 @@ export function resolveSettings(
             text,
             undefined,
         ),
-        runtime: resolve('runtime', file.runtime, env, text, 'docker'),
-        orchestrator: resolve(
-            'orchestrator',
-            file.orchestrator,
-            env,
-            text,
-            'compose',
-        ),
         awsProfile: resolve(
             'awsProfile',
             file.awsProfile,
@@ -181,7 +157,7 @@ export function resolveSettings(
             file.usageCache,
             env,
             parseBoolean,
-            true,
+            false,
         ),
         loginAction: resolve<LoginChoice | undefined>(
             'loginAction',
@@ -200,6 +176,15 @@ export function resolveSettings(
     };
 }
 
+export function retiredEnvironmentWarnings(env: NodeJS.ProcessEnv): string[] {
+    return ['CHS_DEV_RUNTIME', 'CHS_DEV_ORCHESTRATOR', 'CHS_DEV_APPLE_CLI']
+        .filter((name) => env[name]?.trim())
+        .map(
+            (name) =>
+                `${name} is retired and ignored; chs-dev always uses Docker Compose. Remove it from your startup environment.`,
+        );
+}
+
 export function sameValue(left: unknown, right: unknown): boolean {
     return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
@@ -210,5 +195,6 @@ export interface SettingsSnapshot {
     /** Values in effect since startup, used by restart-only settings. */
     startup: ResolvedSettings;
     errors: readonly string[];
+    warnings: readonly string[];
     restartPending: readonly SettingKey[];
 }

@@ -5,7 +5,6 @@ import type {
     StackMeasurement,
 } from '../domain/measurements.js';
 import { measureJourneyDelta } from '../domain/measurements.js';
-import { parseMemoryValue } from '../infrastructure/native/compiler.js';
 import { nodeProjectFs, type ProjectFs } from './files.js';
 import type { Mapping } from './compose.js';
 import {
@@ -18,6 +17,17 @@ import {
 import type { UsagePolicy } from './usage-cache.js';
 import { loadUsagePolicy } from './usage-cache.js';
 import { loadJourney, selectedJourney, type Journey } from './journeys.js';
+
+export function parseMemoryValue(value: unknown): number | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value === 'number') return value;
+    const m = /^(\d+(?:\.\d+)?)\s*([bkmg])?b?$/i.exec(String(value));
+    if (!m) throw new Error(`Unsupported memory value ${value}`);
+    return Math.round(
+        Number(m[1]) *
+            1024 ** Math.max(0, 'bkmg'.indexOf((m[2] ?? 'b').toLowerCase())),
+    );
+}
 
 const memoryFields = ['mem_limit', 'mem_reservation'] as const;
 

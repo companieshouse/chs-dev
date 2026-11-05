@@ -45,8 +45,6 @@ test('environment overrides file, which overrides defaults, with sources reporte
         ecrProfiles: ['a', 'b'],
     };
     const defaults = resolveSettings({}, {});
-    assert.equal(defaults.runtime.value, 'docker');
-    assert.equal(defaults.runtime.source, 'default');
     assert.equal(defaults.awsProfile.value, 'default');
     assert.equal(defaults.project.value, undefined);
     assert.equal(defaults.ecrProfiles.value, undefined);
@@ -69,7 +67,6 @@ test('environment overrides file, which overrides defaults, with sources reporte
     assert.equal(fromEnv.awsProfile.value, 'fallback-env');
     assert.equal(fromEnv.awsProfile.environment, 'AWS_DEFAULT_PROFILE');
     assert.deepEqual(fromEnv.ecrProfiles.value, ['x', 'y']);
-    assert.equal(fromEnv.runtime.source, 'default');
     assert.equal(
         resolveSettings({}, { AWS_PROFILE: 'p', AWS_DEFAULT_PROFILE: 'q' })
             .awsProfile.value,
@@ -102,7 +99,6 @@ test('invalid files and entries are reported without failing', () => {
     );
     assert.deepEqual(mixed.values, {
         project: '/home/me/checkout',
-        runtime: 'docker',
         ecrProfiles: ['one', 'two'],
     });
     assert.equal(mixed.errors.length, 2);
@@ -214,5 +210,38 @@ test('automatic login defaults to when needed and reads login.auto and CHS_DEV_A
         resolveSettings(file.values, { CHS_DEV_AUTO_LOGIN: 'expired' })
             .autoLogin.value,
         'expired',
+    );
+});
+
+test('retired backend configuration is ignored with persistent warnings and no file rewrite', async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'chs-retired-settings-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const path = join(root, 'tui.yaml');
+    const raw =
+        '# preserve me\nruntime: apple\norchestrator: native\nautoApply: false\n';
+    await writeFile(path, raw);
+    const env = { CHS_DEV_RUNTIME: 'apple', CHS_DEV_ORCHESTRATOR: 'native' };
+    const store = await SettingsStore.load(path, env, root);
+    const snapshot = store.getSnapshot();
+    assert.equal(snapshot.warnings.length, 4);
+    assert.deepEqual(snapshot.errors, []);
+    assert.deepEqual(snapshot.restartPending, []);
+    assert.equal('runtime' in snapshot.resolved, false);
+    assert.equal('orchestrator' in snapshot.resolved, false);
+    assert.equal(snapshot.resolved.autoApply.value, false);
+    assert.equal(await readFile(path, 'utf8'), raw);
+    await store.save('autoApply', true);
+    assert.match(
+        await readFile(path, 'utf8'),
+        /# preserve me\nruntime: apple\norchestrator: native/,
+    );
+    assert.equal(store.getSnapshot().warnings.length, 4);
+    await writeFile(path, 'autoApply: false\n');
+    await store.refresh();
+    assert.equal(store.getSnapshot().warnings.length, 2);
+    assert.ok(
+        store
+            .getSnapshot()
+            .warnings.every((warning) => warning.startsWith('CHS_DEV_')),
     );
 });

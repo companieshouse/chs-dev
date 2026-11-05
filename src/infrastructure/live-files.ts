@@ -10,6 +10,7 @@ import {
     withoutRetiredProxy,
 } from '../domain/live.js';
 import type { ServiceGroup } from '../domain/services.js';
+import { parseUsageCache, usageCacheFile } from '../project/usage-cache.js';
 
 export interface LiveFiles {
     read(path: string): Promise<string>;
@@ -28,10 +29,27 @@ export const liveFiles: LiveFiles = {
     remove: (path) => rm(path, { recursive: true, force: true }),
     realpath,
 };
+/** Services the usage cache has learned to start lazily; empty when off. */
+async function learnedServices(
+    directory: string,
+    files: LiveFiles,
+    enabled: (() => boolean) | undefined,
+): Promise<ReadonlySet<string>> {
+    if (!enabled?.()) return new Set();
+    try {
+        const raw = await files.read(join(directory, usageCacheFile));
+        return new Set(parseUsageCache(raw).learned);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        return new Set();
+    }
+}
+
 export function configurationStore(
     directory: string,
     groups: ServiceGroup[],
     files: LiveFiles,
+    usageCache?: () => boolean,
 ) {
     return {
         async read(): Promise<ConfigurationRevision> {
@@ -43,7 +61,8 @@ export function configurationStore(
                     throw error;
                 yaml = '{}\n';
             }
-            const details = resolveStateInventory(parse(yaml), groups);
+            const learned = await learnedServices(directory, files, usageCache);
+            const details = resolveStateInventory(parse(yaml), groups, learned);
             return {
                 identity: createHash('sha256').update(yaml).digest('hex'),
                 yaml,

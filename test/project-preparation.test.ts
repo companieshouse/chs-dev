@@ -1011,3 +1011,33 @@ test('routed services publish their load-balancer port on loopback once', async 
     );
     assert.equal(services['ingress-proxy'], undefined);
 });
+
+test('services forwarding to the retired ingress-proxy are pointed at the daemon proxy', async () => {
+    const f = fixture({ services: ['listed', 'mapped', 'other'] });
+    const add = (name: string, environment: unknown) =>
+        f.files.set(
+            `/project/services/modules/example/${name}.docker-compose.yaml`,
+            stringify({ services: { [name]: { image: name, environment } } }),
+        );
+    add('listed', [
+        'PROXY_TARGET_URLS=http://ingress-proxy',
+        'MODE=api',
+        'PASSTHROUGH',
+    ]);
+    add('mapped', { PROXY_TARGET_URLS: 'http://ingress-proxy', PORT: 4001 });
+    add('other', ['UPSTREAM=http://ingress-proxy/path']);
+    const prepared = await prepareProject(f.request, f.dependencies);
+    const services = parse(f.files.get(prepared.composeFiles[0])!).services;
+    assert.deepEqual(services.listed.environment, [
+        'PROXY_TARGET_URLS=http://host.docker.internal',
+        'MODE=api',
+        'PASSTHROUGH',
+    ]);
+    assert.deepEqual(services.mapped.environment, {
+        PROXY_TARGET_URLS: 'http://host.docker.internal',
+        PORT: 4001,
+    });
+    assert.deepEqual(services.other.environment, [
+        'UPSTREAM=http://ingress-proxy/path',
+    ]);
+});

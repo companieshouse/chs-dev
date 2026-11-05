@@ -100,7 +100,6 @@ export class ProjectSession {
                     registryLogin: false,
                     logs: false,
                 },
-                canStart: false,
             },
             statuses: {},
             runtimeState: 'loading',
@@ -144,7 +143,7 @@ export class ProjectSession {
     async initialize() {
         const previous = await this.host.readIntent();
         const settings = this.host.settings().startup;
-        const backend = `${settings.runtime.value}/${settings.orchestrator.value}`;
+        const backend = 'docker/compose';
         const canonical = settings.project.value
             ? (await this.host.validateProject(settings.project.value))
                   .directory
@@ -190,7 +189,6 @@ export class ProjectSession {
                 id: backend.runtime.id,
                 name: backend.runtime.name,
                 capabilities: { ...backend.runtime.capabilities },
-                canStart: !!backend.runtime.startService,
             },
             statuses: {},
             runtimeState: 'loading',
@@ -242,12 +240,11 @@ export class ProjectSession {
         this.update({ notice: this.stateFailure });
     }
     private checkpoint(force = false) {
-        const settings = this.host.settings().startup;
         const value = {
             version: 1 as const,
             hostSession: this.host.hostSession,
             scope: this.state.scope,
-            backend: `${settings.runtime.value}/${settings.orchestrator.value}`,
+            backend: 'docker/compose',
             intent: this.backend?.controller?.getIntent(),
             interrupted: !!this.state.live.busy,
             switching: this.switching,
@@ -338,7 +335,6 @@ export class ProjectSession {
             'authentication.login',
             'project.clone',
             'ssh.setup',
-            'runtime.start',
             'configuration.legacyEdit',
             'environment.profileImport',
         ];
@@ -348,13 +344,10 @@ export class ProjectSession {
         if (
             active &&
             request.command === 'settings.save' &&
-            ['project', 'runtime', 'orchestrator'].includes(
-                (request.args as { key: string }).key,
-            ) &&
+            (request.args as { key: string }).key === 'project' &&
             [
                 'ssh.setup',
                 'project.clone',
-                'runtime.start',
                 'configuration.legacyEdit',
                 'environment.profileImport',
             ].includes(active.kind)
@@ -362,7 +355,7 @@ export class ProjectSession {
             throw new ClientError({
                 code: 'BUSY',
                 message:
-                    'Wait for the active operation before switching checkout or runtime.',
+                    'Wait for the active operation before switching checkout.',
                 operationId: active.id,
             });
         if (active && !busyAllowedCommands.has(request.command))
@@ -676,11 +669,6 @@ export class ProjectSession {
                     handled: true,
                     value: await requireController().setupSsh(a),
                 };
-            case 'runtime.start':
-                return {
-                    handled: true,
-                    value: await backend.runtime.startService?.(signal),
-                };
             case 'authentication.login':
                 return {
                     handled: true,
@@ -930,12 +918,8 @@ export class ProjectSession {
         previous: SettingsSnapshot,
     ) {
         return (
-            ['project', 'runtime', 'orchestrator'].includes(key) &&
-            ['project', 'runtime', 'orchestrator'].some(
-                (k) =>
-                    JSON.stringify(next[k as SettingKey].value) !==
-                    JSON.stringify(previous.startup[k as SettingKey].value),
-            )
+            key === 'project' &&
+            next.project.value !== previous.startup.project.value
         );
     }
     private async switchCheckout(
@@ -956,14 +940,6 @@ export class ProjectSession {
             throw new ClientError({
                 code: 'INVALID_PROJECT',
                 message: project.message,
-            });
-        if (
-            next.runtime.value === 'apple' &&
-            next.orchestrator.value !== 'native'
-        )
-            throw new ClientError({
-                code: 'INVALID_RUNTIME',
-                message: 'Apple containers require native orchestration.',
             });
         const old = this.backend!;
         this.switching = true;
@@ -1046,11 +1022,6 @@ export class ProjectSession {
         try {
             if (saved) {
                 await this.host.saveSetting(key, previous.resolved[key].file);
-                if (key === 'runtime')
-                    await this.host.saveSetting(
-                        'orchestrator',
-                        previous.resolved.orchestrator.file,
-                    );
                 this.host.activateSettings();
             }
             await this.attach(await this.host.open());

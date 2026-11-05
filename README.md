@@ -2,7 +2,7 @@
 
 A persistent local CHS development daemon with a CLI and an interactive terminal frontend using [Ink](https://github.com/vadimdemedes/ink) and React.
 
-Requires Node.js 22.18 or later and npm. With no arguments `chs-dev` opens the TUI;
+Requires Node.js 22.18 or later, npm, Docker and Docker Compose v2. With no arguments `chs-dev` opens the TUI;
 arguments run CLI commands, including `chs-dev legacy …` compatibility commands.
 
 ```sh
@@ -117,16 +117,13 @@ Exclusions apply project-wide, including when another service shares the depende
 Required base infrastructure cannot be excluded. Escape returns to the main modal with
 edits still staged; Save saves them together, while Close discards them.
 
-Native orchestration supports both Docker and Apple containers. Selecting Apple in
-Config also selects Native. Changing the backend stops the current environment and
-activates the selection; then choose Start when ready. Apple requires
-Apple silicon, macOS 26+ and container CLI/service 1.5.0+. See
-[native runtime setup and limitations](docs/native-orchestration.md#apple-containers).
+Docker Compose is the only execution backend. For upgrades from native Docker or
+Apple containers, follow the [manual transition guide](docs/compose-transition.md).
 
 ## Containers
 
 The **Containers** tab lists running and stopped containers from the selected engine.
-It defaults to this checkout (including native containers, Compose services and builder
+It defaults to this checkout (including Compose services and builder
 jobs). Press **a** to switch to all containers on the engine, **/** to filter by name,
 image, service or status, and **Enter** to open the selected container. The list and
 open details refresh every five seconds; **r** refreshes immediately.
@@ -157,10 +154,9 @@ share the environment operation lock; manual stops for this checkout are recorde
 The All containers view also permits actions on containers outside this checkout.
 A deleted/recreated container must be selected again before acting on its replacement.
 
-`domain/containers.ts` defines the engine-neutral management interface separately from
-orchestration. Both Docker backends supply `DockerContainerManager`; the native
-backend shares its pinned engine connection. Future runtimes can supply another
-manager without changing the tab or details view. Apple supplies its own manager.
+`domain/containers.ts` defines container management separately from environment
+operations. `DockerContainerManager` supplies inspection, logs and exact-ID
+controls, while Compose handles environment startup and configuration.
 
 ## Settings
 
@@ -172,8 +168,6 @@ opens its editor. Each value shows where it came from: `env`, `file`, or `defaul
 ```yaml
 version: 1
 project: ~/Workspace/docker-chs-development
-runtime: docker # docker | apple (Apple requires native)
-orchestrator: compose # compose | native
 aws:
   profile: development-eu-west-2
   ecrProfiles:
@@ -193,8 +187,6 @@ does not override an existing daemon.
 | Setting            | Environment override                      | Default                                   | Applies     |
 | ------------------ | ----------------------------------------- | ----------------------------------------- | ----------- |
 | Project directory  | `CHS_DEV_PROJECT`                         | current working directory                 | reconfigure |
-| Container engine   | `CHS_DEV_RUNTIME`                         | `docker`                                  | reconfigure |
-| Orchestration      | `CHS_DEV_ORCHESTRATOR`                    | `compose`                                 | reconfigure |
 | AWS profile        | `AWS_PROFILE` / `AWS_DEFAULT_PROFILE`     | `default`                                 | now         |
 | ECR login profiles | `CHS_DEV_ECR_PROFILES` (comma list)       | profiles detected from project registries | now         |
 | Auto-apply edits   | `CHS_DEV_AUTO_APPLY` (true/false)         | on                                        | now         |
@@ -206,11 +198,15 @@ A relative `CHS_DEV_PROJECT` resolves from the app's working directory; note tha
 `npm run` uses the package directory. Saves preserve comments and unknown keys, and
 use a temporary-file rename. A save is rejected if another client or external edit
 changed the revision; close the editor and review the refreshed values. An invalid file or value is reported on the Config tab and
-ignored, so defaults apply. Changing the project, runtime or orchestration shows
+ignored, so defaults apply. Changing the project shows
 a stop-and-reconfigure operation. The old checkout must stop successfully before
 the selection changes; data volumes are retained. Start the newly selected
 environment explicitly. External settings edits are refreshed without switching
-a backend automatically; select the pending setting to apply it.
+the active checkout automatically; select the pending setting to apply it.
+
+The retired `runtime` and `orchestrator` file keys and
+`CHS_DEV_RUNTIME` / `CHS_DEV_ORCHESTRATOR` overrides are ignored with warnings.
+Remove them when convenient; chs-dev always uses Docker Compose.
 
 **Project picker.** Editing the project searches your home directory in the background
 (depth 5; hidden directories, symlinks, `~/Library`, `node_modules`, `vendor`,
@@ -282,12 +278,10 @@ the environment is running with auto-apply on.
 
 See [architecture](docs/architecture.md) for data flow, input ownership, and extension guidance.
 
-Native orchestration is available for Docker and Apple. Set **Orchestration**
-to **Native** in Config; the daemon stops the previous backend before switching.
-`CHS_DEV_ORCHESTRATOR=native` is a daemon startup override. Native data is separate
-from Compose data.
-See [native orchestration](docs/native-orchestration.md) for behaviour, requirements
-and the supported feature set. Docker Compose remains the default.
+Docker Compose owns dependency scheduling, readiness, images and container
+lifecycle. chs-dev prepares configuration and coordinates operations through its
+daemon. See the [transition guide](docs/compose-transition.md) for upgrading
+from the retired native backends.
 
 The bottom status bar checks AWS authentication asynchronously on startup and every
 thirty seconds after each completed check. It uses `aws sts get-caller-identity` with the
@@ -328,11 +322,6 @@ login fixes run the login it needs directly. The two logins are:
   otherwise looking on PATH. The dialog shows which profiles will be used. For this
   project, those are usually `development-eu-west-2` and `shared-services-ecr-eu-west-2-ro`
   (CI build images). `l_docker` still needs `~/.aws/companies_house/dev.config`.
-- **AWS + registry login with Apple** obtains an ECR password for each selected
-  profile and sends it to `container registry login` through stdin. Expired AWS
-  sessions trigger `aws sso login` for that profile before retrying once; active
-  sessions do not need another browser login. Apple registry credentials are
-  separate from Docker's.
 
 The TUI temporarily attaches its terminal to the daemon-owned command so browser login
 instructions and errors remain visible. Ctrl+C cancels login and restores the
@@ -342,15 +331,12 @@ A failure returning to the TUI or resuming the environment does not overwrite a 
 After completion, AWS credentials are checked immediately; the command result
 stays in the login dialog, separately from AWS status. AWS status is refreshed after login. Closing the dialog preserves the current tab, selection, and filter.
 For Docker, registry login requires the existing dev-env-setup helper and a running
-Docker daemon. Apple uses its own registry login with credentials passed through
-stdin. Neither login action installs tools or starts an engine. If starting or applying fails with an ECR
+Docker daemon. Neither login action installs tools or starts Docker. If starting or applying fails with an ECR
 `403 Forbidden` or `authorization token has expired`, the Environment panel names the
 registry. It tells you to run **AWS + registry login** and to check the ECR login profiles.
 
-The runtime backend setting defaults to `docker`. The selected backend
-appears in Config and the status bar. Docker and Apple inspection and registry login
-use runtime strategies; AWS SSO login remains shared. Apple requires Native
-orchestration. Unsupported runtimes such as Podman produce an explicit error.
+Docker Compose availability appears in the status bar. AWS SSO and registry login
+retain their existing profile settings.
 
 ## Environment
 
@@ -381,15 +367,8 @@ chs-dev are reported as **Changed outside chs-dev** with an Apply changes fix; t
 never blocks later edits. One-shot jobs that exit 0, such as `execute-mongo-scripts`,
 count as done.
 
-Native initialization uses the same best-effort approach as the Compose script
-runner: a script's nonzero exit code becomes a warning, and the remaining scripts
-and dependent services can start. Warnings identify the script and error in
-**Logs → Environment output** and in the initialization task's logs. An error can
-leave that script's seed data incomplete. Completed attempts are remembered,
-including warnings, so unchanged scripts are not repeated on every start. Edit
-the script or set `FORCE_RUN` on the initialization service to rerun it. Scripts
-also run again when their target's data storage is replaced. Cancellation,
-timeouts and failures to read or execute scripts still stop initialization.
+Initialization runs through the Compose script runner and its existing job
+dependencies. Inspect initialization task logs when seed data is incomplete.
 
 The status bar shows one environment state and its next step:
 

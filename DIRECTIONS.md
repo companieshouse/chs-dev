@@ -8,14 +8,15 @@ investigate until it can be dropped, adopted, or turned into concrete work
 When an exploration settles, record the outcome here in one line — what was
 decided and where the follow-up lives — then remove or archive the item.
 
-## 1. Lazy loading for services
+## 1. Lazy loading for services — settled
 
-Can services be loaded lazily, so chs-dev starts only the services needed for
-the selected workflow instead of bringing everything up eagerly?
-
-To find out: how services are currently started, whether dependencies can be
-started on demand, what readiness and health checks are needed, and what this
-would mean for startup time, networking and state.
+Settled 2026-11-04: adopted and implemented. Services can be lazy in
+journeys and via start modes; the label-driven proxy cold-starts them on
+request and idle-unloads them after 30 minutes, and the usage cache learns
+lazy from real traffic. Follow-up lives in
+[Start modes](docs/start-modes.md), `.scratch/chs-dev-remediation/` (tickets
+10–12), and `.scratch/usage-cache/spec.md`; real-stack verification is
+tracked in the workspace `LAZY-LOADING-TEST-PLAN.md`.
 
 ## 2. Review UI / UX
 
@@ -34,9 +35,8 @@ Can the images chs-dev depends on be built or rebuilt natively for ARM
 To find out: which images are AMD64-only today, which do we control the build
 of, and what would rebuilding or switching to multi-architecture images cost?
 
-_Note: native orchestration already prefers ARM64 and falls back to emulated
-AMD64 — see [Native orchestration](docs/native-orchestration.md). This is
-about removing the need for that fallback._
+_Docker Compose is the only backend. Image platform selection follows the
+Compose definitions and Docker image availability._
 
 ## 4. Common config
 
@@ -57,9 +57,8 @@ To find out: what containers currently give us (isolation, dependencies,
 networking, reproducibility) that a native executor would have to replace,
 and which services would or would not suit running on the host.
 
-_Distinct from native orchestration, which manages containers directly
-rather than through Compose — see
-[Native orchestration](docs/native-orchestration.md)._
+_A host-process executor would be a new backend; the current product uses
+Docker Compose only._
 
 ## 6. Worktrees
 

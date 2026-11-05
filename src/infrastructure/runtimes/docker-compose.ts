@@ -37,7 +37,7 @@ export function dockerRegistryCommand(
 
 export class DockerComposeStrategy implements RuntimeStrategy {
     readonly id = 'docker';
-    readonly name: string = 'Docker';
+    readonly name = 'Docker Compose';
     readonly capabilities = Object.freeze({
         inspect: true,
         registryLogin: true,
@@ -72,18 +72,11 @@ export class DockerComposeStrategy implements RuntimeStrategy {
         return new DockerContainerManager({
             directory: project.directory,
             execute: createProcessExecutor(),
-            environment: (signal) => this.containerEnvironment(project, signal),
+            environment: (signal) =>
+                project.environment?.resolve([], signal) ??
+                Promise.resolve({ ...process.env }),
         });
     }
-    protected async containerEnvironment(
-        project: RuntimeProject,
-        signal?: AbortSignal,
-    ): Promise<NodeJS.ProcessEnv> {
-        return project.environment
-            ? project.environment.resolve([], signal)
-            : { ...process.env };
-    }
-
     async checkAvailability(
         signal?: AbortSignal,
     ): Promise<RuntimeAvailability> {
@@ -122,12 +115,6 @@ export class DockerComposeStrategy implements RuntimeStrategy {
         return readDockerStatuses(project.directory, signal);
     }
 
-    protected async registryEnvironment(
-        signal?: AbortSignal,
-    ): Promise<NodeJS.ProcessEnv> {
-        return process.env;
-    }
-
     async loginRegistry(
         { profiles }: { profiles: readonly string[] },
         signal?: AbortSignal,
@@ -145,7 +132,7 @@ export class DockerComposeStrategy implements RuntimeStrategy {
             missingMessage:
                 'l_docker is not installed. Install it using dev-env-setup.',
             signal,
-            environment: await this.registryEnvironment(signal),
+            environment: process.env,
         });
     }
 }

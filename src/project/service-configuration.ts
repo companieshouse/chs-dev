@@ -247,6 +247,7 @@ function applyStartModeEdit(
 ): void {
     if (startMode === undefined) return;
     if (startMode === null) {
+        if (!document.hasIn(['serviceStartModes'])) return;
         document.deleteIn(['serviceStartModes', name]);
         const remaining: unknown = document.toJS().serviceStartModes;
         if (

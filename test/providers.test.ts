@@ -162,6 +162,59 @@ test('invalid providers, scenarios, unsupported mocks and infrastructure replace
     }
 });
 
+test('clearing a start mode override succeeds when none is stored, and set then clear round-trips', async (t) => {
+    const { groups } = fixture();
+    const directory = await mkdtemp(join(tmpdir(), 'chs-start-mode-'));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const path = join(directory, '.chs-dev.yaml');
+    await writeFile(path, 'services: [web]\n');
+    const options = {
+        directory,
+        name: 'api',
+        enabled: true,
+        development: false,
+        groups,
+    };
+    await saveServiceChanges({ ...options, startMode: null });
+    assert.equal(
+        parse(await readFile(path, 'utf8')).serviceStartModes,
+        undefined,
+    );
+    await saveServiceChanges({ ...options, startMode: 'lazy' });
+    assert.equal(
+        parse(await readFile(path, 'utf8')).serviceStartModes.api,
+        'lazy',
+    );
+    await saveServiceChanges({ ...options, startMode: null });
+    assert.equal(
+        parse(await readFile(path, 'utf8')).serviceStartModes,
+        undefined,
+    );
+});
+
+test('the configuration revision carries learned lazy modes only while the usage cache is on', async (t) => {
+    const { groups } = fixture();
+    const directory = await mkdtemp(join(tmpdir(), 'chs-learned-'));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    await writeFile(join(directory, '.chs-dev.yaml'), 'services: [web]\n');
+    await writeFile(
+        join(directory, '.chs-dev-usage.yaml'),
+        'format: chs-dev-usage\nversion: 1\nlearned:\n  - api\n',
+    );
+    const learned = async (enabled: boolean | undefined) =>
+        (
+            await configurationStore(
+                directory,
+                groups,
+                liveFiles,
+                enabled === undefined ? undefined : () => enabled,
+            ).read()
+        ).inventory.find((entry) => entry.service === 'api');
+    assert.equal((await learned(true))?.lazySource, 'learned');
+    assert.equal((await learned(false))?.lazy, undefined);
+    assert.equal((await learned(undefined))?.lazy, undefined);
+});
+
 test('saved provider and scenario changes preserve comments, avoid stale writes and agree with runtime inventory', async (t) => {
     const { groups } = fixture();
     const directory = await mkdtemp(join(tmpdir(), 'chs-provider-'));

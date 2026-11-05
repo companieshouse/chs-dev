@@ -38,7 +38,7 @@ import type {
     RuntimeCapabilities,
 } from '../domain/runtime-strategy.js';
 
-export const protocolVersion = 4;
+export const protocolVersion = 5;
 export interface Scope {
     project: string;
     generation: string;
@@ -79,7 +79,6 @@ export interface SessionSnapshot {
         id: string;
         name: string;
         capabilities: RuntimeCapabilities;
-        canStart: boolean;
     };
     statuses: Record<string, ServiceStatus>;
     runtimeState: 'loading' | 'ready' | 'error';
@@ -183,7 +182,6 @@ export interface CommandMap {
         OperationResult
     >;
     'project.clone': Command<{ destination: string }, OperationResult>;
-    'runtime.start': Command<Empty, OperationResult>;
 }
 export type CommandName = keyof CommandMap;
 export type CommandRequest<K extends CommandName = CommandName> = {

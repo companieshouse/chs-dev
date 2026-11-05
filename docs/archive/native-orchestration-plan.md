@@ -1,5 +1,7 @@
 # Native orchestration and Apple container support
 
+Historical design retained for reference. Native Docker and Apple execution have been removed. See the [current transition guide](../compose-transition.md).
+
 Status: native Docker and the staged Apple runtime are available for opt-in testing.
 See [implementation, compatibility limits and validation](native-orchestration.md).
 The sections below preserve the original architecture and rollout plan.

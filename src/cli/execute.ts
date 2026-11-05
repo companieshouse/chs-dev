@@ -104,6 +104,7 @@ async function statusResult(
         data: {
             daemon: { running: true, id: state.daemonId },
             project: state.project,
+            warnings: state.settings.warnings,
             runtime: { ...state.runtime, state: state.runtimeState },
             environment: { ...state.live, logs: undefined },
             blockers,

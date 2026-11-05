@@ -326,7 +326,7 @@ test('saving an unrelated setting does not activate an externally edited checkou
         await client.command('environment.start', {});
         await writeFile(
             join(f.root, 'settings.yaml'),
-            `project: ${f.second}\nruntime: docker\norchestrator: native\n`,
+            `project: ${f.second}\n`,
         );
         await client.query('refresh', {});
         assert.equal(

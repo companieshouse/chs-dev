@@ -3,17 +3,13 @@ import { test } from 'node:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { selectRuntime } from '../src/infrastructure/runtimes/select-runtime.js';
+import { DockerComposeStrategy } from '../src/infrastructure/runtimes/docker-compose.js';
 import { requireCapability } from '../src/domain/runtime-strategy.js';
 
-test('runtime selection is explicit and rejects unsupported backends without fallback', () => {
-    assert.equal(selectRuntime('').id, 'docker');
-    assert.equal(selectRuntime(' Docker ').id, 'docker');
-    for (const id of ['podman', 'unknown'])
-        assert.throws(() => selectRuntime(id), /Unsupported CHS_DEV_RUNTIME/);
-    assert.equal(selectRuntime('apple', 'native').id, 'apple');
-    assert.throws(() => selectRuntime('apple', 'compose'), /require native/);
-    const runtime = selectRuntime('docker');
+test('Compose is the only production backend and supports the retained operations', () => {
+    const runtime = new DockerComposeStrategy();
+    assert.equal(runtime.id, 'docker');
+    assert.equal(runtime.name, 'Docker Compose');
     assert.doesNotThrow(() => requireCapability(runtime, 'inspect'));
     assert.doesNotThrow(() => requireCapability(runtime, 'registryLogin'));
     assert.doesNotThrow(() => requireCapability(runtime, 'apply'));
@@ -42,7 +38,7 @@ esac
 `,
             { mode: 0o755 },
         );
-        const runtime = selectRuntime('docker');
+        const runtime = new DockerComposeStrategy();
         assert.equal((await runtime.checkAvailability()).available, true);
         assert.deepEqual(await runtime.inspect({ directory }), {
             api: 'Healthy',

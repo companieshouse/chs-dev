@@ -9,6 +9,7 @@ import {
 import { createAccounting } from '../src/proxy/accounting.js';
 import { createLazyLifecycle, type ProxyLog } from '../src/proxy/lifecycle.js';
 import type { Route } from '../src/proxy/routes.js';
+import { compileRule } from '../src/proxy/rule.js';
 
 function route(
     service: string,
@@ -364,4 +365,24 @@ test('a failed cold start answers 502', async (t) => {
     const failed = await get(proxyPort, 'api.chs.local', '/xbrl-validate');
     assert.equal(failed.status, 502);
     assert.equal(failed.body, 'Service felixvalidator could not be started.');
+});
+
+test('Path rules match the pathname, so a query string still routes', async (t) => {
+    const upstream = http.createServer((request, response) =>
+        response.end(request.url),
+    );
+    const upstreamPort = await listen(upstream);
+    t.after(() => upstream.close());
+    const matches = compileRule('Host(`chs.local`) && Path(`/callback`)');
+    const proxy = createProxyServer({
+        routes: async () => [{ ...route('oauth-web', 'chs.local'), matches }],
+        upstream: async () => ({ host: '127.0.0.1', port: upstreamPort }),
+    });
+    const proxyPort = await listen(proxy);
+    t.after(() => proxy.close());
+    await delay(50);
+
+    const hit = await get(proxyPort, 'chs.local', '/callback?code=1&state=2');
+    assert.equal(hit.status, 200);
+    assert.equal(hit.body, '/callback?code=1&state=2');
 });

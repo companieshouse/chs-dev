@@ -41,10 +41,7 @@ export async function daemonFixture(
     const directory = join(root, 'checkout-a'),
         second = join(root, 'checkout-b');
     const settingsFile = join(root, 'settings.yaml');
-    await writeFile(
-        settingsFile,
-        `project: ${directory}\nruntime: docker\norchestrator: native\n`,
-    );
+    await writeFile(settingsFile, `project: ${directory}\n`);
     const stores = new Map<
         string,
         {

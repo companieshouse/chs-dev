@@ -46,7 +46,7 @@ import {
     createLiveSession,
     closeLiveSession,
 } from '../infrastructure/live-session.js';
-import { selectRuntime } from '../infrastructure/runtimes/select-runtime.js';
+import { DockerComposeStrategy } from '../infrastructure/runtimes/docker-compose.js';
 import { initializeTuiLog, tuiLog } from '../infrastructure/tui-log.js';
 import {
     DaemonState,
@@ -249,7 +249,7 @@ function createHostOpen(
             project.directory,
             groups,
         );
-        const runtime = runtimeOption?.() ?? selectRuntime();
+        const runtime = runtimeOption?.() ?? new DockerComposeStrategy();
         let release: Awaited<ReturnType<typeof exclusiveLease>> | undefined;
         let controller: BackendSession['controller'];
         if (project.valid) {

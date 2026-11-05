@@ -132,6 +132,7 @@ export function resolveServiceState(
 export function stateStartModeFlags(
     state: SelectionState,
     names: readonly string[],
+    learned: ReadonlySet<string> = new Set(),
 ): Map<string, StartModeFlags> {
     const dependencies = new Map(
         names.map((name) => [
@@ -169,7 +170,7 @@ export function stateStartModeFlags(
                       }
                     : {}),
                 explicitLazy: false,
-                learned: false,
+                learned: learned.has(name),
             };
         }),
         dependencies,
@@ -184,12 +185,13 @@ export function stateStartModeFlags(
 export function resolveStateInventory(
     value: unknown,
     groups: ServiceGroup[],
+    learned?: ReadonlySet<string>,
 ): InventoryEntry[] {
     const state = selectionState(value, groups);
     const names = groups
         .flatMap((group) => group.services)
         .filter((name) => state.enabled.has(name));
-    const modes = stateStartModeFlags(state, names);
+    const modes = stateStartModeFlags(state, names, learned);
     return names.map((name) => stateEntry(name, state, modes.get(name)));
 }
 

@@ -87,8 +87,8 @@ HTTP ports/network aliases, and retains its Traefik routing labels. Requests wor
 through ingress or directly through the service hostname. Debug ports, real service
 environment variables, builders and SSH secrets are not carried into mocks.
 
-Traefik discovers replacements through Docker labels under Compose. Native uses
-the existing watched file provider. No additional proxy is needed in front of ingress.
+The daemon proxy discovers replacements through Docker routing labels. Compose
+creates the services and their networks; the daemon proxy forwards requests.
 The service adapters translate normal request paths to Microcks invocation paths
 and supply a scenario header; Microcks produces the response. Responses expose
 `x-chs-dev-provider: mock` and `x-chs-dev-scenario` for troubleshooting.
@@ -147,10 +147,8 @@ CHS_MICROCKS_URL=http://localhost:8585 node --test test/mock-callback.test.mjs
 
 The Docker integration suite uses temporary checkouts and free ports. It verifies
 ingress routing, dependency removal/restoration, unchanged container IDs during
-scenario switches, and re-import after a Microcks restart. Native Docker execution
-requires its exact service names to be free; that case skips if another CHS environment
-owns them. Native Docker/Apple compilation and mount/routing adaptation are checked
-without starting those engines.
+scenario switches, and re-import after a Microcks restart. Only the Compose
+execution backend is supported.
 
 Microcks references: [Uber deployment](https://microcks.io/documentation/explanations/deployment-options/),
 [artifact upload](https://microcks.io/documentation/guides/usage/importing-content/),

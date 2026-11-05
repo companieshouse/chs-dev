@@ -48,3 +48,19 @@ test('a frontend override mismatch is reported without changing the shared sessi
         await f.close();
     }
 });
+
+test('retired runtime overrides are excluded from new daemon environments', () => {
+    const env = daemonEnvironment({
+        CHS_DEV_RUNTIME: 'apple',
+        CHS_DEV_ORCHESTRATOR: 'native',
+        CHS_DEV_APPLE_CLI: '/old/container',
+    });
+    assert.equal(env.CHS_DEV_RUNTIME, undefined);
+    assert.equal(env.CHS_DEV_ORCHESTRATOR, undefined);
+    assert.equal(env.CHS_DEV_APPLE_CLI, undefined);
+    const settings = { resolved: {} } as any;
+    assert.match(
+        environmentMismatch({ settings } as any, { CHS_DEV_RUNTIME: 'apple' })!,
+        /CHS_DEV_RUNTIME is retired and ignored/,
+    );
+});

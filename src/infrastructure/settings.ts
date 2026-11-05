@@ -7,6 +7,7 @@ import { Document, parseDocument } from 'yaml';
 import { autoLoginModes } from '../domain/auto-login.js';
 import {
     isProfileName,
+    retiredEnvironmentWarnings,
     loginChoices,
     resolveSettings,
     restartSettings,
@@ -19,8 +20,6 @@ import {
 
 const paths: Record<SettingKey, readonly string[]> = {
     project: ['project'],
-    runtime: ['runtime'],
-    orchestrator: ['orchestrator'],
     awsProfile: ['aws', 'profile'],
     ecrProfiles: ['aws', 'ecrProfiles'],
     autoApply: ['autoApply'],
@@ -93,15 +92,6 @@ const settingValidators: Record<
             ? { value: path }
             : { error: 'must be an absolute path or start with ~/' };
     },
-    orchestrator: (value) =>
-        value === 'compose' || value === 'native'
-            ? { value }
-            : { error: 'must be compose or native' },
-    runtime: (value) =>
-        typeof value === 'string' &&
-        /^[a-z][a-z0-9-]{0,31}$/i.test(value.trim())
-            ? { value: value.trim().toLowerCase() }
-            : { error: 'must be a runtime identifier' },
     awsProfile: (value) =>
         isProfileName(value)
             ? { value }
@@ -147,6 +137,7 @@ export interface SettingsFile {
     values: FileSettings;
     raw: string | null;
     errors: string[];
+    warnings: string[];
 }
 async function readRaw(path: string): Promise<string | null> {
     try {
@@ -166,13 +157,14 @@ export function parseSettings(
     raw: string | null,
     home = homedir(),
 ): SettingsFile {
-    if (raw === null) return { values: {}, raw, errors: [] };
+    if (raw === null) return { values: {}, raw, errors: [], warnings: [] };
     const document = parseDocument(raw);
     if (document.errors.length)
         return {
             values: {},
             raw,
             errors: ['Settings file is not valid YAML; defaults are in use.'],
+            warnings: [],
         };
     const values: FileSettings = {};
     const errors: string[] = [];
@@ -185,7 +177,13 @@ export function parseSettings(
             errors.push(`${paths[key].join('.')} ${checked.error}; ignored.`);
         else (values as Record<string, unknown>)[key] = checked.value;
     }
-    return { values, raw, errors };
+    const warnings = ['runtime', 'orchestrator']
+        .filter((key) => document.has(key))
+        .map(
+            (key) =>
+                `Settings file key ${key} is retired and ignored; chs-dev always uses Docker Compose. Remove it from the settings file.`,
+        );
+    return { values, raw, errors, warnings };
 }
 export async function readSettingsFile(
     path: string,
@@ -198,6 +196,7 @@ export async function readSettingsFile(
             values: {},
             raw: null,
             errors: ['Settings file cannot be read; defaults are in use.'],
+            warnings: [],
         };
     }
 }
@@ -249,8 +248,6 @@ function prepareDocument(
     if (!document.has('version')) document.set('version', 1);
     if (normalized === undefined) removeSettingValue(document, key);
     else document.setIn(paths[key], normalized);
-    if (key === 'runtime' && normalized === 'apple')
-        document.setIn(paths.orchestrator, 'native');
     return document;
 }
 
@@ -309,6 +306,10 @@ export class SettingsStore {
             resolved,
             startup: resolved,
             errors: file.errors,
+            warnings: [
+                ...file.warnings,
+                ...retiredEnvironmentWarnings(this.env),
+            ],
             restartPending: [],
         };
     }
@@ -342,8 +343,6 @@ export class SettingsStore {
         if (checked && 'error' in checked) throw new Error(checked.error);
         const values = { ...parseSettings(this.raw, this.home).values };
         (values as Record<string, unknown>)[key] = checked?.value;
-        if (key === 'runtime' && value === 'apple')
-            values.orchestrator = 'native';
         return resolveSettings(values, this.env);
     }
     activate() {
@@ -364,6 +363,10 @@ export class SettingsStore {
                 ...this.snapshot,
                 resolved,
                 errors: file.errors,
+                warnings: [
+                    ...file.warnings,
+                    ...retiredEnvironmentWarnings(this.env),
+                ],
                 restartPending: restartSettings.filter(
                     (key) =>
                         !sameValue(
@@ -396,6 +399,10 @@ export class SettingsStore {
                 ...this.snapshot,
                 resolved,
                 errors: file.errors,
+                warnings: [
+                    ...file.warnings,
+                    ...retiredEnvironmentWarnings(this.env),
+                ],
                 restartPending: restartSettings.filter(
                     (name) =>
                         !sameValue(

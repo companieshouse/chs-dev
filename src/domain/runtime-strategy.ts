@@ -49,7 +49,6 @@ export interface OperationContext {
 }
 
 export interface RuntimeStrategy {
-    startService?(signal?: AbortSignal): Promise<OperationResult>;
     readonly id: string;
     readonly name: string;
     readonly capabilities: Readonly<RuntimeCapabilities>;

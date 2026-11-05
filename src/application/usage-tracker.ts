@@ -39,7 +39,8 @@ interface OpenRun {
 }
 
 /**
- * Records usage-cache runs for the daemon: a run opens whenever a selection
+ * Records usage-cache runs for the daemon (always, whatever the setting;
+ * the setting only decides whether the learned set is applied): a run opens whenever a selection
  * becomes current (attach, apply) and closes at the next apply, environment
  * stop, checkout switch or daemon shutdown, at which point services that saw
  * no traffic are demoted to lazy for the next run.
@@ -80,7 +81,7 @@ export class UsageTracker {
         const ledger = this.options.ledger;
         const evidence = ledger.evidence();
         ledger.reset();
-        if (!run || !this.enabled) return;
+        if (!run) return;
         if (evidence.total < (this.options.minRunRequests ?? MIN_RUN_REQUESTS))
             return;
         const used = new Set(evidence.used);

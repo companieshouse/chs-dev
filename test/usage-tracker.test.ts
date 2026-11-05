@@ -121,15 +121,16 @@ test('a run at the floor teaches even with no real usage', async () => {
     }
 });
 
-test('a disabled cache never learns', async () => {
+test('a disabled cache still records usage', async () => {
     const directory = await checkout();
     try {
-        const usage = tracker(false);
+        const ledger = createUsageLedger();
+        const usage = tracker(false, ledger);
         await usage.openRun(directory);
+        for (let index = 0; index < 5; index++) ledger.record('api');
         await usage.closeRun();
-        assert.deepEqual(await readUsageCache(directory, nodeProjectFs), {
-            learned: [],
-        });
+        const cache = await readUsageCache(directory, nodeProjectFs);
+        assert.deepEqual(cache.learned, ['worker']);
     } finally {
         await rm(directory, { recursive: true, force: true });
     }

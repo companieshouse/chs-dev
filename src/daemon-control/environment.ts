@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { expandHome } from '../infrastructure/settings.js';
 import {
     resolveSettings,
+    retiredEnvironmentWarnings,
     settingKeys,
     settingLabels,
 } from '../domain/settings.js';
@@ -19,13 +20,10 @@ export function daemonEnvironment(env: NodeJS.ProcessEnv = process.env) {
         'XDG_STATE_HOME',
         'CHS_DEV_SOCKET',
         'CHS_DEV_PROJECT',
-        'CHS_DEV_RUNTIME',
-        'CHS_DEV_ORCHESTRATOR',
         'CHS_DEV_ECR_PROFILES',
         'CHS_DEV_AUTO_APPLY',
         'CHS_DEV_LOGIN',
         'CHS_DEV_AUTO_LOGIN',
-        'CHS_DEV_APPLE_CLI',
         'AWS_PROFILE',
         'AWS_DEFAULT_PROFILE',
         'AWS_CONFIG_FILE',
@@ -55,7 +53,9 @@ export function environmentMismatch(
             JSON.stringify(requested[key].value) !==
                 JSON.stringify(snapshot.settings.resolved[key].value),
     );
-    return different.length
+    const warnings = retiredEnvironmentWarnings(env);
+    const mismatch = different.length
         ? `Connected to the existing daemon. This shell differs for: ${different.map((key) => settingLabels[key]).join(', ')}. Review Config; connecting does not change the shared environment.`
         : undefined;
+    return [...warnings, mismatch].filter(Boolean).join(' ') || undefined;
 }

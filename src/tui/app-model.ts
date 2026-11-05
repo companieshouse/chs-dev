@@ -81,19 +81,6 @@ function useGenerationCache<T>(generation: string, value: T): T {
     return cache.current.value;
 }
 
-function useRuntime(client: Client, session: ClientSnapshot) {
-    const base = useGenerationCache(session.scope.generation, session.runtime);
-    return useMemo(
-        () => ({
-            ...base,
-            startService: base.canStart
-                ? () => client.command('runtime.start', {})
-                : undefined,
-        }),
-        [client, base],
-    );
-}
-
 function useContainerManager(
     client: Client,
     scope: ClientSnapshot['scope'],
@@ -347,7 +334,10 @@ export function useAppModel() {
     const configuredEcr = settings.resolved.ecrProfiles.value;
     const { status: aws, refresh: refreshAws } = useAwsStatus(ui.loginBusy);
     const runtimeStatus = useRuntimeStatus();
-    const runtime = useRuntime(client, session);
+    const runtime = useGenerationCache(
+        session.scope.generation,
+        session.runtime,
+    );
     const live = useLive();
     const containerManager = useContainerManager(
         client,

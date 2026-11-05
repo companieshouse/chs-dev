@@ -642,6 +642,43 @@ function wireProxy(document: Mapping): void {
     );
 }
 
+const retiredProxyTarget = 'http://ingress-proxy';
+const daemonProxyTarget = 'http://host.docker.internal';
+
+/**
+ * Services such as ERIC forward to the `ingress-proxy` container by name. With
+ * that container retired they must reach the daemon proxy on the host instead,
+ * so lazy start and idle accounting also cover their traffic.
+ */
+function retargetRetiredProxy(document: Mapping): void {
+    if (document.services['ingress-proxy']) return;
+    for (const spec of Object.values(document.services as Mapping)) {
+        if (spec.environment === undefined) continue;
+        spec.environment = retargetEnvironment(spec.environment);
+    }
+}
+
+function retargetEnvironment(environment: unknown): unknown {
+    if (Array.isArray(environment))
+        return environment.map((entry) =>
+            typeof entry === 'string' ? retargetEntry(entry) : entry,
+        );
+    if (!environment || typeof environment !== 'object') return environment;
+    return Object.fromEntries(
+        Object.entries(environment).map(([key, value]) => [
+            key,
+            value === retiredProxyTarget ? daemonProxyTarget : value,
+        ]),
+    );
+}
+
+function retargetEntry(entry: string): string {
+    const index = entry.indexOf('=');
+    if (index < 0 || entry.slice(index + 1) !== retiredProxyTarget)
+        return entry;
+    return `${entry.slice(0, index)}=${daemonProxyTarget}`;
+}
+
 async function writeArtifacts(
     fs: ProjectFs,
     output: string,
@@ -766,6 +803,7 @@ export async function prepareProject(
     });
     pruneDependencies(document);
     wireProxy(document);
+    retargetRetiredProxy(document);
     exposeIngressPorts(document);
     const initialization = mockOnlyInventory(inventory)
         ? []
