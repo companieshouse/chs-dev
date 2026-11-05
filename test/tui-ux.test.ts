@@ -127,3 +127,53 @@ test('Services distinguishes saved provider edits from applied mode and observed
     await view.key('\u0005');
     assert.match(view.frame(), /Re-apply configuration|Apply changes/);
 });
+
+test('an idle service can be held stopped through the TUI and released by explicit Start', async (t) => {
+    const fixture = await daemonFixture();
+    const client = await fixture.client();
+    await client.command('environment.start', {});
+    fixture.stores.get(fixture.directory)!.containers[0].policy!.lazy = true;
+    assert.equal((await fixture.controller.idleUnload('api')).ok, true);
+    await client.query('refresh', {});
+    assert.deepEqual(client.getSnapshot().live.stoppedByUser, []);
+    const view = terminal(createElement(App, { client }), {
+        columns: 80,
+        rows: 24,
+    });
+    t.after(async () => {
+        view.app.unmount();
+        await fixture.close();
+    });
+    await view.waitFor(/Runtime: Stopped/);
+    await view.key('\r');
+    for (
+        let steps = 0;
+        steps < 18 && !/› Stop service/.test(view.frame());
+        steps++
+    )
+        await view.key('\u001b[B');
+    assert.match(view.frame(), /› Stop service/);
+    await view.key('\r');
+    assert.match(
+        view.frame().replace(/│/g, '').replace(/\s+/g, ' '),
+        /Traffic and ordinary Apply will keep it stopped/,
+    );
+    await view.key('y');
+    await eventually(() =>
+        client.getSnapshot().live.stoppedByUser.includes('api'),
+    );
+    assert.equal(
+        (await fixture.controller.coldStart('api', Date.now() + 1000)).ok,
+        false,
+    );
+    await view.key('\u001b');
+    await view.waitFor(/Intent: manual stop/);
+    await client.command('service.action', {
+        services: ['api'],
+        action: 'start',
+    });
+    await client.query('refresh', {});
+    await view.waitFor(/Runtime: Running/);
+    assert.deepEqual(client.getSnapshot().live.stoppedByUser, []);
+    assert.doesNotMatch(view.frame(), /Intent: manual stop/);
+});

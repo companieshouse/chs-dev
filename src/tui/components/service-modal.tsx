@@ -123,7 +123,8 @@ function containerMainOptions(
             ? (['reload'] as const)
             : []),
         'restart',
-        controls.container.active ? 'stop' : 'start',
+        ...(!controls.container.active ? (['start'] as const) : []),
+        'stop',
         'logs',
     ];
 }
@@ -178,15 +179,15 @@ function containerOptionLabel(
         case 'restart':
             return view.actionBusy === 'restart'
                 ? view.actionLabel
-                : 'Restart container';
+                : 'Restart service';
         case 'stop':
             return view.actionBusy === 'stop'
                 ? view.actionLabel
-                : 'Stop container';
+                : 'Stop service';
         case 'start':
             return view.actionBusy === 'start'
                 ? view.actionLabel
-                : 'Start container';
+                : 'Start service';
     }
 }
 
@@ -845,12 +846,16 @@ export default function ServiceModal(props: ServiceModalProps) {
     if (state.confirmation)
         return (
             <ConfirmModal
-                title={`${state.confirmation[0].toUpperCase()}${state.confirmation.slice(1)} container`}
-                message={`Really ${state.confirmation} this container?`}
+                title={`${state.confirmation[0].toUpperCase()}${state.confirmation.slice(1)} service`}
+                message={
+                    state.confirmation === 'stop'
+                        ? 'Stop this service? Traffic and ordinary Apply will keep it stopped.'
+                        : 'Restart this service?'
+                }
                 confirmLabel={
                     state.confirmation === 'stop'
-                        ? 'Stop container'
-                        : 'Restart container'
+                        ? 'Stop service'
+                        : 'Restart service'
                 }
                 onConfirm={state.confirm}
                 onCancel={state.cancelConfirmation}

@@ -131,10 +131,10 @@ test('directional keys do not trigger destructive service actions', async (t) =>
     await delay(150);
     for (let index = 0; index < 6; index++) await term.key('\u001b[B');
     await term.key('\u001b[C');
-    assert.match(term.frame(), /Stop container/);
+    assert.match(term.frame(), /Stop service/);
     assert.deepEqual(actions, []);
     await term.key('\r');
-    assert.match(term.frame(), /Really stop this container/);
+    assert.match(term.frame(), /Stop this service/);
     assert.deepEqual(actions, []);
     await term.key('y');
     assert.deepEqual(actions, ['stop']);
