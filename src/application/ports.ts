@@ -25,6 +25,36 @@ import type {
     Scope,
 } from '../protocol/types.js';
 import type { InteractiveCommand } from './interactions.js';
+import type {
+    EnvironmentProfile,
+    ProfilePreview,
+} from '../domain/environment-profile.js';
+import type {
+    CidevVersionOptions,
+    CidevVersionResult,
+    VersionSnapshot,
+} from '../domain/aws-versions.js';
+import type { AwsEnvironment } from '../domain/version-sources.js';
+
+export interface EnvironmentProfileStore {
+    snapshot(): Promise<EnvironmentProfile>;
+    preview(
+        profile: EnvironmentProfile,
+        versionsOnly?: boolean,
+    ): Promise<ProfilePreview>;
+    read(path: string): Promise<EnvironmentProfile>;
+    export(
+        path: string,
+        force?: boolean,
+        profile?: EnvironmentProfile,
+    ): Promise<{ path: string; warnings: string[] }>;
+    save(options: {
+        profile: EnvironmentProfile;
+        versionsOnly: boolean;
+        revision: string;
+        beforeCommit?: (revision: string) => Promise<void>;
+    }): Promise<{ revision: string; selections: ProjectSelections }>;
+}
 
 export interface BackendSession {
     project: ProjectConfig;
@@ -32,6 +62,16 @@ export interface BackendSession {
     runtime: RuntimeStrategy;
     controller?: LiveController;
     manager?: ContainerManager;
+    profiles?: EnvironmentProfileStore;
+    versionSnapshot?(
+        source: AwsEnvironment,
+        signal?: AbortSignal,
+        refresh?: boolean,
+    ): Promise<VersionSnapshot>;
+    cidevVersions?(
+        options: CidevVersionOptions,
+        signal?: AbortSignal,
+    ): Promise<CidevVersionResult>;
     readConfiguration(): Promise<{
         details: Record<string, ServiceDetails>;
         revision: string;

@@ -91,6 +91,8 @@ function validateSelectionFields(selections: Record<string, unknown>) {
         'mockScenarios',
         'serviceImages',
         'excludedFiles',
+        'versionSource',
+        'serviceVersionSources',
     ]);
     if (Object.keys(selections).some((key) => !allowed.has(key)))
         throw new Error('Unknown environment selection field.');
@@ -150,6 +152,9 @@ function comparison(selections: ProjectSelections, groups: ServiceGroup[]) {
                 provider: item.mode,
                 scenario: item.mockScenario ?? item.savedMockScenario ?? '',
                 image: selections.serviceImages?.[name] ?? '(default)',
+                versionSource:
+                    selections.serviceVersionSources?.[name] ??
+                    '(environment default)',
                 excluded: item.excluded ? 'Yes' : 'No',
                 root: selections.services.includes(name) ? 'Yes' : 'No',
                 development: selections.servicesWithLiveUpdate.includes(name)
@@ -167,7 +172,7 @@ export function profileChanges(
 ): ProfileChange[] {
     const before = comparison(current, groups);
     const after = comparison(next, groups);
-    const changes: ProfileChange[] = [];
+    const changes: ProfileChange[] = selectionChanges(current, next);
     for (const [service, values] of Object.entries(after)) {
         for (const field of Object.keys(values) as (keyof typeof values)[]) {
             if (before[service][field] !== values[field])
@@ -179,6 +184,21 @@ export function profileChanges(
                 });
         }
     }
+    return changes;
+}
+
+function selectionChanges(
+    current: ProjectSelections,
+    next: ProjectSelections,
+): ProfileChange[] {
+    const changes: ProfileChange[] = [];
+    if ((current.versionSource ?? 'cidev') !== (next.versionSource ?? 'cidev'))
+        changes.push({
+            service: '(environment)',
+            field: 'version source',
+            before: current.versionSource ?? 'cidev',
+            after: next.versionSource ?? 'cidev',
+        });
     if (
         JSON.stringify([...current.modules].sort()) !==
         JSON.stringify([...next.modules].sort())

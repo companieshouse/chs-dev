@@ -397,7 +397,7 @@ function blockedFailedRows(state: LiveState): {
 
 function pendingSuffix(state: LiveState) {
     if (state.deferredConfigurationRevision)
-        return ' · legacy edits wait for Apply';
+        return ' · saved changes wait for Apply';
     return state.autoApply ? '' : ' · auto-apply is off';
 }
 

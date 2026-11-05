@@ -1,5 +1,10 @@
 import { settingKeys } from '../domain/settings.js';
 import { serviceProviders } from '../domain/providers.js';
+import { parseEnvironmentProfile } from '../domain/environment-profile.js';
+import {
+    isVersionSource,
+    isAwsEnvironment,
+} from '../domain/version-sources.js';
 import {
     ClientError,
     protocolVersion,
@@ -49,6 +54,52 @@ type ArgsValidator = (a: Args) => void;
 
 function argsEmpty(a: Args) {
     fields(a, []);
+}
+
+function profile(value: unknown) {
+    try {
+        parseEnvironmentProfile(value);
+    } catch (error) {
+        invalid((error as Error).message);
+    }
+}
+
+function argsProfilePreview(a: Args) {
+    fields(a, ['profile', 'versionsOnly']);
+    profile(a.profile);
+    bool(a.versionsOnly);
+}
+
+function argsProfileImport(a: Args) {
+    fields(a, ['profile', 'versionsOnly', 'revision']);
+    profile(a.profile);
+    bool(a.versionsOnly);
+    string(a.revision, 128);
+}
+
+function argsProfilePath(a: Args) {
+    fields(a, ['path']);
+    string(a.path);
+}
+
+function argsProfileExport(a: Args) {
+    fields(a, ['path', 'force', 'profile']);
+    string(a.path);
+    if (a.force !== undefined) bool(a.force);
+    if (a.profile !== undefined) profile(a.profile);
+}
+
+function argsCidevVersions(a: Args) {
+    fields(a, ['profile', 'region']);
+    if (a.profile !== undefined) string(a.profile, 128);
+    if (a.region !== undefined) string(a.region, 64);
+}
+
+function argsVersionSnapshot(a: Args) {
+    fields(a, ['source', 'refresh']);
+    if (!isAwsEnvironment(a.source))
+        invalid('Choose an AWS environment for versions.');
+    if (a.refresh !== undefined) bool(a.refresh);
 }
 function argsStart(a: Args) {
     fields(a, ['approveStops']);
@@ -126,17 +177,18 @@ function argsConfigurationSave(a: Args) {
         'provider',
         'mockScenario',
         'image',
+        'versionSource',
     ]);
     string(e.name, 256);
     bool(e.enabled);
     bool(e.development);
+    argsVersionEdit(e);
     if (
         e.provider !== undefined &&
         !(serviceProviders as readonly unknown[]).includes(e.provider)
     )
         invalid('Invalid service provider.');
     if (e.mockScenario !== undefined) string(e.mockScenario, 256);
-    if (e.image !== undefined && e.image !== null) string(e.image, 1024);
     const exclusions = object(e.exclusions);
     if (Object.keys(exclusions).length > 500) invalid('Too many exclusions.');
     for (const [k, v] of Object.entries(exclusions)) {
@@ -144,6 +196,12 @@ function argsConfigurationSave(a: Args) {
         bool(v);
     }
 }
+function argsVersionEdit(edit: Args) {
+    if (edit.versionSource != null && !isVersionSource(edit.versionSource))
+        invalid('Choose a valid version source.');
+    if (edit.image != null) string(edit.image, 1024);
+}
+
 function argsSettingsSave(a: Args) {
     fields(a, ['key', 'value', 'revision']);
     if (!(settingKeys as readonly unknown[]).includes(a.key))
@@ -190,6 +248,11 @@ function argsQueryLogs(a: Args, key: 'id' | 'service') {
         invalid('Tail must be between 1 and 5000.');
 }
 const queryArgValidators = new Map<string, ArgsValidator>([
+    ['environment.versionSnapshot', argsVersionSnapshot],
+    ['environment.profile', argsEmpty],
+    ['environment.profileRead', argsProfilePath],
+    ['environment.profilePreview', argsProfilePreview],
+    ['environment.cidevVersions', argsCidevVersions],
     ['configuration.snapshot', argsEmpty],
     ['environment.preview', argsEmpty],
     ['dependency.diagram', argsDiagram],
@@ -207,6 +270,8 @@ const queryArgValidators = new Map<string, ArgsValidator>([
     ['project.cloneDestination', argsQueryDirectory],
 ]);
 const commandArgValidators = new Map<string, ArgsValidator>([
+    ['environment.profileImport', argsProfileImport],
+    ['environment.profileExport', argsProfileExport],
     ['environment.start', argsStart],
     ['environment.apply', argsStart],
     ['environment.stop', argsEmpty],

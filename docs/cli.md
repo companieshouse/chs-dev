@@ -36,6 +36,15 @@ chs-dev service mocks company-profile-api
 chs-dev service configure company-profile-api --enabled true --provider mock --scenario success
 chs-dev service configure company-profile-api --scenario not-found
 chs-dev service configure company-profile-api --provider service
+chs-dev environment source cidev
+chs-dev environment source staging
+chs-dev service configure company-profile-api --version-source live
+chs-dev service configure company-profile-api --version-source latest
+chs-dev environment export ./team-environment.yaml
+chs-dev environment diff ./team-environment.yaml
+chs-dev environment import ./team-environment.yaml --yes
+chs-dev environment versions cidev
+chs-dev environment versions cidev --yes
 chs-dev service start accounts-api other-service
 chs-dev service stop accounts-api
 chs-dev service restart accounts-api
@@ -72,6 +81,16 @@ produce warnings. Select a different checkout in the TUI or update daemon startu
 settings as described in [daemon operation](daemon.md).
 
 ## Waiting, approval and automation
+
+Service mode follows a global version source, defaulting to CIDEV, with optional
+per-service environment, latest or image pins. See [service versions](service-versions.md).
+`environment source` saves the default source pending until Apply or Start.
+`service configure --version-source default` clears a service override and image pin.
+
+See [environment files and CIDEV versions](environment-profiles.md) for sharing
+enabled services, providers and mock scenarios, or copying versions only.
+Profile import and CIDEV copying preview by default; `--yes` saves local changes
+pending until an explicit Apply or Start, preserving this deferral across restarts.
 
 Mutations wait for their operation by default. `--detach` returns the accepted
 operation ID and leaves execution in the daemon. `--timeout SECONDS` limits the

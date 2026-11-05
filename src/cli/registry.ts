@@ -28,6 +28,34 @@ export const commands: CommandDefinition[] = [
     command('stop', 'Stop the environment; retain volumes', 0, 0, waiting),
     command('logs', 'Read recent environment output', 0, 0, ['tail']),
     command('service list', 'List services'),
+    command(
+        'environment source',
+        'Choose default Service versions; saves until Apply',
+        1,
+        1,
+        waiting,
+    ),
+    command('environment export', 'Write a portable environment file', 1, 1, [
+        ...waiting,
+        'force',
+    ]),
+    command('environment diff', 'Preview an environment file', 1, 1, [
+        'versions-only',
+    ]),
+    command(
+        'environment import',
+        'Preview or save an environment file; --yes saves until Apply',
+        1,
+        1,
+        [...waiting, 'yes', 'versions-only'],
+    ),
+    command(
+        'environment versions',
+        'Read running CIDEV image versions; --yes saves local pins only',
+        1,
+        1,
+        ['profile', 'region', 'output', 'force', 'yes', 'timeout'],
+    ),
     command('service show', 'Inspect a service', 1),
     command('service mocks', 'List mock contracts and scenarios', 0, 1),
     command('service configure', 'Edit service configuration', 1, 1, [
@@ -37,6 +65,7 @@ export const commands: CommandDefinition[] = [
         'provider',
         'scenario',
         'image',
+        'version-source',
         'exclude',
         'allow',
     ]),

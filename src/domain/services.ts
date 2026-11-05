@@ -1,4 +1,5 @@
 import type { MockSupport, ServiceProvider } from './providers.js';
+import type { VersionSource } from './version-sources.js';
 
 export interface ServiceDefinition {
     dependencies: string[];
@@ -24,6 +25,11 @@ export interface ServiceDetails {
     savedMockScenario?: string;
     image?: string;
     imagePinned?: boolean;
+    versionSource?: VersionSource;
+    versionSourceOverride?: VersionSource;
+    defaultVersionSource?: VersionSource;
+    environmentVersionsAvailable?: boolean;
+    versionLabel?: string;
 }
 
 export interface ServiceEdit {
@@ -34,6 +40,7 @@ export interface ServiceEdit {
     mockScenario?: string;
     exclusions: Record<string, boolean>;
     image?: string | null;
+    versionSource?: VersionSource | null;
 }
 
 export type SaveService = (edit: ServiceEdit) => Promise<void>;

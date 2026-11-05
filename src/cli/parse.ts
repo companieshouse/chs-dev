@@ -2,6 +2,7 @@ import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { ClientError } from '../protocol/types.js';
 import { commands, type CommandDefinition } from './registry.js';
 import { serviceProviders } from '../domain/providers.js';
+import { isVersionSource } from '../domain/version-sources.js';
 
 const options: NonNullable<ParseArgsConfig['options']> = {
     json: { type: 'boolean', short: 'j' },
@@ -15,6 +16,12 @@ const options: NonNullable<ParseArgsConfig['options']> = {
     provider: { type: 'string' },
     scenario: { type: 'string' },
     image: { type: 'string' },
+    'version-source': { type: 'string' },
+    profile: { type: 'string' },
+    region: { type: 'string' },
+    output: { type: 'string' },
+    force: { type: 'boolean' },
+    'versions-only': { type: 'boolean' },
     exclude: { type: 'string', multiple: true },
     allow: { type: 'string', multiple: true },
     tail: { type: 'string', short: 'n' },
@@ -104,6 +111,7 @@ function validateOptions(invocation: Invocation) {
 }
 function validateConfigurationOptions(invocation: Invocation) {
     validateProviderOptions(invocation.options);
+    validateVersionOptions(invocation);
     for (const key of ['enabled', 'development']) {
         if (
             invocation.options[key] !== undefined &&
@@ -119,6 +127,7 @@ function validateConfigurationOptions(invocation: Invocation) {
             'provider',
             'scenario',
             'image',
+            'version-source',
             'exclude',
             'allow',
         ].some((key) => invocation.options[key] !== undefined)
@@ -128,6 +137,25 @@ function validateConfigurationOptions(invocation: Invocation) {
     const allowed = invocation.options.allow as string[] | undefined;
     if (excluded?.some((name) => allowed?.includes(name)))
         usage('A dependency cannot be both excluded and allowed.');
+}
+
+function validateVersionOptions(invocation: Invocation) {
+    const source = invocation.options['version-source'];
+    if (
+        source !== undefined &&
+        source !== 'default' &&
+        !isVersionSource(source)
+    )
+        usage(
+            '--version-source must be default, cidev, staging, live, latest or compose.',
+        );
+    if (source !== undefined && invocation.options.image !== undefined)
+        usage('Choose --image or --version-source for this edit.');
+    if (
+        invocation.name === 'environment source' &&
+        !isVersionSource(invocation.args[0])
+    )
+        usage('Choose cidev, staging, live, latest or compose.');
 }
 
 function validateProviderOptions(options: CliOptions) {
@@ -179,6 +207,8 @@ function resolveInvocation(
         usage(`Invalid arguments for ${name}. Run chs-dev ${name} --help.`);
     const invocation = { definition, name, args, options: values };
     validateOptions(invocation);
+    if (name === 'environment versions' && args[0] !== 'cidev')
+        usage('Only CIDEV version discovery is currently supported.');
     return invocation;
 }
 function helpRequested(

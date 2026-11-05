@@ -15,6 +15,16 @@ import type {
     SettingValues,
 } from '../domain/settings.js';
 import type { ProjectConfig } from '../domain/project.js';
+import type {
+    EnvironmentProfile,
+    ProfilePreview,
+} from '../domain/environment-profile.js';
+import type {
+    CidevVersionOptions,
+    CidevVersionResult,
+    VersionSnapshot,
+} from '../domain/aws-versions.js';
+import type { AwsEnvironment } from '../domain/version-sources.js';
 import type { AwsStatus } from '../domain/aws.js';
 import type { ProfileDiscovery } from '../domain/aws-profiles.js';
 import type {
@@ -102,6 +112,18 @@ export interface Operation {
 type Command<A, R = void> = { args: A; result: R };
 type Empty = Record<string, never>;
 export interface CommandMap {
+    'environment.profileImport': Command<
+        {
+            profile: EnvironmentProfile;
+            versionsOnly: boolean;
+            revision: string;
+        },
+        { revision: string; selections: ProjectSelections }
+    >;
+    'environment.profileExport': Command<
+        { path: string; force?: boolean; profile?: EnvironmentProfile },
+        { path: string; warnings: string[] }
+    >;
     'environment.start': Command<{ approveStops?: boolean }>;
     'environment.apply': Command<{ approveStops?: boolean }>;
     'environment.stop': Command<Empty>;
@@ -153,6 +175,20 @@ export type CommandRequest<K extends CommandName = CommandName> = {
     };
 }[K];
 export interface QueryMap {
+    'environment.versionSnapshot': Command<
+        { source: AwsEnvironment; refresh?: boolean },
+        VersionSnapshot
+    >;
+    'environment.profile': Command<Empty, EnvironmentProfile>;
+    'environment.profileRead': Command<{ path: string }, EnvironmentProfile>;
+    'environment.profilePreview': Command<
+        { profile: EnvironmentProfile; versionsOnly: boolean },
+        ProfilePreview
+    >;
+    'environment.cidevVersions': Command<
+        CidevVersionOptions,
+        CidevVersionResult
+    >;
     'environment.preview': Command<
         Empty,
         { plan: LivePreview; revision: string }

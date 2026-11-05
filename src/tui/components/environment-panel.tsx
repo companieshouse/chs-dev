@@ -22,6 +22,8 @@ import SelectableRow from './selectable-row.js';
 import KeyboardHints from './keyboard-hints.js';
 import { theme } from './theme.js';
 import { useSpinner } from '../hooks/use-spinner.js';
+import EnvironmentProfilesModal from './environment-profiles-modal.js';
+import VersionSourceModal from './version-source-modal.js';
 
 export const toneColors: Record<EnvironmentTone, string> = {
     healthy: theme.healthy,
@@ -60,6 +62,8 @@ interface EnvironmentPanelProps {
     onLogin(kind: 'aws' | 'registry'): void;
     onViewLogs(problems: boolean): void;
     onAutoApply(value: boolean): void;
+    onProfiles?(): void;
+    onVersions?(): void;
 }
 
 interface Notice {
@@ -204,6 +208,7 @@ function buildHints(
 ): string {
     return [
         '↑ ↓ choose · Enter select',
+        'v versions · p share',
         hasDetails ? 'd details' : '',
         scrollable ? 'PgUp/PgDn scroll' : '',
         busy ? 'x cancel' : '',
@@ -327,9 +332,15 @@ function usePanelState(props: EnvironmentPanelProps) {
 }
 
 function panelKeyKind(input: string, key: Key) {
-    const shortcut = ({ q: 'close', x: 'cancel', d: 'details' } as const)[
-        input as 'q' | 'x' | 'd'
-    ];
+    const shortcut = (
+        {
+            q: 'close',
+            x: 'cancel',
+            d: 'details',
+            p: 'profiles',
+            v: 'versions',
+        } as const
+    )[input as 'q' | 'x' | 'd' | 'p' | 'v'];
     if (shortcut) return shortcut;
     if (key.escape) return 'close';
     if (key.pageDown || key.pageUp) return 'scroll';
@@ -463,6 +474,24 @@ function PanelModal({
 }
 
 export default function EnvironmentPanel(props: EnvironmentPanelProps) {
+    const [profilesOpen, setProfilesOpen] = useState(false);
+    const [versionsOpen, setVersionsOpen] = useState(false);
+    if (versionsOpen)
+        return <VersionSourceModal onClose={() => setVersionsOpen(false)} />;
+    if (profilesOpen)
+        return (
+            <EnvironmentProfilesModal onClose={() => setProfilesOpen(false)} />
+        );
+    return (
+        <EnvironmentPanelContent
+            {...props}
+            onProfiles={() => setProfilesOpen(true)}
+            onVersions={() => setVersionsOpen(true)}
+        />
+    );
+}
+
+function EnvironmentPanelContent(props: EnvironmentPanelProps) {
     const { controller, state, summary, onClose } = props;
     const { columns, rows } = useWindowSize();
     const panel = usePanelState(props);
@@ -490,6 +519,8 @@ export default function EnvironmentPanel(props: EnvironmentPanelProps) {
     );
     const keyActions = {
         close: onClose,
+        profiles: () => props.onProfiles?.(),
+        versions: () => props.onVersions?.(),
         cancel: () => {
             if (state.busy) controller?.cancel();
         },

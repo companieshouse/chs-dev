@@ -18,6 +18,11 @@ import {
 import { readProjectConfig } from '../project/config.js';
 import { readServices } from '../project/catalog.js';
 import { saveServiceChanges } from '../project/service-configuration.js';
+import { EnvironmentProfiles } from '../project/environment-profiles.js';
+import { readCidevVersions } from '../infrastructure/cidev-versions.js';
+import { ServiceVersions } from '../infrastructure/service-versions.js';
+import type { CidevVersionOptions } from '../domain/aws-versions.js';
+import type { AwsEnvironment } from '../domain/version-sources.js';
 import {
     configurationSnapshot,
     saveLegacyChanges,
@@ -86,6 +91,7 @@ async function acquireSupervisor(project: ProjectConfig) {
 async function readProjectConfiguration(
     project: ProjectConfig,
     groups: ServiceGroup[],
+    versions?: ServiceVersions,
 ): Promise<{
     details: Record<string, ServiceDetails>;
     revision: string;
@@ -108,7 +114,10 @@ async function readProjectConfiguration(
         });
         revision = createHash('sha256').update(yaml).digest('hex');
         return {
-            details: resolveServiceState(parse(yaml), groups),
+            details:
+                (await versions?.decorate(
+                    resolveServiceState(parse(yaml), groups),
+                )) ?? resolveServiceState(parse(yaml), groups),
             revision,
             error: '',
         };
@@ -142,6 +151,10 @@ function createHostOpen(
         if (project.valid)
             project.directory = await realpath(project.directory);
         const groups = project.valid ? await readServices(project) : [];
+        const { versions, profiles } = createVersionServices(
+            project.directory,
+            groups,
+        );
         const runtime = options.runtime?.() ?? selectRuntime();
         let release: Awaited<ReturnType<typeof exclusiveLease>> | undefined;
         let controller: BackendSession['controller'];
@@ -156,6 +169,7 @@ function createHostOpen(
                         explicitStart: true,
                         initialIntent: intent,
                         lock: { acquire: heldSupervisorLease },
+                        versions,
                     },
                 );
             } catch (error) {
@@ -166,12 +180,14 @@ function createHostOpen(
         return {
             project,
             groups,
+            ...profileServices(profiles, groups, versions),
             runtime,
             controller,
             manager: project.valid
                 ? runtime.containers?.({ directory: project.directory })
                 : undefined,
-            readConfiguration: () => readProjectConfiguration(project, groups),
+            readConfiguration: () =>
+                readProjectConfiguration(project, groups, versions),
             configurationSnapshot: () =>
                 configurationSnapshot(project.directory),
             saveLegacy: (edit, revision, beforeCommit) =>
@@ -193,6 +209,7 @@ function createHostOpen(
                     provider: edit.provider,
                     mockScenario: edit.mockScenario,
                     image: edit.image,
+                    versionSource: edit.versionSource,
                     groups,
                     exclusions: edit.exclusions,
                     expectedRevision: revision,
@@ -200,6 +217,55 @@ function createHostOpen(
             },
             close: () => closeBackendSession(controller, release),
         };
+    };
+}
+
+function createVersionServices(directory: string, groups: ServiceGroup[]) {
+    const versions = new ServiceVersions(
+        join(projectStateDirectory(directory), 'versions'),
+        groups,
+    );
+    const profiles = new EnvironmentProfiles(
+        directory,
+        groups,
+        (inventory, selections) => versions.images(inventory, selections),
+    );
+    return { versions, profiles };
+}
+
+function profileServices(
+    profiles: EnvironmentProfiles,
+    groups: ServiceGroup[],
+    versions: ServiceVersions,
+) {
+    return {
+        profiles,
+        versionSnapshot: (
+            source: AwsEnvironment,
+            signal?: AbortSignal,
+            refresh?: boolean,
+        ) => versions.snapshot(source, signal, refresh),
+        cidevVersions: async (
+            options: CidevVersionOptions,
+            signal?: AbortSignal,
+        ) => {
+            const snapshot = await profiles.snapshot(false);
+            const versions = await readCidevVersions(options, groups, signal);
+            return {
+                profile: {
+                    ...snapshot,
+                    selections: {
+                        ...snapshot.selections,
+                        serviceImages: versions.images,
+                    },
+                },
+                matches: versions.matches,
+                ambiguous: versions.ambiguous,
+                warnings: versions.warnings,
+                clusters: versions.clusters,
+                runningTasks: versions.runningTasks,
+            };
+        },
     };
 }
 function createHostLogin(settings: {

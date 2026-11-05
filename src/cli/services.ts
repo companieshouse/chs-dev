@@ -13,6 +13,7 @@ import {
     validateProvider,
     type ServiceProvider,
 } from '../domain/providers.js';
+import type { VersionSource } from '../domain/version-sources.js';
 
 function providerEdit(context: CliContext) {
     const {
@@ -86,6 +87,15 @@ function serviceEdit(context: CliContext) {
         ...providerEdit(context),
         exclusions,
         ...imageEdit(options.image),
+        ...versionSourceEdit(options['version-source']),
+    };
+}
+
+function versionSourceEdit(source: unknown) {
+    if (source === undefined) return {};
+    return {
+        image: null,
+        versionSource: source === 'default' ? null : (source as VersionSource),
     };
 }
 

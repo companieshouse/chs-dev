@@ -13,17 +13,16 @@ import { SshSetupService, sshSetupFiles } from './ssh-setup.js';
 import { tuiLog } from './tui-log.js';
 import { activeSettings, projectStateDirectory } from './settings.js';
 import { guardBackend } from './backend-guard.js';
+import type { ServiceVersions } from './service-versions.js';
 
 const sessions = new Set<LiveController>();
 export function createLiveSession(
     runtime: RuntimeStrategy,
     directory: string,
     groups: ServiceGroup[],
-    options:
-        | Pick<LiveDependencies, 'explicitStart' | 'initialIntent' | 'lock'>
-        | Partial<
-              Pick<LiveDependencies, 'explicitStart' | 'initialIntent' | 'lock'>
-          > = {},
+    options: Partial<
+        Pick<LiveDependencies, 'explicitStart' | 'initialIntent' | 'lock'>
+    > & { versions?: ServiceVersions } = {},
 ) {
     if (!runtime.capabilities.apply || !runtime.live)
         throw new Error(`${runtime.name} cannot be controlled from chs-dev.`);
@@ -42,6 +41,19 @@ export function createLiveSession(
         files: liveFiles,
         execute,
         environment,
+        serviceImages: options.versions
+            ? (context) => (inventory, selections) =>
+                  options.versions!.images(
+                      inventory,
+                      selections,
+                      context.signal,
+                      (message) =>
+                          context.onOutput?.({
+                              stream: 'stderr',
+                              text: message,
+                          }),
+                  )
+            : undefined,
     });
     const ssh = new SshSetupService({
         directory,

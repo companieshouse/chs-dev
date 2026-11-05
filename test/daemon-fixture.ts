@@ -30,7 +30,11 @@ import type { ContainerManager } from '../src/domain/containers.js';
 export async function daemonFixture(
     terminal?: TerminalFactory,
     manager?: ContainerManager,
-    options: { mock?: MockSupport } = {},
+    options: {
+        mock?: MockSupport;
+        image?: string;
+        configure?: (backend: BackendSession) => void;
+    } = {},
 ) {
     const root = await mkdtemp(join(tmpdir(), 'chs-daemon-test-'));
     const directory = join(root, 'checkout-a'),
@@ -74,6 +78,7 @@ export async function daemonFixture(
                     module: 'fixture',
                     base: false,
                     development: true,
+                    image: options.image ?? 'registry.example/api:1.0.0',
                     mock: options.mock,
                 },
             },
@@ -314,6 +319,19 @@ export async function daemonFixture(
                             actual!.selections.mockScenarios = {
                                 api: edit.mockScenario,
                             };
+                        if (edit.image === null)
+                            delete actual!.selections.serviceImages?.api;
+                        else if (edit.image !== undefined)
+                            actual!.selections.serviceImages = {
+                                api: edit.image,
+                            };
+                        if (edit.versionSource === null)
+                            delete actual!.selections.serviceVersionSources
+                                ?.api;
+                        else if (edit.versionSource !== undefined)
+                            actual!.selections.serviceVersionSources = {
+                                api: edit.versionSource,
+                            };
                         actual!.revision++;
                     },
                     configurationSnapshot: async () => ({
@@ -344,6 +362,7 @@ export async function daemonFixture(
                     },
                     close: () => controller.shutdown(),
                 };
+                options.configure?.(backend);
                 return backend;
             },
             aws: async () => ({ state: 'active' }),

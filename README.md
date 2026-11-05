@@ -15,6 +15,14 @@ npm run dev -- start --yes
 See [CLI commands and compatibility](docs/cli.md) for installation, daemon controls,
 automation, exit codes and legacy behaviour. Both frontends operate the same daemon.
 
+Service providers default to **CIDEV** versions. Press **Ctrl+E → v** to choose a
+global version source, or use a service's **Versions** row for an environment,
+specific version or latest override. See [service versions](docs/service-versions.md).
+
+Share service selections, providers, mock scenarios and image pins with
+[environment files](docs/environment-profiles.md), or copy running CIDEV versions
+while preserving your local setup. In the TUI, press Ctrl+E then p for sharing.
+
 The TUI connects to one daemon per user, which manages one selected checkout.
 On macOS the first launch also installs a login service. Closing the TUI leaves
 accepted operations and health monitoring running. After a new login or reboot,

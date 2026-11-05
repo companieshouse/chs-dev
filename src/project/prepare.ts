@@ -35,6 +35,7 @@ import {
     type Definitions,
     type ServiceDefinition,
 } from './resolve.js';
+import type { ImageSelections } from '../domain/image-versions.js';
 
 export interface RepositoryRequest {
     service: string;
@@ -57,6 +58,10 @@ export interface ProjectDependencies {
     prepareRepository(request: RepositoryRequest): Promise<string>;
     progress?(message: string): void;
     validate?(document: Mapping): Promise<void>;
+    serviceImages?(
+        inventory: InventoryEntry[],
+        selections: ImageSelections,
+    ): Promise<Record<string, string>>;
 }
 
 export async function projectName(
@@ -552,6 +557,10 @@ export async function prepareProject(
     const { definitions, resources } = await loadDefinitions(project, fs);
     const inventory = resolveServices(definitions, state);
     const sshRequirements = resolveSshRequirements(definitions, inventory);
+    const images =
+        (await dependencies.serviceImages?.(inventory, state)) ??
+        state.serviceImages ??
+        {};
     // An exclusive directory prevents sharing artifacts between operations.
     await fs.mkdir(output, { mode: 0o700 });
     const document: Mapping = { name, services: {}, ...resources };
@@ -560,7 +569,7 @@ export async function prepareProject(
         project,
         output,
         dependencies,
-        images: state.serviceImages ?? {},
+        images,
         mockDirectory:
             request.mockRuntimeDirectory ?? join(output, 'mock-config'),
     });

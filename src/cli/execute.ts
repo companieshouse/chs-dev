@@ -8,6 +8,7 @@ import { serviceCommand } from './services.js';
 import { environmentCommand } from './environment.js';
 import { legacyCommand } from './legacy.js';
 import { operationCommand } from './operations.js';
+import { profileCommand } from './profiles.js';
 
 export async function execute(context: CliContext): Promise<CliResult> {
     const { name, options } = context.invocation;
@@ -52,6 +53,12 @@ export async function execute(context: CliContext): Promise<CliResult> {
             message: state.project.message,
         });
     if (name.startsWith('service ')) return serviceCommand(context);
+    return projectCommand(context);
+}
+
+function projectCommand(context: CliContext) {
+    const name = context.invocation.name;
+    if (name.startsWith('environment ')) return profileCommand(context);
     if (name.startsWith('legacy ')) return legacyCommand(context);
     return environmentCommand(context);
 }
@@ -67,7 +74,7 @@ function statusText(state: SessionSnapshot) {
         state.project.valid ? '' : state.project.message,
         state.live.message,
         state.live.deferredConfigurationRevision
-            ? 'Legacy edits pending; run chs-dev legacy up or choose Apply.'
+            ? 'Configuration changes pending; run chs-dev apply or choose Apply / Start.'
             : '',
         `Active operations: ${active.length}`,
         ...active.map(

@@ -21,6 +21,8 @@ import { validImage } from '../domain/image-versions.js';
 import { selectedProvider } from '../domain/providers.js';
 import { resolveServiceState } from '../domain/service-state.js';
 import { serviceDefinitions, type ServiceGroup } from '../domain/services.js';
+import type { InventoryEntry } from '../domain/live.js';
+import type { ImageSelections } from '../domain/image-versions.js';
 import { configurationSnapshot } from './configuration.js';
 import {
     loadDocument,
@@ -36,6 +38,8 @@ const configurationKeys = [
     'serviceProviders',
     'mockScenarios',
     'serviceImages',
+    'versionSource',
+    'serviceVersionSources',
 ] as const;
 
 export function profilePath(path: string, directory: string): string {
@@ -110,15 +114,28 @@ export class EnvironmentProfiles {
     constructor(
         private readonly directory: string,
         private readonly groups: ServiceGroup[],
+        private readonly resolveImages?: (
+            inventory: InventoryEntry[],
+            selections: ImageSelections,
+        ) => Promise<Record<string, string>>,
     ) {}
 
-    async snapshot(): Promise<EnvironmentProfile> {
+    async snapshot(resolveVersions = true): Promise<EnvironmentProfile> {
         const { selections } = await configurationSnapshot(this.directory);
         validateEnvironmentSelections(selections, this.groups);
         const definitions = serviceDefinitions(this.groups);
         const details = resolveServiceState(selections, this.groups);
         const environment = await imageEnvironment(this.directory);
-        const images = { ...selections.serviceImages };
+        const inventory: InventoryEntry[] = Object.entries(details).flatMap(
+            ([service, item]) =>
+                item.enabled === 'Yes' && item.mode !== 'Unknown'
+                    ? [{ service, mode: item.mode }]
+                    : [],
+        );
+        const images =
+            resolveVersions && this.resolveImages
+                ? await this.resolveImages(inventory, selections)
+                : { ...selections.serviceImages };
         for (const [name, item] of Object.entries(details)) {
             if (
                 item.enabled !== 'Yes' ||
@@ -200,8 +217,10 @@ export class EnvironmentProfiles {
         return parseEnvironmentProfile(parse(await readFile(target, 'utf8')));
     }
 
-    async export(path: string, force = false) {
-        const profile = await this.snapshot();
+    async export(path: string, force = false, source?: EnvironmentProfile) {
+        const profile = source
+            ? parseEnvironmentProfile(source)
+            : await this.snapshot();
         const target = profilePath(path, this.directory);
         const preview = await this.preview(profile);
         await mkdir(dirname(target), { recursive: true });

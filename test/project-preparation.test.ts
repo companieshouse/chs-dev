@@ -40,6 +40,28 @@ test('image pins reach generated services without changing project source defini
     );
 });
 
+test('automatic environment images reach artifacts while retaining the source configuration identity', async () => {
+    const f = fixture({ services: ['app'], versionSource: 'cidev' });
+    const image = 'registry.example/app@sha256:' + 'b'.repeat(64);
+    const prepared = await prepareProject(f.request, {
+        ...f.dependencies,
+        serviceImages: async (inventory, selections) => {
+            assert.equal(selections.versionSource, 'cidev');
+            assert.ok(
+                inventory.some(
+                    (item) => item.service === 'app' && item.mode === 'Service',
+                ),
+            );
+            return { app: image };
+        },
+    });
+    assert.equal(
+        parse(f.files.get(prepared.composeFiles[0]!)!).services.app.image,
+        image,
+    );
+    assert.equal(prepared.configurationIdentity, sha(f.request.configuration));
+});
+
 function fixture(state: unknown = { services: ['app'] }) {
     const files = new Map<string, string>();
     const directories = new Set([

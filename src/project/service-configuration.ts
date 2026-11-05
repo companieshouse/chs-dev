@@ -13,6 +13,10 @@ import {
 import { serviceDefinitions } from '../domain/services.js';
 import type { ServiceProvider } from '../domain/providers.js';
 import { validImage } from '../domain/image-versions.js';
+import {
+    isVersionSource,
+    type VersionSource,
+} from '../domain/version-sources.js';
 
 export interface SaveServiceChangesOptions {
     directory: string;
@@ -25,6 +29,7 @@ export interface SaveServiceChangesOptions {
     exclusions?: Record<string, boolean>;
     expectedRevision?: string;
     image?: string | null;
+    versionSource?: VersionSource | null;
 }
 
 function validateSaveRequest(
@@ -171,12 +176,12 @@ export async function saveServiceChanges({
     provider,
     mockScenario,
     image,
+    versionSource,
 }: SaveServiceChangesOptions) {
     validateSaveRequest(name, enabled, development, groups, exclusions);
     const providerEdit = { name, development, provider, mockScenario };
     validateProviderEdit(providerEdit, serviceDefinitions(groups)[name]);
-    if (image !== undefined && image !== null && !validImage(image))
-        throw new Error('Supply a valid container image reference.');
+    validateImageEdit(image, versionSource);
     const path = join(directory, '.chs-dev.yaml');
     logValidated(name, enabled, development, exclusions);
     const read = () =>
@@ -190,10 +195,32 @@ export async function saveServiceChanges({
     resolveServiceState(document.toJS(), groups);
     applyChanges(document, name, enabled, development, exclusions);
     applyProviderEdit(document, providerEdit);
-    if (image === null) document.deleteIn(['serviceImages', name]);
-    else if (image !== undefined)
-        document.setIn(['serviceImages', name], image);
+    applyImageEdit(document, name, { image, versionSource });
     const details = resolveServiceState(document.toJS(), groups);
     await writeAtomically(path, read, original, document);
     return details;
+}
+
+function validateImageEdit(
+    image?: string | null,
+    source?: VersionSource | null,
+) {
+    if (image != null && !validImage(image))
+        throw new Error('Supply a valid container image reference.');
+    if (source != null && !isVersionSource(source))
+        throw new Error('Choose a valid version source.');
+}
+
+function applyImageEdit(
+    document: Document,
+    name: string,
+    edit: Pick<SaveServiceChangesOptions, 'image' | 'versionSource'>,
+) {
+    if (edit.image === null) document.deleteIn(['serviceImages', name]);
+    else if (edit.image !== undefined)
+        document.setIn(['serviceImages', name], edit.image);
+    if (edit.versionSource === null)
+        document.deleteIn(['serviceVersionSources', name]);
+    else if (edit.versionSource !== undefined)
+        document.setIn(['serviceVersionSources', name], edit.versionSource);
 }

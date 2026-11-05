@@ -29,6 +29,8 @@ import ModalFrame from './modal-frame.js';
 import { centeredStart } from '../models/modules.js';
 import { useProviderSelection } from '../hooks/use-provider-selection.js';
 import type { ServiceProvider } from '../../domain/providers.js';
+import { useServiceVersions } from '../hooks/use-service-versions.js';
+import { ChoiceModal, TextInputModal } from './settings-modals.js';
 
 export interface ServiceContainerControls {
     /** Whether a container exists, is running, and runs in Development mode. */
@@ -44,6 +46,7 @@ type MainOption =
     | 'enabled'
     | 'mode'
     | 'scenario'
+    | 'versions'
     | 'dependencies'
     | 'save'
     | 'reload'
@@ -79,6 +82,7 @@ interface OptionLabelView {
     enabled: boolean;
     provider: ServiceProvider;
     mockScenario?: string;
+    versionLabel: string;
     base: boolean;
     modeFixed: boolean;
     dependencyCount: number;
@@ -126,11 +130,13 @@ function buildMainOptions(
     onContainer?: () => void,
     controls?: ServiceContainerControls,
     mock = false,
+    versions = false,
 ): MainOption[] {
     return [
         'enabled',
         'mode',
         ...(mock ? (['scenario'] as const) : []),
+        ...(versions ? (['versions'] as const) : []),
         'dependencies',
         'save',
         ...(onContainer ? (['container'] as const) : []),
@@ -185,6 +191,7 @@ function mainOptionLabel(option: MainOption, view: OptionLabelView): string {
         enabled: stateOptionLabel('enabled', view),
         mode: stateOptionLabel('mode', view),
         scenario: `Mock scenario: ${view.mockScenario ?? 'Unknown'} (cycle)`,
+        versions: view.versionLabel,
         save: stateOptionLabel('save', view),
         restart: containerOptionLabel('restart', view),
         stop: containerOptionLabel('stop', view),
@@ -249,6 +256,7 @@ function useServiceConfiguration(props: ServiceModalProps) {
     const [exclusions, setExclusions] = useState<Record<string, boolean>>({});
     const definition = definitionOf(props.groups, props.name);
     const selection = useProviderSelection(props.details, definition);
+    const versions = useServiceVersions(props.details, definition?.image);
     const editable = Boolean(
         props.details &&
         props.details.enabled !== 'Unknown' &&
@@ -258,12 +266,14 @@ function useServiceConfiguration(props: ServiceModalProps) {
     const changed =
         enabled !== (props.details?.enabled === 'Yes') ||
         selection.changed ||
+        versions.changed ||
         exclusionsChanged(exclusions, props.allDetails);
     const toggle = (option: MainOption) => {
         if (!editable) return;
         if (option === 'enabled' && !definition?.base)
             setEnabled((value) => !value);
         if (option === 'mode') selection.cycleProvider();
+        if (option === 'versions') versions.open();
         if (option === 'scenario' && selection.provider === 'mock')
             selection.cycleScenario();
     };
@@ -292,6 +302,8 @@ function useServiceConfiguration(props: ServiceModalProps) {
         definition,
         editable,
         changed,
+        versionLabel: versions.label,
+        versionEditor: versions,
         toggle,
         toggleDependency,
         save: () =>
@@ -304,6 +316,7 @@ function useServiceConfiguration(props: ServiceModalProps) {
                     ? { mockScenario: selection.scenario }
                     : {}),
                 exclusions: effectiveExclusions(exclusions, props.allDetails),
+                ...versions.edit(),
             }),
     };
 }
@@ -343,11 +356,7 @@ function serviceKeyKind(input: string, key: Key) {
 
 function useServiceModal(props: ServiceModalProps) {
     const configuration = useServiceConfiguration(props);
-    const mainOptions = buildMainOptions(
-        props.onContainer,
-        props.controls,
-        configuration.provider === 'mock',
-    );
+    const mainOptions = configurationOptions(props, configuration);
     const navigation = useServiceNavigation(
         mainOptions.indexOf('dependencies'),
     );
@@ -357,6 +366,7 @@ function useServiceModal(props: ServiceModalProps) {
         enabled: () => configuration.toggle('enabled'),
         mode: () => configuration.toggle('mode'),
         scenario: () => configuration.toggle('scenario'),
+        versions: () => configuration.toggle('versions'),
         dependencies: navigation.dependencies,
         save: () => {
             if (configuration.editable && configuration.changed)
@@ -394,7 +404,10 @@ function useServiceModal(props: ServiceModalProps) {
         : mainOptions.length;
 
     useServiceKeyboard(navigation, {
-        inputBusy,
+        inputBusy:
+            inputBusy ||
+            configuration.versionEditor.pickerOpen ||
+            configuration.versionEditor.inputOpen,
         optionCount,
         activate,
         onClose: props.onClose,
@@ -408,6 +421,7 @@ function useServiceModal(props: ServiceModalProps) {
     );
     return {
         view,
+        versionEditor: configuration.versionEditor,
         logsOpen: navigation.logsOpen,
         closeLogs: navigation.closeLogs,
     };
@@ -493,6 +507,7 @@ function serviceLabelView(
         enabled: configuration.enabled,
         provider: configuration.provider,
         mockScenario: configuration.scenario,
+        versionLabel: configuration.versionLabel,
         base: Boolean(configuration.definition?.base),
         modeFixed: configuration.modeFixed,
         dependencyCount: serviceDependencies(props.name, props.groups).length,
@@ -525,11 +540,7 @@ function useServicePresentation(
               configuration.exclusions,
               props.allDetails,
           )
-        : buildMainOptions(
-              props.onContainer,
-              props.controls,
-              configuration.provider === 'mock',
-          ).map((option) =>
+        : configurationOptions(props, configuration).map((option) =>
               mainOptionLabel(
                   option,
                   serviceLabelView(props, configuration, operations, spinner),
@@ -559,6 +570,19 @@ function useServicePresentation(
                 'Saves configuration only; containers are unchanged.',
         },
     };
+}
+
+function configurationOptions(
+    props: ServiceModalProps,
+    configuration: ReturnType<typeof useServiceConfiguration>,
+) {
+    return buildMainOptions(
+        props.onContainer,
+        props.controls,
+        configuration.provider === 'mock',
+        configuration.provider === 'service' &&
+            Boolean(props.details?.versionSource || props.details?.imagePinned),
+    );
 }
 
 function ModalStatus({
@@ -652,6 +676,28 @@ function ServiceModalView(props: ReturnType<typeof useServicePresentation>) {
 
 export default function ServiceModal(props: ServiceModalProps) {
     const state = useServiceModal(props);
+    if (state.versionEditor.inputOpen)
+        return (
+            <TextInputModal
+                title="Specific service version"
+                label="Version"
+                validate={async () => undefined}
+                detail="Enter a tag, SHA256 digest or full image reference."
+                initial={state.versionEditor.pinned}
+                onSave={state.versionEditor.saveInput}
+                onClose={state.versionEditor.closeInput}
+            />
+        );
+    if (state.versionEditor.pickerOpen)
+        return (
+            <ChoiceModal
+                title="Service version source"
+                choices={state.versionEditor.choices}
+                current={state.versionEditor.selection}
+                onChoose={state.versionEditor.choose}
+                onClose={state.versionEditor.closePicker}
+            />
+        );
     if (state.logsOpen && props.controls)
         return (
             <ServiceLogs

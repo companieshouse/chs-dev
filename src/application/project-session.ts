@@ -258,9 +258,11 @@ export class ProjectSession {
     }
     private assertRevisionCurrent(request: CommandRequest) {
         if (
-            ['configuration.save', 'configuration.legacyEdit'].includes(
-                request.command,
-            ) &&
+            [
+                'configuration.save',
+                'configuration.legacyEdit',
+                'environment.profileImport',
+            ].includes(request.command) &&
             (request.args as { revision: string }).revision !==
                 this.state.configurationRevision
         )
@@ -304,6 +306,7 @@ export class ProjectSession {
             'ssh.setup',
             'runtime.start',
             'configuration.legacyEdit',
+            'environment.profileImport',
         ];
         const active = this.operations
             ?.active()
@@ -319,6 +322,7 @@ export class ProjectSession {
                 'project.clone',
                 'runtime.start',
                 'configuration.legacyEdit',
+                'environment.profileImport',
             ].includes(active.kind)
         )
             throw new ClientError({
@@ -371,6 +375,8 @@ export class ProjectSession {
                 'settings.save',
                 'configuration.save',
                 'configuration.legacyEdit',
+                'environment.profileImport',
+                'environment.profileExport',
                 'authentication.login',
                 'project.clone',
             ].includes(request.command)
@@ -536,6 +542,8 @@ export class ProjectSession {
         id: string,
         requireController: () => LiveController,
     ): Promise<Dispatch> {
+        const profile = await this.runProfileCommand(request, backend);
+        if (profile.handled) return profile;
         const { command, args: a } = request;
         switch (command) {
             case 'configuration.save':
@@ -572,6 +580,32 @@ export class ProjectSession {
             default:
                 return { handled: false };
         }
+    }
+
+    private async runProfileCommand(
+        request: CommandRequest,
+        backend: BackendSession,
+    ): Promise<Dispatch> {
+        if (request.command === 'environment.profileExport') {
+            if (!backend.profiles)
+                throw new Error(
+                    'Restart the daemon to use environment profiles.',
+                );
+            return {
+                handled: true,
+                value: await backend.profiles.export(
+                    request.args.path,
+                    request.args.force,
+                    request.args.profile,
+                ),
+            };
+        }
+        if (request.command === 'environment.profileImport')
+            return {
+                handled: true,
+                value: await this.queueProfileImport(request, backend),
+            };
+        return { handled: false };
     }
 
     private cloneProject(
@@ -636,6 +670,43 @@ export class ProjectSession {
         });
         this.configurationQueue = save.catch(() => {});
         return save;
+    }
+
+    private queueProfileImport(
+        request: CommandRequest<'environment.profileImport'>,
+        backend: BackendSession,
+    ) {
+        const save = this.configurationQueue.then(() =>
+            this.saveProfileImport(request, backend),
+        );
+        this.configurationQueue = save.catch(() => {});
+        return save;
+    }
+
+    private async saveProfileImport(
+        request: CommandRequest<'environment.profileImport'>,
+        backend: BackendSession,
+    ) {
+        this.assertScope(request.scope);
+        if (!backend.profiles)
+            throw new Error('Restart the daemon to use environment profiles.');
+        const previous =
+            backend.controller?.getSnapshot().deferredConfigurationRevision;
+        try {
+            const result = await backend.profiles.save({
+                ...request.args,
+                beforeCommit: async (revision) => {
+                    backend.controller?.deferConfiguration(revision, true);
+                    await this.checkpoint();
+                },
+            });
+            backend.controller?.deferConfiguration(result.revision);
+            await this.refreshConfiguration();
+            return result;
+        } catch (error) {
+            backend.controller?.restoreConfigurationDeferral(previous);
+            throw error;
+        }
     }
     private async saveDeferredConfiguration(
         request: CommandRequest<'configuration.legacyEdit'>,
@@ -913,6 +984,10 @@ export class ProjectSession {
     async query(request: QueryRequest, signal?: AbortSignal): Promise<unknown> {
         this.assertScope(request.scope);
         const backend = this.backend!;
+        const versions = await this.queryVersions(request, backend, signal);
+        if (versions.handled) return versions.value;
+        const profile = await this.queryProfile(request, backend, signal);
+        if (profile.handled) return profile.value;
         const containers = await this.queryContainers(request, backend, signal);
         if (containers.handled) return containers.value;
         const configuration = await this.queryConfiguration(
@@ -939,6 +1014,69 @@ export class ProjectSession {
                 if (project.handled) return project.value;
                 return undefined;
             }
+        }
+    }
+
+    private async queryVersions(
+        request: QueryRequest,
+        backend: BackendSession,
+        signal?: AbortSignal,
+    ): Promise<Dispatch> {
+        if (request.query !== 'environment.versionSnapshot')
+            return { handled: false };
+        if (!backend.versionSnapshot)
+            throw new Error('Restart the daemon to select service versions.');
+        const result = await backend.versionSnapshot(
+            request.args.source,
+            signal,
+            request.args.refresh,
+        );
+        this.assertScope(request.scope);
+        await this.refreshConfiguration();
+        return { handled: true, value: result };
+    }
+
+    private async queryProfile(
+        request: QueryRequest,
+        backend: BackendSession,
+        signal?: AbortSignal,
+    ): Promise<Dispatch> {
+        if (
+            !request.query.startsWith('environment.profile') &&
+            request.query !== 'environment.cidevVersions'
+        )
+            return { handled: false };
+        if (!backend.profiles)
+            throw new Error('Restart the daemon to use environment profiles.');
+        switch (request.query) {
+            case 'environment.profile':
+                return {
+                    handled: true,
+                    value: await backend.profiles.snapshot(),
+                };
+            case 'environment.profileRead':
+                return {
+                    handled: true,
+                    value: await backend.profiles.read(request.args.path),
+                };
+            case 'environment.profilePreview':
+                return {
+                    handled: true,
+                    value: await backend.profiles.preview(
+                        request.args.profile,
+                        request.args.versionsOnly,
+                    ),
+                };
+            case 'environment.cidevVersions': {
+                if (!backend.cidevVersions)
+                    throw new Error('CIDEV version discovery is unavailable.');
+                return {
+                    handled: true,
+                    value: await backend.cidevVersions(request.args, signal),
+                };
+            }
+            default:
+                return { handled: false };
         }
     }
     private async queryConfiguration(

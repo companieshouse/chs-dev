@@ -10,7 +10,12 @@ import {
     validateProviderSelections,
     type ProviderSelections,
 } from './providers.js';
-import { imageSelections, validateImageSelections } from './image-versions.js';
+import {
+    imageSelections,
+    validateImageSelections,
+    type ImageSelections,
+} from './image-versions.js';
+import { environmentVersioned } from './version-sources.js';
 
 export function resolveServiceState(
     value: unknown,
@@ -77,16 +82,37 @@ export function resolveServiceState(
                         providers,
                         definitions,
                     }),
-                    ...(images.serviceImages?.[name]
-                        ? {
-                              image: images.serviceImages[name],
-                              imagePinned: true,
-                          }
-                        : {}),
+                    ...imageDetails(name, group, images),
                 },
             ]),
         ),
     );
+}
+
+function imageDetails(
+    name: string,
+    group: ServiceGroup,
+    selections: ImageSelections,
+): Partial<ServiceDetails> {
+    const definition = group.definitions?.[name];
+    if (!definition?.image) return {};
+    const available =
+        group.name !== 'Infrastructure' && environmentVersioned(definition);
+    const defaultSource = available
+        ? (selections.versionSource ?? 'cidev')
+        : 'compose';
+    const override = selections.serviceVersionSources?.[name];
+    return {
+        versionSource: override ?? defaultSource,
+        defaultVersionSource: defaultSource,
+        environmentVersionsAvailable: available,
+        versionSourceOverride: override,
+        ...pinnedImageDetails(selections.serviceImages?.[name]),
+    };
+}
+
+function pinnedImageDetails(image?: string): Partial<ServiceDetails> {
+    return image ? { image, imagePinned: true } : {};
 }
 
 function resolvedDetails(

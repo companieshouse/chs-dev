@@ -18,6 +18,7 @@ import {
 import type { LiveFiles } from '../infrastructure/live-files.js';
 import type { ProcessExecutor } from '../infrastructure/live-process.js';
 import type { RuntimeEnvironment } from '../infrastructure/live-runtime.js';
+import type { ProjectDependencies } from './prepare.js';
 
 export interface ProjectPreparationDependencies {
     /** The project checkout; only read, except for cloning `repositories/<service>`. */
@@ -29,6 +30,9 @@ export interface ProjectPreparationDependencies {
     environment: RuntimeEnvironment;
     projectFs?: ProjectFs;
     operationId?: () => string;
+    serviceImages?(
+        context: OperationContext,
+    ): ProjectDependencies['serviceImages'];
 }
 
 type ResolvedProject = Awaited<ReturnType<PreparationApi['resolve']>>;
@@ -187,6 +191,7 @@ export class ProjectPreparation implements PreparationApi {
                     fs: this.fs,
                     env,
                     progress,
+                    serviceImages: this.dependencies.serviceImages?.(context),
                     environment: async (names) => {
                         await this.dependencies.environment.resolve(
                             names,
