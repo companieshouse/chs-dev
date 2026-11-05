@@ -29,10 +29,13 @@ export const commands: CommandDefinition[] = [
     command('logs', 'Read recent environment output', 0, 0, ['tail']),
     command('service list', 'List services'),
     command('service show', 'Inspect a service', 1),
+    command('service mocks', 'List mock contracts and scenarios', 0, 1),
     command('service configure', 'Edit service configuration', 1, 1, [
         ...waiting,
         'enabled',
         'development',
+        'provider',
+        'scenario',
         'exclude',
         'allow',
     ]),
@@ -150,7 +153,7 @@ export function help(topic = '') {
         ...lines,
         `Options: --help, --json${selected.length === 1 ? selected[0].options.map((option) => `, --${option}`).join('') : '; mutations: --detach, --timeout <seconds>'}.`,
         'Startup approval: --yes. JSON, piped and detached commands never prompt.',
-        'Configure: --enabled true|false, --development true|false, --exclude <name>, --allow <name>.',
+        'Configure: --enabled true|false, --provider service|development|mock, --scenario <name>, --exclude <name>, --allow <name>.',
         'Legacy options and compatibility limits: docs/cli.md.',
     ].join('\n');
 }

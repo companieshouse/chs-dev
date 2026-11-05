@@ -19,6 +19,9 @@ export default function ServiceList({
     statuses: Record<string, ServiceStatus>;
     defaultStatus: ServiceStatus;
 }) {
+    const hasScenarios = Object.values(details).some(
+        (detail) => detail.mockScenario,
+    );
     let serviceIndex = 0;
     const lines = groups.flatMap((group) => [
         { label: group.name, group: group.name, index: -1 },
@@ -52,30 +55,51 @@ export default function ServiceList({
                 enabled="ENABLED"
                 status="STATUS"
                 mode="MODE"
+                scenario={hasScenarios ? 'SCENARIO' : undefined}
                 heading
             />
-            {visible.map((line, index) =>
-                line.index === -1 ? (
-                    <Text
-                        key={index}
-                        bold
-                        color={theme.accent}
-                        wrap="truncate-end"
-                    >
-                        {line.label}
-                    </Text>
-                ) : (
-                    <ServiceRow
-                        key={index}
-                        name={`${line.index === selected ? '›' : ' '} ${line.label}`}
-                        selected={line.index === selected}
-                        enabled={details[line.label]?.enabled ?? 'Unknown'}
-                        mode={details[line.label]?.mode ?? 'Unknown'}
-                        status={statuses[line.label] ?? defaultStatus}
-                    />
-                ),
-            )}
+            {visible.map((line, index) => (
+                <ServiceListItem
+                    key={index}
+                    line={line}
+                    selected={selected}
+                    details={details[line.label]}
+                    status={statuses[line.label] ?? defaultStatus}
+                    hasScenarios={hasScenarios}
+                />
+            ))}
         </Box>
+    );
+}
+
+function ServiceListItem({
+    line,
+    selected,
+    details,
+    status,
+    hasScenarios,
+}: {
+    line: { label: string; index: number };
+    selected: number;
+    details?: ServiceDetails;
+    status: ServiceStatus;
+    hasScenarios: boolean;
+}) {
+    if (line.index === -1)
+        return (
+            <Text bold color={theme.accent} wrap="truncate-end">
+                {line.label}
+            </Text>
+        );
+    return (
+        <ServiceRow
+            name={`${line.index === selected ? '›' : ' '} ${line.label}`}
+            selected={line.index === selected}
+            enabled={details?.enabled ?? 'Unknown'}
+            mode={details?.mode ?? 'Unknown'}
+            scenario={hasScenarios ? (details?.mockScenario ?? '—') : undefined}
+            status={status}
+        />
     );
 }
 
@@ -101,6 +125,7 @@ function ServiceRow({
     enabled,
     status,
     mode,
+    scenario,
     selected = false,
     heading = false,
 }: {
@@ -108,6 +133,7 @@ function ServiceRow({
     enabled: string;
     status: string;
     mode: string;
+    scenario?: string;
     selected?: boolean;
     heading?: boolean;
 }) {
@@ -162,6 +188,27 @@ function ServiceRow({
                     {mode}
                 </Text>
             </Box>
+            <ScenarioCell scenario={scenario} heading={heading} />
+        </Box>
+    );
+}
+
+function ScenarioCell({
+    scenario,
+    heading,
+}: {
+    scenario?: string;
+    heading: boolean;
+}) {
+    if (scenario === undefined) return null;
+    return (
+        <Box width={14} flexShrink={0}>
+            <Text
+                color={heading ? theme.columnHeading : theme.mocked}
+                wrap="truncate-end"
+            >
+                {scenario}
+            </Text>
         </Box>
     );
 }

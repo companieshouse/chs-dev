@@ -1,5 +1,6 @@
 import { isActiveContainer } from '../domain/containers.js';
 import {
+    mockOnlyInventory,
     inventoryKey,
     isStopOnly,
     LiveFailure,
@@ -1150,7 +1151,11 @@ export class LiveController {
         );
     }
 
-    private async verifyApplyAuthentication(signal: AbortSignal) {
+    private async verifyApplyAuthentication(
+        revision: ConfigurationRevision,
+        signal: AbortSignal,
+    ) {
+        if (mockOnlyInventory(revision.inventory)) return;
         if (this.authentication === 'ecr') {
             throw new LiveFailure(
                 'Pulling images needs AWS + registry login (Ctrl+L) before continuing.',
@@ -1180,7 +1185,7 @@ export class LiveController {
     ) {
         const { revision, resolved, observed, changes } = plan;
         await this.ensureSshSetup(resolved.sshRequirements, signal);
-        await this.verifyApplyAuthentication(signal);
+        await this.verifyApplyAuthentication(revision, signal);
 
         this.update({ phase: 'Preparing' });
         const prepared = await this.dependencies.preparation.prepare(
@@ -1196,13 +1201,7 @@ export class LiveController {
         }
 
         signal.throwIfAborted();
-        const freshAws = await this.dependencies.verifyAws(signal);
-        if (freshAws.state !== 'active') {
-            throw new LiveFailure(
-                `AWS ${freshAws.state}. Log in (Ctrl+L) to continue.`,
-                'aws',
-            );
-        }
+        await this.verifyFreshAws(revision, signal);
 
         this.update({ phase: 'Applying' });
         this.dependencies.runtime.reloadTargets = [...reloading.keys()];
@@ -1231,6 +1230,19 @@ export class LiveController {
             );
             progress.reloaded = true;
         }
+    }
+
+    private async verifyFreshAws(
+        revision: ConfigurationRevision,
+        signal: AbortSignal,
+    ) {
+        if (mockOnlyInventory(revision.inventory)) return;
+        const freshAws = await this.dependencies.verifyAws(signal);
+        if (freshAws.state !== 'active')
+            throw new LiveFailure(
+                `AWS ${freshAws.state}. Log in (Ctrl+L) to continue.`,
+                'aws',
+            );
     }
 
     private reportRunFailure(

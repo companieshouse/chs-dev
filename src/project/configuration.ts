@@ -50,6 +50,13 @@ export async function saveLegacyChanges(
         groups,
     );
     for (const key of selectionKeys) updateSelection(document, key, next[key]);
+    if (edit.topic === 'development' && next.serviceProviders) {
+        for (const name of edit.names)
+            document.setIn(
+                ['serviceProviders', name],
+                next.serviceProviders[name],
+            );
+    }
     const nextRevision = createHash('sha256')
         .update(document.toString())
         .digest('hex');

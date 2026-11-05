@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 
 export interface ProjectEntry {
     name: string;
@@ -22,6 +23,7 @@ export interface ProjectFs {
     ): Promise<void>;
     access(path: string): Promise<void>;
     stat(path: string): Promise<{ isDirectory(): boolean }>;
+    replaceFile?(path: string, text: string): Promise<void>;
 }
 
 export const nodeProjectFs: ProjectFs = {
@@ -34,6 +36,15 @@ export const nodeProjectFs: ProjectFs = {
     },
     access: (path) => fs.access(path),
     stat: (path) => fs.stat(path),
+    replaceFile: async (path, text) => {
+        const temporary = `${path}.${randomUUID()}.tmp`;
+        try {
+            await fs.writeFile(temporary, text, { flag: 'wx', mode: 0o600 });
+            await fs.rename(temporary, path);
+        } finally {
+            await fs.rm(temporary, { force: true });
+        }
+    },
 };
 
 export async function optionalFile(files: ProjectFs, path: string) {

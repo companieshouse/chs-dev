@@ -3,6 +3,7 @@ import type { Dirent } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import type { ProjectConfig } from './config.js';
+import { readMockCatalogue } from './mock-catalogue.js';
 
 import type { ServiceDefinition, ServiceGroup } from '../domain/services.js';
 export type { ServiceGroup } from '../domain/services.js';
@@ -138,5 +139,18 @@ export async function readServices(
             true,
         ),
     );
+    const mocks = await readMockCatalogue();
+    for (const group of groups) {
+        for (const [name, definition] of Object.entries(
+            group.definitions ?? {},
+        )) {
+            const contract = mocks.services[name];
+            if (contract && !definition.base && !definition.deprecated)
+                definition.mock = {
+                    defaultScenario: contract.defaultScenario,
+                    scenarios: contract.scenarios,
+                };
+        }
+    }
     return groups;
 }

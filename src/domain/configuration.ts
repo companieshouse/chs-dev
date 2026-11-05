@@ -1,7 +1,8 @@
 import { serviceDefinitions, type ServiceGroup } from './services.js';
 import { resolveServiceState } from './service-state.js';
+import { providerSelections, type ProviderSelections } from './providers.js';
 
-export interface ProjectSelections {
+export interface ProjectSelections extends ProviderSelections {
     modules: string[];
     services: string[];
     servicesWithLiveUpdate: string[];
@@ -36,7 +37,7 @@ export function projectSelections(value: unknown): ProjectSelections {
             throw new Error(`Invalid ${key} in .chs-dev.yaml`);
         result[key] = [...names];
     }
-    return result;
+    return { ...result, ...providerSelections(record) };
 }
 
 export function moduleNames(groups: ServiceGroup[]) {
@@ -136,5 +137,9 @@ export function editSelections(
     next[key] = add
         ? [...new Set([...next[key], ...targets])]
         : next[key].filter((name) => !targets.has(name));
+    if (edit.topic === 'development' && next.serviceProviders) {
+        for (const name of targets)
+            next.serviceProviders[name] = add ? 'development' : 'service';
+    }
     return next;
 }

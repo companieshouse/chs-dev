@@ -20,6 +20,7 @@
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "test:docker": "CHS_NATIVE_INTEGRATION=1 node --import tsx --test --test-concurrency=1 test/integration/*.test.ts",
+        "test:docker:mocks": "CHS_MOCK_INTEGRATION=1 node --import tsx --test test/integration/mock-providers.test.ts",
         "test:docker:chs": "CHS_NATIVE_CHS_INTEGRATION=1 node --import tsx --test --test-concurrency=1 test/integration/native-chs.test.ts test/integration/native-kafka.test.ts",
         "test:docker:platform": "CHS_NATIVE_PLATFORM_INTEGRATION=1 node --import tsx --test --test-concurrency=1 test/integration/native-platform.test.ts",
         "test:apple": "CHS_APPLE_INTEGRATION=1 node --import tsx --test --test-concurrency=1 test/integration/native-apple.test.ts test/integration/native-apple-monitoring.test.ts test/integration/native-chs.test.ts test/integration/native-kafka.test.ts test/integration/native-development.test.ts test/integration/apple-build-platform.test.ts",

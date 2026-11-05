@@ -9,6 +9,28 @@ export type ServiceMode = Exclude<ServiceDetails['mode'], 'Unknown'>;
 export interface InventoryEntry {
     service: string;
     mode: ServiceMode;
+    mockScenario?: string;
+}
+
+export const mockRuntimeService = 'chs-dev-microcks';
+
+export function withMockRuntime(inventory: InventoryEntry[]): InventoryEntry[] {
+    if (!inventory.some((entry) => entry.mockScenario)) return inventory;
+    return [...inventory, { service: mockRuntimeService, mode: 'Mock' }];
+}
+
+export function mockOnlyInventory(
+    inventory: readonly InventoryEntry[],
+): boolean {
+    return (
+        inventory.some((entry) => entry.mockScenario) &&
+        inventory.every(
+            (entry) =>
+                entry.mockScenario ||
+                entry.service === mockRuntimeService ||
+                entry.service === 'ingress-proxy',
+        )
+    );
 }
 export interface ConfigurationRevision {
     identity: string;
@@ -279,6 +301,8 @@ export function isStopOnly(
     revision: ConfigurationRevision,
     actual: RuntimeSnapshot,
 ): boolean {
+    // Mocks still need preparation to publish scenario files during stop-only plans.
+    if (revision.inventory.some((entry) => entry.mockScenario)) return false;
     return revision.inventory.every((entry) =>
         actual.containers.some(
             (container) =>

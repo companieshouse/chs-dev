@@ -140,6 +140,131 @@ function fixture(state: unknown = { services: ['app'] }) {
     };
 }
 
+test('mock preparation replaces the service, omits its dependencies and preserves routing without AWS or builders', async () => {
+    const f = fixture({
+        services: ['company-profile-api'],
+        serviceProviders: { 'company-profile-api': 'mock' },
+        mockScenarios: { 'company-profile-api': 'error' },
+    });
+    f.put(
+        '/project/services/modules/example/company-profile-api.docker-compose.yaml',
+        {
+            services: {
+                'company-profile-api': {
+                    image: 'private-registry/real-api',
+                    depends_on: ['database'],
+                    labels: [
+                        'traefik.http.routers.profile.rule=Host(`api.chs.local`)',
+                        'traefik.http.services.profile.loadbalancer.server.port=8080',
+                        'chs.local.builder=node',
+                    ],
+                    environment: {
+                        AWS_ACCESS_KEY_ID: '${AWS_ACCESS_KEY_ID:?login}',
+                    },
+                    networks: ['chs'],
+                    ports: ['40001:40001'],
+                },
+            },
+        },
+    );
+    const prepared = await prepareProject(f.request, f.dependencies);
+    const document = parse(f.files.get(prepared.composeFiles[0])!);
+    assert.deepEqual(Object.keys(document.services).sort(), [
+        'chs-dev-microcks',
+        'company-profile-api',
+        'ingress-proxy',
+    ]);
+    const mock = document.services['company-profile-api'];
+    assert.equal(
+        mock.labels['traefik.http.routers.profile.rule'],
+        'Host(`api.chs.local`)',
+    );
+    assert.equal(
+        JSON.parse(
+            f.files.get('/state/one/mock-config/company-profile-api.json')!,
+        ).scenario,
+        'error',
+    );
+    assert.equal(mock.environment.AWS_ACCESS_KEY_ID, undefined);
+    assert.equal(mock.labels['chs.dev.mode'], 'Mock');
+    assert.deepEqual(Object.keys(mock.depends_on), ['chs-dev-microcks']);
+    assert.deepEqual(prepared.environmentRequirements, []);
+    assert.deepEqual(prepared.sshRequirements, []);
+    assert.equal(
+        f.calls.some(([type]) => type === 'repository'),
+        false,
+    );
+    assert.equal(
+        document.services['ingress-proxy'].depends_on['company-profile-api']
+            .restart,
+        false,
+    );
+    assert.equal(
+        document.services['chs-dev-microcks'].labels['traefik.enable'],
+        'false',
+    );
+    assert.deepEqual(
+        (await resolveProject(f.request, f.dependencies)).inventory,
+        prepared.inventory,
+    );
+});
+
+test('the Felix mock needs no validation dependencies, private credentials, debug port or builder', async () => {
+    const f = fixture({
+        services: ['felixvalidator'],
+        serviceProviders: { felixvalidator: 'mock' },
+        mockScenarios: { felixvalidator: 'validation-failed' },
+    });
+    f.put(
+        '/project/services/modules/example/felixvalidator.docker-compose.yaml',
+        {
+            services: {
+                felixvalidator: {
+                    image: 'private-registry/felixvalidator',
+                    depends_on: [
+                        'eric',
+                        'authentication-service',
+                        'execute-mongo-scripts',
+                    ],
+                    labels: {
+                        'chs.local.builder': 'java',
+                        'chs.local.builder.requiresSecrets': 'true',
+                        'traefik.http.routers.felixvalidator.rule':
+                            'Host(`api.chs.local`) && PathPrefix(`/validate`)',
+                        'traefik.http.services.felixvalidator.loadbalancer.server.port':
+                            '8080',
+                    },
+                    environment: {
+                        REQUIRED_REAL_TOKEN: '${REQUIRED_REAL_TOKEN:?required}',
+                    },
+                    ports: ['50191:50191'],
+                },
+            },
+        },
+    );
+    const prepared = await prepareProject(f.request, f.dependencies);
+    assert.deepEqual(prepared.inventory.map((item) => item.service).sort(), [
+        'chs-dev-microcks',
+        'felixvalidator',
+        'ingress-proxy',
+    ]);
+    const mock = parse(f.files.get(prepared.composeFiles[0])!).services
+        .felixvalidator;
+    assert.deepEqual(Object.keys(mock.depends_on), ['chs-dev-microcks']);
+    assert.equal(mock.ports, undefined);
+    assert.deepEqual(prepared.environmentRequirements, []);
+    assert.deepEqual(prepared.sshRequirements, []);
+    assert.equal(
+        f.calls.some(([type]) => type === 'repository'),
+        false,
+    );
+    const configuration = JSON.parse(
+        f.files.get('/state/one/mock-config/felixvalidator.json')!,
+    );
+    assert.equal(configuration.scenario, 'validation-failed');
+    assert.equal(configuration.asyncCallback.method, 'PATCH');
+});
+
 test('prepares an isolated Compose file with effective dependencies and absolute paths', async () => {
     const f = fixture();
     const result = await prepareProject(f.request, f.dependencies);

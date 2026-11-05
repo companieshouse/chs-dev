@@ -1,6 +1,16 @@
 import { basename, join, resolve } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { InventoryEntry, SshSecretRequirement } from '../domain/live.js';
+import { withMockRuntime } from '../domain/live.js';
+import {
+    providerSelections,
+    selectedProvider,
+    validateProvider,
+    type ProviderSelections,
+    type MockSupport,
+} from '../domain/providers.js';
+import { serviceMode } from '../domain/services.js';
+import { readMockCatalogue } from './mock-catalogue.js';
 import { labels, mapping, ProjectError, type Mapping } from './compose.js';
 import type { ProjectEntry, ProjectFs } from './files.js';
 
@@ -10,13 +20,14 @@ export interface ServiceDefinition {
     module: string;
     base: boolean;
     labels: Record<string, unknown>;
+    mock?: MockSupport;
 }
 export type Definitions = Map<string, ServiceDefinition>;
 export type Resources = Record<
     'networks' | 'volumes' | 'secrets' | 'configs',
     Mapping
 >;
-export interface ProjectState {
+export interface ProjectState extends ProviderSelections {
     modules: string[];
     services: string[];
     servicesWithLiveUpdate: string[];
@@ -24,11 +35,6 @@ export interface ProjectState {
     excludedFiles: string[];
 }
 
-const mockServices = new Set([
-    'ch-service-mock',
-    'chips-filing-mock',
-    'sockpuppet',
-]);
 const stateKeys = [
     'modules',
     'services',
@@ -52,7 +58,7 @@ export function readState(raw: string): ProjectState {
         }
         state[key] = [...new Set(entries as string[])];
     }
-    return state;
+    return { ...state, ...providerSelections(value) };
 }
 
 export function dependencyClosure(
@@ -79,6 +85,7 @@ function validateConfiguredServices(
     definitions: Definitions,
     state: ProjectState,
 ) {
+    validateConfiguredProviders(definitions, state);
     for (const name of [...state.services, ...state.servicesWithLiveUpdate]) {
         if (!definitions.has(name))
             throw new ProjectError(
@@ -90,6 +97,36 @@ function validateConfiguredServices(
             throw new ProjectError(
                 `Configuration references an unknown module: ${module}`,
             );
+    }
+}
+
+function validateConfiguredProviders(
+    definitions: Definitions,
+    state: ProjectState,
+): void {
+    const names = new Set([
+        ...Object.keys(state.serviceProviders ?? {}),
+        ...Object.keys(state.mockScenarios ?? {}),
+    ]);
+    for (const name of names) {
+        const definition = definitions.get(name);
+        if (!definition || definition.labels['chs.deprecated'] === 'true')
+            throw new ProjectError(
+                `Configuration references an unknown service: ${name}`,
+            );
+        const support = {
+            base: definition.base,
+            development: Boolean(definition.labels['chs.local.builder']),
+            mock: definition.mock,
+        };
+        validateProvider(
+            name,
+            selectedProvider(name, state),
+            support,
+            state.mockScenarios?.[name],
+        );
+        if (state.mockScenarios?.[name])
+            validateProvider(name, 'mock', support, state.mockScenarios[name]);
     }
 }
 
@@ -119,21 +156,32 @@ export function resolveServices(
     const dependencies = new Map(
         [...definitions].map(([name, definition]) => [
             name,
-            Array.isArray(definition.spec.depends_on)
-                ? (definition.spec.depends_on as string[])
-                : Object.keys(definition.spec.depends_on ?? {}),
+            selectedProvider(name, state) === 'mock'
+                ? []
+                : Array.isArray(definition.spec.depends_on)
+                  ? (definition.spec.depends_on as string[])
+                  : Object.keys(definition.spec.depends_on ?? {}),
         ]),
     );
-    return dependencyClosure(dependencies, roots, excluded)
-        .sort()
-        .map((service) => ({
-            service,
-            mode: state.servicesWithLiveUpdate.includes(service)
-                ? 'Development'
-                : mockServices.has(service)
-                  ? 'Mock'
-                  : 'Service',
-        }));
+    return withMockRuntime(
+        dependencyClosure(dependencies, roots, excluded)
+            .sort()
+            .map((service) => ({
+                service,
+                mode: serviceMode(
+                    service,
+                    state.servicesWithLiveUpdate.includes(service),
+                    state.serviceProviders?.[service],
+                ) as InventoryEntry['mode'],
+                ...(selectedProvider(service, state) === 'mock'
+                    ? {
+                          mockScenario:
+                              state.mockScenarios?.[service] ??
+                              definitions.get(service)!.mock!.defaultScenario,
+                      }
+                    : {}),
+            })),
+    );
 }
 
 export function resolveSshRequirements(
@@ -300,5 +348,13 @@ export async function loadDefinitions(project: string, fs: ProjectFs) {
             await walk(join(project, 'services/modules', module.name), false);
     }
     await walk(join(project, 'services/infrastructure'), true);
+    if (definitions.has('chs-dev-microcks'))
+        throw new ProjectError(
+            'chs-dev-microcks is reserved for the mock runtime.',
+        );
+    const mocks = await readMockCatalogue();
+    for (const [name, definition] of definitions) {
+        if (mocks.services[name]) definition.mock = mocks.services[name];
+    }
     return { definitions, resources };
 }

@@ -14,6 +14,8 @@ import type {
 } from '../src/application/ports.js';
 import type { RuntimeContainer, LiveRuntime } from '../src/domain/live.js';
 import type { ServiceGroup } from '../src/domain/services.js';
+import type { MockSupport } from '../src/domain/providers.js';
+import { withMockRuntime } from '../src/domain/live.js';
 import type { TerminalFactory } from '../src/application/interactions.js';
 import { listenApi } from '../src/server/api.js';
 import { Client } from '../src/client/client.js';
@@ -28,6 +30,7 @@ import type { ContainerManager } from '../src/domain/containers.js';
 export async function daemonFixture(
     terminal?: TerminalFactory,
     manager?: ContainerManager,
+    options: { mock?: MockSupport } = {},
 ) {
     const root = await mkdtemp(join(tmpdir(), 'chs-daemon-test-'));
     const directory = join(root, 'checkout-a'),
@@ -71,6 +74,7 @@ export async function daemonFixture(
                     module: 'fixture',
                     base: false,
                     development: true,
+                    mock: options.mock,
                 },
             },
         },
@@ -129,16 +133,27 @@ export async function daemonFixture(
                     identity: `revision-${actual!.revision}`,
                     yaml: '{}',
                     inventory: actual!.enabled
-                        ? [
+                        ? withMockRuntime([
                               {
                                   service: 'api',
-                                  mode: actual!.selections.servicesWithLiveUpdate.includes(
-                                      'api',
-                                  )
-                                      ? ('Development' as const)
-                                      : ('Service' as const),
+                                  mode: resolveServiceState(
+                                      actual!.selections,
+                                      groups,
+                                  ).api.mode as
+                                      'Service' | 'Development' | 'Mock',
+                                  ...(resolveServiceState(
+                                      actual!.selections,
+                                      groups,
+                                  ).api.mockScenario
+                                      ? {
+                                            mockScenario: resolveServiceState(
+                                                actual!.selections,
+                                                groups,
+                                            ).api.mockScenario,
+                                        }
+                                      : {}),
                               },
-                          ]
+                          ])
                         : [],
                 });
                 const resolve = async () => ({
@@ -269,12 +284,11 @@ export async function daemonFixture(
                     readConfiguration: async () => ({
                         details: {
                             api: {
+                                ...resolveServiceState(
+                                    actual!.selections,
+                                    groups,
+                                ).api,
                                 enabled: actual!.enabled ? 'Yes' : 'No',
-                                mode: actual!.selections.servicesWithLiveUpdate.includes(
-                                    'api',
-                                )
-                                    ? 'Development'
-                                    : 'Service',
                             },
                         },
                         revision: revision().identity,
@@ -292,6 +306,14 @@ export async function daemonFixture(
                             : ['api'];
                         actual!.selections.servicesWithLiveUpdate =
                             edit.development ? ['api'] : [];
+                        if (edit.provider)
+                            actual!.selections.serviceProviders = {
+                                api: edit.provider,
+                            };
+                        if (edit.mockScenario)
+                            actual!.selections.mockScenarios = {
+                                api: edit.mockScenario,
+                            };
                         actual!.revision++;
                     },
                     configurationSnapshot: async () => ({

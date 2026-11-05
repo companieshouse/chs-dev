@@ -31,6 +31,11 @@ chs-dev service list
 chs-dev service show accounts-api
 chs-dev service configure accounts-api --enabled true --development true
 chs-dev service configure accounts-api --exclude dependency --allow other-dependency
+chs-dev service mocks
+chs-dev service mocks company-profile-api
+chs-dev service configure company-profile-api --enabled true --provider mock --scenario success
+chs-dev service configure company-profile-api --scenario not-found
+chs-dev service configure company-profile-api --provider service
 chs-dev service start accounts-api other-service
 chs-dev service stop accounts-api
 chs-dev service restart accounts-api
@@ -86,6 +91,14 @@ and execution, so a detached client need not stay connected.
 It reports configuration saved and application `queued` or `pending`; success of
 that save does not promise completion of a later automatic apply. Use explicit
 `apply` to wait for environment reconciliation.
+
+Providers are `service`, `development`, and `mock`. Development requires a builder;
+Mock requires a contract in this repository's `mocks/` catalogue. `--development`
+remains supported; it must agree with `--provider` when both are supplied.
+`service mocks [SERVICE]` lists available scenarios. `--scenario` changes an already
+selected mock provider, or can accompany `--provider mock`. The last scenario is
+remembered when switching providers. See [mock providers](mock-providers.md) for
+dependency behaviour, routing and adding contracts.
 
 `--json` emits one JSON document on stdout. New commands use this envelope:
 

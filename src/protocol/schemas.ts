@@ -1,4 +1,5 @@
 import { settingKeys } from '../domain/settings.js';
+import { serviceProviders } from '../domain/providers.js';
 import {
     ClientError,
     protocolVersion,
@@ -117,10 +118,23 @@ function argsConfigurationSave(a: Args) {
     fields(a, ['edit', 'revision']);
     string(a.revision, 128);
     const e = object(a.edit);
-    fields(e, ['name', 'enabled', 'development', 'exclusions']);
+    fields(e, [
+        'name',
+        'enabled',
+        'development',
+        'exclusions',
+        'provider',
+        'mockScenario',
+    ]);
     string(e.name, 256);
     bool(e.enabled);
     bool(e.development);
+    if (
+        e.provider !== undefined &&
+        !(serviceProviders as readonly unknown[]).includes(e.provider)
+    )
+        invalid('Invalid service provider.');
+    if (e.mockScenario !== undefined) string(e.mockScenario, 256);
     const exclusions = object(e.exclusions);
     if (Object.keys(exclusions).length > 500) invalid('Too many exclusions.');
     for (const [k, v] of Object.entries(exclusions)) {

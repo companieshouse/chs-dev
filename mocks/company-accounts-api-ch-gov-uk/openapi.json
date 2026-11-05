@@ -1,0 +1,356 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Company Accounts API",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/transactions/{transaction_id}/company-accounts": {
+            "get": {
+                "summary": "GET /transactions/{transaction_id}/company-accounts",
+                "x-microcks-operation": {
+                    "dispatcher": "QUERY_HEADER",
+                    "dispatcherRules": "x-chs-dev-scenario"
+                },
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "x-chs-dev-scenario",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "success": {
+                                "value": "success"
+                            },
+                            "not-found": {
+                                "value": "not-found"
+                            },
+                            "error": {
+                                "value": "error"
+                            }
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "transaction_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "success": {
+                                        "value": {
+                                            "id": "mock-company-accounts",
+                                            "company_number": "00000006",
+                                            "type": "small-full",
+                                            "links": {
+                                                "self": "/transactions/{{ request.path[2] }}/company-accounts/mock-company-accounts"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not-found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "not-found": {
+                                        "value": {
+                                            "errors": [
+                                                {
+                                                    "error": "resource-not-found",
+                                                    "type": "ch:service",
+                                                    "message": "The requested resource does not exist."
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "error": {
+                                        "value": {
+                                            "errors": [
+                                                {
+                                                    "error": "service-unavailable",
+                                                    "type": "ch:service",
+                                                    "message": "The service is temporarily unavailable."
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "POST /transactions/{transaction_id}/company-accounts",
+                "x-microcks-operation": {
+                    "dispatcher": "QUERY_HEADER",
+                    "dispatcherRules": "x-chs-dev-scenario"
+                },
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "x-chs-dev-scenario",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "success": {
+                                "value": "success"
+                            },
+                            "not-found": {
+                                "value": "not-found"
+                            },
+                            "error": {
+                                "value": "error"
+                            }
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "transaction_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "success": {
+                                        "value": {
+                                            "id": "mock-company-accounts",
+                                            "company_number": "00000006",
+                                            "type": "small-full",
+                                            "links": {
+                                                "self": "/transactions/{{ request.path[2] }}/company-accounts/mock-company-accounts"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not-found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "not-found": {
+                                        "value": {
+                                            "errors": [
+                                                {
+                                                    "error": "resource-not-found",
+                                                    "type": "ch:service",
+                                                    "message": "The requested resource does not exist."
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "error": {
+                                        "value": {
+                                            "errors": [
+                                                {
+                                                    "error": "service-unavailable",
+                                                    "type": "ch:service",
+                                                    "message": "The service is temporarily unavailable."
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            },
+                            "examples": {
+                                "success": {
+                                    "value": {}
+                                },
+                                "not-found": {
+                                    "value": {}
+                                },
+                                "error": {
+                                    "value": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/{transaction_id}/company-accounts/{accounts_id}": {
+            "get": {
+                "summary": "GET /transactions/{transaction_id}/company-accounts/{accounts_id}",
+                "x-microcks-operation": {
+                    "dispatcher": "QUERY_HEADER",
+                    "dispatcherRules": "x-chs-dev-scenario"
+                },
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "x-chs-dev-scenario",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "success": {
+                                "value": "success"
+                            },
+                            "not-found": {
+                                "value": "not-found"
+                            },
+                            "error": {
+                                "value": "error"
+                            }
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "transaction_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "accounts_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "success": {
+                                        "value": {
+                                            "id": "{{ request.path[4] }}",
+                                            "company_number": "00000006",
+                                            "type": "small-full",
+                                            "links": {
+                                                "self": "/transactions/{{ request.path[2] }}/company-accounts/{{ request.path[4] }}"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not-found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "not-found": {
+                                        "value": {
+                                            "errors": [
+                                                {
+                                                    "error": "resource-not-found",
+                                                    "type": "ch:service",
+                                                    "message": "The requested resource does not exist."
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "error": {
+                                        "value": {
+                                            "errors": [
+                                                {
+                                                    "error": "service-unavailable",
+                                                    "type": "ch:service",
+                                                    "message": "The service is temporarily unavailable."
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

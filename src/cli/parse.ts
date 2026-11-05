@@ -1,6 +1,7 @@
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { ClientError } from '../protocol/types.js';
 import { commands, type CommandDefinition } from './registry.js';
+import { serviceProviders } from '../domain/providers.js';
 
 const options: NonNullable<ParseArgsConfig['options']> = {
     json: { type: 'boolean', short: 'j' },
@@ -11,6 +12,8 @@ const options: NonNullable<ParseArgsConfig['options']> = {
     yes: { type: 'boolean' },
     enabled: { type: 'string' },
     development: { type: 'string' },
+    provider: { type: 'string' },
+    scenario: { type: 'string' },
     exclude: { type: 'string', multiple: true },
     allow: { type: 'string', multiple: true },
     tail: { type: 'string', short: 'n' },
@@ -99,6 +102,7 @@ function validateOptions(invocation: Invocation) {
         usage('Supply -t tree, flattree or diagram.');
 }
 function validateConfigurationOptions(invocation: Invocation) {
+    validateProviderOptions(invocation.options);
     for (const key of ['enabled', 'development']) {
         if (
             invocation.options[key] !== undefined &&
@@ -108,15 +112,40 @@ function validateConfigurationOptions(invocation: Invocation) {
     }
     if (
         invocation.name === 'service configure' &&
-        !['enabled', 'development', 'exclude', 'allow'].some(
-            (key) => invocation.options[key] !== undefined,
-        )
+        ![
+            'enabled',
+            'development',
+            'provider',
+            'scenario',
+            'exclude',
+            'allow',
+        ].some((key) => invocation.options[key] !== undefined)
     )
         usage('Supply at least one configuration edit.');
     const excluded = invocation.options.exclude as string[] | undefined;
     const allowed = invocation.options.allow as string[] | undefined;
     if (excluded?.some((name) => allowed?.includes(name)))
         usage('A dependency cannot be both excluded and allowed.');
+}
+
+function validateProviderOptions(options: CliOptions) {
+    if (
+        options.provider !== undefined &&
+        !(serviceProviders as readonly unknown[]).includes(options.provider)
+    )
+        usage('--provider must be service, development or mock.');
+    if (
+        options.provider !== undefined &&
+        options.development !== undefined &&
+        (options.provider === 'development') !==
+            (options.development === 'true')
+    )
+        usage('--provider and --development disagree.');
+    if (
+        options.scenario !== undefined &&
+        !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(String(options.scenario))
+    )
+        usage('Supply a valid mock scenario name.');
 }
 function versionInvocation(
     positionals: string[],

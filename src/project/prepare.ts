@@ -9,6 +9,13 @@ import {
 } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { InventoryEntry, PreparedProject } from '../domain/live.js';
+import { mockRuntimeService, mockOnlyInventory } from '../domain/live.js';
+import {
+    mockProviderSpec,
+    microcksSpec,
+    prepareMockBootstrap,
+} from './mock-provider.js';
+import { mocksDirectory } from './mock-catalogue.js';
 import {
     labels,
     mapping,
@@ -350,6 +357,7 @@ export interface ProjectRequest {
     projectDirectory: string;
     /** The `.chs-dev.yaml` revision to resolve. */
     configuration: string;
+    mockRuntimeDirectory?: string;
 }
 
 /** Resolves the effective service inventory without writing anything. */
@@ -385,6 +393,7 @@ interface PrepareContext {
     project: string;
     output: string;
     dependencies: ProjectDependencies;
+    mockDirectory: string;
 }
 
 async function resolveOutput(
@@ -408,21 +417,35 @@ async function generateServices(
     definitions: Definitions,
     context: PrepareContext,
 ): Promise<void> {
-    const { project, output, dependencies } = context;
+    const { project, output, dependencies, mockDirectory } = context;
+    await prepareMockBootstrap(inventory, mockDirectory, dependencies.fs);
     const progress = dependencies.progress ?? (() => {});
     for (const item of inventory) {
         progress(`Preparing service ${item.service} (${item.mode})`);
+        if (item.service === mockRuntimeService) {
+            document.services[item.service] = await microcksSpec();
+            sources[item.service] = join(mocksDirectory, 'catalogue.json');
+            continue;
+        }
         const definition = definitions.get(item.service)!;
-        const generated =
-            item.mode === 'Development'
-                ? await developmentSpec(
-                      item.service,
+        const generated = item.mockScenario
+            ? {
+                  [item.service]: await mockProviderSpec(
+                      item,
                       definition,
-                      project,
-                      output,
-                      dependencies,
-                  )
-                : { [item.service]: structuredClone(definition.spec) };
+                      mockDirectory,
+                      dependencies.fs,
+                  ),
+              }
+            : item.mode === 'Development'
+              ? await developmentSpec(
+                    item.service,
+                    definition,
+                    project,
+                    output,
+                    dependencies,
+                )
+              : { [item.service]: structuredClone(definition.spec) };
         for (const [service, spec] of Object.entries(generated)) {
             if (document.services[service])
                 throw new ProjectError(
@@ -476,7 +499,7 @@ function wireProxy(document: Mapping): void {
                     condition: spec.healthcheck
                         ? 'service_healthy'
                         : 'service_started',
-                    restart: true,
+                    restart: spec.labels?.['chs.dev.mode'] !== 'Mock',
                 },
             ]),
     );
@@ -526,10 +549,14 @@ export async function prepareProject(
         project,
         output,
         dependencies,
+        mockDirectory:
+            request.mockRuntimeDirectory ?? join(output, 'mock-config'),
     });
     pruneDependencies(document);
     wireProxy(document);
-    const initialization = await initialize(fs, project, document);
+    const initialization = mockOnlyInventory(inventory)
+        ? []
+        : await initialize(fs, project, document);
     const environmentRequirements = [
         ...new Set([...requiredEnvironment(document), ...initialization]),
     ].sort();

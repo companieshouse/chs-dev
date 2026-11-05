@@ -1,0 +1,265 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Felix Validator",
+        "version": "1.0.0",
+        "description": "Synthetic accounts validation results for local development. Async completion is delivered by the chs-dev adapter using these Microcks examples."
+    },
+    "paths": {
+        "/validate": {
+            "post": {
+                "summary": "Validate an accounts document and return an XML result.",
+                "x-microcks-operation": {
+                    "dispatcher": "QUERY_HEADER",
+                    "dispatcherRules": "x-chs-dev-scenario"
+                },
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "x-chs-dev-scenario",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "success": {
+                                "value": "success"
+                            },
+                            "validation-failed": {
+                                "value": "validation-failed"
+                            },
+                            "error": {
+                                "value": "error"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The XML result describes success or a business validation failure.",
+                        "content": {
+                            "text/xml": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "examples": {
+                                    "success": {
+                                        "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<results validationStatus=\"OK\">\n    <data>\n        <BalanceSheetDate>2025-12-31</BalanceSheetDate>\n        <AccountsType>16</AccountsType>\n        <CompaniesHouseRegisteredNumber>00000006</CompaniesHouseRegisteredNumber>\n    </data>\n</results>\n"
+                                    },
+                                    "validation-failed": {
+                                        "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<results validationStatus=\"FAILED\">\n    <errors>\n        <ErrorMessage>Accounts contain a validation error.</ErrorMessage>\n    </errors>\n    <data>\n        <BalanceSheetDate>UNKNOWN</BalanceSheetDate>\n        <AccountsType>00</AccountsType>\n        <CompaniesHouseRegisteredNumber>UNKNOWN</CompaniesHouseRegisteredNumber>\n    </data>\n</results>\n"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The validator is unavailable.",
+                        "content": {
+                            "text/xml": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "examples": {
+                                    "error": {
+                                        "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<results validationStatus=\"ERROR\">\n    <errors>\n        <ErrorMessage>The validator is temporarily unavailable.</ErrorMessage>\n    </errors>\n</results>\n"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/validateBase64": {
+            "post": {
+                "summary": "Validate an accounts document and return an XML result.",
+                "x-microcks-operation": {
+                    "dispatcher": "QUERY_HEADER",
+                    "dispatcherRules": "x-chs-dev-scenario"
+                },
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "x-chs-dev-scenario",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "success": {
+                                "value": "success"
+                            },
+                            "validation-failed": {
+                                "value": "validation-failed"
+                            },
+                            "error": {
+                                "value": "error"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The XML result describes success or a business validation failure.",
+                        "content": {
+                            "text/xml": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "examples": {
+                                    "success": {
+                                        "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<results validationStatus=\"OK\">\n    <data>\n        <BalanceSheetDate>2025-12-31</BalanceSheetDate>\n        <AccountsType>16</AccountsType>\n        <CompaniesHouseRegisteredNumber>00000006</CompaniesHouseRegisteredNumber>\n    </data>\n</results>\n"
+                                    },
+                                    "validation-failed": {
+                                        "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<results validationStatus=\"FAILED\">\n    <errors>\n        <ErrorMessage>Accounts contain a validation error.</ErrorMessage>\n    </errors>\n    <data>\n        <BalanceSheetDate>UNKNOWN</BalanceSheetDate>\n        <AccountsType>00</AccountsType>\n        <CompaniesHouseRegisteredNumber>UNKNOWN</CompaniesHouseRegisteredNumber>\n    </data>\n</results>\n"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The validator is unavailable.",
+                        "content": {
+                            "text/xml": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "examples": {
+                                    "error": {
+                                        "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<results validationStatus=\"ERROR\">\n    <errors>\n        <ErrorMessage>The validator is temporarily unavailable.</ErrorMessage>\n    </errors>\n</results>\n"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/validate-async": {
+            "post": {
+                "summary": "Accept validation and deliver an XML completion callback.",
+                "x-microcks-operation": {
+                    "dispatcher": "QUERY_HEADER",
+                    "dispatcherRules": "x-chs-dev-scenario"
+                },
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "x-chs-dev-scenario",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "success": {
+                                "value": "success"
+                            },
+                            "validation-failed": {
+                                "value": "validation-failed"
+                            },
+                            "error": {
+                                "value": "error"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Accepted without a response body.",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "examples": {
+                                    "success": {
+                                        "value": ""
+                                    },
+                                    "validation-failed": {
+                                        "value": ""
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The validator is unavailable.",
+                        "content": {
+                            "text/xml": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "examples": {
+                                    "error": {
+                                        "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<results validationStatus=\"ERROR\">\n    <errors>\n        <ErrorMessage>The validator is temporarily unavailable.</ErrorMessage>\n    </errors>\n</results>\n"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["fileId", "callbackUrl"],
+                                "properties": {
+                                    "fileId": {
+                                        "type": "string"
+                                    },
+                                    "callbackUrl": {
+                                        "type": "string",
+                                        "format": "uri"
+                                    },
+                                    "packageType": {
+                                        "type": "string"
+                                    },
+                                    "companyNumber": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "example": {
+                                "fileId": "mock-accounts",
+                                "callbackUrl": "http://account-validator-api:8080/account-validator/validate/mock-accounts",
+                                "companyNumber": "00000006"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

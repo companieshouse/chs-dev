@@ -253,6 +253,72 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
         },
     };
 }
+
+test('mock-only environments start and change scenarios without requesting AWS authentication', async () => {
+    const f = fixture();
+    f.aws('expired');
+    const inventory = [
+        { service: 'api', mode: 'Mock' as const, mockScenario: 'success' },
+        { service: 'ingress-proxy', mode: 'Service' as const },
+        { service: 'chs-dev-microcks', mode: 'Mock' as const },
+    ];
+    f.edit('mock-one', inventory);
+    await f.controller.start();
+    await f.controller.waitUntilIdle();
+    assert.equal(f.controller.getSnapshot().phase, 'Running');
+    assert.equal(f.calls.includes('aws'), false);
+    f.edit(
+        'mock-two',
+        inventory.map((entry) =>
+            entry.service === 'api'
+                ? { ...entry, mockScenario: 'error' }
+                : entry,
+        ),
+    );
+    f.controller.saved();
+    f.flush();
+    await f.controller.waitUntilIdle();
+    assert.equal(f.calls.filter((call) => call === 'apply').length, 2);
+    assert.equal(f.calls.includes('aws'), false);
+    await f.controller.shutdown();
+});
+
+test('a scenario change is applied when the same configuration also removes another mock', async () => {
+    const f = fixture();
+    f.aws('expired');
+    const inventory = [
+        { service: 'api', mode: 'Mock' as const, mockScenario: 'success' },
+        {
+            service: 'other-api',
+            mode: 'Mock' as const,
+            mockScenario: 'success',
+        },
+        { service: 'ingress-proxy', mode: 'Service' as const },
+        { service: 'chs-dev-microcks', mode: 'Mock' as const },
+    ];
+    f.edit('both-mocks', inventory);
+    await f.controller.start();
+    await f.controller.waitUntilIdle();
+    f.edit(
+        'one-mock-with-new-scenario',
+        inventory
+            .filter((entry) => entry.service !== 'other-api')
+            .map((entry) =>
+                entry.service === 'api'
+                    ? { ...entry, mockScenario: 'error' }
+                    : entry,
+            ),
+    );
+    f.controller.saved();
+    f.flush();
+    await f.controller.waitUntilIdle();
+    assert.equal(f.calls.filter((call) => call === 'apply').length, 2);
+    assert.equal(f.snapshots.at(-1)?.inventory[0].mockScenario, 'error');
+    assert.equal(f.calls.includes('stop:other-api'), true);
+    assert.equal(f.calls.includes('aws'), false);
+    await f.controller.shutdown();
+});
+
 async function settle() {
     for (let index = 0; index < 50; index++) await Promise.resolve();
 }

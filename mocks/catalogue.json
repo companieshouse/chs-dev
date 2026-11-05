@@ -1,0 +1,128 @@
+{
+    "version": 1,
+    "image": "quay.io/microcks/microcks-uber:1.13.2-native",
+    "services": {
+        "company-profile-api": {
+            "title": "Company Profile API",
+            "ports": [8080],
+            "healthPaths": ["/company-profile-api/healthcheck"],
+            "version": "1.0.0",
+            "artifact": "company-profile-api/openapi.json",
+            "defaultScenario": "success",
+            "scenarios": [
+                {
+                    "name": "success",
+                    "description": "A valid response for the normal development flow."
+                },
+                {
+                    "name": "not-found",
+                    "description": "The requested resource does not exist (404)."
+                },
+                {
+                    "name": "error",
+                    "description": "The upstream service is unavailable (503)."
+                }
+            ]
+        },
+        "transactions-api-ch-gov-uk": {
+            "title": "Transactions API",
+            "ports": [8080],
+            "healthPaths": [
+                "/transactions/healthcheck",
+                "/transactions-api/healthcheck"
+            ],
+            "version": "1.0.0",
+            "artifact": "transactions-api-ch-gov-uk/openapi.json",
+            "defaultScenario": "success",
+            "scenarios": [
+                {
+                    "name": "success",
+                    "description": "A valid response for the normal development flow."
+                },
+                {
+                    "name": "not-found",
+                    "description": "The requested resource does not exist (404)."
+                },
+                {
+                    "name": "error",
+                    "description": "The upstream service is unavailable (503)."
+                }
+            ]
+        },
+        "accounts-filing-api": {
+            "title": "Accounts Filing API",
+            "ports": [3000],
+            "healthPaths": ["/accounts-filing/healthcheck"],
+            "version": "1.0.0",
+            "artifact": "accounts-filing-api/openapi.json",
+            "defaultScenario": "success",
+            "scenarios": [
+                {
+                    "name": "success",
+                    "description": "A valid response for the normal development flow."
+                },
+                {
+                    "name": "not-found",
+                    "description": "The requested resource does not exist (404)."
+                },
+                {
+                    "name": "error",
+                    "description": "The upstream service is unavailable (503)."
+                }
+            ]
+        },
+        "company-accounts-api-ch-gov-uk": {
+            "title": "Company Accounts API",
+            "ports": [8080],
+            "healthPaths": [
+                "/company-accounts/healthcheck",
+                "/company-accounts-api/healthcheck"
+            ],
+            "version": "1.0.0",
+            "artifact": "company-accounts-api-ch-gov-uk/openapi.json",
+            "defaultScenario": "success",
+            "scenarios": [
+                {
+                    "name": "success",
+                    "description": "A valid response for the normal development flow."
+                },
+                {
+                    "name": "not-found",
+                    "description": "The requested resource does not exist (404)."
+                },
+                {
+                    "name": "error",
+                    "description": "The upstream service is unavailable (503)."
+                }
+            ]
+        },
+        "felixvalidator": {
+            "title": "Felix Validator",
+            "version": "1.0.0",
+            "artifact": "felixvalidator/openapi.json",
+            "ports": [8080],
+            "healthPaths": ["/felixvalidator/healthcheck"],
+            "defaultScenario": "success",
+            "scenarios": [
+                {
+                    "name": "success",
+                    "description": "Valid accounts return XML with validationStatus OK."
+                },
+                {
+                    "name": "validation-failed",
+                    "description": "Invalid accounts return XML with validationStatus FAILED (HTTP 200)."
+                },
+                {
+                    "name": "error",
+                    "description": "The validator is unavailable (HTTP 503); async requests are not accepted."
+                }
+            ],
+            "asyncCallback": {
+                "requestPath": "/validate-async",
+                "urlFields": ["callbackUrl", "callback_url"],
+                "resultPath": "/validate",
+                "method": "PATCH"
+            }
+        }
+    }
+}

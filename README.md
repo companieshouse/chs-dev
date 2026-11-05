@@ -36,9 +36,11 @@ Each service shows Enabled, Status, and Mode:
 - Enabled reads `.chs-dev.yaml` at startup, including module selections, transitive
   dependencies, and exclusions. Base infrastructure is included. A missing state file
   means no optional services are selected; an invalid state file shows Unknown.
-- Mode uses `servicesWithLiveUpdate` for Development. The dedicated `ch-service-mock`,
-  `chips-filing-mock`, and `sockpuppet` services show Mock unless in Development.
-  Other services show Service. The current CLI has no generic per-service mock-mode setting.
+- Mode shows the selected Service, Development or Mock provider. Mock contracts and
+  scenarios live in this repository under `mocks/`; active scenarios appear in the
+  Services list. Mocked services omit their real dependencies and route to Microcks.
+  Existing `servicesWithLiveUpdate` settings and dedicated mock services remain supported.
+  See [mock providers](docs/mock-providers.md) for the catalogue and setup.
 - Docker status loads separately and refreshes every five seconds after each completed
   request. Containers are matched by Compose service and project working-directory labels;
   one-off containers and other checkouts are ignored. Running means no reported health
@@ -79,8 +81,10 @@ Press Enter on a service to open its configuration modal. Up/Down selects a row;
 Enter or Space toggles Enabled or the supported mode. **Save & apply** (while the
 environment is running with auto-apply on) or **Save** writes the changes to
 `.chs-dev.yaml` and refreshes the list. Escape or Close discards unsaved edits. The modal captures navigation so the background list stays selected.
-Development is offered only for services with a builder label; dedicated mocks
-return to Mock when development is disabled. Base infrastructure cannot be disabled.
+The Provider row cycles Service, Development (with a builder label), and Mock (with
+a checked-in contract). Mock adds a scenario selector and explains dependency
+behaviour. Scenario changes take effect without restarting containers when applied.
+Base infrastructure cannot be disabled.
 Saving applies the change straight away only while the environment is running and
 auto-apply is on; otherwise the edit is shown as a pending change (see
 [Environment](#environment)). When the service has a container, the modal also offers

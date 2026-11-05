@@ -6,7 +6,6 @@ import { Box, Text, useInput, useWindowSize } from 'ink';
 import type { Key } from 'ink';
 import { useState } from 'react';
 import {
-    serviceMode,
     type ServiceDefinition,
     type ServiceDetails,
     type ServiceEdit,
@@ -28,6 +27,8 @@ import {
 import { useModalSave } from '../hooks/use-modal-save.js';
 import ModalFrame from './modal-frame.js';
 import { centeredStart } from '../models/modules.js';
+import { useProviderSelection } from '../hooks/use-provider-selection.js';
+import type { ServiceProvider } from '../../domain/providers.js';
 
 export interface ServiceContainerControls {
     /** Whether a container exists, is running, and runs in Development mode. */
@@ -42,6 +43,7 @@ export interface ServiceContainerControls {
 type MainOption =
     | 'enabled'
     | 'mode'
+    | 'scenario'
     | 'dependencies'
     | 'save'
     | 'reload'
@@ -75,7 +77,8 @@ interface OptionLabelView {
     name: string;
     hasDetails: boolean;
     enabled: boolean;
-    development: boolean;
+    provider: ServiceProvider;
+    mockScenario?: string;
     base: boolean;
     modeFixed: boolean;
     dependencyCount: number;
@@ -122,10 +125,12 @@ function containerMainOptions(
 function buildMainOptions(
     onContainer?: () => void,
     controls?: ServiceContainerControls,
+    mock = false,
 ): MainOption[] {
     return [
         'enabled',
         'mode',
+        ...(mock ? (['scenario'] as const) : []),
         'dependencies',
         'save',
         ...(onContainer ? (['container'] as const) : []),
@@ -147,7 +152,7 @@ function stateOptionLabel(
         case 'enabled':
             return `Enabled: ${enabledLabel(view)}${view.base ? ' (required)' : ''}`;
         case 'mode':
-            return `Mode: ${!view.hasDetails ? 'Unknown' : serviceMode(view.name, view.development)}${view.modeFixed ? ' (fixed)' : ''}`;
+            return `Provider: ${!view.hasDetails ? 'Unknown' : view.provider}${view.modeFixed ? ' (fixed)' : ''}`;
         case 'save':
             return view.busy
                 ? view.savingLabel
@@ -179,6 +184,7 @@ function mainOptionLabel(option: MainOption, view: OptionLabelView): string {
     const labels: Record<MainOption, string> = {
         enabled: stateOptionLabel('enabled', view),
         mode: stateOptionLabel('mode', view),
+        scenario: `Mock scenario: ${view.mockScenario ?? 'Unknown'} (cycle)`,
         save: stateOptionLabel('save', view),
         restart: containerOptionLabel('restart', view),
         stop: containerOptionLabel('stop', view),
@@ -240,11 +246,9 @@ function effectiveExclusions(
 
 function useServiceConfiguration(props: ServiceModalProps) {
     const [enabled, setEnabled] = useState(props.details?.enabled === 'Yes');
-    const [development, setDevelopment] = useState(
-        props.details?.mode === 'Development',
-    );
     const [exclusions, setExclusions] = useState<Record<string, boolean>>({});
     const definition = definitionOf(props.groups, props.name);
+    const selection = useProviderSelection(props.details, definition);
     const editable = Boolean(
         props.details &&
         props.details.enabled !== 'Unknown' &&
@@ -253,14 +257,15 @@ function useServiceConfiguration(props: ServiceModalProps) {
     );
     const changed =
         enabled !== (props.details?.enabled === 'Yes') ||
-        development !== (props.details?.mode === 'Development') ||
+        selection.changed ||
         exclusionsChanged(exclusions, props.allDetails);
     const toggle = (option: MainOption) => {
         if (!editable) return;
         if (option === 'enabled' && !definition?.base)
             setEnabled((value) => !value);
-        if (option === 'mode' && definition?.development)
-            setDevelopment((value) => !value);
+        if (option === 'mode') selection.cycleProvider();
+        if (option === 'scenario' && selection.provider === 'mock')
+            selection.cycleScenario();
     };
     const toggleDependency = (dependency: DependencyTreeRow) => {
         if (
@@ -279,7 +284,10 @@ function useServiceConfiguration(props: ServiceModalProps) {
     };
     return {
         enabled,
-        development,
+        provider: selection.provider,
+        scenario: selection.scenario,
+        scenarioDescription: selection.description,
+        modeFixed: selection.fixed,
         exclusions,
         definition,
         editable,
@@ -290,13 +298,17 @@ function useServiceConfiguration(props: ServiceModalProps) {
             props.onApply({
                 name: props.name,
                 enabled,
-                development,
+                development: selection.provider === 'development',
+                provider: selection.provider,
+                ...(selection.provider === 'mock'
+                    ? { mockScenario: selection.scenario }
+                    : {}),
                 exclusions: effectiveExclusions(exclusions, props.allDetails),
             }),
     };
 }
 
-function useServiceNavigation() {
+function useServiceNavigation(dependencyIndex: number) {
     const [selected, setSelected] = useState(0);
     const [dependencyView, setDependencyView] = useState(false);
     const [logsOpen, setLogsOpen] = useState(false);
@@ -314,7 +326,7 @@ function useServiceNavigation() {
         },
         back: () => {
             setDependencyView(false);
-            setSelected(2);
+            setSelected(dependencyIndex);
         },
         showLogs: () => setLogsOpen(true),
         closeLogs: () => setLogsOpen(false),
@@ -331,13 +343,20 @@ function serviceKeyKind(input: string, key: Key) {
 
 function useServiceModal(props: ServiceModalProps) {
     const configuration = useServiceConfiguration(props);
-    const navigation = useServiceNavigation();
+    const mainOptions = buildMainOptions(
+        props.onContainer,
+        props.controls,
+        configuration.provider === 'mock',
+    );
+    const navigation = useServiceNavigation(
+        mainOptions.indexOf('dependencies'),
+    );
     const operations = useServiceOperations(props, configuration.save);
     const tree = dependencyTree(props.name, props.groups);
-    const mainOptions = buildMainOptions(props.onContainer, props.controls);
     const actions: Partial<Record<MainOption, () => void>> = {
         enabled: () => configuration.toggle('enabled'),
         mode: () => configuration.toggle('mode'),
+        scenario: () => configuration.toggle('scenario'),
         dependencies: navigation.dependencies,
         save: () => {
             if (configuration.editable && configuration.changed)
@@ -374,27 +393,12 @@ function useServiceModal(props: ServiceModalProps) {
         ? tree.length + 1
         : mainOptions.length;
 
-    useInput(
-        (input, key) => {
-            if (inputBusy) return;
-            switch (serviceKeyKind(input, key)) {
-                case 'escape':
-                    return navigation.dependencyView
-                        ? navigation.back()
-                        : props.onClose();
-                case 'move':
-                    return navigation.move(
-                        key.upArrow || (key.tab && key.shift),
-                        optionCount,
-                    );
-                case 'activate':
-                    return activate();
-            }
-        },
-        {
-            isActive: !navigation.logsOpen,
-        },
-    );
+    useServiceKeyboard(navigation, {
+        inputBusy,
+        optionCount,
+        activate,
+        onClose: props.onClose,
+    });
     const view = useServicePresentation(
         props,
         configuration,
@@ -407,6 +411,38 @@ function useServiceModal(props: ServiceModalProps) {
         logsOpen: navigation.logsOpen,
         closeLogs: navigation.closeLogs,
     };
+}
+
+function useServiceKeyboard(
+    navigation: ReturnType<typeof useServiceNavigation>,
+    options: {
+        inputBusy: boolean;
+        optionCount: number;
+        activate(): void;
+        onClose(): void;
+    },
+) {
+    useInput(
+        (input, key) => {
+            if (options.inputBusy) return;
+            switch (serviceKeyKind(input, key)) {
+                case 'escape':
+                    return navigation.dependencyView
+                        ? navigation.back()
+                        : options.onClose();
+                case 'move':
+                    return navigation.move(
+                        key.upArrow || (key.tab && key.shift),
+                        options.optionCount,
+                    );
+                case 'activate':
+                    return options.activate();
+            }
+        },
+        {
+            isActive: !navigation.logsOpen,
+        },
+    );
 }
 
 function useServiceOperations(
@@ -455,9 +491,10 @@ function serviceLabelView(
         name: props.name,
         hasDetails: Boolean(props.details),
         enabled: configuration.enabled,
-        development: configuration.development,
+        provider: configuration.provider,
+        mockScenario: configuration.scenario,
         base: Boolean(configuration.definition?.base),
-        modeFixed: !configuration.definition?.development,
+        modeFixed: configuration.modeFixed,
         dependencyCount: serviceDependencies(props.name, props.groups).length,
         busy: operations.busy,
         applyOnSave: props.applyOnSave ?? false,
@@ -488,7 +525,11 @@ function useServicePresentation(
               configuration.exclusions,
               props.allDetails,
           )
-        : buildMainOptions(props.onContainer, props.controls).map((option) =>
+        : buildMainOptions(
+              props.onContainer,
+              props.controls,
+              configuration.provider === 'mock',
+          ).map((option) =>
               mainOptionLabel(
                   option,
                   serviceLabelView(props, configuration, operations, spinner),
@@ -500,6 +541,10 @@ function useServicePresentation(
         selected: navigation.selected,
         dependencyView: navigation.dependencyView,
         changed: configuration.changed,
+        mockHint:
+            configuration.provider === 'mock'
+                ? `Mock: ${configuration.scenarioDescription ?? ''} Dependencies are not started for this service.`
+                : undefined,
         footer: {
             dependencyCount: serviceDependencies(props.name, props.groups)
                 .length,
@@ -591,6 +636,9 @@ function ServiceModalView(props: ReturnType<typeof useServicePresentation>) {
                     </Text>
                 )}
                 <ModalStatus error={footer.error} notice={footer.notice} />
+                {!props.dependencyView && props.mockHint && (
+                    <Text color={theme.mocked}>{props.mockHint}</Text>
+                )}
                 <Text color={theme.muted}>{footer.saveHint}</Text>
                 <KeyboardHints>
                     {props.dependencyView

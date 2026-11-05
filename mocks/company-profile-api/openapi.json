@@ -1,0 +1,123 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Company Profile API",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/company/{company_number}": {
+            "get": {
+                "summary": "GET /company/{company_number}",
+                "x-microcks-operation": {
+                    "dispatcher": "QUERY_HEADER",
+                    "dispatcherRules": "x-chs-dev-scenario"
+                },
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "x-chs-dev-scenario",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "success": {
+                                "value": "success"
+                            },
+                            "not-found": {
+                                "value": "not-found"
+                            },
+                            "error": {
+                                "value": "error"
+                            }
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "company_number",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "success": {
+                                        "value": {
+                                            "company_name": "EXAMPLE LIMITED",
+                                            "company_number": "{{ request.path[2] }}",
+                                            "company_status": "active",
+                                            "type": "ltd",
+                                            "date_of_creation": "2020-01-01",
+                                            "registered_office_address": {
+                                                "address_line_1": "1 Example Street",
+                                                "locality": "London",
+                                                "postal_code": "SW1A 1AA"
+                                            },
+                                            "links": {
+                                                "self": "/company/{{ request.path[2] }}"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not-found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "not-found": {
+                                        "value": {
+                                            "errors": [
+                                                {
+                                                    "error": "resource-not-found",
+                                                    "type": "ch:service",
+                                                    "message": "The requested resource does not exist."
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                },
+                                "examples": {
+                                    "error": {
+                                        "value": {
+                                            "errors": [
+                                                {
+                                                    "error": "service-unavailable",
+                                                    "type": "ch:service",
+                                                    "message": "The service is temporarily unavailable."
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

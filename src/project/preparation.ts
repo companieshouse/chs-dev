@@ -178,6 +178,10 @@ export class ProjectPreparation implements PreparationApi {
                     projectDirectory: this.dependencies.directory,
                     configuration: revision.yaml,
                     outputDirectory: root,
+                    mockRuntimeDirectory: join(
+                        this.dependencies.stateDirectory,
+                        'mocks',
+                    ),
                 },
                 {
                     fs: this.fs,

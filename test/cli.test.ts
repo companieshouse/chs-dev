@@ -74,6 +74,119 @@ test('passive status succeeds while other reads report a stopped daemon', async 
     );
 });
 
+test('CLI mock discovery, provider switching and scenario edits use shared daemon state', async () => {
+    const f = await daemonFixture(undefined, undefined, {
+        mock: {
+            defaultScenario: 'success',
+            scenarios: [
+                { name: 'success', description: 'Normal' },
+                { name: 'error', description: 'Unavailable' },
+            ],
+        },
+    });
+    try {
+        const dependencies = { connect: f.client };
+        const catalogue = await invoke(
+            ['service', 'mocks', 'api', '--json'],
+            dependencies,
+        );
+        assert.deepEqual(
+            catalogue
+                .json()
+                .data.mocks[0].scenarios.map((scenario: any) => scenario.name),
+            ['success', 'error'],
+        );
+        const selected = await invoke(
+            [
+                'service',
+                'configure',
+                'api',
+                '--enabled',
+                'true',
+                '--provider',
+                'mock',
+                '--scenario',
+                'error',
+                '--json',
+            ],
+            dependencies,
+        );
+        assert.equal(selected.code, 0, selected.errors);
+        assert.equal(selected.json().data.application, 'pending');
+        await invoke(['start', '--json'], dependencies);
+        await eventually(
+            () => f.app.snapshot().details.api.mockScenario === 'error',
+        );
+        assert.equal(f.app.snapshot().details.api.mode, 'Mock');
+        const changed = await invoke(
+            ['service', 'configure', 'api', '--scenario', 'success', '--json'],
+            dependencies,
+        );
+        assert.equal(changed.code, 0, changed.errors);
+        assert.equal(changed.json().data.application, 'queued');
+        await eventually(() => f.engine.applies === 2);
+        assert.match(
+            (await invoke(['service', 'mocks', 'api'], dependencies)).output,
+            /success \(active\)/,
+        );
+        assert.equal(
+            (
+                await invoke(
+                    [
+                        'service',
+                        'configure',
+                        'api',
+                        '--scenario',
+                        'missing',
+                        '--json',
+                    ],
+                    dependencies,
+                )
+            ).code,
+            1,
+        );
+        assert.equal(f.app.snapshot().details.api.mockScenario, 'success');
+        assert.equal(
+            (
+                await invoke(
+                    [
+                        'service',
+                        'configure',
+                        'api',
+                        '--provider',
+                        'development',
+                        '--json',
+                    ],
+                    dependencies,
+                )
+            ).code,
+            0,
+        );
+        await eventually(
+            () => f.app.snapshot().details.api.mode === 'Development',
+        );
+        assert.equal(
+            (
+                await invoke(
+                    [
+                        'service',
+                        'configure',
+                        'api',
+                        '--provider',
+                        'mock',
+                        '--json',
+                    ],
+                    dependencies,
+                )
+            ).code,
+            0,
+        );
+        assert.equal(f.app.snapshot().details.api.mockScenario, 'success');
+    } finally {
+        await f.close();
+    }
+});
+
 test('CLI and legacy queries use their separate JSON contracts over the shared daemon', async () => {
     const f = await daemonFixture();
     try {

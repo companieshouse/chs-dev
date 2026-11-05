@@ -7,6 +7,38 @@ import {
     type CliResult,
 } from './context.js';
 import { usage } from './parse.js';
+import {
+    detailsProvider,
+    mockScenarioFor,
+    validateProvider,
+    type ServiceProvider,
+} from '../domain/providers.js';
+
+function providerEdit(context: CliContext) {
+    const {
+        args: [name],
+        options,
+    } = context.invocation;
+    const state = context.client.getSnapshot();
+    const current = state.details[name];
+    const definition = serviceDefinitions(state.groups)[name];
+    const legacy = options.development === 'true' ? 'development' : 'service';
+    const provider =
+        (options.provider as ServiceProvider | undefined) ??
+        (options.development === undefined
+            ? detailsProvider(current, definition)
+            : legacy);
+    if (options.scenario && provider !== 'mock')
+        usage('Choose --provider mock before selecting a scenario.');
+    const scenario = options.scenario ?? mockScenarioFor(current, definition);
+    const mockScenario = mockScenarioSelection(provider, scenario);
+    validateProvider(name, provider, definition, mockScenario);
+    return {
+        provider,
+        development: provider === 'development',
+        ...(mockScenario ? { mockScenario } : {}),
+    };
+}
 
 export function serviceRows(context: CliContext) {
     const state = context.client.getSnapshot();
@@ -20,6 +52,13 @@ export function serviceRows(context: CliContext) {
             })),
         )
         .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function mockScenarioSelection(provider: ServiceProvider, scenario: unknown) {
+    if (provider !== 'mock') return undefined;
+    if (typeof scenario !== 'string')
+        usage('This service has no mock contract.');
+    return scenario;
 }
 
 function serviceEdit(context: CliContext) {
@@ -44,10 +83,7 @@ function serviceEdit(context: CliContext) {
             options.enabled === undefined
                 ? current.enabled === 'Yes'
                 : options.enabled === 'true',
-        development:
-            options.development === undefined
-                ? current.mode === 'Development'
-                : options.development === 'true',
+        ...providerEdit(context),
         exclusions,
     };
 }
@@ -58,7 +94,7 @@ function servicesText(rows: ReturnType<typeof serviceRows>) {
         `${'Service'.padEnd(width)}  Enabled  Mode         Status       Module`,
         ...rows.map(
             (row) =>
-                `${row.name.padEnd(width)}  ${row.enabled.padEnd(7)}  ${row.mode.padEnd(11)}  ${row.status.padEnd(11)}  ${row.module}`,
+                `${row.name.padEnd(width)}  ${row.enabled.padEnd(7)}  ${row.mode.padEnd(11)}  ${row.status.padEnd(11)}  ${row.module}${row.mockScenario ? ` · ${row.mockScenario}` : ''}`,
         ),
     ].join('\n');
 }
@@ -88,6 +124,7 @@ export async function serviceCommand(context: CliContext): Promise<CliResult> {
         const services = serviceRows(context);
         return { data: { services }, text: servicesText(services) };
     }
+    if (action === 'mocks') return mockCatalogue(context);
     requireServices(context);
     const [name] = context.invocation.args;
     if (action === 'show')
@@ -124,4 +161,34 @@ export async function serviceCommand(context: CliContext): Promise<CliResult> {
         services: context.invocation.args,
         action: action as 'start' | 'stop' | 'restart',
     });
+}
+
+function mockCatalogue(context: CliContext): CliResult {
+    requireServices(context);
+    const [selected] = context.invocation.args;
+    const state = context.client.getSnapshot();
+    const mocks = Object.entries(serviceDefinitions(state.groups))
+        .filter(
+            ([name, definition]) =>
+                definition.mock && (!selected || name === selected),
+        )
+        .map(([name, definition]) => ({
+            name,
+            ...definition.mock!,
+            activeScenario: state.details[name]?.mockScenario,
+        }));
+    if (selected && !mocks.length) usage(`${selected} has no mock contract.`);
+    const lines = mocks.flatMap((mock) => [
+        mock.name,
+        ...mock.scenarios.map(
+            (scenario) =>
+                `  ${scenario.name}${scenario.name === mock.activeScenario ? ' (active)' : ''}: ${scenario.description}`,
+        ),
+    ]);
+    return {
+        data: { mocks },
+        text: lines.length
+            ? lines.join('\n')
+            : 'No mock contracts are available for this checkout.',
+    };
 }

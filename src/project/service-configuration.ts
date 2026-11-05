@@ -6,12 +6,20 @@ import { resolveServiceState } from '../domain/service-state.js';
 import type { ServiceGroup } from './catalog.js';
 import { serviceDependencies } from '../domain/service-dependencies.js';
 import { tuiLog } from '../infrastructure/tui-log.js';
+import {
+    applyProviderEdit,
+    validateProviderEdit,
+} from './provider-configuration.js';
+import { serviceDefinitions } from '../domain/services.js';
+import type { ServiceProvider } from '../domain/providers.js';
 
 export interface SaveServiceChangesOptions {
     directory: string;
     name: string;
     enabled: boolean;
     development: boolean;
+    provider?: ServiceProvider;
+    mockScenario?: string;
     groups: ServiceGroup[];
     exclusions?: Record<string, boolean>;
     expectedRevision?: string;
@@ -158,8 +166,12 @@ export async function saveServiceChanges({
     groups,
     exclusions = {},
     expectedRevision,
+    provider,
+    mockScenario,
 }: SaveServiceChangesOptions) {
     validateSaveRequest(name, enabled, development, groups, exclusions);
+    const providerEdit = { name, development, provider, mockScenario };
+    validateProviderEdit(providerEdit, serviceDefinitions(groups)[name]);
     const path = join(directory, '.chs-dev.yaml');
     logValidated(name, enabled, development, exclusions);
     const read = () =>
@@ -172,6 +184,8 @@ export async function saveServiceChanges({
     const document = loadDocument(original);
     resolveServiceState(document.toJS(), groups);
     applyChanges(document, name, enabled, development, exclusions);
+    applyProviderEdit(document, providerEdit);
+    const details = resolveServiceState(document.toJS(), groups);
     await writeAtomically(path, read, original, document);
-    return resolveServiceState(document.toJS(), groups);
+    return details;
 }
