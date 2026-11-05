@@ -22,6 +22,24 @@ function command(
 
 export const commands: CommandDefinition[] = [
     command('status', 'Show the active environment'),
+    ...['create', 'get', 'update', 'delete'].map((action) =>
+        command(
+            `secret ${action}`,
+            action === 'get'
+                ? 'Reveal a private secret only with --reveal'
+                : `${action} a private SSM secret${action === 'delete' ? '' : '; reads private stdin'}`,
+            1,
+            1,
+            [
+                'namespace',
+                'profile',
+                'region',
+                'timeout',
+                ...(action === 'get' ? ['reveal'] : []),
+                ...(['create', 'update'].includes(action) ? ['key-id'] : []),
+            ],
+        ),
+    ),
     ...['start', 'apply'].map((name) =>
         command(name, `${name} the environment`, 0, 0, [...waiting, 'yes']),
     ),

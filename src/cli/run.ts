@@ -4,13 +4,14 @@ import { environmentMismatch } from '../daemon-control/environment.js';
 import { daemonAction } from '../daemon-control/actions.js';
 import { packageVersion } from '../daemon-control/package.js';
 import { help } from './registry.js';
+import { secretCommand, type SecretDependencies } from './secrets.js';
 import { parseInvocation, type Invocation } from './parse.js';
 import { connectCli } from './connect.js';
 import type { CliContext, CliResult } from './context.js';
 import { execute } from './execute.js';
 import { envelope, errorDetail, exitCode, textResult } from './output.js';
 
-export interface CliDependencies {
+export interface CliDependencies extends SecretDependencies {
     out?(text: string): void;
     err?(text: string): void;
     connect?(invocation: Invocation): Promise<Client | undefined>;
@@ -25,14 +26,16 @@ interface RunState {
 function lifetime(
     dependencies: CliDependencies,
     timeout?: string | boolean | string[],
+    privateOperation = false,
 ) {
     const controller = new AbortController();
     const interrupt = (signal: 'SIGINT' | 'SIGTERM') =>
         controller.abort(
             new ClientError({
                 code: signal,
-                message:
-                    'Disconnected. Accepted operations continue in the daemon.',
+                message: privateOperation
+                    ? 'Secret request interrupted. A write may have reached SSM; retrieve it before retrying.'
+                    : 'Disconnected. Accepted operations continue in the daemon.',
             }),
         );
     const sigint = () => interrupt('SIGINT');
@@ -46,8 +49,9 @@ function lifetime(
                   controller.abort(
                       new ClientError({
                           code: 'WAIT_TIMEOUT',
-                          message:
-                              'Wait timed out. Accepted work continues; use operation wait or cancel.',
+                          message: privateOperation
+                              ? 'Secret request timed out. A write may have reached SSM; retrieve it before retrying.'
+                              : 'Wait timed out. Accepted work continues; use operation wait or cancel.',
                       }),
                   ),
               seconds * 1000,
@@ -86,6 +90,16 @@ async function perform(
         invocation.name !== 'daemon logs'
     )
         return { data: await daemonAction(invocation.name.split(' ')[1]) };
+    if (invocation.name.startsWith('secret '))
+        return secretCommand(
+            invocation,
+            dependencies,
+            signal,
+            dependencies.out ??
+                ((text) => {
+                    process.stdout.write(text);
+                }),
+        );
     state.client = await (dependencies.connect ?? connectCli)(invocation);
     if (!state.client) return unavailable(invocation);
     return performConnected(state, dependencies, signal);
@@ -188,8 +202,36 @@ function printFailure(
         );
     return exitCode(detail);
 }
-function interruption(error: unknown, live?: ReturnType<typeof lifetime>) {
-    return live?.signal.aborted ? live.signal.reason : error;
+function interruption(
+    error: unknown,
+    live?: ReturnType<typeof lifetime>,
+    privateOperation = false,
+) {
+    if (!live?.signal.aborted) return error;
+    if (!privateOperation) return live.signal.reason;
+    const reason = live.signal.reason;
+    const code =
+        reason instanceof ClientError &&
+        ['SIGINT', 'SIGTERM', 'WAIT_TIMEOUT'].includes(reason.detail.code)
+            ? reason.detail.code
+            : 'SECRET_CANCELLED';
+    return new ClientError({
+        code,
+        message:
+            'Secret request interrupted or timed out. A write may have reached SSM; retrieve it before retrying.',
+    });
+}
+
+function invocationLifetime(
+    dependencies: CliDependencies,
+    invocation: Invocation,
+) {
+    const privateOperation = invocation.name.startsWith('secret ');
+    return lifetime(
+        dependencies,
+        invocation.options.timeout ?? (privateOperation ? '30' : undefined),
+        privateOperation,
+    );
 }
 
 export async function runCli(
@@ -211,17 +253,21 @@ export async function runCli(
     const jsonRequested = argv.some((arg) => arg === '--json' || arg === '-j');
     try {
         state.invocation = parseInvocation(argv);
-        live = lifetime(dependencies, state.invocation.options.timeout);
+        live = invocationLifetime(dependencies, state.invocation);
         const result = await perform(state, dependencies, live.signal);
         printResult(state, result, out, err);
         return 0;
     } catch (error) {
-        return printFailure(state, interruption(error, live), {
-            json: state.invocation?.options.json === true || jsonRequested,
-            command: argv.join(' '),
-            out,
-            err,
-        });
+        return printFailure(
+            state,
+            interruption(error, live, argv.includes('secret')),
+            {
+                json: state.invocation?.options.json === true || jsonRequested,
+                command: argv.includes('secret') ? 'secret' : argv.join(' '),
+                out,
+                err,
+            },
+        );
     } finally {
         state.client?.close();
         live?.close();

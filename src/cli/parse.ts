@@ -17,6 +17,9 @@ const options: NonNullable<ParseArgsConfig['options']> = {
     scenario: { type: 'string' },
     image: { type: 'string' },
     'version-source': { type: 'string' },
+    namespace: { type: 'string' },
+    'key-id': { type: 'string' },
+    reveal: { type: 'boolean' },
     profile: { type: 'string' },
     region: { type: 'string' },
     output: { type: 'string' },
@@ -99,6 +102,8 @@ function validateOptions(invocation: Invocation) {
         usage(
             'Legacy streaming logs use text output. Use the new log commands for JSON snapshots.',
         );
+    if (invocation.name.startsWith('secret '))
+        validateSecretOptions(invocation);
     validateNumbers(invocation);
     validateConfigurationOptions(invocation);
     if (
@@ -109,6 +114,25 @@ function validateOptions(invocation: Invocation) {
     )
         usage('Supply -t tree, flattree or diagram.');
 }
+function validateSecretOptions(invocation: Invocation) {
+    if (
+        invocation.name === 'secret get' &&
+        (!invocation.options.reveal || invocation.options.json)
+    )
+        usage(
+            'Secret get requires --reveal and writes only raw stdout; --json is not supported.',
+        );
+    if (
+        invocation.options.timeout !== undefined &&
+        (!Number.isFinite(Number(invocation.options.timeout)) ||
+            Number(invocation.options.timeout) <= 0 ||
+            Number(invocation.options.timeout) > 60)
+    )
+        usage(
+            'Secret timeout must be greater than 0 and no more than 60 seconds.',
+        );
+}
+
 function validateConfigurationOptions(invocation: Invocation) {
     validateProviderOptions(invocation.options);
     validateVersionOptions(invocation);
@@ -224,11 +248,22 @@ function helpRequested(
     if (values.help) return !!definition || topic;
     return !definition && topic && positionals.length > 0;
 }
-export function parseInvocation(argv: string[]): Invocation {
+function parseUnsafeInvocation(argv: string[]): Invocation {
     const parsed = parse(argv);
     const positionals = canonical(parsed.positionals);
     const values = parsed.values as CliOptions;
     return values.version
         ? versionInvocation(positionals, values)
         : resolveInvocation(positionals, values);
+}
+
+export function parseInvocation(argv: string[]): Invocation {
+    try {
+        return parseUnsafeInvocation(argv);
+    } catch (error) {
+        if (!argv.includes('secret')) throw error;
+        usage(
+            'Invalid secret command. Use chs-dev secret --help. Get requires --reveal without --json; values must be piped on stdin; timeout must be 0–60 seconds (exclusive of 0).',
+        );
+    }
 }
