@@ -20,7 +20,7 @@ be replaced with tested evidence or a precise remaining gap at delivery close.
 
 ### secure-local-secrets
 
-W5 / RAND-733: configured SSM CRUD in progress; namespace, IAM and classification remain external. No automatic Compose secret injection promised.
+W5 / RAND-733: `55c3d09` delivers configured, tested SSM CRUD; namespace, IAM and classification remain external. No automatic Compose secret injection promised.
 
 ### kafka-dependency-cleanup
 
@@ -107,10 +107,13 @@ Superseded proposal in this archive: later Platform guidance favors SSM retrieva
 - W1: `71e0cfb` stages all saves until Apply/Start, preserves manual stops and
   refuses Reload when saved changes are pending. Controller/runtime/CLI suites:
   116 focused tests passed; independent Spec and Standards rounds completed.
-- W2: compact real Ink TUI in review; full exact details, saved version labels,
-  failure hints and restored logs/resize regression. Final commit/checks pending.
-- W3/W4: lifecycle correctness and versions/mock regression audit in progress.
-- W5: SSM and telemetry implementation/testing pending; operational decisions stay
+- W2: `fc5822d` compact real Ink TUI; full exact details, saved version labels,
+  failure hints and restored logs/resize regression. 18 focused tests passed.
+- W3/W4: `a1e2594` applied proxy policy (67 focused tests), `eec38d1` actual
+  container image identity (18 runtime tests). Remaining lifecycle/cache/mock
+  audit is in progress. [Dependency findings](dependency-findings.md) record
+  actual local closures and ten dual-Kafka declarations without changing them.
+- W5: `55c3d09` SSM CRUD, 30 focused tests/check passed; telemetry in progress; operational decisions stay
   explicit in [delivery plan](../../DELIVERY-PLAN.md).
 - W6: `59fbe4c`, [workspace/platform spike](workspaces-and-platforms.md), 29 local
   discovery/preparation tests passed. No live platform compatibility claimed.
