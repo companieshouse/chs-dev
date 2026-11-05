@@ -26,8 +26,10 @@ import type {
 } from '../domain/settings.js';
 import type { Operations } from './operations.js';
 import type { LiveController } from './live-controller.js';
-import { serviceDependencies } from '../domain/service-dependencies.js';
-import { lazyChain } from '../proxy/lifecycle.js';
+import {
+    dependencyOrder,
+    serviceDependencies,
+} from '../domain/service-dependencies.js';
 
 type Dispatch = { handled: true; value?: unknown } | { handled: false };
 
@@ -52,7 +54,9 @@ function startChain(
         ]),
     );
     return [
-        ...new Set(services.flatMap((name) => lazyChain(name, dependencies))),
+        ...new Set(
+            services.flatMap((name) => dependencyOrder(name, dependencies)),
+        ),
     ];
 }
 

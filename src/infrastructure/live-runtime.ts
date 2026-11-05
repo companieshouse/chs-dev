@@ -1,6 +1,11 @@
-import { isAbsolute } from 'node:path';
+import { isAbsolute, relative } from 'node:path';
+import { parse } from 'yaml';
+import { requiredEnvironment } from '../project/compose.js';
 import {
     LiveFailure,
+    LifecycleBlocked,
+    appliedServicePolicy,
+    lifecycleLabel,
     type ContainerAction,
     type LiveRuntime,
     type LiveApplyContext,
@@ -88,8 +93,30 @@ interface DockerInspection {
         OOMKilled?: boolean;
     };
 }
+function lifecycleMetadata(labels: Record<string, string>) {
+    const policy = labels[lifecycleLabel];
+    const files = labels['com.docker.compose.project.config_files'];
+    return {
+        ...(policy
+            ? {
+                  policy: appliedServicePolicy(
+                      policy,
+                      labels['com.docker.compose.service'],
+                  ),
+              }
+            : {}),
+        ...(files ? { composeFiles: files.split(',').filter(Boolean) } : {}),
+    };
+}
+
 export class DockerLiveRuntime implements LiveRuntime {
-    constructor(private readonly dependencies: DockerLiveDependencies) {}
+    constructor(
+        private readonly dependencies: DockerLiveDependencies,
+        private readonly artifacts?: {
+            directory: string;
+            read(path: string): Promise<string>;
+        },
+    ) {}
     private async run(
         args: string[],
         context: OperationContext = {},
@@ -217,6 +244,7 @@ export class DockerLiveRuntime implements LiveRuntime {
                 : undefined,
             lifecycle: value.State.Status,
             health: value.State.Health?.Status,
+            ...lifecycleMetadata(labels),
             ...(typeof value.State.ExitCode === 'number'
                 ? { exitCode: value.State.ExitCode }
                 : {}),
@@ -266,6 +294,104 @@ export class DockerLiveRuntime implements LiveRuntime {
             );
         }
     }
+    private async appliedArtifact(container: RuntimeContainer) {
+        if (!this.artifacts || container.composeFiles?.length !== 1)
+            throw new LifecycleBlocked(
+                'Applied Compose artifacts are unavailable. Apply configuration before starting or reloading services.',
+            );
+        try {
+            const root = await this.dependencies.realpath(
+                this.artifacts.directory,
+            );
+            const file = await this.dependencies.realpath(
+                container.composeFiles[0]!,
+            );
+            if (
+                !/^[a-zA-Z0-9-]+\/docker-compose\.yaml$/.test(
+                    relative(root, file),
+                )
+            )
+                throw new Error('Unowned artifact');
+            return { file, document: parse(await this.artifacts.read(file)) };
+        } catch {
+            throw new LifecycleBlocked(
+                'Applied Compose artifacts are unavailable or outside the owned project state. Apply configuration before starting or reloading services.',
+            );
+        }
+    }
+
+    private async appliedProject(
+        service: string,
+        context: OperationContext,
+    ): Promise<PreparedProject> {
+        const observed = await this.snapshot(context.signal);
+        const container = observed.containers.find(
+            (entry) => entry.service === service,
+        );
+        if (!container?.policy)
+            throw new LifecycleBlocked(
+                'Applied lifecycle metadata is unavailable. Apply configuration first.',
+            );
+        const { file, document } = await this.appliedArtifact(container);
+        if (
+            document?.name !== observed.projectName ||
+            !document.services?.[service]
+        )
+            throw new LifecycleBlocked(
+                'Applied Compose artifacts do not match the owned project. Apply configuration before starting or reloading services.',
+            );
+        return {
+            protocolVersion: 1,
+            projectName: observed.projectName,
+            projectDirectory: observed.projectDirectory,
+            configurationIdentity: container.configurationIdentity ?? 'applied',
+            composeFiles: [file],
+            inventory: [],
+            environmentRequirements: requiredEnvironment(document),
+        };
+    }
+
+    async startApplied(
+        service: string,
+        context: OperationContext,
+    ): Promise<RuntimeOperationResult> {
+        const project = await this.appliedProject(service, context);
+        context.signal?.throwIfAborted();
+        checkResult(
+            await this.run(
+                [
+                    ...composeArguments(project),
+                    'up',
+                    '--detach',
+                    '--no-recreate',
+                    '--no-build',
+                    '--pull',
+                    'never',
+                    service,
+                ],
+                context,
+                project.environmentRequirements,
+            ),
+            'Compose cold start',
+        );
+        return {
+            outcome: 'success',
+            message: `Started ${service} from applied configuration.`,
+            affectedServices: [service],
+        };
+    }
+
+    async reloadApplied(
+        service: string,
+        context: OperationContext,
+    ): Promise<RuntimeOperationResult> {
+        return this.reload(
+            await this.appliedProject(service, context),
+            [service],
+            context,
+        );
+    }
+
     async apply(
         project: PreparedProject,
         context: LiveApplyContext,

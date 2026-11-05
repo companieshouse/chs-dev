@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import {
     DockerLiveRuntime,
     type DockerLiveDependencies,
@@ -33,7 +34,10 @@ export class ComposeBackend extends DockerLiveRuntime {
         private readonly connection: DockerLiveDependencies,
         private readonly state = projectStateDirectory(connection.directory),
     ) {
-        super(connection);
+        super(connection, {
+            directory: join(state, 'operations'),
+            read: (path) => readFile(path, 'utf8'),
+        });
     }
     private async checkLegacy(context: OperationContext) {
         context.signal?.throwIfAborted();
@@ -82,6 +86,10 @@ export class ComposeBackend extends DockerLiveRuntime {
                 `Native containers still exist for this checkout. ${transition}`,
                 'blocked',
             );
+    }
+    override async startApplied(service: string, context: OperationContext) {
+        await this.checkLegacy(context);
+        return super.startApplied(service, context);
     }
     override async apply(project: PreparedProject, context: OperationContext) {
         await this.checkLegacy(context);

@@ -50,47 +50,60 @@ function runtimeFixture() {
     const requirements: readonly string[][] = [];
     let inspections = [inspect()];
     let failure = '';
+    let artifact =
+        'name: chs\nservices:\n  api:\n    image: api:applied\n    depends_on:\n      seed:\n        condition: service_completed_successfully\n  seed:\n    image: seed:applied\n';
     let composeServices = { api: {}, worker: {} } as Record<string, object>;
-    const runtime = new DockerLiveRuntime({
-        directory: '/checkout',
-        projectName: 'chs',
-        realpath: async (path) => {
-            if (path === '/missing')
-                throw Object.assign(new Error('missing'), { code: 'ENOENT' });
-            return path;
-        },
-        environment: {
-            resolve: async (names) => {
-                (requirements as string[][]).push([...names]);
-                return { PATH: '/tools', AWS_ACCESS_KEY_ID: 'in-memory' };
+    const runtime = new DockerLiveRuntime(
+        {
+            directory: '/checkout',
+            projectName: 'chs',
+            realpath: async (path) => {
+                if (path === '/missing')
+                    throw Object.assign(new Error('missing'), {
+                        code: 'ENOENT',
+                    });
+                return path;
+            },
+            environment: {
+                resolve: async (names) => {
+                    (requirements as string[][]).push([...names]);
+                    return { PATH: '/tools', AWS_ACCESS_KEY_ID: 'in-memory' };
+                },
+            },
+            execute: async (request) => {
+                requests.push(request);
+                if (request.args[0] === 'ps')
+                    return { code: 0, stdout: id, stderr: '' };
+                if (request.args[0] === 'logs') {
+                    request.onOutput?.({ stream: 'stdout', text: 'api ready' });
+                    request.onOutput?.({
+                        stream: 'stderr',
+                        text: 'api warning',
+                    });
+                    return { code: 0, stdout: '', stderr: '' };
+                }
+                if (request.args[0] === 'inspect')
+                    return {
+                        code: 0,
+                        stdout: JSON.stringify(inspections),
+                        stderr: '',
+                    };
+                if (request.args.includes('json'))
+                    return {
+                        code: 0,
+                        stdout: JSON.stringify({ services: composeServices }),
+                        stderr: '',
+                    };
+                return { code: failure ? 1 : 0, stdout: '', stderr: failure };
             },
         },
-        execute: async (request) => {
-            requests.push(request);
-            if (request.args[0] === 'ps')
-                return { code: 0, stdout: id, stderr: '' };
-            if (request.args[0] === 'logs') {
-                request.onOutput?.({ stream: 'stdout', text: 'api ready' });
-                request.onOutput?.({ stream: 'stderr', text: 'api warning' });
-                return { code: 0, stdout: '', stderr: '' };
-            }
-            if (request.args[0] === 'inspect')
-                return {
-                    code: 0,
-                    stdout: JSON.stringify(inspections),
-                    stderr: '',
-                };
-            if (request.args.includes('json'))
-                return {
-                    code: 0,
-                    stdout: JSON.stringify({ services: composeServices }),
-                    stderr: '',
-                };
-            return { code: failure ? 1 : 0, stdout: '', stderr: failure };
-        },
-    });
+        { directory: '/state/operations', read: async () => artifact },
+    );
     return {
         runtime,
+        artifact: (text: string) => {
+            artifact = text;
+        },
         composeServices: (services: Record<string, object>) => {
             composeServices = services;
         },
@@ -703,4 +716,82 @@ test('runtime observation preserves the engine image reference and image ID rath
         'registry.example/api:observed-old',
     );
     assert.equal(snapshot.containers[0].imageId, 'sha256:' + 'b'.repeat(64));
+});
+
+test('cold start executes immutable applied Compose artifacts with dependency conditions and no image refresh', async () => {
+    const f = runtimeFixture();
+    f.set([
+        inspect({
+            'com.docker.compose.project.config_files':
+                '/state/operations/one/docker-compose.yaml',
+            'chs.dev.lifecycle':
+                '{"version":1,"lazy":true,"reclaimable":false,"dependencies":[]}',
+        }),
+    ]);
+    await f.runtime.startApplied('api', {});
+    assert.deepEqual(f.requests.at(-1)?.args, [
+        'compose',
+        '--project-name',
+        'chs',
+        '--project-directory',
+        '/checkout',
+        '--env-file',
+        '/dev/null',
+        '-f',
+        '/state/operations/one/docker-compose.yaml',
+        'up',
+        '--detach',
+        '--no-recreate',
+        '--no-build',
+        '--pull',
+        'never',
+        'api',
+    ]);
+    assert.equal(
+        f.requests.some((request) => request.args[0] === 'start'),
+        false,
+    );
+});
+
+test('automatic startup rejects missing, foreign and unowned applied artifacts before engine mutation', async () => {
+    for (const file of [
+        '/checkout/docker-compose.yaml',
+        '/state/operations/one/../../foreign/docker-compose.yaml',
+        '/missing',
+    ]) {
+        const f = runtimeFixture();
+        f.set([
+            inspect({
+                'com.docker.compose.project.config_files': file,
+                'chs.dev.lifecycle':
+                    '{"version":1,"lazy":true,"reclaimable":false,"dependencies":[]}',
+            }),
+        ]);
+        await assert.rejects(
+            f.runtime.startApplied('api', {}),
+            /Apply configuration/,
+        );
+        assert.equal(
+            f.requests.some((request) => request.args.includes('up')),
+            false,
+        );
+    }
+    const f = runtimeFixture();
+    f.set([
+        inspect({
+            'com.docker.compose.project.config_files':
+                '/state/operations/one/docker-compose.yaml',
+            'chs.dev.lifecycle':
+                '{"version":1,"lazy":true,"reclaimable":false,"dependencies":[]}',
+        }),
+    ]);
+    f.artifact('name: foreign\nservices:\n  api:\n    image: other\n');
+    await assert.rejects(
+        f.runtime.startApplied('api', {}),
+        /do not match.*Apply configuration/,
+    );
+    assert.equal(
+        f.requests.some((request) => request.args.includes('up')),
+        false,
+    );
 });

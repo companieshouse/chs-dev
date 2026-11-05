@@ -40,6 +40,7 @@ const container = (
     projectName: 'chs',
     projectDirectory: '/project',
     lifecycle: 'running',
+    policy: { version: 1, lazy: false, reclaimable: false, dependencies: [] },
 });
 function fixture() {
     let revision: ConfigurationRevision = {
@@ -109,6 +110,19 @@ function fixture() {
                 projectDirectory: '/project',
                 containers: [...containers],
             }),
+            startApplied: async (service, context) => {
+                context.signal?.throwIfAborted();
+                calls.push(`cold:${service}`);
+                containers = containers.map((entry) => ({
+                    ...entry,
+                    lifecycle: 'running',
+                }));
+                return {
+                    outcome: 'success',
+                    message: 'Started',
+                    affectedServices: [service],
+                };
+            },
             apply: async (project, context) => {
                 calls.push('apply');
                 if (output)
@@ -164,13 +178,15 @@ function fixture() {
                 calls.push(`logs:${target.service}:${tail}`);
                 return ['\x1b[32mready\x1b[0m token=abc'];
             },
-            reload: async (_project, services, context) => {
-                calls.push(`reload:${services.join(',')}`);
+            reloadApplied: async (service, context) => {
+                calls.push(`reload:${service}`);
+                if (hold) await hold();
                 context.signal?.throwIfAborted();
+                if (applyFailure) throw applyFailure;
                 return {
                     outcome: 'success',
                     message: '',
-                    affectedServices: [...services],
+                    affectedServices: [service],
                 };
             },
             stop: async (obsolete) => {
@@ -883,7 +899,7 @@ test('service actions restart, stop and start containers and track services stop
     assert.ok(f.calls.includes('logs:api:50'));
 });
 
-test('reload rebuilds a running development service through a full apply', async () => {
+test('reload rebuilds a development service from applied artifacts without preparing unrelated configuration', async () => {
     const f = fixture();
     assert.match(
         (await f.controller.reloadService('api')).message,
@@ -903,10 +919,10 @@ test('reload rebuilds a running development service through a full apply', async
         ok: true,
         message: 'Rebuilt api.',
     });
-    // The configuration is unchanged, yet reload still prepares and applies.
+    // Reload reuses the applied artifacts without refreshing image metadata.
     assert.deepEqual(
         f.calls.filter((call) => call !== 'lock' && call !== 'unlock'),
-        ['aws', 'prepare', 'aws', 'apply', 'reload:api', 'stop:'],
+        ['reload:api'],
     );
     assert.equal(f.controller.getSnapshot().phase, 'Running');
     assert.equal(f.controller.getSnapshot().message, 'Rebuilt api.');
@@ -948,7 +964,7 @@ test('Reload cannot activate saved pending configuration for other services', as
     );
 });
 
-test('Reload rechecks pending configuration after waiting for another Apply', async () => {
+test('competing Reload is rejected while Apply owns the environment', async () => {
     const f = fixture();
     const inventory = [{ service: 'api', mode: 'Development' as const }];
     f.edit('one', inventory);
@@ -971,7 +987,7 @@ test('Reload rechecks pending configuration after waiting for another Apply', as
     await f.controller.waitUntilIdle();
     const result = await reloading;
     assert.equal(result.ok, false);
-    assert.match(result.message, /Apply saved changes/);
+    assert.match(result.message, /busy/);
     assert.deepEqual(
         f.snapshots.map((revision) => revision.identity),
         ['one', 'two'],
@@ -1198,4 +1214,113 @@ test('start cannot resolve or mutate without ownership', async () => {
         false,
     );
     await f.controller.shutdown();
+});
+
+test('traffic cannot release a manual dependency stop or start a stopped environment', async () => {
+    const f = fixture();
+    const policy = {
+        version: 1 as const,
+        lazy: true,
+        reclaimable: false,
+        dependencies: [] as string[],
+    };
+    f.edit('one', [
+        { service: 'api', mode: 'Service' },
+        { service: 'database', mode: 'Service' },
+    ]);
+    await start(f);
+    f.containers([
+        {
+            ...container('api'),
+            lifecycle: 'created',
+            policy: { ...policy, dependencies: ['database'] },
+        },
+        { ...container('database'), policy },
+    ]);
+    await f.controller.serviceAction(['database'], 'stop');
+    const blocked = await f.controller.coldStart('api', Date.now() + 1000);
+    assert.equal(blocked.ok, false);
+    assert.match(blocked.message, /database.*manually stopped/);
+    assert.deepEqual(f.controller.getSnapshot().stoppedByUser, ['database']);
+    assert.equal(
+        f.calls.some((call) => call.startsWith('cold:')),
+        false,
+    );
+    await f.controller.stop();
+    const stopped = await f.controller.coldStart('api', Date.now() + 1000);
+    assert.equal(stopped.ok, false);
+    assert.match(stopped.message, /environment.*stopped/i);
+});
+
+test('engine-confirmed OOM exit 137 remains a crashed running environment', async () => {
+    const f = fixture();
+    await start(f);
+    f.containers([
+        {
+            ...container('api'),
+            lifecycle: 'exited',
+            exitCode: 137,
+            oomKilled: true,
+        },
+    ]);
+    await f.controller.poll();
+    assert.equal(f.controller.getSnapshot().running, true);
+    assert.equal(f.controller.getSnapshot().phase, 'Running');
+});
+
+test('idle unload preserves manual intent and refuses a dependency of a running applied dependent', async () => {
+    const f = fixture();
+    f.edit('one', [
+        { service: 'api', mode: 'Service' },
+        { service: 'database', mode: 'Service' },
+    ]);
+    await start(f);
+    const policy = {
+        version: 1 as const,
+        lazy: true,
+        reclaimable: false,
+        dependencies: [] as string[],
+    };
+    f.containers([
+        {
+            ...container('api'),
+            policy: { ...policy, dependencies: ['database'] },
+        },
+        { ...container('database'), policy },
+    ]);
+    const needed = await f.controller.idleUnload('database');
+    assert.equal(needed.ok, false);
+    assert.match(needed.message, /api.*running/);
+    assert.equal((await f.controller.idleUnload('api')).ok, true);
+    assert.deepEqual(f.controller.getSnapshot().stoppedByUser, []);
+    assert.equal((await f.controller.idleUnload('database')).ok, true);
+    assert.deepEqual(f.controller.getSnapshot().stoppedByUser, []);
+    assert.equal(
+        (await f.controller.coldStart('api', Date.now() + 1000)).ok,
+        true,
+    );
+    assert.deepEqual(f.controller.getSnapshot().stoppedByUser, []);
+});
+
+test('traffic waiting behind Apply expires without starting after the deadline', async () => {
+    const f = fixture();
+    await start(f);
+    let release!: () => void;
+    f.hold(
+        () =>
+            new Promise<void>((resolve) => {
+                release = resolve;
+            }),
+    );
+    const applying = f.controller.apply();
+    await settle();
+    const result = await f.controller.coldStart('api', Date.now() + 20);
+    assert.equal(result.ok, false);
+    assert.match(result.message, /deadline expired/);
+    release();
+    await applying;
+    assert.equal(
+        f.calls.some((call) => call.startsWith('cold:')),
+        false,
+    );
 });

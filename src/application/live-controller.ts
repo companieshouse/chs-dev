@@ -5,6 +5,7 @@ import {
     filterSshRequirements,
     isStopOnly,
     LiveFailure,
+    LifecycleBlocked,
     PlanChangeRequired,
     SshSetupRequired,
     previewChanges,
@@ -26,6 +27,7 @@ import {
     type SshSecretRequirement,
     type SshSetupStatus,
 } from '../domain/live.js';
+import { dependencyOrder } from '../domain/service-dependencies.js';
 import { safeLog } from '../domain/live-logs.js';
 import type {
     ContainerManager,
@@ -73,18 +75,69 @@ type RevisionPlan = {
     observed: RuntimeSnapshot;
 };
 
-function settle(
-    pending: Map<string, ((result: ServiceResult) => void)[]>,
-    result: ServiceResult,
-) {
-    for (const callbacks of pending.values())
-        for (const callback of callbacks) callback(result);
-}
-
 /** Exit codes from a normal stop: success, SIGINT, SIGKILL and SIGTERM. */
 const stopExitCodes = [0, 130, 137, 143];
 const isActive = (container: RuntimeContainer) =>
     isActiveContainer(container.lifecycle);
+
+function appliedChain(service: string, observed: RuntimeSnapshot) {
+    const containers = new Map(
+        observed.containers.map((container) => [container.service, container]),
+    );
+    const dependencies = new Map(
+        observed.containers.map((container) => [
+            container.service,
+            container.policy?.dependencies ?? [],
+        ]),
+    );
+    return dependencyOrder(service, dependencies).map((name) => {
+        const container = containers.get(name);
+        if (!container?.policy)
+            throw new LifecycleBlocked(
+                `Applied lifecycle metadata is unavailable for ${name}. Apply configuration first.`,
+            );
+        return container;
+    });
+}
+
+function actionTargets(
+    observed: RuntimeSnapshot,
+    services: readonly string[],
+    action: ContainerAction,
+) {
+    return observed.containers.filter((container) => {
+        if (
+            !services.includes(container.ownerService ?? container.service) &&
+            !services.includes(container.service)
+        )
+            return false;
+        if (action === 'start') return !isActive(container);
+        return action !== 'stop' || isActive(container);
+    });
+}
+
+function assertIdleTarget(service: string, observed: RuntimeSnapshot) {
+    const target = appliedChain(service, observed).at(-1)!;
+    if (!target.policy!.lazy && !target.policy!.reclaimable)
+        throw new LifecycleBlocked(
+            `${service} is not managed for idle unload. Apply configuration first.`,
+        );
+    for (const container of observed.containers) {
+        if (
+            !isActive(container) ||
+            (container.ownerService ?? container.service) === service
+        )
+            continue;
+        const needed = appliedChain(container.service, observed).some(
+            (dependency) =>
+                (dependency.ownerService ?? dependency.service) === service,
+        );
+        if (needed)
+            throw new LifecycleBlocked(
+                `${container.ownerService ?? container.service} is still running and requires ${service}.`,
+            );
+    }
+}
 
 function modeChanges(
     revision: ConfigurationRevision,
@@ -134,8 +187,9 @@ function observedServiceHealth(
         (container) =>
             inventory.has(container.service) &&
             container.lifecycle === 'exited' &&
-            container.exitCode !== undefined &&
-            !stopExitCodes.includes(container.exitCode),
+            (container.oomKilled === true ||
+                (container.exitCode !== undefined &&
+                    !stopExitCodes.includes(container.exitCode))),
     );
 
     return { anyUp, crashed };
@@ -148,7 +202,6 @@ export class LiveController {
     private operation?: Promise<void>;
     private release?: () => Promise<void>;
     private releasing?: Promise<void>;
-    private queued = false;
     private paused = false;
     private closed = false;
     private authentication?: 'aws' | 'ecr';
@@ -164,8 +217,6 @@ export class LiveController {
     private pollAbort?: AbortController;
     private pollOperation?: Promise<void>;
     private phaseStarted = Date.now();
-    /** Development services waiting to be rebuilt by the next apply. */
-    private reloads = new Map<string, ((result: ServiceResult) => void)[]>();
 
     constructor(private readonly dependencies: LiveDependencies) {
         this.state = {
@@ -430,7 +481,8 @@ export class LiveController {
 
     /** Applies the saved configuration now (also used for Try again and fixes). */
     apply(): Promise<void> {
-        if (this.closed) return Promise.resolve();
+        if (this.closed || this.state.busy)
+            return this.operation ?? Promise.resolve();
         if (!this.state.running) return this.start();
 
         this.dependencies.eventSink?.('live.retry');
@@ -456,9 +508,7 @@ export class LiveController {
         if (this.closed) return;
 
         this.dependencies.eventSink?.('live.disable');
-        this.queued = false;
         this.paused = false;
-        this.dropReloads('Reload cancelled: the environment was stopped.');
         this.update({ running: false, plan: undefined });
 
         if (this.state.busy) {
@@ -555,7 +605,10 @@ export class LiveController {
                         : [],
                 });
                 if (container.currentProject && container.service) {
-                    this.updateManualStops([container.service], action);
+                    this.updateManualStops(
+                        [container.ownerService ?? container.service],
+                        action,
+                    );
                 }
                 result = { ok: true, message: operation.message };
             } catch (error) {
@@ -587,11 +640,41 @@ export class LiveController {
         this.update({ stoppedByUser: [...stopped].sort() });
     }
 
-    /** Restarts, stops or starts existing containers for the given services. */
-    async serviceAction(
+    /** Restarts, stops or starts existing containers and records explicit intent. */
+    serviceAction(
         services: readonly string[],
         action: ContainerAction,
-    ): Promise<{ ok: boolean; message: string }> {
+    ): Promise<ServiceResult> {
+        return this.changeServices(services, action, true);
+    }
+
+    /** Idle unload never creates a manual hold or breaks a running dependent. */
+    idleUnload(service: string): Promise<ServiceResult> {
+        if (!this.state.running || this.paused)
+            return Promise.resolve({
+                ok: false,
+                message: 'The environment is stopped or paused.',
+            });
+        return this.changeServices([service], 'stop', false);
+    }
+
+    private async serviceTargets(
+        services: readonly string[],
+        action: ContainerAction,
+        manual: boolean,
+        signal: AbortSignal,
+    ) {
+        const observed = await this.dependencies.runtime.snapshot(signal);
+        const targets = actionTargets(observed, services, action);
+        if (!manual && targets.length) assertIdleTarget(services[0]!, observed);
+        return targets;
+    }
+
+    private async changeServices(
+        services: readonly string[],
+        action: ContainerAction,
+        manual: boolean,
+    ): Promise<ServiceResult> {
         if (this.state.busy || this.closed || !services.length)
             return { ok: false, message: 'The environment is busy.' };
 
@@ -614,17 +697,16 @@ export class LiveController {
 
             try {
                 await this.lock();
-                const observed =
-                    await this.dependencies.runtime.snapshot(signal);
-                const containers = observed.containers.filter(
-                    (container) =>
-                        services.includes(container.service) &&
-                        (action === 'start'
-                            ? !isActive(container)
-                            : action === 'stop'
-                              ? isActive(container)
-                              : true),
+                const containers = await this.serviceTargets(
+                    services,
+                    action,
+                    manual,
+                    signal,
                 );
+                if (!manual && !containers.length) {
+                    outcome = { ok: true, message: 'Already stopped.' };
+                    return;
+                }
                 if (!containers.length)
                     throw new Error(
                         action === 'start'
@@ -643,7 +725,7 @@ export class LiveController {
                         },
                     ),
                 );
-                this.updateManualStops(services, action);
+                if (manual) this.updateManualStops(services, action);
                 outcome = {
                     ok: true,
                     message: `${verb === 'Stop' ? 'Stopped' : `${verb}ed`} ${names}.`,
@@ -665,22 +747,111 @@ export class LiveController {
         return outcome;
     }
 
-    /**
-     * Rebuilds a development service from source. Runs through the normal apply
-     * so AWS, SSH and preparation checks still happen, then recreates the
-     * service and its builder. Resolves when that apply finishes.
-     */
-    reloadService(service: string): Promise<ServiceResult> {
-        if (this.closed)
-            return Promise.resolve({
+    private requireUnheld(service: string, observed: RuntimeSnapshot) {
+        const stopped = appliedChain(service, observed).find((container) =>
+            this.state.stoppedByUser.includes(
+                container.ownerService ?? container.service,
+            ),
+        );
+        if (stopped)
+            throw new LifecycleBlocked(
+                `${stopped.ownerService ?? stopped.service} was manually stopped. Start it explicitly before requesting ${service}.`,
+            );
+    }
+
+    private assertAutomaticStart(deadline: number) {
+        if (this.closed || !this.state.running)
+            throw new LifecycleBlocked(
+                'The environment is stopped. Start the environment explicitly.',
+            );
+        if (this.paused)
+            throw new LifecycleBlocked(
+                'The environment is paused. Inspect it and Apply explicitly.',
+            );
+        if (Date.now() >= deadline)
+            throw new LifecycleBlocked(
+                'The environment is busy. The cold-start deadline expired.',
+            );
+    }
+
+    private async waitForAutomaticTurn(deadline: number) {
+        let timer: ReturnType<typeof setTimeout>;
+        const expired = new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, Math.max(0, deadline - Date.now()));
+        });
+        try {
+            await Promise.race([this.waitUntilIdle(), expired]);
+        } finally {
+            clearTimeout(timer!);
+        }
+    }
+
+    /** Traffic starts use applied state and never release manual stops. */
+    async coldStart(service: string, deadline: number): Promise<ServiceResult> {
+        try {
+            this.assertAutomaticStart(deadline);
+            while (this.state.busy) {
+                await this.waitForAutomaticTurn(deadline);
+                this.assertAutomaticStart(deadline);
+            }
+        } catch (error) {
+            return {
                 ok: false,
-                message: 'The environment is closed.',
-            });
+                message:
+                    error instanceof LifecycleBlocked
+                        ? error.message
+                        : 'Automatic start failed. View environment logs.',
+            };
+        }
+        this.update({ busy: true, activity: `Cold start: ${service}…` });
+        this.abort = new AbortController();
+        const signal = this.abort.signal;
+        let result: ServiceResult = {
+            ok: false,
+            message: 'Automatic start failed. View environment logs.',
+        };
+        await this.run_(async () => {
+            try {
+                await this.lock();
+                signal.throwIfAborted();
+                this.assertAutomaticStart(deadline);
+                const observed =
+                    await this.dependencies.runtime.snapshot(signal);
+                this.requireUnheld(service, observed);
+                this.accept(
+                    await this.dependencies.runtime.startApplied(service, {
+                        signal,
+                        onOutput: (entry) => this.log(entry.text),
+                    }),
+                );
+                result = {
+                    ok: true,
+                    message: `Started ${service} from applied configuration.`,
+                };
+            } catch (error) {
+                if (error instanceof LifecycleBlocked)
+                    result = { ok: false, message: error.message };
+                this.log(
+                    `Cold start of ${service} failed: ${safeLog(error instanceof Error ? error.message : String(error))}`,
+                );
+            } finally {
+                await this.refresh();
+                this.update({ busy: false, activity: undefined });
+                await this.unlock();
+            }
+        });
+        return result;
+    }
+
+    /** Reload uses immutable applied artifacts and never activates pending edits. */
+    async reloadService(service: string): Promise<ServiceResult> {
+        if (this.closed || this.state.busy)
+            return { ok: false, message: 'The environment is busy or closed.' };
         if (!this.state.running)
-            return Promise.resolve({
+            return {
                 ok: false,
-                message: 'Start the environment (Ctrl+E) before reloading.',
-            });
+                message: 'Start the environment before reloading.',
+            };
         if (
             !this.state.observed?.containers.some(
                 (container) =>
@@ -688,27 +859,57 @@ export class LiveController {
                     container.mode === 'Development',
             )
         )
-            return Promise.resolve({
+            return {
                 ok: false,
                 message: `${service} is not running in Development mode.`,
-            });
-
-        return new Promise((resolve) => {
-            this.reloads.set(service, [
-                ...(this.reloads.get(service) ?? []),
-                resolve,
-            ]);
-            this.dependencies.eventSink?.('live.reload', { status: 'start' });
-            this.paused = false;
-            this.update({ action: 'apply' });
-            this.request();
+            };
+        this.update({ busy: true, activity: `Reload: ${service}…` });
+        this.abort = new AbortController();
+        const signal = this.abort.signal;
+        let result: ServiceResult = { ok: false, message: 'Reload cancelled.' };
+        this.dependencies.eventSink?.('live.reload', { status: 'start' });
+        await this.run_(async () => {
+            try {
+                await this.lock();
+                signal.throwIfAborted();
+                const revision = await this.dependencies.configuration.read();
+                if (revision.identity !== (this.applied ?? this.baseline))
+                    throw new LifecycleBlocked(
+                        'Apply saved changes before reloading a service.',
+                    );
+                if (this.state.stoppedByUser.length)
+                    this.requireUnheld(
+                        service,
+                        await this.dependencies.runtime.snapshot(signal),
+                    );
+                this.accept(
+                    await this.dependencies.runtime.reloadApplied(service, {
+                        signal,
+                        onOutput: (entry) => this.log(entry.text),
+                    }),
+                );
+                result = { ok: true, message: `Rebuilt ${service}.` };
+            } catch (error) {
+                result = {
+                    ok: false,
+                    message: `Reload failed: ${safeLog(error instanceof Error ? error.message : String(error))}`,
+                };
+            } finally {
+                this.log(result.message);
+                await this.refresh();
+                this.update({
+                    busy: false,
+                    activity: undefined,
+                    message: result.message,
+                });
+                this.dependencies.eventSink?.('live.reload', {
+                    status: result.ok ? 'success' : 'failed',
+                    count: 1,
+                });
+                await this.unlock();
+            }
         });
-    }
-
-    private dropReloads(message: string) {
-        const pending = new Map(this.reloads);
-        this.reloads.clear();
-        settle(pending, { ok: false, message });
+        return result;
     }
 
     async serviceLogs(
@@ -793,7 +994,7 @@ export class LiveController {
             return;
         if (this.authentication === 'ecr' && kind !== 'registry') return;
 
-        // The queued operation performs the fresh verification with its owned signal.
+        // Recovery performs fresh verification with its owned signal.
         this.authentication = undefined;
         this.dependencies.eventSink?.('live.recovery', { status: 'start' });
         this.request();
@@ -802,8 +1003,6 @@ export class LiveController {
     cancel() {
         this.dependencies.eventSink?.('live.cancel');
         this.paused = true;
-        this.queued = false;
-        this.dropReloads('Reload cancelled.');
 
         if (this.state.busy) {
             this.update({
@@ -815,12 +1014,14 @@ export class LiveController {
     }
 
     private request() {
-        if (!this.state.running || this.paused || this.closed) return;
-
-        this.queued = true;
+        if (
+            !this.state.running ||
+            this.paused ||
+            this.closed ||
+            this.state.busy
+        )
+            return;
         this.dependencies.eventSink?.('live.queue');
-        if (this.state.busy) return;
-
         void this.run_(() => this.run());
     }
 
@@ -893,9 +1094,6 @@ export class LiveController {
 
     private async run() {
         const started = Date.now();
-        this.queued = false;
-        const reloading = new Map(this.reloads);
-        this.reloads.clear();
         this.update({
             busy: true,
             phase: 'Checking',
@@ -905,37 +1103,22 @@ export class LiveController {
         });
         this.abort = new AbortController();
         const signal = this.abort.signal;
-        const progress = { reloaded: false };
 
         try {
-            await this.applyConfiguration(reloading, signal, started, progress);
+            await this.applyConfiguration(signal, started);
         } catch (error) {
             this.reportRunFailure(signal, error, started);
         } finally {
-            await this.settleRun(reloading, progress.reloaded);
+            await this.settleRun();
         }
     }
 
     /** Resolves the current configuration and applies it to the runtime. */
-    private async applyConfiguration(
-        reloading: Map<string, ((result: ServiceResult) => void)[]>,
-        signal: AbortSignal,
-        started: number,
-        progress: { reloaded: boolean },
-    ) {
+    private async applyConfiguration(signal: AbortSignal, started: number) {
         const plan = await this.resolveRevision(signal);
         const { revision, observed } = plan;
         this.update({ observed });
         this.assertIdentity(plan.resolved, revision, observed);
-        if (
-            reloading.size &&
-            revision.identity !== (this.applied ?? this.baseline)
-        )
-            throw new LiveFailure(
-                'Apply saved changes before reloading a service.',
-                'blocked',
-            );
-
         const changes = previewChanges(revision, observed);
         if (
             this.state.action === 'start' &&
@@ -949,14 +1132,8 @@ export class LiveController {
             onOutput: (entry: { text: string }) => this.log(entry.text),
         };
         let partial: PreparedProject | undefined;
-        if (this.needsApply(revision, observed, changes, reloading))
-            partial = await this.applyChanges(
-                plan,
-                reloading,
-                signal,
-                context,
-                progress,
-            );
+        if (this.needsApply(revision, observed, changes))
+            partial = await this.applyChanges(plan, signal, context);
 
         signal.throwIfAborted();
         this.update({ phase: 'Applying' });
@@ -971,11 +1148,7 @@ export class LiveController {
 
         this.applied = revision.identity;
         this.authentication = undefined;
-        this.reportApplied(
-            partial,
-            progress,
-            [...reloading.keys()].sort().join(', '),
-        );
+        this.reportApplied(partial);
         this.dependencies.eventSink?.('live.recovery', {
             status: 'success',
             durationMs: Date.now() - started,
@@ -1066,20 +1239,16 @@ export class LiveController {
     }
 
     /** Final message and log for an apply, noting durable-start exclusions. */
-    private reportApplied(
-        partial: PreparedProject | undefined,
-        progress: { reloaded: boolean },
-        reloadedNames: string,
-    ) {
+    private reportApplied(partial: PreparedProject | undefined) {
         this.logExclusions(partial);
         const excluded = excludedServices(partial);
         this.update({
             phase: 'Running',
             changes: undefined,
             exclusions: partial?.exclusions,
-            message: appliedMessage(excluded, progress.reloaded, reloadedNames),
+            message: appliedMessage(excluded),
         });
-        this.log(appliedCompletion(excluded, progress.reloaded, reloadedNames));
+        this.log(appliedCompletion(excluded));
     }
 
     /** Durable start: every exclusion with cause and remediation, in the log. */
@@ -1166,8 +1335,8 @@ export class LiveController {
         revision: ConfigurationRevision,
         observed: RuntimeSnapshot,
         changes: LivePreview,
-        reloading: Map<string, ((result: ServiceResult) => void)[]>,
     ) {
+        if (this.state.action === 'apply') return revision.inventory.length > 0;
         const stopOnly = isStopOnly(revision, observed);
         const modeDrift = modeChanges(revision, observed).length > 0;
         const unchanged =
@@ -1178,11 +1347,10 @@ export class LiveController {
 
         return (
             revision.inventory.length > 0 &&
-            (reloading.size > 0 ||
-                (!unchanged &&
-                    (!stopOnly ||
-                        (this.applied !== revision.identity &&
-                            changes.stop.length === 0))))
+            !unchanged &&
+            (!stopOnly ||
+                (this.applied !== revision.identity &&
+                    changes.stop.length === 0))
         );
     }
 
@@ -1210,13 +1378,11 @@ export class LiveController {
 
     private async applyChanges(
         plan: RevisionPlan,
-        reloading: Map<string, ((result: ServiceResult) => void)[]>,
         signal: AbortSignal,
         context: {
             signal: AbortSignal;
             onOutput: (entry: { text: string }) => void;
         },
-        progress: { reloaded: boolean },
     ): Promise<PreparedProject | undefined> {
         const { revision, resolved, observed } = plan;
         await this.ensureSshSetup(resolved.sshRequirements, signal);
@@ -1249,19 +1415,6 @@ export class LiveController {
             }),
         );
 
-        if (reloading.size) {
-            signal.throwIfAborted();
-            const services = [...reloading.keys()].sort();
-            this.log(`Reload: ${services.join(', ')}`);
-            this.accept(
-                await this.dependencies.runtime.reload(
-                    prepared,
-                    services,
-                    context,
-                ),
-            );
-            progress.reloaded = true;
-        }
         return prepared;
     }
 
@@ -1289,7 +1442,6 @@ export class LiveController {
         });
         if (signal.aborted) {
             this.paused = true;
-            this.dropReloads('Reload cancelled.');
             this.update({
                 phase: 'Blocked',
                 blocked: 'cancelled',
@@ -1313,44 +1465,11 @@ export class LiveController {
         this.report(error);
     }
 
-    private async settleRun(
-        reloading: Map<string, ((result: ServiceResult) => void)[]>,
-        reloaded: boolean,
-    ) {
+    private async settleRun() {
         await this.cleanup();
         await this.refresh();
         this.update({ busy: false });
-        this.settleReloads(reloading, reloaded);
-
-        if (this.closed) {
-            await this.unlock();
-            return;
-        }
-        if (this.state.running && this.queued && !this.paused) this.request();
-    }
-
-    private settleReloads(
-        reloading: Map<string, ((result: ServiceResult) => void)[]>,
-        reloaded: boolean,
-    ) {
-        if (!reloading.size) return;
-
-        this.dependencies.eventSink?.('live.reload', {
-            status: reloaded ? 'success' : 'failed',
-            count: reloading.size,
-        });
-        settle(
-            reloading,
-            reloaded
-                ? {
-                      ok: true,
-                      message: `Rebuilt ${[...reloading.keys()].sort().join(', ')}.`,
-                  }
-                : {
-                      ok: false,
-                      message: `Reload failed: ${this.state.message || 'the environment did not apply.'}`,
-                  },
-        );
+        if (this.closed) await this.unlock();
     }
 
     private changes(
@@ -1491,8 +1610,7 @@ export class LiveController {
             this.state.running &&
             this.state.phase === 'Running' &&
             !anyUp &&
-            !crashed &&
-            !this.queued
+            !crashed
         ) {
             update.running = false;
             update.phase = 'Stopped';
@@ -1536,9 +1654,7 @@ export class LiveController {
 
     async shutdown() {
         this.closed = true;
-        this.queued = false;
         this.paused = true;
-        this.dropReloads('Reload cancelled: chs-dev is closing.');
 
         if (this.state.busy) this.abort?.abort();
         this.pollAbort?.abort();
@@ -1558,26 +1674,16 @@ function excludedServices(partial: PreparedProject | undefined): string[] {
         : [];
 }
 
-function appliedMessage(
-    excluded: readonly string[],
-    reloaded: boolean,
-    reloadedNames: string,
-): string {
+function appliedMessage(excluded: readonly string[]): string {
     if (excluded.length) {
         return `Applied with ${excluded.length} service${excluded.length === 1 ? '' : 's'} excluded (see log).`;
     }
-    return reloaded ? `Rebuilt ${reloadedNames}.` : 'Configuration applied.';
+    return 'Configuration applied.';
 }
 
-function appliedCompletion(
-    excluded: readonly string[],
-    reloaded: boolean,
-    reloadedNames: string,
-): string {
+function appliedCompletion(excluded: readonly string[]): string {
     if (excluded.length) {
         return `Completed: applied with ${excluded.length} excluded: ${excluded.join(', ')}. Fix the reported variables and apply again to start them.`;
     }
-    return reloaded
-        ? `Completed: rebuilt ${reloadedNames}.`
-        : 'Completed: configuration applied.';
+    return 'Completed: configuration applied.';
 }

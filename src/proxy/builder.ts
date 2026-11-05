@@ -67,7 +67,10 @@ function fingerprintByService(containers: ContainerSummary[]) {
     const marks = new Map<string, string>();
     for (const container of containers)
         if (container.service)
-            marks.set(container.service, `${container.id}:${container.state}`);
+            marks.set(
+                container.service,
+                `${container.id}:${container.state}:${container.health ?? ''}`,
+            );
     return marks;
 }
 
@@ -121,7 +124,7 @@ async function rebuild(
         dependencies.set(service, policy.dependencies);
         if (policy.lazy || policy.reclaimable) lazy.add(service);
         if (!routable(container.state, service, lazy)) continue;
-        if (isRunning(container.state)) {
+        if (readyForTraffic(container.state, details.health)) {
             addresses.set(service, addressOf(details));
             published.set(service, publishedPorts(details));
         }
@@ -143,6 +146,10 @@ async function rebuild(
 
 function routable(state: string, service: string, lazy: ReadonlySet<string>) {
     return !UNROUTED.has(service) && (isRunning(state) || lazy.has(service));
+}
+
+function readyForTraffic(state: string, health: string | undefined) {
+    return isRunning(state) && (health === undefined || health === 'healthy');
 }
 
 function isRunning(state: string) {

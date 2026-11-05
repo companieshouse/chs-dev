@@ -112,3 +112,76 @@ test('daemon proxy uses applied route metadata across repeated requests and save
     assert.deepEqual(await request(port), { status: 200, body: 'applied api' });
     assert.deepEqual(proxy.state().lazy, ['api']);
 });
+
+test('real proxy traffic reports manual holds without releasing shared daemon intent', async (t) => {
+    const f = await daemonFixture();
+    t.after(() => f.close());
+    const client = await f.client();
+    await client.command('environment.start', {});
+    const store = f.stores.get(f.directory)!;
+    store.containers[0]!.policy = {
+        version: 1,
+        lazy: true,
+        reclaimable: false,
+        dependencies: [],
+    };
+    await client.command('service.action', {
+        services: ['api'],
+        action: 'stop',
+    });
+    const details = (): ContainerDetails => ({
+        id: store.containers[0]!.id,
+        name: 'api',
+        service: 'api',
+        image: 'api:1',
+        state: store.containers[0]!.lifecycle,
+        status: 'Stopped',
+        currentProject: true,
+        ports: [],
+        mounts: [],
+        networks: [],
+        inspection: {
+            Config: {
+                Labels: {
+                    'traefik.http.routers.api.rule': 'Host(`api.chs.local`)',
+                    'traefik.http.services.api.loadbalancer.server.port':
+                        '8080',
+                    'chs.dev.lifecycle': JSON.stringify(
+                        store.containers[0]!.policy,
+                    ),
+                },
+            },
+        },
+    });
+    const manager: ContainerManager = {
+        list: async () => (store.containers.length ? [details()] : []),
+        inspect: async () => details(),
+        logs: async () => [],
+        action: async () => {
+            throw new Error('Proxy must use shared controller');
+        },
+    };
+    const reservation = http.createServer();
+    const port = await listen(reservation);
+    await new Promise<void>((resolve) => {
+        reservation.close(() => resolve());
+    });
+    const proxy = startDaemonProxy({
+        runtime: () =>
+            ({ containers: () => manager }) as unknown as RuntimeStrategy,
+        controller: () => f.controller,
+        portOverride: port,
+    });
+    t.after(() => proxy.close());
+    await proxy.listening;
+    const held = await request(port);
+    assert.equal(held.status, 503);
+    assert.match(held.body, /api was manually stopped.*Start it explicitly/);
+    assert.deepEqual(f.app.snapshot().live.stoppedByUser, ['api']);
+    assert.equal(store.containers[0]!.lifecycle, 'exited');
+    assert.equal(f.engine.applies, 1);
+    await client.command('environment.stop', {});
+    assert.equal((await request(port)).status, 404);
+    assert.equal(f.app.snapshot().live.running, false);
+    assert.equal(store.containers.length, 0);
+});

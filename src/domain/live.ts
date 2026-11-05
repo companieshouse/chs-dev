@@ -53,9 +53,8 @@ export function appliedServicePolicy(
             (name) => typeof name === 'string' && name.length > 0,
         )
     )
-        throw new LiveFailure(
+        throw new LifecycleBlocked(
             `Applied lifecycle metadata is missing or unsupported for ${service}. Apply configuration before using lazy services.`,
-            'blocked',
         );
     return value as AppliedServicePolicy;
 }
@@ -366,6 +365,8 @@ export interface RuntimeContainer {
     health?: string;
     exitCode?: number;
     oomKilled?: boolean;
+    policy?: AppliedServicePolicy;
+    composeFiles?: readonly string[];
 }
 export interface RuntimeSnapshot {
     projectName: string;
@@ -382,6 +383,15 @@ export interface LiveRuntime {
     close?(): Promise<void>;
     checkAvailability(signal?: AbortSignal): Promise<RuntimeAvailability>;
     snapshot(signal?: AbortSignal): Promise<RuntimeSnapshot>;
+    reloadApplied(
+        service: string,
+        context: OperationContext,
+    ): Promise<RuntimeOperationResult>;
+    /** Starts from owned immutable applied artifacts, preserving Compose conditions. */
+    startApplied(
+        service: string,
+        context: OperationContext,
+    ): Promise<RuntimeOperationResult>;
     apply(
         project: PreparedProject,
         context: LiveApplyContext,
@@ -494,6 +504,13 @@ export class LiveFailure extends Error {
         super(message);
     }
 }
+/** A controlled automatic-lifecycle denial safe to show to a local requester. */
+export class LifecycleBlocked extends LiveFailure {
+    constructor(message: string) {
+        super(message, 'blocked');
+    }
+}
+
 export class PlanChangeRequired extends LiveFailure {
     constructor(readonly plan: LivePreview) {
         super(

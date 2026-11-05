@@ -48,29 +48,7 @@ export interface ServiceLifecycle {
     coldStarting(): string[];
 }
 
-/**
- * The start chain for a called service: its transitive dependencies in
- * dependency-first order, then the service itself. Dependencies that are
- * already running are started again harmlessly by callers filtering to
- * stopped containers; eager dependencies are included because a starting
- * service needs them regardless of their own start mode.
- */
-export function lazyChain(
-    service: string,
-    dependencies: ReadonlyMap<string, readonly string[]>,
-): string[] {
-    const ordered: string[] = [];
-    const visited = new Set<string>();
-    const visit = (name: string) => {
-        if (visited.has(name)) return;
-        visited.add(name);
-        for (const dependency of dependencies.get(name) ?? [])
-            visit(dependency);
-        ordered.push(name);
-    };
-    visit(service);
-    return ordered;
-}
+export { dependencyOrder as lazyChain } from '../domain/service-dependencies.js';
 
 interface LifecycleDependencies {
     isLazy(service: string): boolean;

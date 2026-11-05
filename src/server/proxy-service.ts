@@ -7,6 +7,7 @@ import {
 import type { UsageLedger } from '../proxy/usage-ledger.js';
 import {
     createLazyLifecycle,
+    COLD_START_HOLD_MS,
     IDLE_SWEEP_MS,
     lazyChain,
     type ProxyLog,
@@ -14,6 +15,7 @@ import {
 } from '../proxy/lifecycle.js';
 import type { Route } from '../proxy/routes.js';
 import type { ContainerManager } from '../domain/containers.js';
+import { LifecycleBlocked } from '../domain/live.js';
 import type { LiveController } from '../application/live-controller.js';
 import type { RuntimeStrategy } from '../domain/runtime-strategy.js';
 import { DockerComposeStrategy } from '../infrastructure/runtimes/docker-compose.js';
@@ -142,11 +144,7 @@ function daemonLifecycle(
             routingRef.current?.chainFor(service) ?? [service],
         isLazy: (service) =>
             routingRef.current?.knownLazy.has(service) ?? false,
-        ...controllerLifecycle(controller, log, (service) =>
-            routingRef.current
-                ? routingRef.current.chainFor(service)
-                : [service],
-        ),
+        ...controllerLifecycle(controller, log),
     });
 }
 
@@ -235,27 +233,31 @@ function observedDirectory(controller: LiveController | undefined) {
 }
 
 /**
- * Starts and stops services through the live controller (existing path).
- * A start carries the service's whole dependency chain, dependencies first,
- * so a cold-started lazy service finds its lazy dependencies running.
+ * Automatic lifecycle actions share the controller owner while retaining
+ * manual-stop and stopped-environment intent.
  */
 function controllerLifecycle(
     controller: (() => LiveController | undefined) | undefined,
     log: (message: string) => void,
-    chainFor: (service: string) => string[] = (service) => [service],
 ) {
-    const act = async (
-        services: readonly string[],
-        action: 'start' | 'stop',
-    ): Promise<void> => {
+    const requireController = () => {
         const live = controller?.();
-        if (!live) throw new Error('The environment is not running.');
-        const result = await live.serviceAction(services, action);
-        if (!result.ok) throw new Error(result.message || `${action} failed`);
+        if (!live)
+            throw new LifecycleBlocked(
+                'The environment is stopped. Start it explicitly.',
+            );
+        return live;
+    };
+    const accepted = (result: { ok: boolean; message: string }) => {
+        if (!result.ok) throw new LifecycleBlocked(result.message);
     };
     return {
-        start: (service: string) => act(chainFor(service), 'start'),
-        stop: (service: string) => act([service], 'stop'),
+        start: async (
+            service: string,
+            deadline = Date.now() + COLD_START_HOLD_MS,
+        ) => accepted(await requireController().coldStart(service, deadline)),
+        stop: async (service: string) =>
+            accepted(await requireController().idleUnload(service)),
         log,
     };
 }

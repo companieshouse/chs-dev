@@ -1,5 +1,6 @@
 import http from 'node:http';
 import net from 'node:net';
+import { LifecycleBlocked } from '../domain/live.js';
 import { lookupRoute, type Route } from './routes.js';
 import type { RequestAccounting } from './accounting.js';
 import { isHealthcheck } from './accounting.js';
@@ -42,17 +43,26 @@ export function handleProxyRequest(
     response: http.ServerResponse,
 ): Promise<void> {
     const deadline = Date.now() + (options.holdMs ?? COLD_START_HOLD_MS);
-    return respond(options, request, response, deadline).catch(() => {
-        options.log?.('Proxy request failed.', {
-            cause: 'route-load-failed',
-            status: 'failed',
-        });
-        if (response.destroyed) return;
-        if (!response.headersSent) {
-            response.writeHead(502, { 'content-type': 'text/plain' });
-            response.end('Upstream failed.');
-        } else response.end();
-    });
+    return respond(options, request, response, deadline).catch(
+        (error: unknown) => {
+            options.log?.('Proxy request failed.', {
+                cause: 'route-load-failed',
+                status: 'failed',
+            });
+            if (response.destroyed) return;
+            if (!response.headersSent) {
+                response.writeHead(
+                    error instanceof LifecycleBlocked ? 503 : 502,
+                    { 'content-type': 'text/plain' },
+                );
+                response.end(
+                    error instanceof LifecycleBlocked
+                        ? error.message
+                        : 'Upstream failed.',
+                );
+            } else response.end();
+        },
+    );
 }
 
 async function respond(
@@ -173,14 +183,20 @@ async function coldStart(
             holdExpired(options, route, response);
             return undefined;
         }
-    } catch {
+    } catch (error) {
         log(`cold start of ${route.service} failed`, {
             service: route.service,
             cause: 'start-failed',
             status: 'failed',
         });
-        response.writeHead(502, { 'content-type': 'text/plain' });
-        response.end(`Service ${route.service} could not be started.`);
+        response.writeHead(error instanceof LifecycleBlocked ? 503 : 502, {
+            'content-type': 'text/plain',
+        });
+        response.end(
+            error instanceof LifecycleBlocked
+                ? error.message
+                : `Service ${route.service} could not be started.`,
+        );
         return undefined;
     }
     const poll = options.pollMs ?? COLD_START_POLL_MS;

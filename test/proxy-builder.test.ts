@@ -243,3 +243,19 @@ test('foreign checkout containers cannot supply routes or lifecycle policy', asy
     assert.deepEqual([...resolved.lazy], []);
     assert.deepEqual([...resolved.dependencies], []);
 });
+
+test('health-enabled upstreams remain unavailable until healthy even when their TCP address is known', async () => {
+    const running = { ...container('api', 'api'), health: 'starting' };
+    const inspection = {
+        ...details('api', ROUTED, '127.0.0.1'),
+        health: 'starting',
+    };
+    const fake = stub([running], { api: inspection });
+    const builder = createRouteBuilder(fake.manager);
+    const starting = await builder.current();
+    assert.equal(starting.routes.length, 1);
+    assert.equal(starting.addresses.has('api'), false);
+    running.health = 'healthy';
+    inspection.health = 'healthy';
+    assert.equal((await builder.current()).addresses.get('api'), '127.0.0.1');
+});

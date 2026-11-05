@@ -199,6 +199,12 @@ export async function daemonFixture(
                                 projectDirectory: path,
                                 lifecycle: 'running',
                                 mode: entry.mode,
+                                policy: {
+                                    version: 1,
+                                    lazy: Boolean(entry.lazy),
+                                    reclaimable: Boolean(entry.reclaimable),
+                                    dependencies: [],
+                                },
                             }),
                         );
                         return success();
@@ -222,7 +228,16 @@ export async function daemonFixture(
                             );
                         return success();
                     },
-                    reload: async () => success(),
+                    reloadApplied: async () => success(),
+                    startApplied: async () => {
+                        actual!.containers = actual!.containers.map(
+                            (container) => ({
+                                ...container,
+                                lifecycle: 'running',
+                            }),
+                        );
+                        return success();
+                    },
                     logs: async () => ['fixture log'],
                     probe: async () => {
                         engine.probes++;
