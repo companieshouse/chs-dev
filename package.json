@@ -17,6 +17,7 @@
         "start": "node dist/entrypoints/chs-dev.js",
         "typecheck": "tsc --noEmit",
         "test": "node --import tsx --test test/*.test.ts test/*.test.mjs",
+        "test:local": "node scripts/test-local.mjs",
         "test:unit": "node --import tsx --test test/domain-state.test.ts test/service-dependencies.test.ts test/module-browser.test.ts test/navigation.test.ts test/enabled-tree.test.ts test/interactive-command.test.ts test/live-*.test.ts",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
