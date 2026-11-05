@@ -156,8 +156,12 @@ test('failed Stop leaves the original checkout selected', async () => {
     }
 });
 
-test('daemon recovery restores intent within a login but a new login requires Start', async () => {
-    const f = await daemonFixture();
+test('clean daemon recovery retains manual holds across a new login on the same engine', async () => {
+    const f = await daemonFixture(undefined, undefined, {
+        configure: (backend) => {
+            backend.runtime.engineIdentity = async () => 'fixture-engine';
+        },
+    });
     try {
         const client = await f.client();
         await client.command('environment.start', {});
@@ -165,19 +169,18 @@ test('daemon recovery restores intent within a login but a new login requires St
             services: ['api'],
             action: 'stop',
         });
-        await f.restart();
-        assert.deepEqual(f.app.snapshot().live.stoppedByUser, ['api']);
         const applies = f.engine.applies;
         await f.restart(true);
-        assert.equal(f.app.snapshot().live.running, false);
+        await eventually(
+            () => f.app.snapshot().live.running && !f.app.snapshot().live.busy,
+        );
+        assert.equal(f.app.snapshot().live.running, true);
+        assert.deepEqual(f.app.snapshot().live.stoppedByUser, ['api']);
         assert.equal(f.engine.applies, applies);
-        await f.app.query({
-            scope: f.app.snapshot().scope,
-            query: 'refresh',
-            args: {},
-        });
-        assert.equal(f.engine.applies, applies);
-        assert.equal(f.app.snapshot().live.running, false);
+        assert.equal(
+            (await f.controller.coldStart('api', Date.now() + 1000)).ok,
+            false,
+        );
     } finally {
         await f.close();
     }

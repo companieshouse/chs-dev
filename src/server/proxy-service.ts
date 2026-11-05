@@ -211,6 +211,7 @@ function createRouting(deps: {
     ): Promise<ProxyUpstream | undefined> => {
         const resolved = await refresh();
         if (!resolved) return undefined;
+        deps.controller?.()?.assertTrafficAllowed(route.service);
         const hostPort = resolved.published.get(route.service)?.get(route.port);
         if (hostPort) return { host: '127.0.0.1', port: hostPort };
         const address = resolved.addresses.get(route.service);

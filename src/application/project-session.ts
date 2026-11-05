@@ -14,7 +14,11 @@ import {
     type SessionSnapshot,
     type LogRequest,
 } from '../protocol/types.js';
-import type { ApplicationHost, BackendSession } from './ports.js';
+import type {
+    ApplicationHost,
+    BackendSession,
+    SessionIntent,
+} from './ports.js';
 import { Supervisor } from './supervisor.js';
 import type { Interactions } from './interactions.js';
 import type { UsageTracker } from './usage-tracker.js';
@@ -39,6 +43,9 @@ export class ProjectSession {
     private switching = false;
     private searchAbort?: AbortController;
     private lastIntent = '';
+    private engineIdentity?: string;
+    private intentEstablished = false;
+    private pendingRecovery?: SessionIntent;
     private stateFailure = '';
     private settingsQueue: Promise<unknown> = Promise.resolve();
     private configurationQueue: Promise<unknown> = Promise.resolve();
@@ -121,32 +128,141 @@ export class ProjectSession {
             ? (await this.host.validateProject(settings.project.value))
                   .directory
             : undefined;
-        const intent = this.resumableIntent(previous, backend, canonical);
-        await this.attach(await this.host.open(intent));
-    }
-    private resumableIntent(
-        previous: Awaited<ReturnType<ApplicationHost['readIntent']>>,
-        backend: string,
-        canonical?: string,
-    ) {
         if (
-            !previous ||
-            previous.hostSession !== this.host.hostSession ||
-            previous.backend !== backend ||
-            previous.switching ||
-            previous.scope.project !== canonical ||
-            !previous.intent
+            previous?.backend === backend &&
+            previous.scope.project === canonical &&
+            previous.intent
         )
-            return undefined;
+            this.pendingRecovery = previous;
+        await this.attach(await this.host.open());
+    }
+
+    private latestEnvironmentOperation(project: string) {
+        return this.operations
+            ?.list()
+            .reverse()
+            .filter(
+                (operation) =>
+                    operation.scope.project === project &&
+                    [
+                        'environment.start',
+                        'environment.apply',
+                        'environment.confirm',
+                        'environment.stop',
+                        'environment.cancel',
+                    ].includes(operation.kind),
+            )
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    }
+
+    private restoredIntent(previous: SessionIntent) {
+        const latest = this.latestEnvironmentOperation(previous.scope.project);
+        const kind = latest?.kind;
+        const failedStop =
+            kind === 'environment.stop' && latest!.state !== 'succeeded';
         return {
-            ...previous.intent,
-            paused:
+            ...previous.intent!,
+            running: failedStop ? false : previous.intent!.running,
+            paused: Boolean(
+                failedStop ||
+                kind === 'environment.cancel' ||
                 previous.interrupted ||
+                previous.switching ||
                 this.operations?.interruptedOnStartup ||
-                previous.intent.paused,
+                previous.intent!.paused,
+            ),
         };
     }
+
+    private async observeEngine(backend: BackendSession, signal?: AbortSignal) {
+        try {
+            return { identity: await backend.runtime.engineIdentity?.(signal) };
+        } catch {
+            this.update({
+                notice: 'Recovery is waiting for Docker identity. No automatic actions will run.',
+            });
+            return undefined;
+        }
+    }
+
+    private recoveryObsolete(
+        backend: BackendSession,
+        pending: SessionIntent | undefined,
+        signal?: AbortSignal,
+    ) {
+        return (
+            signal?.aborted ||
+            backend !== this.backend ||
+            pending !== this.pendingRecovery ||
+            this.closed ||
+            this.switching ||
+            !!this.stateFailure
+        );
+    }
+
+    private async recover(backend: BackendSession, signal?: AbortSignal) {
+        if (this.closed || this.switching || this.stateFailure) return;
+        const pending = this.pendingRecovery;
+        const observed = await this.observeEngine(backend, signal);
+        if (!observed || this.recoveryObsolete(backend, pending, signal))
+            return;
+        this.engineIdentity = observed.identity;
+        if (!pending) return;
+        if (
+            !observed.identity ||
+            observed.identity !== pending.engineIdentity
+        ) {
+            this.pendingRecovery = undefined;
+            this.update({
+                notice: 'Saved engine identity is unavailable or changed. Inspect the environment and Start explicitly.',
+            });
+            return;
+        }
+        await this.resumeCheckpoint(backend, pending, signal);
+    }
+
+    private async cancelPendingRecovery() {
+        const pending = this.pendingRecovery;
+        if (!pending) return false;
+        const cancelled = {
+            ...pending,
+            interrupted: true,
+            intent: { ...pending.intent!, paused: true },
+        };
+        this.pendingRecovery = cancelled;
+        try {
+            await this.host.writeIntent(cancelled);
+        } catch (error) {
+            this.persistenceFailed(error);
+            throw error;
+        }
+        if (this.pendingRecovery === cancelled)
+            this.update({
+                notice: 'Recovery cancelled. Inspect the environment and Start or Apply explicitly.',
+            });
+        return true;
+    }
+
+    private async resumeCheckpoint(
+        backend: BackendSession,
+        pending: SessionIntent,
+        signal?: AbortSignal,
+    ) {
+        const intent = this.restoredIntent(pending);
+        try {
+            await this.host.writeIntent({ ...pending, interrupted: true });
+            if (this.recoveryObsolete(backend, pending, signal)) return;
+            this.pendingRecovery = undefined;
+            this.intentEstablished = true;
+            await backend.controller?.restoreIntent(intent, signal);
+            await this.checkpoint(true);
+        } catch (error) {
+            this.persistenceFailed(error);
+        }
+    }
+
     private async attach(backend: BackendSession) {
+        this.intentEstablished = false;
         this.backend = backend;
         this.update({
             scope: {
@@ -200,7 +316,10 @@ export class ProjectSession {
             if (!this.switching) await this.refreshStatus(signal);
         });
         this.supervisor.every(2000, async (signal) => {
-            if (!this.switching) await backend.controller?.probe(signal);
+            if (this.switching) return;
+            if (!this.engineIdentity || this.pendingRecovery)
+                await this.recover(backend, signal);
+            await backend.controller?.probe(signal);
         });
         this.supervisor.every(30000, async (signal) => {
             this.update({ aws: await this.host.aws(signal) });
@@ -213,12 +332,18 @@ export class ProjectSession {
         this.update({ notice: this.stateFailure });
     }
     private checkpoint(force = false) {
+        if (this.pendingRecovery) return Promise.resolve();
+        const intent = this.intentEstablished
+            ? this.backend?.controller?.getIntent()
+            : undefined;
+        if (intent && ['Failed', 'Blocked'].includes(this.state.live.phase))
+            intent.paused = true;
         const value = {
             version: 1 as const,
-            hostSession: this.host.hostSession,
+            engineIdentity: this.engineIdentity,
             scope: this.state.scope,
             backend: 'docker/compose',
-            intent: this.backend?.controller?.getIntent(),
+            intent,
             interrupted: !!this.state.live.busy,
             switching: this.switching,
         };
@@ -360,6 +485,27 @@ export class ProjectSession {
     ): Promise<unknown> {
         this.validate(request, id);
         signal.throwIfAborted();
+        if (
+            this.pendingRecovery &&
+            ['service.action', 'service.reload', 'container.action'].includes(
+                request.command,
+            )
+        )
+            throw new ClientError({
+                code: 'RECOVERY_PENDING',
+                message:
+                    'Engine identity is still being checked. Wait, or Start/Stop the environment explicitly.',
+            });
+        if (
+            [
+                'environment.start',
+                'environment.apply',
+                'environment.stop',
+            ].includes(request.command)
+        ) {
+            this.pendingRecovery = undefined;
+            this.intentEstablished = true;
+        }
         const backend = this.backend!,
             controller = backend.controller;
         const requireController = () => {
@@ -436,6 +582,8 @@ export class ProjectSession {
                     value: await this.stopEnvironment(requireController()),
                 };
             case 'environment.cancel':
+                if (await this.cancelPendingRecovery())
+                    return { handled: true };
                 requireController().cancel();
                 await requireController().waitUntilIdle();
                 return { handled: true };

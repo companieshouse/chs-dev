@@ -393,6 +393,9 @@ test('legacy edits stay pending across observation and daemon restart until up a
         assert.equal(f.app.snapshot().configurationRevision, 'revision-2');
         await f.controller.poll();
         await f.restart();
+        await eventually(
+            () => f.app.snapshot().live.running && !f.app.snapshot().live.busy,
+        );
         await f.controller.poll();
         await new Promise((resolve) => {
             setTimeout(resolve, 350);
@@ -425,6 +428,9 @@ test('ordinary configuration saves and later external edits wait for explicit Ap
         assert.equal(configured.json().data.application, 'pending');
         await f.controller.poll();
         await f.restart();
+        await eventually(
+            () => f.app.snapshot().live.running && !f.app.snapshot().live.busy,
+        );
         f.stores.get(f.directory)!.revision++;
         await f.controller.poll();
         await new Promise((resolve) => {

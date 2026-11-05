@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { runCli } from '../src/cli/run.js';
+import { eventually } from './daemon-fixture.js';
 import { profileFixture } from './support/profile-fixture.js';
 
 async function invoke(
@@ -84,6 +85,9 @@ test('CLI CIDEV copying is preview-only by default and version-only saves stay d
     assert.equal(f.app.snapshot().details.api.mockScenario, 'error');
     await f.controller.poll();
     await f.restart();
+    await eventually(
+        () => f.app.snapshot().live.running && !f.app.snapshot().live.busy,
+    );
     await f.controller.poll();
     assert.equal(f.engine.applies, applies);
     assert.equal(f.app.snapshot().live.changes?.edited, true);

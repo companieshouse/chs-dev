@@ -7,7 +7,7 @@ import { resolveSettings } from '../src/domain/settings.js';
 import { commandRequest } from '../src/protocol/schemas.js';
 import { ClientError, protocolVersion } from '../src/protocol/types.js';
 
-test('only matching Compose intent is passed to a new backend; old native work is not resumed', async () => {
+test('saved intent is never passed into a backend before engine identity is verified', async () => {
     const resolved = resolveSettings({ project: '/checkout' }, {});
     for (const backend of ['docker/compose', 'docker/native', 'apple/native']) {
         let received: unknown = 'not opened';
@@ -45,12 +45,7 @@ test('only matching Compose intent is passed to a new backend; old native work i
         } as unknown as ApplicationHost;
         const session = new ProjectSession(host, {} as Interactions);
         await assert.rejects(session.initialize(), stopped);
-        assert.deepEqual(
-            received,
-            backend === 'docker/compose'
-                ? { running: true, paused: false, stoppedByUser: ['api'] }
-                : undefined,
-        );
+        assert.equal(received, undefined);
     }
 });
 

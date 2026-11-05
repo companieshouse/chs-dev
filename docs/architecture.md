@@ -127,13 +127,23 @@ restart policies; the daemon observes actual state and coordinates explicit
 operations, configuration application and lazy-service requests. There is no
 custom container scheduler, Compose compiler or Apple supervision loop.
 
-Atomic, fsynced private checkpoints retain environment intent, manual service stops,
-backend, checkout, login identity, and interrupted/switching state. Operations are
-persisted separately. Startup marks unfinished operations interrupted; it does not
-replay builds or jobs. Within the same verified macOS login, previously authorised
-supervision can resume. Interrupted work remains paused for an explicit retry.
-A new login, reboot, unknown login identity or interrupted switch requires Start.
-Already-running containers can be inspected and probed without authorising restarts.
+Atomic, fsynced private checkpoints retain established environment intent, manual
+service stops, applied logical membership, backend, canonical checkout and observed
+engine identity. The daemon shares one pinned connection across Compose, proxy,
+container controls and status inspection. Clean intent may resume across login or
+reboot only on a matching supported local socket endpoint and engine ID, using
+verified applied artifacts. Pending source/configuration/version changes remain
+inactive. Remote/TLS transports retain explicit use without automatic recovery or
+an immutable-endpoint guarantee.
+
+Operations are persisted separately. Startup marks unfinished operations
+interrupted; interrupted/switching state and a failed latest accepted Stop require
+explicit reconciliation with no automatic engine mutations. Clean stopped/manual
+holds re-stop containers revived by engine restart policy before traffic is allowed.
+Unavailable Docker defers recovery through bounded read-only identity checks on
+the existing observation schedule. Unknown legacy state requires explicit Start or
+Apply. Merely observing containers never establishes restart authority. See
+[daemon recovery](daemon.md#recovery) for behavior and fixture evidence.
 
 Kernel file leases protect the daemon and active checkout. Their persistent inodes
 are never unlinked to claim ownership; process death releases the lease. Unknown

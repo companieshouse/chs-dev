@@ -120,7 +120,7 @@ export interface BackendSession {
 }
 export interface SessionIntent {
     version: 1;
-    hostSession: string;
+    engineIdentity?: string;
     scope: Scope;
     backend: string;
     intent?: LiveIntent;
@@ -130,7 +130,6 @@ export interface SessionIntent {
 export interface ApplicationHost {
     id(): string;
     home: string;
-    hostSession: string;
     settings(): SettingsSnapshot;
     settingsRevision(): string;
     previewSetting(
@@ -143,7 +142,7 @@ export interface ApplicationHost {
     ): Promise<void>;
     activateSettings(): void;
     refreshSettings?(): Promise<void>;
-    open(intent?: LiveIntent): Promise<BackendSession>;
+    open(): Promise<BackendSession>;
     validateProject(
         directory: string,
     ): Promise<ProjectConfig & { origin?: string; expectedOrigin: boolean }>;

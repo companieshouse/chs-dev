@@ -2,8 +2,8 @@
 
 Launching `chs-dev` without arguments or `npm run dev` connects to the existing daemon. On macOS,
 the first launch installs and bootstraps a per-user LaunchAgent so the daemon also
-starts at login. The environment still needs an explicit Start after a new login
-or reboot. Closing the TUI leaves accepted work and supervision running.
+starts at login. Clean established intent can resume after a login or reboot when
+the canonical checkout and supported local Docker engine identity still match. Closing the TUI leaves accepted work and supervision running.
 
 ```sh
 chs-dev daemon status
@@ -65,12 +65,67 @@ before a background process changes directory.
 Apply writes resolved lazy/reclaimable policy and generated dependency names into
 container metadata. The proxy reads that applied metadata, including stopped
 lazy containers, so saving a journey, provider, start mode or route does not alter
-routing before Apply. Cached reads keep the same stopped-service routes.
+routing before Apply. Repeated reads retain stopped-service routes. Historical
+deselected labels cannot authorize warm traffic or cold starts.
 
 Existing containers with missing or unsupported lifecycle metadata report an
 instruction to Apply configuration. The proxy never reconstructs that policy from
 pending saved files. Generated Compose dependencies keep their original readiness
 and completion conditions; metadata records their names for lifecycle protection.
+
+## Recovery
+
+The daemon shares one Docker connection across Compose, status and container
+inspection, exact-container controls and proxy routing. Startup Docker selector
+and TLS settings are frozen; project credentials are resolved separately. For
+local `unix://` and `npipe://` endpoints, a context is resolved to its actual
+endpoint and recovery compares that endpoint plus Docker's observed engine ID.
+Changing the shell's context cannot redirect an existing daemon's local operations.
+Remote/TLS/context-held transports retain existing explicit use, but have no
+automatic recovery identity or immutable-endpoint guarantee. Restart the daemon
+to change its startup connection inputs.
+
+Checkpoints retain only established intent, the canonical checkout, engine
+fingerprint, applied logical membership and manual holds. Merely observing existing
+containers never adopts them, including after repeated daemon restarts. A clean
+matching checkpoint restores from verified immutable applied Compose artifacts. Recovery does not prepare fresh
+configuration or refresh image metadata; Compose image build/pull are disabled.
+Applied dependency/init jobs, including existing Development builder containers,
+can run according to Compose health/completion conditions. Current generated helpers
+are retained;
+historical deselected roots and orphan helpers are not resumed. Empty applied
+membership is an intentional empty environment, distinct from legacy missing
+membership. A missing/changed identity or missing legacy membership requires an
+explicit Start or Apply.
+
+Before admitting traffic, clean stopped/manual-held intent re-stops any owned
+containers revived by engine restart policies such as `restart: always`. Clean
+running intent resumes stopped eager roots and leaves lazy roots demand-driven.
+The daemon verifies final observations before reporting restoration success.
+Interrupted/switching checkpoints and a failed latest accepted Environment Stop
+restore a paused/stopped gate with **no automatic engine mutations**, including
+cleanup. Inspect those containers and Start, Apply or Stop explicitly; interrupted
+work is never replayed. Warm traffic obeys the same intent and applied membership
+as cold starts.
+
+This reconciliation occurs at daemon startup or when an initially unavailable
+engine becomes available. If Docker alone restarts while the same daemon stays
+alive, revived containers are observed rather than automatically re-stopped.
+Traffic and cold starts still respect holds; use explicit Stop or clean daemon
+recovery to stop revived containers. Probes remain read-only.
+
+Active HTTP requests and streams protect their root and applied dependencies from
+idle unload. Mock callback delivery is separately bounded to ten seconds; it is not
+an arbitrary background-job lease.
+
+If Docker is unavailable at startup, the durable eligible checkpoint remains
+pending. The API remains available during recovery; shared progress reports
+“Restoring applied environment…” and Environment Stop can preempt it.
+The existing observation schedule retries the bounded read-only identity
+check; no recovery mutation occurs before it matches. Rejected service requests
+preserve that checkpoint. Explicit Environment Start/Apply/Stop supersedes pending
+recovery; Cancel abandons pending automatic resume authority. A recovery mutation first writes an interrupted checkpoint, so a crash
+during restoration cannot cause automatic replay on the next daemon start.
 
 ## Local protocol
 
@@ -126,5 +181,8 @@ helper processes and check that their child commands terminate. LaunchAgent test
 validate generated configuration without installing a service in the user's account.
 Compose integration suites remain opt-in; they require Docker and Docker Compose.
 Run `npm run test:docker` for lifecycle/container controls and
-`npm run test:docker:mocks` for mock providers. Reboot/login behaviour and a full real-engine daemon run should
-also be checked manually on a development machine before distributing a release.
+`npm run test:docker:mocks` for mock providers. Recovery evidence is fixture-based:
+`daemon-recovery`, `service-actions-applied`, `docker-connection` and `daemon-proxy`
+cover engine/checkout gates, pending writes, cancellation, generated dependencies,
+immutable artifacts and reachable HTTP upstreams. No real host reboot, LaunchAgent
+installation or live-engine business workflow was executed for these tests.

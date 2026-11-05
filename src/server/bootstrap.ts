@@ -52,11 +52,7 @@ import {
 } from '../infrastructure/live-session.js';
 import { DockerComposeStrategy } from '../infrastructure/runtimes/docker-compose.js';
 import { initializeTuiLog, tuiLog } from '../infrastructure/tui-log.js';
-import {
-    DaemonState,
-    exclusiveLease,
-    hostSessionIdentity,
-} from '../infrastructure/daemon-state.js';
+import { DaemonState, exclusiveLease } from '../infrastructure/daemon-state.js';
 import { readAwsStatus, awsProfile } from '../infrastructure/aws-status.js';
 import {
     discoverAwsProfiles,
@@ -76,7 +72,6 @@ import {
 } from '../project/discovery.js';
 import { ClientError, type ProjectSearch } from '../protocol/types.js';
 import type { RuntimeStrategy } from '../domain/runtime-strategy.js';
-import type { LiveIntent } from '../application/live-controller.js';
 import type { SettingsSnapshot } from '../domain/settings.js';
 import type { ProjectConfig } from '../domain/project.js';
 import type { ServiceGroup, ServiceDetails } from '../domain/services.js';
@@ -166,7 +161,6 @@ async function openSupervised(
     groups: ServiceGroup[],
     runtime: RuntimeStrategy,
     versions: ServiceVersions,
-    intent?: LiveIntent,
 ) {
     const release = await acquireSupervisor(project);
     try {
@@ -175,7 +169,6 @@ async function openSupervised(
             project.directory,
             groups,
             {
-                initialIntent: intent,
                 lock: { acquire: heldSupervisorLease },
                 versions,
             },
@@ -243,7 +236,7 @@ function createHostOpen(
     active: { controller?: LiveController },
     usage: { tracker: UsageTracker | undefined; enabled: () => boolean },
 ): ApplicationHost['open'] {
-    return async (intent) => {
+    return async () => {
         const project = await readProjectConfig();
         if (project.valid)
             project.directory = await realpath(project.directory);
@@ -261,7 +254,6 @@ function createHostOpen(
                 groups,
                 runtime,
                 versions,
-                intent,
             );
             controller = opened.controller;
             release = opened.release;
@@ -430,7 +422,6 @@ function createHostSearch(): ApplicationHost['search'] {
 function createApplicationHost(
     settings: Awaited<ReturnType<typeof initializeSettings>>,
     state: DaemonState,
-    sessionIdentity: string,
     daemon: {
         runtime?: () => RuntimeStrategy;
         accounting: RequestAccounting;
@@ -443,7 +434,6 @@ function createApplicationHost(
     return {
         id: randomUUID,
         home: homedir(),
-        hostSession: sessionIdentity,
         settings: settings.getSnapshot,
         refreshSettings: () => settings.refresh(),
         settingsRevision: () =>
@@ -494,7 +484,6 @@ export async function createApplication(
     const state = new DaemonState(join(stateDirectory(), 'daemon'));
     await state.initialize();
     initializeTuiLog(state.directory);
-    const sessionIdentity = await hostSessionIdentity();
     const accounting = createAccounting();
     const active: { controller?: LiveController } = {};
     const ledger = createUsageLedger();
@@ -509,7 +498,7 @@ export async function createApplication(
         controller: () => active.controller,
         ledger,
     });
-    const host = createApplicationHost(settings, state, sessionIdentity, {
+    const host = createApplicationHost(settings, state, {
         runtime: sharedRuntime,
         accounting,
         proxyState: () => proxy.state(),

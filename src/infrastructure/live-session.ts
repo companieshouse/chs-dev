@@ -18,7 +18,7 @@ export function createLiveSession(
     runtime: RuntimeStrategy,
     directory: string,
     groups: ServiceGroup[],
-    options: Partial<Pick<LiveDependencies, 'initialIntent' | 'lock'>> & {
+    options: Partial<Pick<LiveDependencies, 'lock'>> & {
         versions?: ServiceVersions;
     } = {},
 ) {

@@ -64,7 +64,6 @@ export async function daemonFixture(
         applyGate: undefined as Promise<void> | undefined,
         legacySaveGate: undefined as Promise<void> | undefined,
     };
-    let hostSession = 'login-a';
     let currentController!: LiveController;
     let app!: ProjectSession,
         operations!: Operations,
@@ -92,7 +91,6 @@ export async function daemonFixture(
         const host: ApplicationHost = {
             id: randomUUID,
             home: root,
-            hostSession,
             settings: settings.getSnapshot,
             refreshSettings: () => settings.refresh(),
             settingsRevision: () =>
@@ -114,7 +112,7 @@ export async function daemonFixture(
                 message: 'Fixture project',
                 expectedOrigin: true,
             }),
-            open: async (intent) => {
+            open: async () => {
                 const path = settings.getSnapshot().startup.project.value!;
                 const project = {
                     directory: path,
@@ -214,7 +212,22 @@ export async function daemonFixture(
                         );
                         return success();
                     },
-                    stop: async () => success(),
+                    stop: async (targets) => {
+                        const ids = new Set(
+                            targets.map((container) => container.id),
+                        );
+                        actual!.containers = actual!.containers.map(
+                            (container) =>
+                                ids.has(container.id)
+                                    ? {
+                                          ...container,
+                                          lifecycle: 'exited',
+                                          exitCode: 0,
+                                      }
+                                    : container,
+                        );
+                        return success();
+                    },
                     stopProject: async () => {
                         await engine.beforeStop?.();
                         engine.stops++;
@@ -249,7 +262,6 @@ export async function daemonFixture(
                 const runtime = options.runtime?.(baseRuntime) ?? baseRuntime;
                 const controller = new LiveController({
                     runtime,
-                    initialIntent: intent,
                     configuration: { read: async () => revision() },
                     preparation: {
                         check: async () => {},
@@ -274,6 +286,7 @@ export async function daemonFixture(
                     controller,
                     runtime: {
                         id: 'docker',
+                        engineIdentity: async () => 'fixture-engine',
                         name: 'Fixture Docker',
                         capabilities: {
                             apply: true,
@@ -471,9 +484,8 @@ export async function daemonFixture(
             await api.close();
             api = await listenApi(join(root, 'api.sock'), app, operations);
         },
-        restart: async (newLogin = false) => {
+        restart: async (_newLogin = false) => {
             await stop();
-            if (newLogin) hostSession = 'login-b';
             await start();
         },
         close: async () => {

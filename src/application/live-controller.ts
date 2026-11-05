@@ -47,13 +47,13 @@ export interface LiveDependencies {
     };
     eventSink?(event: LogEvent, fields?: LogFields): void;
     operation?(work: () => Promise<void>): Promise<void>;
-    initialIntent?: LiveIntent;
 }
 
 export interface LiveIntent {
     running: boolean;
     paused: boolean;
     applied?: string;
+    appliedServices?: readonly string[];
     stoppedByUser: readonly string[];
 }
 
@@ -151,6 +151,32 @@ function assertIdleTarget(service: string, observed: RuntimeSnapshot) {
     }
 }
 
+function appliedMembership(
+    services: readonly string[] | undefined,
+    observed: RuntimeSnapshot,
+) {
+    if (!services)
+        throw new LifecycleBlocked(
+            'Applied service membership is unavailable. Inspect the environment and Apply explicitly.',
+        );
+    const chains = services.map((service) => appliedChain(service, observed));
+    return {
+        services: new Set(
+            chains.flatMap((chain) =>
+                chain.map((container) => container.service),
+            ),
+        ),
+        roots: chains
+            .map((chain) => chain.at(-1)!)
+            .filter(
+                (container) =>
+                    container.kind !== 'job' &&
+                    !container.policy!.lazy &&
+                    !container.policy!.reclaimable,
+            ),
+    };
+}
+
 function modeChanges(
     revision: ConfigurationRevision,
     observed: RuntimeSnapshot,
@@ -197,6 +223,7 @@ export class LiveController {
     private closed = false;
     private authentication?: 'aws' | 'ecr';
     private applied?: string;
+    private appliedServices?: readonly string[];
     private approvedStops: readonly string[] = [];
     private polling = false;
     private configurationEpoch = 0;
@@ -218,25 +245,6 @@ export class LiveController {
             logSequence: 0,
             busy: false,
         };
-
-        const intent = dependencies.initialIntent;
-        if (intent) {
-            this.paused = intent.paused;
-            this.applied = intent.applied;
-            this.state.running = intent.running;
-            this.state.stoppedByUser = intent.stoppedByUser;
-            this.state.phase = intent.running
-                ? intent.paused
-                    ? 'Blocked'
-                    : 'Running'
-                : 'Stopped';
-            this.state.blocked =
-                intent.running && intent.paused ? 'cancelled' : undefined;
-            this.state.message =
-                intent.running && intent.paused
-                    ? 'Supervision is paused. Inspect the environment and choose Try again.'
-                    : '';
-        }
     }
 
     getIntent(): LiveIntent {
@@ -244,8 +252,153 @@ export class LiveController {
             running: this.state.running,
             paused: this.paused,
             applied: this.applied,
+            appliedServices: this.appliedServices,
             stoppedByUser: [...this.state.stoppedByUser],
         };
+    }
+
+    /** Restores only verified applied state after the caller has matched engine/checkout identity. */
+    async restoreIntent(
+        intent: LiveIntent,
+        signal?: AbortSignal,
+    ): Promise<void> {
+        if (this.state.busy || this.closed) return;
+        this.paused = true;
+        this.applied = intent.applied;
+        this.appliedServices = intent.appliedServices;
+        this.update({
+            busy: true,
+            activity: 'Restoring applied environment…',
+            running: false,
+            stoppedByUser: intent.stoppedByUser,
+        });
+        const abort = new AbortController();
+        this.abort = abort;
+        const cancel = () => abort.abort();
+        signal?.addEventListener('abort', cancel, { once: true });
+        if (signal?.aborted) cancel();
+        await this.run_(async () => {
+            try {
+                if (!intent.paused)
+                    await this.reconcileIntent(intent, abort.signal);
+                abort.signal.throwIfAborted();
+                this.paused = intent.paused;
+                this.update({
+                    running: intent.running,
+                    phase: intent.paused
+                        ? 'Blocked'
+                        : intent.running
+                          ? 'Running'
+                          : 'Stopped',
+                    blocked: intent.paused ? 'cancelled' : undefined,
+                    message: intent.paused
+                        ? 'Interrupted work was not replayed. Inspect the environment and Start or Apply explicitly.'
+                        : '',
+                });
+            } catch (error) {
+                this.paused = true;
+                this.report(error);
+            } finally {
+                signal?.removeEventListener('abort', cancel);
+                this.update({ busy: false, activity: undefined });
+                await this.unlock();
+            }
+        });
+    }
+
+    private async reconcileIntent(intent: LiveIntent, signal: AbortSignal) {
+        await this.lock();
+        signal.throwIfAborted();
+        await this.dependencies.preparation.check(signal);
+        this.identified = true;
+        const observed = await this.dependencies.runtime.snapshot(signal);
+        const held = new Set(intent.stoppedByUser);
+        const selected = intent.running
+            ? appliedMembership(intent.appliedServices, observed)
+            : { services: new Set<string>(), roots: [] };
+        const shouldStop = (container: RuntimeContainer) =>
+            !intent.running ||
+            held.has(container.ownerService ?? container.service) ||
+            !selected.services.has(container.service);
+        const activeStops = observed.containers.filter(
+            (container) => isActive(container) && shouldStop(container),
+        );
+        const roots = selected.roots;
+        const eligible = roots.filter(
+            (root) =>
+                !isActive(root) &&
+                !appliedOwners([root.service], observed).some((owner) =>
+                    held.has(owner),
+                ),
+        );
+        if (activeStops.length)
+            this.accept(
+                await this.dependencies.runtime.stop(activeStops, { signal }),
+            );
+        for (const root of eligible) {
+            signal.throwIfAborted();
+            this.accept(
+                await this.dependencies.runtime.startApplied(root.service, {
+                    signal,
+                }),
+            );
+        }
+        const actual = await this.dependencies.runtime.snapshot(signal);
+        if (
+            actual.containers.some(
+                (container) => isActive(container) && shouldStop(container),
+            )
+        )
+            throw new LifecycleBlocked(
+                'Stopped intent could not be verified. Inspect the remaining containers and Stop explicitly.',
+            );
+        for (const root of eligible) {
+            if (
+                !actual.containers.some(
+                    (container) =>
+                        container.service === root.service &&
+                        isActive(container),
+                )
+            )
+                throw new LifecycleBlocked(
+                    `Restoration incomplete: ${root.service} is still stopped. Inspect the environment and Start explicitly.`,
+                );
+        }
+        this.update({ observed: actual });
+    }
+
+    /** Warm traffic also obeys stopped/paused intent and transitive manual holds. */
+    assertTrafficAllowed(service: string): void {
+        this.assertAutomaticStart(Infinity);
+        const observed = this.state.observed;
+        if (!observed)
+            throw new LifecycleBlocked(
+                'Applied state is still being inspected. Try again shortly.',
+            );
+        this.requireAppliedService(service, observed);
+        this.requireUnheld(service, observed);
+    }
+
+    private requireAppliedService(service: string, observed: RuntimeSnapshot) {
+        if (!this.appliedServices)
+            throw new LifecycleBlocked(
+                'Applied service membership is unavailable. Apply configuration first.',
+            );
+        if (this.appliedServices.includes(service)) return;
+        // Generated dependencies are authorized by a current selected root, never by historical ownership alone.
+        const dependencies = new Map(
+            observed.containers.map((container) => [
+                container.service,
+                container.policy?.dependencies ?? [],
+            ]),
+        );
+        const required = this.appliedServices.some((root) =>
+            dependencyOrder(root, dependencies).includes(service),
+        );
+        if (!required)
+            throw new LifecycleBlocked(
+                `${service} is no longer in the applied environment. Apply configuration before requesting it.`,
+            );
     }
 
     async waitUntilIdle(): Promise<void> {
@@ -559,6 +712,7 @@ export class LiveController {
                 }),
             );
             this.applied = undefined;
+            this.appliedServices = undefined;
             this.authentication = undefined;
             stopped = true;
         } catch (error) {
@@ -579,6 +733,7 @@ export class LiveController {
         const refreshed = await this.refresh();
         const remaining = this.state.observed?.containers.length;
         if (stopped && refreshed && remaining === 0) {
+            this.paused = false;
             this.update({
                 phase: 'Stopped',
                 stoppedByUser: [],
@@ -914,6 +1069,7 @@ export class LiveController {
                 this.assertAutomaticStart(deadline);
                 const observed =
                     await this.dependencies.runtime.snapshot(signal);
+                this.requireAppliedService(service, observed);
                 this.requireUnheld(service, observed);
                 this.accept(
                     await this.dependencies.runtime.startApplied(service, {
@@ -1248,6 +1404,11 @@ export class LiveController {
         );
 
         this.applied = revision.identity;
+        if (partial)
+            this.appliedServices = partial.inventory.map(
+                (entry) => entry.service,
+            );
+        else if (!revision.inventory.length) this.appliedServices = [];
         this.authentication = undefined;
         this.reportApplied(partial);
         this.dependencies.eventSink?.('live.recovery', {

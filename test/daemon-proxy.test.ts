@@ -9,7 +9,7 @@ import type {
     ContainerDetails,
     ContainerManager,
 } from '../src/domain/containers.js';
-import { daemonFixture } from './daemon-fixture.js';
+import { daemonFixture, eventually } from './daemon-fixture.js';
 
 async function listen(server: http.Server): Promise<number> {
     await new Promise<void>((resolve) => {
@@ -40,10 +40,12 @@ function request(port: number) {
 test('daemon proxy uses applied route metadata across repeated requests and saved external edits', async (t) => {
     const f = await daemonFixture();
     t.after(() => f.close());
-    await f.controller.poll();
-    const upstream = http.createServer((_request, response) =>
-        response.end('applied api'),
-    );
+    await (await f.client()).command('environment.start', {});
+    let hits = 0;
+    const upstream = http.createServer((_request, response) => {
+        hits++;
+        response.end('applied api');
+    });
     const upstreamPort = await listen(upstream);
     t.after(
         () =>
@@ -109,11 +111,50 @@ test('daemon proxy uses applied route metadata across repeated requests and save
     assert.deepEqual(proxy.state().lazy, ['api']);
     await f.restart();
     assert.deepEqual(proxy.state().lazy, []);
+    await eventually(
+        () => f.app.snapshot().live.running && !f.app.snapshot().live.busy,
+    );
     assert.deepEqual(await request(port), { status: 200, body: 'applied api' });
     assert.deepEqual(proxy.state().lazy, ['api']);
+    const client = await f.client();
+    await client.command('configuration.save', {
+        revision: client.getSnapshot().configurationRevision,
+        edit: {
+            name: 'api',
+            enabled: false,
+            development: false,
+            exclusions: {},
+        },
+    });
+    await client.command('environment.apply', {});
+    assert.equal(
+        (await request(port)).status,
+        503,
+        'old warm labels cannot bypass deselection',
+    );
+    container.state = 'exited';
+    assert.equal(
+        (await request(port)).status,
+        503,
+        'old lazy labels cannot cold-start a deselected service',
+    );
+    assert.equal(hits, 3);
+    assert.equal(f.engine.applies, 1);
 });
 
 test('real proxy traffic reports manual holds without releasing shared daemon intent', async (t) => {
+    let hits = 0;
+    const upstream = http.createServer((_request, response) => {
+        hits++;
+        response.end('allowed upstream');
+    });
+    const upstreamPort = await listen(upstream);
+    t.after(
+        () =>
+            new Promise<void>((resolve) => {
+                upstream.close(() => resolve());
+            }),
+    );
     const f = await daemonFixture();
     t.after(() => f.close());
     const client = await f.client();
@@ -151,6 +192,13 @@ test('real proxy traffic reports manual holds without releasing shared daemon in
                     ),
                 },
             },
+            NetworkSettings: {
+                Ports: {
+                    '8080/tcp': [
+                        { HostIp: '127.0.0.1', HostPort: String(upstreamPort) },
+                    ],
+                },
+            },
         },
     });
     const manager: ContainerManager = {
@@ -180,6 +228,29 @@ test('real proxy traffic reports manual holds without releasing shared daemon in
     assert.deepEqual(f.app.snapshot().live.stoppedByUser, ['api']);
     assert.equal(store.containers[0]!.lifecycle, 'exited');
     assert.equal(f.engine.applies, 1);
+    await client.command('service.action', {
+        action: 'start',
+        services: ['api'],
+    });
+    assert.deepEqual(await request(port), {
+        status: 200,
+        body: 'allowed upstream',
+    });
+    assert.equal(hits, 1);
+    await client.command('service.action', {
+        action: 'stop',
+        services: ['api'],
+    });
+    store.containers[0]!.lifecycle = 'running';
+    await f.controller.probe();
+    const warmHeld = await request(port);
+    assert.equal(warmHeld.status, 503);
+    assert.match(warmHeld.body, /manually stopped/);
+    assert.equal(
+        hits,
+        1,
+        'warm held traffic must never reach the listening upstream',
+    );
     await client.command('environment.stop', {});
     assert.equal((await request(port)).status, 404);
     assert.equal(f.app.snapshot().live.running, false);

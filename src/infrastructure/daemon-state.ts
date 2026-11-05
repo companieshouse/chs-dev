@@ -1,16 +1,13 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile, open, rename, rm } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
-import { promisify } from 'node:util';
-import { execFile } from 'node:child_process';
 import { flock } from 'fs-ext';
 import { optionalJson } from './state-files.js';
 import type {
     OperationRecord,
     OperationStore,
 } from '../application/operations.js';
-import type { LiveIntent } from '../application/live-controller.js';
-import type { Scope } from '../protocol/types.js';
+import type { SessionIntent } from '../application/ports.js';
 
 const lock = (fd: number, flag: 'exnb' | 'un') =>
     new Promise<void>((resolve, reject) => {
@@ -36,15 +33,7 @@ export async function exclusiveLease(
         await file.close();
     };
 }
-export interface DaemonIntent {
-    version: 1;
-    hostSession: string;
-    scope: Scope;
-    backend: string;
-    intent?: LiveIntent;
-    interrupted: boolean;
-    switching?: boolean;
-}
+export type DaemonIntent = SessionIntent;
 export class DaemonState implements OperationStore {
     private key!: Buffer;
     private serial: Promise<unknown> = Promise.resolve();
@@ -125,40 +114,4 @@ export class DaemonState implements OperationStore {
     async flush() {
         await this.serial;
     }
-}
-/** A new GUI login creates a new per-user launchd manager, while daemon restarts do not. */
-export async function hostSessionIdentity(): Promise<string> {
-    if (process.env.CHS_DEV_TEST_SESSION)
-        return process.env.CHS_DEV_TEST_SESSION;
-    if (process.platform === 'darwin') {
-        try {
-            const exec = promisify(execFile);
-            const { stdout } = await exec('/bin/launchctl', ['managerpid'], {
-                timeout: 3000,
-            });
-            const pid = stdout.trim();
-            if (!/^\d+$/.test(pid)) throw new Error('No login manager');
-            const started = await exec(
-                '/bin/ps',
-                ['-p', pid, '-o', 'lstart='],
-                { timeout: 3000 },
-            );
-            const boot = await exec(
-                '/usr/sbin/sysctl',
-                ['-n', 'kern.boottime'],
-                { timeout: 3000 },
-            );
-            const domain = await exec(
-                '/bin/launchctl',
-                ['print', `gui/${process.getuid!()}`],
-                { timeout: 3000, maxBuffer: 4 * 1024 * 1024 },
-            );
-            const asid = /^\s*asid\s*=\s*(\d+)\s*$/m.exec(domain.stdout)?.[1];
-            if (!asid) throw new Error('No GUI login identity');
-            return `${boot.stdout.trim()}:${asid}:${pid}:${started.stdout.trim()}`;
-        } catch {
-            /* Unknown session identity requires an explicit Start. */
-        }
-    }
-    return `unverified:${randomUUID()}`;
 }

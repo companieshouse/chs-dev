@@ -52,6 +52,8 @@ export interface RuntimeStrategy {
     readonly id: string;
     readonly name: string;
     readonly capabilities: Readonly<RuntimeCapabilities>;
+    /** Stable identity on the actual selected connection; unsupported transports return undefined. */
+    engineIdentity?(signal?: AbortSignal): Promise<string | undefined>;
     live?(project: RuntimeProject): LiveRuntime;
     containers?(project: RuntimeProject): ContainerManager;
     checkAvailability(signal?: AbortSignal): Promise<RuntimeAvailability>;

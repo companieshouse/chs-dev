@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { stringify } from 'yaml';
-import { daemonFixture } from './daemon-fixture.js';
+import { daemonFixture, eventually } from './daemon-fixture.js';
 import { DockerLiveRuntime } from '../src/infrastructure/live-runtime.js';
 import type { RuntimeContainer } from '../src/domain/live.js';
 
@@ -372,4 +372,84 @@ test('a later failed root preserves only unfinished holds and reports partial ef
         f.controller.getSnapshot().logs.at(-1)!,
         /some services may already have changed/,
     );
+});
+
+test('clean recovery starts only applied roots with generated dependencies and stops historical orphan helpers', async (t) => {
+    const { f, store, commands } = await fixture('Development');
+    t.after(() => f.close());
+    store.containers.find(
+        (container) => container.service === 'api-builder',
+    )!.kind = 'job';
+    store.containers.push({
+        ...store.containers[1]!,
+        id: 'd'.repeat(12),
+        service: 'old-api-builder',
+        lifecycle: 'running',
+    });
+    store.enabled = false;
+    store.revision++;
+    await f.restart(true);
+    await eventually(
+        () => f.app.snapshot().live.running && !f.app.snapshot().live.busy,
+    );
+    const starts = commands.filter(
+        (args) => args[0] === 'compose' && args.includes('up'),
+    );
+    assert.equal(starts.length, 1);
+    assert.equal(starts[0].includes('--no-build'), true);
+    assert.equal(starts[0].includes('--pull'), true);
+    assert.equal(starts[0].includes('never'), true);
+    assert.equal(starts[0].includes('--no-deps'), false);
+    assert.equal(starts[0].at(-1), 'api');
+    assert.equal(
+        store.containers.find((container) => container.service === 'api')!
+            .lifecycle,
+        'running',
+    );
+    assert.equal(
+        store.containers.find((container) => container.service === 'database')!
+            .health,
+        'healthy',
+    );
+    assert.equal(
+        store.containers.find(
+            (container) => container.service === 'api-builder',
+        )!.exitCode,
+        0,
+    );
+    assert.equal(
+        store.containers.find(
+            (container) => container.service === 'old-api-builder',
+        )!.lifecycle,
+        'exited',
+    );
+    assert.equal(f.engine.applies, 1);
+    assert.equal(f.app.snapshot().live.running, true);
+});
+
+test('clean recovery retains the generated Mock runtime absent from logical applied inventory', async (t) => {
+    const { f, store, commands } = await fixture('Mock');
+    t.after(() => f.close());
+    await f.restart(true);
+    await eventually(
+        () => f.app.snapshot().live.running && !f.app.snapshot().live.busy,
+    );
+    const starts = commands.filter(
+        (args) => args[0] === 'compose' && args.includes('up'),
+    );
+    assert.equal(starts.length, 1);
+    assert.equal(starts[0].at(-1), 'api');
+    assert.deepEqual(f.controller.getIntent().appliedServices, ['api']);
+    assert.equal(
+        store.containers.find(
+            (container) => container.service === 'chs-dev-microcks',
+        )!.lifecycle,
+        'running',
+    );
+    assert.equal(
+        store.containers.find((container) => container.service === 'database')!
+            .lifecycle,
+        'exited',
+    );
+    assert.equal(f.app.snapshot().live.running, true);
 });

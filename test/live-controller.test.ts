@@ -548,6 +548,7 @@ test('durable start applies with exclusions, reporting cause and remediation', a
     assert.equal(f.calls.includes('apply'), true);
     const state = f.controller.getSnapshot();
     assert.match(state.message, /1 service excluded/);
+    assert.deepEqual(f.controller.getIntent().appliedServices, []);
     const logs = state.logs;
     assert.ok(
         logs.some((text) =>
@@ -1523,4 +1524,21 @@ test('manual Stop holds an already idle or created owned service without first s
         );
         assert.deepEqual(f.controller.getSnapshot().stoppedByUser, ['api']);
     }
+});
+
+test('traffic for a selected healthy service does not validate unrelated missing selected containers', async () => {
+    const f = fixture();
+    f.edit('selected-pair', [
+        { service: 'api', mode: 'Service' },
+        { service: 'worker', mode: 'Service' },
+    ]);
+    await f.controller.start();
+    await f.controller.waitUntilIdle();
+    f.containers([container('worker')]);
+    await f.controller.probe();
+    assert.doesNotThrow(() => f.controller.assertTrafficAllowed('worker'));
+    assert.throws(
+        () => f.controller.assertTrafficAllowed('api'),
+        /metadata.*unavailable/,
+    );
 });
