@@ -527,3 +527,10 @@ Run `npm run format` to apply four-space Prettier formatting, or
 Run `npm run complexity:report` to find nesting and complexity hotspots, and
 `npm run complexity:check` to check against the existing warning baseline.
 See [code quality checks](docs/code-quality.md) for thresholds and limitations.
+
+Ink's `react-reconciler` dependency is pinned to 0.34.0 for the
+[development profiling cleanup](https://github.com/facebook/react/pull/34803).
+Version 0.33.0 retains session snapshots on every redraw and can exhaust the heap
+during long TUI sessions. The [memory regression test](test/tui-memory.test.ts)
+checks repeated redraws in a separate process with a bounded heap. Remove the
+override when Ink's renderer dependency includes this fix.

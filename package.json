@@ -58,5 +58,10 @@
         "prettier": "^3.9.9",
         "tsx": "^4.23.15",
         "typescript": "^7.0.2"
+    },
+    "overrides": {
+        "ink": {
+            "react-reconciler": "0.34.0"
+        }
     }
 }
