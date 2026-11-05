@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { setTimeout as delay } from 'node:timers/promises';
 import { basename, dirname } from 'node:path';
 
 export async function importContract(endpoint, artifact, signal) {
@@ -23,26 +22,4 @@ export async function importContract(endpoint, artifact, signal) {
             `Microcks import returned HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
         );
     await response.arrayBuffer();
-}
-
-export async function waitForImport(options) {
-    const deadline = Date.now() + (options.timeout ?? 180000);
-    let lastError;
-    while (Date.now() < deadline) {
-        options.signal.throwIfAborted();
-        try {
-            await importContract(
-                options.endpoint,
-                options.artifact,
-                options.signal,
-            );
-            return;
-        } catch (error) {
-            lastError = error;
-        }
-        await delay(1000, undefined, { signal: options.signal });
-    }
-    throw new Error(
-        `Cannot import the mock contract into Microcks: ${lastError?.message}`,
-    );
 }

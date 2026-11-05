@@ -7,8 +7,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMockServer } from '../mocks/runtime/server.mjs';
-import { importContract, waitForImport } from '../mocks/runtime/importer.mjs';
-import { reconcileContracts } from '../mocks/runtime/bootstrap.mjs';
+import { importContract } from '../mocks/runtime/importer.mjs';
+import {
+    reconcileContracts,
+    waitForBootstrap,
+} from '../mocks/runtime/bootstrap.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { mkdir } from 'node:fs/promises';
 
@@ -117,32 +120,53 @@ test('scenario configuration is read after atomic replacement without restarting
     assert.equal((await invalid.json()).error, 'mock-unavailable');
 });
 
-test('importer retries Microcks readiness and reports rejected contracts', async (t) => {
+test('production bootstrap retries Microcks readiness and reports rejected contracts', async (t) => {
     const directory = await mkdtemp(join(tmpdir(), 'chs-mock-import-'));
     t.after(() => rm(directory, { recursive: true, force: true }));
     const artifact = join(directory, 'openapi.json');
     await writeFile(artifact, '{"openapi":"3.0.3"}');
+    const bootstrapFile = join(directory, 'bootstrap.json');
+    const options = {
+        service: 'api',
+        title: 'API',
+        version: '1',
+        mocksRoot: directory,
+        bootstrapFile,
+        signal: new AbortController().signal,
+    };
+    await writeFile(
+        bootstrapFile,
+        JSON.stringify({
+            importer: 'api',
+            contracts: [
+                { title: 'API', version: '1', artifact: 'openapi.json' },
+            ],
+        }),
+    );
     let calls = 0;
+    let discoveries = 0;
     const endpoint = await listen(
         t,
         createServer(async (request, response) => {
+            if (request.url === '/api/services') {
+                discoveries++;
+                response.writeHead(discoveries === 1 ? 503 : 200);
+                response.end('[]');
+                return;
+            }
             let body = '';
             for await (const chunk of request) body += chunk;
             assert.equal(request.url, '/api/artifact/upload?mainArtifact=true');
             assert.match(body, /openapi.json/);
             assert.match(body, /3.0.3/);
             calls++;
-            response.writeHead(calls === 1 ? 503 : 201);
+            response.writeHead(201);
             response.end();
         }),
     );
-    await waitForImport({
-        endpoint,
-        artifact,
-        signal: new AbortController().signal,
-        timeout: 4000,
-    });
-    assert.equal(calls, 2);
+    await waitForBootstrap({ ...options, endpoint }, new Map());
+    assert.equal(discoveries, 2);
+    assert.equal(calls, 1);
     const rejected = await listen(
         t,
         createServer((request, response) => {
@@ -156,12 +180,10 @@ test('importer retries Microcks readiness and reports rejected contracts', async
         /HTTP 400: invalid contract/,
     );
     await assert.rejects(
-        waitForImport({
-            endpoint,
-            artifact,
-            signal: AbortSignal.abort(),
-            timeout: 4000,
-        }),
+        waitForBootstrap(
+            { ...options, endpoint, signal: AbortSignal.abort() },
+            new Map(),
+        ),
         /abort/i,
     );
 });
