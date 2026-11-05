@@ -79,7 +79,8 @@ function checkResult(
 }
 interface DockerInspection {
     Id: string;
-    Config: { Labels: Record<string, string> };
+    Image?: string;
+    Config: { Labels: Record<string, string>; Image?: string };
     State: {
         Status: string;
         Health?: { Status: string };
@@ -204,6 +205,8 @@ export class DockerLiveRuntime implements LiveRuntime {
         const mode = labels['chs.dev.mode'];
         return {
             id: value.Id,
+            image: value.Config.Image,
+            imageId: value.Image,
             service: labels['com.docker.compose.service'],
             projectName,
             projectDirectory: directory,

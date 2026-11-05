@@ -353,6 +353,9 @@ export interface RuntimeContainer {
     service: string;
     id: string;
     incarnation?: string;
+    /** Actual engine image reference and content ID from container inspection. */
+    image?: string;
+    imageId?: string;
     projectName: string;
     projectDirectory: string;
     configurationIdentity?: string;

@@ -681,3 +681,26 @@ test('configuration snapshots and project ownership use only injected memory fil
         await second.acquire()
     )();
 });
+
+test('runtime observation preserves the engine image reference and image ID rather than saved labels', async () => {
+    const f = runtimeFixture();
+    const value = {
+        ...inspect({ 'chs.dev.image': 'registry.example/api:saved-next' }),
+        Image: 'sha256:' + 'b'.repeat(64),
+    };
+    f.set([
+        {
+            ...value,
+            Config: {
+                ...value.Config,
+                Image: 'registry.example/api:observed-old',
+            },
+        },
+    ]);
+    const snapshot = await f.runtime.snapshot();
+    assert.equal(
+        snapshot.containers[0].image,
+        'registry.example/api:observed-old',
+    );
+    assert.equal(snapshot.containers[0].imageId, 'sha256:' + 'b'.repeat(64));
+});
