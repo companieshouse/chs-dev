@@ -111,6 +111,15 @@ function finiteNumber(value: unknown): boolean {
 }
 
 const logCategories = ['aws', 'registry', 'live', 'config'];
+const proxyCauses = [
+    'cold-start',
+    'hold-cap',
+    'idle-unload',
+    'start-failed',
+    'bind-failed',
+    'bind-acquired',
+    'route-load-failed',
+] as const;
 const logSignals = ['SIGINT', 'SIGTERM', 'SIGKILL'];
 
 const fieldChecks: Record<string, (value: unknown) => boolean> = {
@@ -134,6 +143,7 @@ const fieldChecks: Record<string, (value: unknown) => boolean> = {
         typeof value === 'string' && /^[a-f0-9]{64}$/.test(value),
     service: (value) =>
         typeof value === 'string' && /^[a-z][a-z0-9-]{0,99}$/.test(value),
+    cause: stringAmong(proxyCauses),
 };
 
 export function safeFields(fields: LogFields): LogFields {

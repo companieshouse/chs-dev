@@ -119,6 +119,7 @@ test('container details show the image version, inspect data, logs and stop cont
     assert.ok(calls.includes(`logs:${detail.id}`));
     await term.key('\u001b');
     await term.key('s');
+    await term.key('y');
     assert.deepEqual(actions, [`stop:${detail.id}`]);
 });
 
@@ -144,6 +145,7 @@ test('container action suspends inspection and refreshes exactly once on complet
     t.after(() => term.app.unmount());
     await delay(150);
     await term.key('s');
+    await term.key('y');
     await term.key('s');
     assert.equal(actions, 1);
     assert.equal(calls.filter((call) => call.startsWith('inspect:')).length, 1);

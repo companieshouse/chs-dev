@@ -103,6 +103,8 @@ test('mock providers stop dependency traversal in both UI and runtime resolution
     assert.deepEqual(details.api, {
         enabled: 'Yes',
         mode: 'Mock',
+        effectiveStartMode: 'always',
+        startModeSource: 'default',
         mockScenario: 'error',
     });
     assert.equal(details.database.enabled, 'No');
@@ -111,7 +113,6 @@ test('mock providers stop dependency traversal in both UI and runtime resolution
         resolveServices(definitions, readState(JSON.stringify(state))),
         [
             { service: 'api', mode: 'Mock', mockScenario: 'error' },
-            { service: 'ingress-proxy', mode: 'Service' },
             { service: 'web', mode: 'Service' },
             { service: 'chs-dev-microcks', mode: 'Mock' },
         ],
@@ -130,7 +131,7 @@ test('shared dependencies and explicit roots remain enabled while mocks omit the
     assert.equal(details.cache.enabled, 'Yes');
     assert.equal(
         resolveServices(definitions, readState(JSON.stringify(state))).length,
-        5,
+        4,
     );
     assert.equal(
         mockOnlyInventory(
@@ -292,6 +293,44 @@ test('CLI provider options reject conflicts locally and expose scenario discover
         assert.throws(() =>
             parseInvocation(['service', 'configure', 'api', ...args]),
         );
+});
+
+test('a saved start-mode override round-trips and clearing removes it', async (t) => {
+    const { groups } = fixture();
+    const directory = await mkdtemp(join(tmpdir(), 'chs-start-mode-'));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const path = join(directory, '.chs-dev.yaml');
+    await writeFile(path, 'services: [web]\n');
+    const options = {
+        directory,
+        name: 'api',
+        enabled: true,
+        development: false,
+        groups,
+    };
+    await saveServiceChanges({ ...options, startMode: 'lazy' });
+    let saved = parse(await readFile(path, 'utf8'));
+    assert.equal(saved.serviceStartModes.api, 'lazy');
+    assert.equal(
+        resolveServiceState(saved, groups).api.startModeOverride,
+        'lazy',
+    );
+    assert.equal(
+        resolveServiceState(saved, groups).api.effectiveStartMode,
+        'lazy',
+    );
+    await saveServiceChanges({ ...options, startMode: null });
+    saved = parse(await readFile(path, 'utf8'));
+    assert.equal(saved.serviceStartModes, undefined);
+    await assert.rejects(
+        () =>
+            saveServiceChanges({
+                ...options,
+                name: 'ingress-proxy',
+                startMode: 'lazy',
+            }),
+        /Base infrastructure cannot start lazily/,
+    );
 });
 
 test('the repository catalogue supplies the starter contracts and Felix validation scenarios', async () => {

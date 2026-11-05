@@ -17,6 +17,7 @@ import {
     isVersionSource,
     type VersionSource,
 } from '../domain/version-sources.js';
+import type { StartMode } from '../domain/start-modes.js';
 
 export interface SaveServiceChangesOptions {
     directory: string;
@@ -30,21 +31,50 @@ export interface SaveServiceChangesOptions {
     expectedRevision?: string;
     image?: string | null;
     versionSource?: VersionSource | null;
+    /** Start-mode override to store; null clears it back to the default. */
+    startMode?: StartMode | null;
+}
+
+function validateStartMode(
+    development: boolean,
+    definition: { base: boolean },
+    startMode?: StartMode | null,
+): void {
+    if (startMode !== 'lazy') return;
+    if (definition.base)
+        throw new Error('Base infrastructure cannot start lazily.');
+    if (development)
+        throw new Error(
+            'A development-mode service cannot start lazily. Switch it to Service mode first.',
+        );
 }
 
 function validateSaveRequest(
-    name: string,
-    enabled: boolean,
-    development: boolean,
-    groups: ServiceGroup[],
-    exclusions: Record<string, boolean>,
+    request: Pick<
+        SaveServiceChangesOptions,
+        | 'name'
+        | 'enabled'
+        | 'development'
+        | 'groups'
+        | 'exclusions'
+        | 'startMode'
+    >,
 ): void {
+    const {
+        name,
+        enabled,
+        development,
+        groups,
+        exclusions = {},
+        startMode,
+    } = request;
     const definition = groups.find((group) => group.services.includes(name))
         ?.definitions?.[name];
     if (!definition || definition.deprecated)
         throw new Error('This service cannot be configured.');
     if (definition.base && !enabled)
         throw new Error('Base infrastructure must remain enabled.');
+    validateStartMode(development, definition, startMode);
     if (development && !definition.development)
         throw new Error('This service does not support development mode.');
     validateExclusions(name, groups, exclusions);
@@ -177,8 +207,16 @@ export async function saveServiceChanges({
     mockScenario,
     image,
     versionSource,
+    startMode,
 }: SaveServiceChangesOptions) {
-    validateSaveRequest(name, enabled, development, groups, exclusions);
+    validateSaveRequest({
+        name,
+        enabled,
+        development,
+        groups,
+        exclusions,
+        startMode,
+    });
     const providerEdit = { name, development, provider, mockScenario };
     validateProviderEdit(providerEdit, serviceDefinitions(groups)[name]);
     validateImageEdit(image, versionSource);
@@ -196,9 +234,30 @@ export async function saveServiceChanges({
     applyChanges(document, name, enabled, development, exclusions);
     applyProviderEdit(document, providerEdit);
     applyImageEdit(document, name, { image, versionSource });
+    applyStartModeEdit(document, name, startMode);
     const details = resolveServiceState(document.toJS(), groups);
     await writeAtomically(path, read, original, document);
     return details;
+}
+
+function applyStartModeEdit(
+    document: Document,
+    name: string,
+    startMode: StartMode | null | undefined,
+): void {
+    if (startMode === undefined) return;
+    if (startMode === null) {
+        document.deleteIn(['serviceStartModes', name]);
+        const remaining: unknown = document.toJS().serviceStartModes;
+        if (
+            remaining &&
+            typeof remaining === 'object' &&
+            !Object.keys(remaining).length
+        )
+            document.delete('serviceStartModes');
+        return;
+    }
+    document.setIn(['serviceStartModes', name], startMode);
 }
 
 function validateImageEdit(

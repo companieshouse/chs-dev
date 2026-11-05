@@ -2,6 +2,7 @@ import { isActiveContainer } from '../domain/containers.js';
 import {
     mockOnlyInventory,
     inventoryKey,
+    filterSshRequirements,
     isStopOnly,
     LiveFailure,
     PlanChangeRequired,
@@ -990,8 +991,9 @@ export class LiveController {
             signal,
             onOutput: (entry: { text: string }) => this.log(entry.text),
         };
+        let partial: PreparedProject | undefined;
         if (this.needsApply(revision, observed, changes, reloading))
-            await this.applyChanges(
+            partial = await this.applyChanges(
                 { ...plan, changes },
                 reloading,
                 signal,
@@ -1012,18 +1014,10 @@ export class LiveController {
 
         this.applied = revision.identity;
         this.authentication = undefined;
-        const reloadedNames = [...reloading.keys()].sort().join(', ');
-        this.update({
-            phase: 'Running',
-            changes: undefined,
-            message: progress.reloaded
-                ? `Rebuilt ${reloadedNames}.`
-                : 'Configuration applied.',
-        });
-        this.log(
-            progress.reloaded
-                ? `Completed: rebuilt ${reloadedNames}.`
-                : 'Completed: configuration applied.',
+        this.reportApplied(
+            partial,
+            progress,
+            [...reloading.keys()].sort().join(', '),
         );
         this.dependencies.eventSink?.('live.recovery', {
             status: 'success',
@@ -1115,6 +1109,92 @@ export class LiveController {
         );
     }
 
+    /** Final message and log for an apply, noting durable-start exclusions. */
+    private reportApplied(
+        partial: PreparedProject | undefined,
+        progress: { reloaded: boolean },
+        reloadedNames: string,
+    ) {
+        this.logExclusions(partial);
+        const excluded = excludedServices(partial);
+        this.update({
+            phase: 'Running',
+            changes: undefined,
+            exclusions: partial?.exclusions,
+            message: appliedMessage(excluded, progress.reloaded, reloadedNames),
+        });
+        this.log(appliedCompletion(excluded, progress.reloaded, reloadedNames));
+    }
+
+    /** Durable start: every exclusion with cause and remediation, in the log. */
+    private logExclusions(partial: PreparedProject | undefined) {
+        for (const exclusion of partial?.exclusions ?? []) {
+            this.log(
+                `Excluded ${exclusion.services.join(', ')}: ${exclusion.cause}. ${exclusion.remediation}`,
+            );
+        }
+        for (const variable of partial?.unattributable ?? []) {
+            this.log(
+                `${variable} is required but could not be attributed to a service; set it in this checkout's .env file.`,
+            );
+        }
+    }
+
+    /** Like identityDrift, tolerating the services durable start excluded. */
+    private static preparationDrift(
+        prepared: PreparedProject,
+        resolved: { sshRequirements?: SshSecretRequirement[] },
+        revision: ConfigurationRevision,
+        observed: RuntimeSnapshot,
+    ) {
+        const excluded = new Set(
+            (prepared.exclusions ?? []).flatMap(
+                (exclusion) => exclusion.services,
+            ),
+        );
+        if (!excluded.size) {
+            return (
+                LiveController.identityDrift(prepared, revision, observed) ||
+                JSON.stringify(prepared.sshRequirements ?? []) !==
+                    JSON.stringify(resolved.sshRequirements ?? [])
+            );
+        }
+        return LiveController.excludedDrift(
+            prepared,
+            excluded,
+            revision,
+            resolved,
+            observed,
+        );
+    }
+
+    /** Drift comparison when durable start excluded services. */
+    private static excludedDrift(
+        prepared: PreparedProject,
+        excluded: ReadonlySet<string>,
+        revision: ConfigurationRevision,
+        resolved: { sshRequirements?: SshSecretRequirement[] },
+        observed: RuntimeSnapshot,
+    ) {
+        const expectedInventory = revision.inventory.filter(
+            (entry) => !excluded.has(entry.service),
+        );
+        return (
+            inventoryKey(prepared.inventory) !==
+                inventoryKey(expectedInventory) ||
+            prepared.configurationIdentity !== revision.identity ||
+            prepared.projectName !== observed.projectName ||
+            prepared.projectDirectory !== observed.projectDirectory ||
+            JSON.stringify(prepared.sshRequirements ?? []) !==
+                JSON.stringify(
+                    filterSshRequirements(
+                        resolved.sshRequirements ?? [],
+                        excluded,
+                    ),
+                )
+        );
+    }
+
     private logPlan(revision: ConfigurationRevision, changes: LivePreview) {
         this.log(`Revision ${revision.identity}`);
         for (const action of ['start', 'stop', 'recreate'] as const) {
@@ -1182,7 +1262,7 @@ export class LiveController {
             onOutput: (entry: { text: string }) => void;
         },
         progress: { reloaded: boolean },
-    ) {
+    ): Promise<PreparedProject | undefined> {
         const { revision, resolved, observed, changes } = plan;
         await this.ensureSshSetup(resolved.sshRequirements, signal);
         await this.verifyApplyAuthentication(revision, signal);
@@ -1193,9 +1273,12 @@ export class LiveController {
             context,
         );
         if (
-            LiveController.identityDrift(prepared, revision, observed) ||
-            JSON.stringify(prepared.sshRequirements ?? []) !==
-                JSON.stringify(resolved.sshRequirements ?? [])
+            LiveController.preparationDrift(
+                prepared,
+                resolved,
+                revision,
+                observed,
+            )
         ) {
             throw LiveController.driftFailure();
         }
@@ -1230,6 +1313,7 @@ export class LiveController {
             );
             progress.reloaded = true;
         }
+        return prepared;
     }
 
     private async verifyFreshAws(
@@ -1526,4 +1610,38 @@ export class LiveController {
         await this.dependencies.runtime.close?.();
         await this.unlock();
     }
+}
+
+function excludedServices(partial: PreparedProject | undefined): string[] {
+    return partial?.exclusions?.length
+        ? [
+              ...new Set(
+                  partial.exclusions.flatMap((exclusion) => exclusion.services),
+              ),
+          ].sort()
+        : [];
+}
+
+function appliedMessage(
+    excluded: readonly string[],
+    reloaded: boolean,
+    reloadedNames: string,
+): string {
+    if (excluded.length) {
+        return `Applied with ${excluded.length} service${excluded.length === 1 ? '' : 's'} excluded (see log).`;
+    }
+    return reloaded ? `Rebuilt ${reloadedNames}.` : 'Configuration applied.';
+}
+
+function appliedCompletion(
+    excluded: readonly string[],
+    reloaded: boolean,
+    reloadedNames: string,
+): string {
+    if (excluded.length) {
+        return `Completed: applied with ${excluded.length} excluded: ${excluded.join(', ')}. Fix the reported variables and apply again to start them.`;
+    }
+    return reloaded
+        ? `Completed: rebuilt ${reloadedNames}.`
+        : 'Completed: configuration applied.';
 }

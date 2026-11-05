@@ -56,6 +56,11 @@ function argsEmpty(a: Args) {
     fields(a, []);
 }
 
+function argsMeasure(a: Args) {
+    fields(a, ['journey']);
+    if (a.journey !== undefined) string(a.journey, 128);
+}
+
 function profile(value: unknown) {
     try {
         parseEnvironmentProfile(value);
@@ -110,6 +115,37 @@ function names(value: unknown) {
         invalid('Invalid names.');
     value.forEach((name) => string(name, 256));
 }
+function argsSaveJourney(a: Args) {
+    fields(a, ['name', 'services', 'lazy', 'excluded']);
+    string(a.name, 128);
+    const services = stringListArg(a.services);
+    const lazy = a.lazy === undefined ? [] : stringListArg(a.lazy);
+    const excluded = a.excluded === undefined ? [] : stringListArg(a.excluded);
+    if (!services.length && !lazy.length) {
+        invalid('A journey needs at least one service.');
+    }
+    if (excluded.length) {
+        const included = new Set([...services, ...lazy]);
+        for (const name of excluded) {
+            if (included.has(name)) {
+                invalid(
+                    `${name} cannot be in both included and excluded lists.`,
+                );
+            }
+        }
+    }
+}
+
+function argsDeleteJourney(a: Args) {
+    fields(a, ['name']);
+    string(a.name, 128);
+}
+
+function stringListArg(value: unknown): string[] {
+    if (!Array.isArray(value)) invalid('Invalid service list.');
+    return value.map((name) => string(name, 256));
+}
+
 function argsLegacyEdit(a: Args) {
     fields(a, ['edit', 'revision']);
     string(a.revision, 128);
@@ -252,6 +288,9 @@ const queryArgValidators = new Map<string, ArgsValidator>([
     ['environment.profile', argsEmpty],
     ['environment.profileRead', argsProfilePath],
     ['environment.profilePreview', argsProfilePreview],
+    ['environment.measure', argsMeasure],
+    ['journey.list', argsEmpty],
+    ['proxy.accounting', argsEmpty],
     ['environment.cidevVersions', argsCidevVersions],
     ['configuration.snapshot', argsEmpty],
     ['environment.preview', argsEmpty],
@@ -288,6 +327,9 @@ const commandArgValidators = new Map<string, ArgsValidator>([
     ['ssh.setup', argsSshSetup],
     ['authentication.login', argsAuthenticationLogin],
     ['project.clone', argsProjectClone],
+    ['project.saveJourney', argsSaveJourney],
+    ['project.deleteJourney', argsDeleteJourney],
+    ['usage.cacheClear', argsEmpty],
 ]);
 export function commandRequest(value: unknown): CommandRequest {
     const v = object(value);

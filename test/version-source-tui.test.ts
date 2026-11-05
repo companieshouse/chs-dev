@@ -104,6 +104,7 @@ test('a service can select Latest and remove an old explicit image pin', async (
     await delay(150);
     await term.key('\u001b[B');
     await term.key('\u001b[B');
+    await term.key('\u001b[B');
     await term.key('\r');
     assert.match(term.frame(), /Service version source/);
     await term.key('\u001b[A');
@@ -137,7 +138,8 @@ test('specific version entry validates input and saves a full image reference wi
     );
     t.after(() => term.app.unmount());
     await delay(150);
-    assert.match(term.frame(), /Versions: Staging \(environment default\)/);
+    assert.match(term.frame(), /Versions: Staging \(inherited\)/);
+    await term.key('\u001b[B');
     await term.key('\u001b[B');
     await term.key('\u001b[B');
     await term.key('\r');

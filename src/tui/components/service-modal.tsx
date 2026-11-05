@@ -29,8 +29,10 @@ import ModalFrame from './modal-frame.js';
 import { centeredStart } from '../models/modules.js';
 import { useProviderSelection } from '../hooks/use-provider-selection.js';
 import type { ServiceProvider } from '../../domain/providers.js';
+import type { StartMode } from '../../domain/start-modes.js';
 import { useServiceVersions } from '../hooks/use-service-versions.js';
 import { ChoiceModal, TextInputModal } from './settings-modals.js';
+import ConfirmModal from './confirm-modal.js';
 
 export interface ServiceContainerControls {
     /** Whether a container exists, is running, and runs in Development mode. */
@@ -45,6 +47,7 @@ export interface ServiceContainerControls {
 type MainOption =
     | 'enabled'
     | 'mode'
+    | 'startMode'
     | 'scenario'
     | 'versions'
     | 'dependencies'
@@ -82,6 +85,7 @@ interface OptionLabelView {
     enabled: boolean;
     provider: ServiceProvider;
     mockScenario?: string;
+    startModeLabel: string;
     versionLabel: string;
     base: boolean;
     modeFixed: boolean;
@@ -131,10 +135,12 @@ function buildMainOptions(
     controls?: ServiceContainerControls,
     mock = false,
     versions = false,
+    startMode = false,
 ): MainOption[] {
     return [
         'enabled',
         'mode',
+        ...(startMode ? (['startMode'] as const) : []),
         ...(mock ? (['scenario'] as const) : []),
         ...(versions ? (['versions'] as const) : []),
         'dependencies',
@@ -190,6 +196,7 @@ function mainOptionLabel(option: MainOption, view: OptionLabelView): string {
     const labels: Record<MainOption, string> = {
         enabled: stateOptionLabel('enabled', view),
         mode: stateOptionLabel('mode', view),
+        startMode: `Start mode: ${view.startModeLabel} (cycle)`,
         scenario: `Mock scenario: ${view.mockScenario ?? 'Unknown'} (cycle)`,
         versions: view.versionLabel,
         save: stateOptionLabel('save', view),
@@ -251,11 +258,46 @@ function effectiveExclusions(
     );
 }
 
+/** Start-mode override state: cycles Default → Lazy → Always. */
+function useStartModeSelection(
+    details: ServiceModalProps['details'],
+    definition: ServiceDefinition | undefined,
+    provider: ServiceProvider,
+) {
+    const [startMode, setStartMode] = useState<StartMode | undefined>(
+        details?.startModeOverride,
+    );
+    const cycle = () => {
+        const allowLazy = !definition?.base && provider !== 'development';
+        setStartMode((current) => {
+            if (current === undefined) return allowLazy ? 'lazy' : 'always';
+            if (current === 'lazy') return 'always';
+            return undefined;
+        });
+    };
+    const label = startMode
+        ? `${startMode} (override)`
+        : details?.effectiveStartMode
+          ? `default → ${details.effectiveStartMode} (${details.startModeSource ?? 'default'})`
+          : `default (${details?.startModeLabel ?? 'always'})`;
+    return {
+        startMode,
+        changed: startMode !== details?.startModeOverride,
+        label,
+        cycle,
+    };
+}
+
 function useServiceConfiguration(props: ServiceModalProps) {
     const [enabled, setEnabled] = useState(props.details?.enabled === 'Yes');
     const [exclusions, setExclusions] = useState<Record<string, boolean>>({});
     const definition = definitionOf(props.groups, props.name);
     const selection = useProviderSelection(props.details, definition);
+    const startModeSelection = useStartModeSelection(
+        props.details,
+        definition,
+        selection.provider,
+    );
     const versions = useServiceVersions(props.details, definition?.image);
     const editable = Boolean(
         props.details &&
@@ -263,16 +305,19 @@ function useServiceConfiguration(props: ServiceModalProps) {
         definition &&
         !definition.deprecated,
     );
-    const changed =
-        enabled !== (props.details?.enabled === 'Yes') ||
-        selection.changed ||
-        versions.changed ||
-        exclusionsChanged(exclusions, props.allDetails);
+    const changed = [
+        enabled !== (props.details?.enabled === 'Yes'),
+        selection.changed,
+        versions.changed,
+        startModeSelection.changed,
+        exclusionsChanged(exclusions, props.allDetails),
+    ].some(Boolean);
     const toggle = (option: MainOption) => {
         if (!editable) return;
         if (option === 'enabled' && !definition?.base)
             setEnabled((value) => !value);
         if (option === 'mode') selection.cycleProvider();
+        if (option === 'startMode') startModeSelection.cycle();
         if (option === 'versions') versions.open();
         if (option === 'scenario' && selection.provider === 'mock')
             selection.cycleScenario();
@@ -295,6 +340,8 @@ function useServiceConfiguration(props: ServiceModalProps) {
     return {
         enabled,
         provider: selection.provider,
+        startMode: startModeSelection.startMode,
+        startModeLabel: startModeSelection.label,
         scenario: selection.scenario,
         scenarioDescription: selection.description,
         modeFixed: selection.fixed,
@@ -316,6 +363,7 @@ function useServiceConfiguration(props: ServiceModalProps) {
                     ? { mockScenario: selection.scenario }
                     : {}),
                 exclusions: effectiveExclusions(exclusions, props.allDetails),
+                startMode: startModeSelection.startMode ?? null,
                 ...versions.edit(),
             }),
     };
@@ -349,9 +397,116 @@ function useServiceNavigation(dependencyIndex: number) {
 function serviceKeyKind(input: string, key: Key) {
     if (key.escape || input === 'q') return 'escape';
     if (key.upArrow || key.downArrow || key.tab) return 'move';
-    if (key.return || input === ' ' || key.leftArrow || key.rightArrow)
-        return 'activate';
+    if (key.return || input === ' ') return 'activate';
+    if (key.leftArrow || key.rightArrow) return 'cycle';
     return undefined;
+}
+
+function serviceActions({
+    props,
+    configuration,
+    navigation,
+    operations,
+    setDiscardOpen,
+}: {
+    props: ServiceModalProps;
+    configuration: ReturnType<typeof useServiceConfiguration>;
+    navigation: ReturnType<typeof useServiceNavigation>;
+    operations: ReturnType<typeof useServiceOperations>;
+    setDiscardOpen(value: boolean): void;
+}): Partial<Record<MainOption, () => void>> {
+    return {
+        enabled: () => configuration.toggle('enabled'),
+        mode: () => configuration.toggle('mode'),
+        startMode: () => configuration.toggle('startMode'),
+        scenario: () => configuration.toggle('scenario'),
+        versions: () => configuration.toggle('versions'),
+        dependencies: navigation.dependencies,
+        save: () => {
+            if (configuration.editable && configuration.changed)
+                void operations.save();
+        },
+        reload: operations.reload,
+        restart: () => void operations.containerAction('restart'),
+        stop: () => void operations.containerAction('stop'),
+        start: () => void operations.containerAction('start'),
+        logs: navigation.showLogs,
+        container: props.onContainer,
+        cancel: () => {
+            if (configuration.changed) setDiscardOpen(true);
+            else props.onClose();
+        },
+    };
+}
+
+function activateServiceSelection({
+    navigation,
+    mainOptions,
+    actions,
+    configuration,
+    tree,
+    setConfirmation,
+}: {
+    navigation: ReturnType<typeof useServiceNavigation>;
+    mainOptions: MainOption[];
+    actions: Partial<Record<MainOption, () => void>>;
+    configuration: ReturnType<typeof useServiceConfiguration>;
+    tree: DependencyTreeRow[];
+    setConfirmation(value: ContainerAction): void;
+}) {
+    if (!navigation.dependencyView) {
+        const option = mainOptions[navigation.selected];
+        if (option === 'restart' || option === 'stop') {
+            setConfirmation(option);
+            return;
+        }
+        actions[option!]?.();
+        return;
+    }
+    const dependency = tree[navigation.selected];
+    if (dependency) configuration.toggleDependency(dependency);
+    else navigation.back();
+}
+
+function useModalKeyboard({
+    navigation,
+    inputBusy,
+    optionCount,
+    activate,
+    onClose,
+    cycle,
+}: {
+    navigation: ReturnType<typeof useServiceNavigation>;
+    inputBusy: boolean;
+    optionCount: number;
+    activate(): void;
+    onClose(): void;
+    cycle(): void;
+}) {
+    useServiceKeyboard(navigation, {
+        inputBusy,
+        optionCount,
+        activate,
+        onClose,
+        cycle,
+    });
+}
+
+function serviceInputBusy(
+    configuration: ReturnType<typeof useServiceConfiguration>,
+    operations: ReturnType<typeof useServiceOperations>,
+    confirmation: ContainerAction | undefined,
+    discardOpen: boolean,
+) {
+    return (
+        operations.busy ||
+        Boolean(operations.actionBusy) ||
+        operations.reloading ||
+        configuration.versionEditor.pickerOpen ||
+        configuration.versionEditor.inputOpen ||
+        Boolean(confirmation) ||
+        discardOpen
+    );
 }
 
 function useServiceModal(props: ServiceModalProps) {
@@ -361,56 +516,55 @@ function useServiceModal(props: ServiceModalProps) {
         mainOptions.indexOf('dependencies'),
     );
     const operations = useServiceOperations(props, configuration.save);
+    const [confirmation, setConfirmation] = useState<ContainerAction>();
+    const [discardOpen, setDiscardOpen] = useState(false);
     const tree = dependencyTree(props.name, props.groups);
-    const actions: Partial<Record<MainOption, () => void>> = {
-        enabled: () => configuration.toggle('enabled'),
-        mode: () => configuration.toggle('mode'),
-        scenario: () => configuration.toggle('scenario'),
-        versions: () => configuration.toggle('versions'),
-        dependencies: navigation.dependencies,
-        save: () => {
-            if (configuration.editable && configuration.changed)
-                void operations.save();
-        },
-        reload: operations.reload,
-        restart: () => {
-            void operations.containerAction('restart');
-        },
-        stop: () => {
-            void operations.containerAction('stop');
-        },
-        start: () => {
-            void operations.containerAction('start');
-        },
-        logs: navigation.showLogs,
-        container: props.onContainer,
-        cancel: props.onClose,
+    const actions = serviceActions({
+        props,
+        configuration,
+        navigation,
+        operations,
+        setDiscardOpen,
+    });
+    const requestClose = () => {
+        if (configuration.changed) setDiscardOpen(true);
+        else props.onClose();
     };
-    const activate = () => {
-        if (!navigation.dependencyView) {
-            actions[mainOptions[navigation.selected]!]?.();
-            return;
-        }
-        const dependency = tree[navigation.selected];
-        if (dependency) configuration.toggleDependency(dependency);
-        else navigation.back();
-    };
-    const inputBusy =
-        operations.busy ||
-        Boolean(operations.actionBusy) ||
-        operations.reloading;
+    const activate = () =>
+        activateServiceSelection({
+            navigation,
+            mainOptions,
+            actions,
+            configuration,
+            tree,
+            setConfirmation,
+        });
     const optionCount = navigation.dependencyView
         ? tree.length + 1
         : mainOptions.length;
 
-    useServiceKeyboard(navigation, {
-        inputBusy:
-            inputBusy ||
-            configuration.versionEditor.pickerOpen ||
-            configuration.versionEditor.inputOpen,
+    useModalKeyboard({
+        navigation,
+        inputBusy: serviceInputBusy(
+            configuration,
+            operations,
+            confirmation,
+            discardOpen,
+        ),
         optionCount,
         activate,
-        onClose: props.onClose,
+        onClose: requestClose,
+        cycle: () => {
+            const option = mainOptions[navigation.selected];
+            if (
+                option === 'enabled' ||
+                option === 'mode' ||
+                option === 'startMode' ||
+                option === 'scenario'
+            )
+                configuration.toggle(option);
+            if (option === 'versions') configuration.toggle(option);
+        },
     });
     const view = useServicePresentation(
         props,
@@ -424,6 +578,16 @@ function useServiceModal(props: ServiceModalProps) {
         versionEditor: configuration.versionEditor,
         logsOpen: navigation.logsOpen,
         closeLogs: navigation.closeLogs,
+        confirmation,
+        confirm: () => {
+            if (!confirmation) return;
+            void operations.containerAction(confirmation);
+            setConfirmation(undefined);
+        },
+        cancelConfirmation: () => setConfirmation(undefined),
+        discardOpen,
+        discard: props.onClose,
+        cancelDiscard: () => setDiscardOpen(false),
     };
 }
 
@@ -434,6 +598,7 @@ function useServiceKeyboard(
         optionCount: number;
         activate(): void;
         onClose(): void;
+        cycle(): void;
     },
 ) {
     useInput(
@@ -451,6 +616,8 @@ function useServiceKeyboard(
                     );
                 case 'activate':
                     return options.activate();
+                case 'cycle':
+                    return options.cycle();
             }
         },
         {
@@ -507,6 +674,7 @@ function serviceLabelView(
         enabled: configuration.enabled,
         provider: configuration.provider,
         mockScenario: configuration.scenario,
+        startModeLabel: configuration.startModeLabel,
         versionLabel: configuration.versionLabel,
         base: Boolean(configuration.definition?.base),
         modeFixed: configuration.modeFixed,
@@ -582,6 +750,7 @@ function configurationOptions(
         configuration.provider === 'mock',
         configuration.provider === 'service' &&
             Boolean(props.details?.versionSource || props.details?.imagePinned),
+        Boolean(configuration.definition && !configuration.definition.base),
     );
 }
 
@@ -676,6 +845,30 @@ function ServiceModalView(props: ReturnType<typeof useServicePresentation>) {
 
 export default function ServiceModal(props: ServiceModalProps) {
     const state = useServiceModal(props);
+    if (state.confirmation)
+        return (
+            <ConfirmModal
+                title={`${state.confirmation[0].toUpperCase()}${state.confirmation.slice(1)} container`}
+                message={`Really ${state.confirmation} this container?`}
+                confirmLabel={
+                    state.confirmation === 'stop'
+                        ? 'Stop container'
+                        : 'Restart container'
+                }
+                onConfirm={state.confirm}
+                onCancel={state.cancelConfirmation}
+            />
+        );
+    if (state.discardOpen)
+        return (
+            <ConfirmModal
+                title="Discard unsaved changes?"
+                message="Your service changes have not been saved."
+                confirmLabel="Discard changes"
+                onConfirm={state.discard}
+                onCancel={state.cancelDiscard}
+            />
+        );
     if (state.versionEditor.inputOpen)
         return (
             <TextInputModal

@@ -24,6 +24,7 @@ const paths: Record<SettingKey, readonly string[]> = {
     awsProfile: ['aws', 'profile'],
     ecrProfiles: ['aws', 'ecrProfiles'],
     autoApply: ['autoApply'],
+    usageCache: ['usageCache'],
     loginAction: ['login', 'action'],
     autoLogin: ['login', 'auto'],
 };
@@ -110,6 +111,10 @@ const settingValidators: Record<
             ? { value: [...new Set(value)] }
             : { error: 'must be a non-empty list of AWS profile names' },
     autoApply: (value) =>
+        typeof value === 'boolean'
+            ? { value }
+            : { error: 'must be true or false' },
+    usageCache: (value) =>
         typeof value === 'boolean'
             ? { value }
             : { error: 'must be true or false' },

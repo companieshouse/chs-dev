@@ -17,6 +17,7 @@ import {
 import type { ApplicationHost, BackendSession } from './ports.js';
 import { Supervisor } from './supervisor.js';
 import type { Interactions } from './interactions.js';
+import type { UsageTracker } from './usage-tracker.js';
 import type {
     SettingKey,
     SettingValues,
@@ -25,8 +26,35 @@ import type {
 } from '../domain/settings.js';
 import type { Operations } from './operations.js';
 import type { LiveController } from './live-controller.js';
+import { serviceDependencies } from '../domain/service-dependencies.js';
+import { lazyChain } from '../proxy/lifecycle.js';
 
 type Dispatch = { handled: true; value?: unknown } | { handled: false };
+
+/**
+ * Expands a manual start into its dependency chain, dependencies first, so
+ * starting a service also starts the (possibly lazy) services beneath it.
+ */
+function startChain(
+    services: readonly string[],
+    groups: BackendSession['groups'],
+): string[] {
+    const names = new Set(services);
+    for (const name of services)
+        for (const dependency of serviceDependencies(name, groups))
+            names.add(dependency.name);
+    const dependencies = new Map(
+        [...names].map((name) => [
+            name,
+            serviceDependencies(name, groups).map(
+                (dependency) => dependency.name,
+            ),
+        ]),
+    );
+    return [
+        ...new Set(services.flatMap((name) => lazyChain(name, dependencies))),
+    ];
+}
 
 export class ProjectSession {
     private backend?: BackendSession;
@@ -62,6 +90,7 @@ export class ProjectSession {
             configurationError: '',
             settings: host.settings(),
             settingsRevision: host.settingsRevision(),
+            usage: { learned: [], unusedLastRun: [] },
             runtime: {
                 id: '',
                 name: 'Loading',
@@ -88,6 +117,8 @@ export class ProjectSession {
         };
     }
     operations?: Operations;
+    /** Usage-cache runs; set by the daemon bootstrap before initialize. */
+    usage?: UsageTracker;
     snapshot = (): SessionSnapshot => ({
         ...this.state,
         operations: this.operations?.list() ?? [],
@@ -175,6 +206,8 @@ export class ProjectSession {
             );
         });
         await this.refreshConfiguration();
+        await this.refreshUsage();
+        await this.usage?.openRun(backend.project.directory);
         await this.checkpoint();
         this.supervisor = new Supervisor();
         this.supervisor.every(
@@ -184,6 +217,7 @@ export class ProjectSession {
                 await backend.controller?.poll();
                 await this.refreshSettings();
                 await this.refreshConfiguration();
+                await this.refreshUsage();
             },
             (error) =>
                 this.update({
@@ -420,23 +454,20 @@ export class ProjectSession {
         const { command, args: a } = request;
         switch (command) {
             case 'environment.start':
-                await this.startEnvironment(
-                    requireController(),
-                    'start',
-                    a.approveStops,
-                );
-                return { handled: true };
             case 'environment.apply':
-                await this.startEnvironment(
-                    requireController(),
-                    'apply',
-                    a.approveStops,
-                );
-                return { handled: true };
+                return {
+                    handled: true,
+                    value: await this.applyEnvironment(
+                        requireController(),
+                        command === 'environment.start' ? 'start' : 'apply',
+                        a.approveStops,
+                    ),
+                };
             case 'environment.stop':
-                this.interactions.close();
-                await requireController().stop();
-                return { handled: true };
+                return {
+                    handled: true,
+                    value: await this.stopEnvironment(requireController()),
+                };
             case 'environment.cancel':
                 requireController().cancel();
                 await requireController().waitUntilIdle();
@@ -447,32 +478,70 @@ export class ProjectSession {
             case 'environment.dismiss':
                 requireController().dismissPlan();
                 return { handled: true };
-            case 'service.action':
-                return {
-                    handled: true,
-                    value: await requireController().serviceAction(
-                        a.services,
-                        a.action,
-                    ),
-                };
-            case 'service.reload':
-                return {
-                    handled: true,
-                    value: await requireController().reloadService(a.service),
-                };
-            case 'container.action':
-                return {
-                    handled: true,
-                    value: await this.manageContainer(
+            default:
+                return (
+                    (await this.runServiceCommand(
+                        request,
                         backend,
-                        a,
                         signal,
                         requireController,
-                    ),
-                };
-            default:
-                return { handled: false };
+                    )) ?? { handled: false }
+                );
         }
+    }
+    /** Applies the selection, then reopens the usage run for the new state. */
+    private async applyEnvironment(
+        controller: LiveController,
+        action: 'start' | 'apply',
+        approveStops?: boolean,
+    ) {
+        await this.usage?.closeRun();
+        await this.startEnvironment(controller, action, approveStops);
+        await this.refreshUsage();
+        await this.ensureUsageRun();
+        return undefined;
+    }
+    /** Stops the environment, closing the run so its verdict is learned. */
+    private async stopEnvironment(controller: LiveController) {
+        this.interactions.close();
+        await controller.stop();
+        await this.usage?.closeRun();
+        await this.refreshUsage();
+        return undefined;
+    }
+    /** Service-level commands that need the live controller. */
+    private async runServiceCommand(
+        request: CommandRequest,
+        backend: BackendSession,
+        signal: AbortSignal,
+        requireController: () => LiveController,
+    ): Promise<Dispatch | undefined> {
+        const { command, args: a } = request;
+        if (command === 'service.action')
+            return {
+                handled: true,
+                value: await requireController().serviceAction(
+                    a.action === 'start'
+                        ? startChain(a.services, backend.groups)
+                        : a.services,
+                    a.action,
+                ),
+            };
+        if (command === 'service.reload')
+            return {
+                handled: true,
+                value: await requireController().reloadService(a.service),
+            };
+        if (command !== 'container.action') return undefined;
+        return {
+            handled: true,
+            value: await this.manageContainer(
+                backend,
+                a,
+                signal,
+                requireController,
+            ),
+        };
     }
     private async startEnvironment(
         controller: LiveController,
@@ -507,6 +576,7 @@ export class ProjectSession {
         const controller = requireController();
         controller.confirmStart();
         await controller.waitUntilIdle();
+        await this.ensureUsageRun();
     }
     private async manageContainer(
         backend: BackendSession,
@@ -544,11 +614,40 @@ export class ProjectSession {
     ): Promise<Dispatch> {
         const profile = await this.runProfileCommand(request, backend);
         if (profile.handled) return profile;
+        const session = await this.runSessionCommand(
+            request,
+            backend,
+            signal,
+            id,
+            requireController,
+        );
+        if (session) return session;
         const { command, args: a } = request;
         switch (command) {
             case 'configuration.save':
                 await this.queueConfigurationSave(request, backend);
+                await this.rememberPin(backend, [a.edit.name]);
                 return { handled: true };
+            case 'usage.cacheClear':
+                return {
+                    handled: true,
+                    value: await this.clearUsageCache(backend),
+                };
+            case 'project.saveJourney':
+                return {
+                    handled: true,
+                    value: await this.saveJourneyFile(backend, a),
+                };
+            case 'project.deleteJourney':
+                if (!backend.deleteJourney)
+                    throw new ClientError({
+                        code: 'UNSUPPORTED',
+                        message: 'No project is open.',
+                    });
+                return {
+                    handled: true,
+                    value: await backend.deleteJourney(a.name),
+                };
             case 'configuration.legacyEdit':
                 return {
                     handled: true,
@@ -557,6 +656,21 @@ export class ProjectSession {
             case 'settings.save':
                 await this.queueSettingsSave(request, signal);
                 return { handled: true };
+            default:
+                return { handled: false };
+        }
+    }
+
+    /** Commands bound to the live session or an interactive operation. */
+    private async runSessionCommand(
+        request: CommandRequest,
+        backend: BackendSession,
+        signal: AbortSignal,
+        id: string,
+        requireController: () => LiveController,
+    ): Promise<Dispatch | undefined> {
+        const { command, args: a } = request;
+        switch (command) {
             case 'ssh.setup':
                 return {
                     handled: true,
@@ -578,7 +692,7 @@ export class ProjectSession {
                     value: await this.cloneProject(a.destination, signal, id),
                 };
             default:
-                return { handled: false };
+                return undefined;
         }
     }
 
@@ -858,6 +972,7 @@ export class ProjectSession {
         });
         await this.checkpoint(true);
         try {
+            await this.usage?.closeRun();
             await this.stopCurrentEnvironment(old, signal);
             signal?.throwIfAborted();
             await this.supervisor.close();
@@ -968,6 +1083,16 @@ export class ProjectSession {
             configurationError: next.error,
         });
     }
+    /** Pulls the usage cache state into the session snapshot. */
+    private async refreshUsage() {
+        if (!this.backend?.usage) return;
+        this.update({ usage: await this.backend.usage() });
+    }
+    /** Opens a usage run when none is open (after an apply completes). */
+    private ensureUsageRun() {
+        if (!this.usage || this.usage.open || !this.backend) return;
+        return this.usage.openRun(this.backend.project.directory);
+    }
     private async refreshStatus(signal?: AbortSignal) {
         if (!this.backend?.project.valid) return;
         try {
@@ -984,18 +1109,8 @@ export class ProjectSession {
     async query(request: QueryRequest, signal?: AbortSignal): Promise<unknown> {
         this.assertScope(request.scope);
         const backend = this.backend!;
-        const versions = await this.queryVersions(request, backend, signal);
-        if (versions.handled) return versions.value;
-        const profile = await this.queryProfile(request, backend, signal);
-        if (profile.handled) return profile.value;
-        const containers = await this.queryContainers(request, backend, signal);
-        if (containers.handled) return containers.value;
-        const configuration = await this.queryConfiguration(
-            request,
-            backend,
-            signal,
-        );
-        if (configuration.handled) return configuration.value;
+        const gated = await this.queryGates(request, backend, signal);
+        if (gated.handled) return gated.value;
         switch (request.query) {
             case 'aws.refresh': {
                 const aws = await this.host.aws(signal);
@@ -1015,6 +1130,25 @@ export class ProjectSession {
                 return undefined;
             }
         }
+    }
+
+    /** Version, profile, container, journey and configuration queries. */
+    private async queryGates(
+        request: QueryRequest,
+        backend: BackendSession,
+        signal?: AbortSignal,
+    ): Promise<Dispatch> {
+        const versions = await this.queryVersions(request, backend, signal);
+        if (versions.handled) return versions;
+        const profile = await this.queryProfile(request, backend, signal);
+        if (profile.handled) return profile;
+        const containers = await this.queryContainers(request, backend, signal);
+        if (containers.handled) return containers;
+        const journeys = this.queryJourneys(request, backend);
+        if (journeys.handled) return journeys;
+        const proxy = this.queryProxy(request, backend);
+        if (proxy.handled) return proxy;
+        return this.queryConfiguration(request, backend, signal);
     }
 
     private async queryVersions(
@@ -1067,6 +1201,11 @@ export class ProjectSession {
                         request.args.versionsOnly,
                     ),
                 };
+            case 'environment.measure':
+                return {
+                    handled: true,
+                    value: await this.measure(backend, request.args.journey),
+                };
             case 'environment.cidevVersions': {
                 if (!backend.cidevVersions)
                     throw new Error('CIDEV version discovery is unavailable.');
@@ -1079,6 +1218,87 @@ export class ProjectSession {
                 return { handled: false };
         }
     }
+    private async measure(backend: BackendSession, journey?: string) {
+        if (!backend.measure)
+            throw new ClientError({
+                code: 'UNSUPPORTED',
+                message: 'Measurement is unavailable.',
+            });
+        return backend.measure(journey);
+    }
+
+    private async saveJourneyFile(
+        backend: BackendSession,
+        a: CommandRequest<'project.saveJourney'>['args'],
+    ) {
+        if (!backend.saveJourney)
+            throw new ClientError({
+                code: 'UNSUPPORTED',
+                message: 'No project is open.',
+            });
+        const saved = await backend.saveJourney({
+            name: a.name,
+            services: a.services,
+            lazy: a.lazy ?? [],
+            excluded: a.excluded ?? [],
+        });
+        // A pin is authoritative evidence of need: drop any learned verdict.
+        await this.rememberPin(backend, a.services);
+        return saved;
+    }
+
+    /** A pinned service outranks the cache: drop its learned verdict. */
+    private async rememberPin(
+        backend: BackendSession,
+        names: readonly string[],
+    ) {
+        await this.usage?.forget(backend.project.directory, names);
+        await this.refreshUsage();
+    }
+
+    /** Wipes every learned verdict for the checkout. */
+    private async clearUsageCache(backend: BackendSession) {
+        if (!this.usage)
+            throw new ClientError({
+                code: 'UNSUPPORTED',
+                message: 'Restart the daemon to manage the usage cache.',
+            });
+        if (!backend.project.valid)
+            throw new ClientError({
+                code: 'UNSUPPORTED',
+                message: 'No project is open.',
+            });
+        const cleared = await this.usage.clear(backend.project.directory);
+        await this.refreshUsage();
+        return { cleared };
+    }
+
+    private queryJourneys(
+        request: QueryRequest,
+        backend: BackendSession,
+    ): Dispatch {
+        if (request.query !== 'journey.list') return { handled: false };
+        if (!backend.journeys)
+            throw new ClientError({
+                code: 'UNSUPPORTED',
+                message: 'No project is open.',
+            });
+        return { handled: true, value: backend.journeys() };
+    }
+
+    private queryProxy(
+        request: QueryRequest,
+        backend: BackendSession,
+    ): Dispatch {
+        if (request.query !== 'proxy.accounting') return { handled: false };
+        if (!backend.accounting)
+            throw new ClientError({
+                code: 'UNSUPPORTED',
+                message: 'The proxy is not running.',
+            });
+        return { handled: true, value: backend.accounting() };
+    }
+
     private async queryConfiguration(
         request: QueryRequest,
         backend: BackendSession,
@@ -1281,6 +1501,8 @@ export class ProjectSession {
         if (this.state.live.busy) this.backend?.controller?.cancel();
         await this.supervisor.close();
         try {
+            // Best effort: a failed write costs one run's verdict, no more.
+            await this.usage?.closeRun().catch(() => {});
             if (this.backend) await this.checkpoint(true);
         } finally {
             this.unsubscribe?.();

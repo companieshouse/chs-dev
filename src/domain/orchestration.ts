@@ -97,12 +97,16 @@ export interface ResolvedProject {
 }
 export interface OperationIntent {
     reload?: readonly string[];
+    /** Services to create (or leave stopped) without starting. */
+    deferred?: readonly string[];
 }
 export interface PlannedAction {
     service: string;
     action: 'create' | 'replace' | 'start' | 'restart' | 'keep' | 'remove';
     reason: string;
     dependencies: string[];
+    /** Create or keep this container stopped until it is first used. */
+    deferred?: boolean;
 }
 export interface OperationPlan {
     actions: PlannedAction[];
@@ -193,6 +197,36 @@ function needsDependencyRestart(
     );
 }
 
+/** Plans one service's action, honouring deferral and dependency restarts. */
+function plannedFor(
+    name: string,
+    current: RuntimeContainer | undefined,
+    intent: OperationIntent,
+    prior: readonly PlannedAction[],
+    project: ResolvedProject,
+): PlannedAction {
+    const spec = project.services[name];
+    const deferred = intent.deferred?.includes(name) ?? false;
+    const planned = planService(name, spec, current, intent);
+    if (
+        planned.action === 'keep' &&
+        !deferred &&
+        needsDependencyRestart(spec, prior)
+    ) {
+        planned.action = spec.kind === 'job' ? 'replace' : 'restart';
+        planned.reason = 'Dependency updated';
+    }
+    return {
+        service: name,
+        action: planned.action,
+        reason: planned.reason,
+        dependencies: Object.keys(spec.dependencies).filter(
+            (d) => !!project.services[d],
+        ),
+        ...(deferred ? { deferred: true } : {}),
+    };
+}
+
 export function planProject(
     project: ResolvedProject,
     containers: readonly RuntimeContainer[],
@@ -201,28 +235,12 @@ export function planProject(
     const order = dependencyOrder(project.services);
     const actions: PlannedAction[] = [];
     for (const name of order) {
-        const spec = project.services[name];
         const matches = containers.filter((c) => c.service === name);
         if (matches.length > 1)
             throw new Error(
                 `Multiple owned containers for ${name}; refusing ambiguous reconciliation.`,
             );
-        const planned = planService(name, spec, matches[0], intent);
-        if (
-            planned.action === 'keep' &&
-            needsDependencyRestart(spec, actions)
-        ) {
-            planned.action = spec.kind === 'job' ? 'replace' : 'restart';
-            planned.reason = 'Dependency updated';
-        }
-        actions.push({
-            service: name,
-            action: planned.action,
-            reason: planned.reason,
-            dependencies: Object.keys(spec.dependencies).filter(
-                (d) => !!project.services[d],
-            ),
-        });
+        actions.push(plannedFor(name, matches[0], intent, actions, project));
     }
     for (const c of containers)
         if (!project.services[c.service])

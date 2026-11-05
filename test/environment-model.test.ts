@@ -165,8 +165,8 @@ test('the panel offers only actions that apply, recommended first', () => {
     ]);
     const running = { ...base, running: true, phase: 'Running' as const };
     assert.deepEqual(ids(running, summary('Ready', 3)), [
-        'stop',
         'apply',
+        'stop',
         'auto-apply',
         'logs',
         'close',

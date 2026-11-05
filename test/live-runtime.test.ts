@@ -79,6 +79,8 @@ function runtimeFixture() {
                     stdout: JSON.stringify(inspections),
                     stderr: '',
                 };
+            if (request.args.includes('--services'))
+                return { code: 0, stdout: 'api\nworker\n', stderr: '' };
             return { code: failure ? 1 : 0, stdout: '', stderr: failure };
         },
     });
@@ -117,6 +119,29 @@ test('Compose validates first and applies detached with explicit project files, 
     await assert.rejects(
         f.runtime.apply({ ...project, projectName: 'foreign' }, {}),
         /does not belong/,
+    );
+});
+
+test('Compose creates lazy services without starting them', async () => {
+    const f = runtimeFixture();
+    const lazyProject: PreparedProject = {
+        ...project,
+        inventory: [
+            { service: 'api', mode: 'Service' },
+            { service: 'worker', mode: 'Service', lazy: true },
+        ],
+    };
+    await f.runtime.apply(lazyProject, {});
+    assert.deepEqual(
+        f.requests.map((request) =>
+            request.args.slice(composeArguments(project).length),
+        ),
+        [
+            ['config', '--quiet'],
+            ['config', '--services'],
+            ['up', '--detach', '--no-deps', 'api'],
+            ['up', '--no-start', '--no-deps', 'worker'],
+        ],
     );
 });
 
@@ -178,6 +203,42 @@ test('snapshot retains lifecycle/health/identity and excludes foreign directorie
     assert.equal(snapshot.containers[0].exitCode, 0);
     assert.equal(snapshot.containers[0].lifecycle, 'running');
     assert.equal(snapshot.containers[0].mode, 'Service');
+});
+
+test('snapshot carries engine OOMKilled evidence and keeps absence unknown', async () => {
+    const f = runtimeFixture();
+    const killed = {
+        ...inspect({ 'com.docker.compose.service': 'killed' }),
+        Id: 'b'.repeat(64),
+        State: { ...inspect().State, OOMKilled: true },
+    };
+    const survived = {
+        ...inspect({ 'com.docker.compose.service': 'survived' }),
+        Id: 'c'.repeat(64),
+        State: {
+            Status: 'exited',
+            Health: { Status: 'none' },
+            ExitCode: 137,
+            OOMKilled: false,
+        },
+    };
+    const unreported = {
+        ...inspect({ 'com.docker.compose.service': 'unreported' }),
+        Id: 'd'.repeat(64),
+        State: { Status: 'exited', ExitCode: 137 },
+    };
+    f.set([inspect(), killed, survived, unreported]);
+    const snapshot = await f.runtime.snapshot();
+    assert.deepEqual(
+        snapshot.containers.map((container) => container.oomKilled),
+        [undefined, true, false, undefined],
+    );
+    assert.equal(
+        snapshot.containers.find(
+            (container) => container.service === 'unreported',
+        )?.exitCode,
+        137,
+    );
 });
 
 test('stop re-verifies exact container IDs and never acquires credentials or uses Compose', async () => {

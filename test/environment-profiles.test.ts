@@ -164,3 +164,34 @@ test('image pins reject interpolated values, credentials, malformed digests and 
         /Invalid image pin/,
     );
 });
+
+test('a journey selection survives a profile save and clears when absent', async (t) => {
+    const f = await fixture(t);
+    const first = await f.profiles.snapshot();
+    const withJourney = {
+        ...first,
+        selections: { ...first.selections, journey: 'accounts' },
+    };
+    const saved = await f.profiles.save({
+        profile: withJourney,
+        versionsOnly: false,
+        revision: first.revision,
+    });
+    assert.equal(saved.selections.journey, 'accounts');
+    const raw = await readFile(join(f.root, '.chs-dev.yaml'), 'utf8');
+    assert.equal(parse(raw).journey, 'accounts');
+
+    const second = await configurationSnapshot(f.root);
+    const cleared = {
+        ...withJourney,
+        selections: { ...withJourney.selections, journey: undefined },
+    };
+    const after = await f.profiles.save({
+        profile: cleared,
+        versionsOnly: false,
+        revision: second.revision,
+    });
+    assert.equal(after.selections.journey, undefined);
+    const clearedRaw = await readFile(join(f.root, '.chs-dev.yaml'), 'utf8');
+    assert.equal('journey' in parse(clearedRaw), false);
+});

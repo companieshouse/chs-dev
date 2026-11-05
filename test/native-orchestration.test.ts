@@ -312,6 +312,19 @@ test('planner retains jobs, replaces changed services and propagates restarts', 
         'start',
     );
 });
+test('planner marks deferred services without planning a start', () => {
+    const project = translate(document(), prepared);
+    for (const s of Object.values(project.services)) s.fingerprint = 'same';
+    const plan = planProject(project, [], { deferred: ['app'] });
+    const app = plan.actions.find((a) => a.service === 'app')!;
+    assert.equal(app.deferred, true);
+    assert.equal(app.action, 'create');
+    assert.equal(
+        plan.actions.find((a) => a.service === 'db')?.deferred,
+        undefined,
+    );
+});
+
 test('scheduler observes dependencies, caps concurrency and settles in-flight work on failure', async () => {
     const events: string[] = [];
     let running = 0,

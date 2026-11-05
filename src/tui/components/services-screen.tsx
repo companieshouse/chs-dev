@@ -13,6 +13,10 @@ import {
 } from '../../domain/service-filter.js';
 import ServiceList from './service-list.js';
 import { tabDirection } from '../models/navigation.js';
+import { useSearch } from '../hooks/use-search.js';
+import { footerBindingsForTab } from '../models/keymap.js';
+import { plural } from '../models/formatting.js';
+import TabScreen from './tab-screen.js';
 
 interface Props {
     active: boolean;
@@ -45,8 +49,8 @@ function runServiceCommand(
 
 function useServiceBrowser(props: Props) {
     const { exit } = useApp();
-    const [query, setQuery] = useState('');
-    const [searching, setSearching] = useState(false);
+    const searchState = useSearch();
+    const { query, searching, setQuery, setSearching, clear } = searchState;
     const [selected, setSelected] = useState(0);
     const [enabled, setEnabled] = useState<ServiceEnabledFilter>('All');
     const filtered = filterServices(props.groups, query, {
@@ -60,11 +64,8 @@ function useServiceBrowser(props: Props) {
         setSelected(0);
     };
     const escape = () => {
-        if (searching) setSearching(false);
-        else if (query || enabled !== 'All') {
-            filter('');
-            setEnabled('All');
-        } else exit();
+        clear();
+        if (enabled !== 'All') setEnabled('All');
     };
     const cycleEnabled = () => {
         setEnabled(
@@ -105,7 +106,6 @@ function useServiceBrowser(props: Props) {
             if (searching) return search(input, key);
             if (input === '/') {
                 setSearching(true);
-                filter('');
                 return;
             }
             const shortcut = shortcuts.get(input);
@@ -151,7 +151,7 @@ function ServiceBrowserContent({
                 <Text bold color={theme.accent}>
                     {enabled}
                 </Text>{' '}
-                · {count} services ·{' '}
+                · {plural(count, 'service')} ·{' '}
                 <Text bold color={theme.accent}>
                     e
                 </Text>{' '}
@@ -191,16 +191,21 @@ export default function ServicesScreen(props: Props) {
     const browser = useServiceBrowser(props);
 
     return (
-        <Box height={props.height} flexDirection="column">
-            <Box flexDirection="column" marginTop={1}>
+        <TabScreen
+            height={props.height}
+            footer={
+                <KeyboardHints
+                    bindings={
+                        browser.searching
+                            ? footerBindingsForTab('Services', 'search')
+                            : footerBindingsForTab('Services')
+                    }
+                />
+            }
+        >
+            <Box flexDirection="column">
                 <ServiceBrowserContent screen={props} browser={browser} />
             </Box>
-            <Box flexGrow={1} />
-            <KeyboardHints>
-                {browser.searching
-                    ? 'Type to filter · ↑ ↓ navigate · Esc finish · Ctrl+C quit'
-                    : '↑ ↓ select · Enter actions · c container · e state · / filter · Tab tabs · q quit'}
-            </KeyboardHints>
-        </Box>
+        </TabScreen>
     );
 }

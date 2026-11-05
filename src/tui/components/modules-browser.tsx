@@ -261,13 +261,11 @@ function moduleSelection(
 function escapeModule(
     state: ModuleState,
     dispatch: (action: ModuleAction) => void,
-    exit: () => void,
 ) {
     if (state.searching) dispatch({ kind: 'search', active: false });
-    else if (state.query) dispatch({ kind: 'filter', query: '' });
-    else if (state.focused === 'tree')
+    if (state.query) dispatch({ kind: 'filter', query: '' });
+    if (!state.searching && !state.query && state.focused === 'tree')
         dispatch({ kind: 'focus', panel: 'browser' });
-    else exit();
 }
 
 function moduleSearchAction(
@@ -303,7 +301,7 @@ function useModuleBrowser({
         [current?.name, current?.kind, groups, state.direction],
     );
     const view = modulePresentation(state, browser, tree, height);
-    const escape = () => escapeModule(state, dispatch, exit);
+    const escape = () => escapeModule(state, dispatch);
     const activate = () =>
         activateModule(
             state.focused,
@@ -324,7 +322,6 @@ function useModuleBrowser({
         '/': () => {
             dispatch({ kind: 'focus', panel: 'browser' });
             dispatch({ kind: 'search', active: true });
-            dispatch({ kind: 'filter', query: '' });
         },
         d: () => dispatch({ kind: 'direction', direction: 'dependencies' }),
         u: () => dispatch({ kind: 'direction', direction: 'dependents' }),

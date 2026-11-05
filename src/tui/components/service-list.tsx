@@ -22,6 +22,12 @@ export default function ServiceList({
     const hasScenarios = Object.values(details).some(
         (detail) => detail.mockScenario,
     );
+    const hasStartModes = Object.values(details).some(
+        (detail) =>
+            detail.effectiveStartMode === 'lazy' ||
+            detail.startModeOverride ||
+            detail.startModeLabel,
+    );
     let serviceIndex = 0;
     const lines = groups.flatMap((group) => [
         { label: group.name, group: group.name, index: -1 },
@@ -55,6 +61,7 @@ export default function ServiceList({
                 enabled="ENABLED"
                 status="STATUS"
                 mode="MODE"
+                start={hasStartModes ? 'START' : undefined}
                 scenario={hasScenarios ? 'SCENARIO' : undefined}
                 heading
             />
@@ -66,6 +73,11 @@ export default function ServiceList({
                     details={details[line.label]}
                     status={statuses[line.label] ?? defaultStatus}
                     hasScenarios={hasScenarios}
+                    start={
+                        hasStartModes
+                            ? startText(details[line.label])
+                            : undefined
+                    }
                 />
             ))}
         </Box>
@@ -78,12 +90,14 @@ function ServiceListItem({
     details,
     status,
     hasScenarios,
+    start,
 }: {
     line: { label: string; index: number };
     selected: number;
     details?: ServiceDetails;
     status: ServiceStatus;
     hasScenarios: boolean;
+    start?: string;
 }) {
     if (line.index === -1)
         return (
@@ -97,6 +111,7 @@ function ServiceListItem({
             selected={line.index === selected}
             enabled={details?.enabled ?? 'Unknown'}
             mode={details?.mode ?? 'Unknown'}
+            start={start}
             scenario={hasScenarios ? (details?.mockScenario ?? '—') : undefined}
             status={status}
         />
@@ -125,6 +140,7 @@ function ServiceRow({
     enabled,
     status,
     mode,
+    start,
     scenario,
     selected = false,
     heading = false,
@@ -133,6 +149,7 @@ function ServiceRow({
     enabled: string;
     status: string;
     mode: string;
+    start?: string;
     scenario?: string;
     selected?: boolean;
     heading?: boolean;
@@ -188,8 +205,39 @@ function ServiceRow({
                     {mode}
                 </Text>
             </Box>
+            <StartCell start={start} heading={heading} />
             <ScenarioCell scenario={scenario} heading={heading} />
         </Box>
+    );
+}
+
+function StartCell({ start, heading }: { start?: string; heading: boolean }) {
+    if (start === undefined) return null;
+    return (
+        <Box width={8} flexShrink={0}>
+            <Text
+                bold={heading}
+                color={
+                    heading
+                        ? theme.columnHeading
+                        : start === 'lazy'
+                          ? theme.development
+                          : theme.muted
+                }
+            >
+                {start}
+            </Text>
+        </Box>
+    );
+}
+
+/** The START column value for one service row. */
+function startText(details?: ServiceDetails): string {
+    return (
+        details?.effectiveStartMode ??
+        details?.startModeOverride ??
+        details?.startModeLabel ??
+        '—'
     );
 }
 

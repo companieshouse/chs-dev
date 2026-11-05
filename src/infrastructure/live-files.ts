@@ -2,9 +2,13 @@ import { createHash, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { readFile, writeFile, mkdir, rm, realpath } from 'node:fs/promises';
 import { parse } from 'yaml';
-import { resolveServiceState } from '../domain/service-state.js';
+import { resolveStateInventory } from '../domain/service-state.js';
 import type { ConfigurationRevision } from '../domain/live.js';
-import { LiveFailure, withMockRuntime } from '../domain/live.js';
+import {
+    LiveFailure,
+    withMockRuntime,
+    withoutRetiredProxy,
+} from '../domain/live.js';
 import type { ServiceGroup } from '../domain/services.js';
 
 export interface LiveFiles {
@@ -39,25 +43,11 @@ export function configurationStore(
                     throw error;
                 yaml = '{}\n';
             }
-            const details = resolveServiceState(parse(yaml), groups);
+            const details = resolveStateInventory(parse(yaml), groups);
             return {
                 identity: createHash('sha256').update(yaml).digest('hex'),
                 yaml,
-                inventory: withMockRuntime(
-                    Object.entries(details).flatMap(([service, value]) =>
-                        value.enabled === 'Yes' && value.mode !== 'Unknown'
-                            ? [
-                                  {
-                                      service,
-                                      mode: value.mode,
-                                      ...(value.mockScenario
-                                          ? { mockScenario: value.mockScenario }
-                                          : {}),
-                                  },
-                              ]
-                            : [],
-                    ),
-                ),
+                inventory: withMockRuntime(withoutRetiredProxy(details)),
             };
         },
     };

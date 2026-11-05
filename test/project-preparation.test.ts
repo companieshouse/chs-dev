@@ -157,8 +157,10 @@ function fixture(state: unknown = { services: ['app'] }) {
             calls.push(['repository', request]);
             return request.directory;
         },
-        environment: async (names) => {
-            calls.push(['environment', names]);
+        environment: {
+            enforce: async (names) => {
+                calls.push(['environment', names]);
+            },
         },
         validate: async () => {},
     };
@@ -212,7 +214,6 @@ test('mock preparation replaces the service, omits its dependencies and preserve
     assert.deepEqual(Object.keys(document.services).sort(), [
         'chs-dev-microcks',
         'company-profile-api',
-        'ingress-proxy',
     ]);
     const mock = document.services['company-profile-api'];
     assert.equal(
@@ -234,11 +235,7 @@ test('mock preparation replaces the service, omits its dependencies and preserve
         f.calls.some(([type]) => type === 'repository'),
         false,
     );
-    assert.equal(
-        document.services['ingress-proxy'].depends_on['company-profile-api']
-            .restart,
-        false,
-    );
+    assert.equal(document.services['ingress-proxy'], undefined);
     assert.equal(
         document.services['chs-dev-microcks'].labels['traefik.enable'],
         'false',
@@ -286,12 +283,11 @@ test('the Felix mock needs no validation dependencies, private credentials, debu
     assert.deepEqual(prepared.inventory.map((item) => item.service).sort(), [
         'chs-dev-microcks',
         'felixvalidator',
-        'ingress-proxy',
     ]);
     const mock = parse(f.files.get(prepared.composeFiles[0])!).services
         .felixvalidator;
     assert.deepEqual(Object.keys(mock.depends_on), ['chs-dev-microcks']);
-    assert.equal(mock.ports, undefined);
+    assert.match(String(mock.ports[0]), /^127\.0\.0\.1:\d{4,5}:8080$/);
     assert.deepEqual(prepared.environmentRequirements, []);
     assert.deepEqual(prepared.sshRequirements, []);
     assert.equal(
@@ -315,16 +311,13 @@ test('prepares an isolated Compose file with effective dependencies and absolute
         configurationIdentity: sha(f.request.configuration),
         composeFiles: ['/state/one/docker-compose.yaml'],
         sources: {
-            'ingress-proxy':
-                '/project/services/infrastructure/docker-compose.yaml',
             app: '/project/services/modules/example/app.docker-compose.yaml',
             database:
                 '/project/services/modules/example/database.docker-compose.yaml',
         },
         inventory: [
             { service: 'app', mode: 'Service' },
-            { service: 'database', mode: 'Service' },
-            { service: 'ingress-proxy', mode: 'Service' },
+            { service: 'database', mode: 'Service', reclaimable: true },
         ],
         sshRequirements: [],
         environmentRequirements: [],
@@ -341,9 +334,7 @@ test('prepares an isolated Compose file with effective dependencies and absolute
         '/project/services/modules/example/app.env',
     );
     assert.equal(document.secrets.key.file, '/project/local/key');
-    assert.deepEqual(document.services['ingress-proxy'].depends_on, {
-        app: { condition: 'service_started', restart: true },
-    });
+    assert.equal(document.services['ingress-proxy'], undefined);
 });
 
 test('exclusions remove dependencies; modules and mock modes are resolved', async () => {
@@ -539,7 +530,7 @@ test('deprecated services are excluded from the inventory', async () => {
     const result = await resolveProject(f.request, f.dependencies);
     assert.deepEqual(
         result.inventory.map((item) => item.service),
-        ['app', 'ingress-proxy'],
+        ['app'],
     );
 });
 
@@ -600,8 +591,10 @@ test('preparation permits an unset Felix secret in list and map environment synt
                 realpath: (path) => f.fs.realpath(path),
             },
         );
-        f.dependencies.environment = async (names) => {
-            await runtimeEnvironment.resolve(names);
+        f.dependencies.environment = {
+            enforce: async (names) => {
+                await runtimeEnvironment.resolve(names);
+            },
         };
         const result = await prepareProject(f.request, f.dependencies);
         assert.deepEqual(result.environmentRequirements, []);
@@ -755,7 +748,7 @@ test('in-process preparation writes only to the state directory and retains appl
     await preparation.check();
     assert.equal(preparation.projectName, 'project');
     const inventory = await preparation.resolve(revision, {});
-    assert.equal(inventory.inventory.length, 3);
+    assert.equal(inventory.inventory.length, 2);
     const prepared = await preparation.prepare(revision, {});
     assert.deepEqual(prepared.composeFiles, [
         '/state/project-abc/operations/op1/docker-compose.yaml',
@@ -801,4 +794,220 @@ test('project state directories are stable, per checkout and outside the project
         ),
         one,
     );
+});
+
+test('a missing variable excludes its owner and dependents; the rest start', async () => {
+    const f = fixture({
+        services: ['configurable', 'dependent', 'standalone'],
+    });
+    f.put(
+        '/project/services/modules/example/configurable.docker-compose.yaml',
+        {
+            services: {
+                configurable: {
+                    image: 'cfg',
+                    environment: { PASSWORD: '${DB_PASSWORD}' },
+                },
+            },
+        },
+    );
+    f.put('/project/services/modules/example/dependent.docker-compose.yaml', {
+        services: { dependent: { image: 'dep', depends_on: ['configurable'] } },
+    });
+    f.put('/project/services/modules/example/standalone.docker-compose.yaml', {
+        services: { standalone: { image: 'solo' } },
+    });
+    const prepared = await prepareProject(f.request, {
+        ...f.dependencies,
+        environment: {
+            enforce: async () => {
+                throw new Error(
+                    'enforce must not run when variables are missing',
+                );
+            },
+            missing: async () => ['DB_PASSWORD'],
+        },
+    });
+    assert.deepEqual(
+        prepared.inventory.map((entry) => entry.service),
+        ['standalone'],
+    );
+    assert.deepEqual(prepared.exclusions, [
+        {
+            variable: 'DB_PASSWORD',
+            services: ['configurable', 'dependent'],
+            cause: 'DB_PASSWORD is not set',
+            remediation:
+                "Set DB_PASSWORD in this checkout's .env file, then apply the environment again.",
+        },
+    ]);
+    assert.equal(prepared.unattributable, undefined);
+    assert.deepEqual(prepared.environmentRequirements, []);
+    const document = parse(f.files.get(prepared.composeFiles[0]!)!);
+    assert.equal(document.services.configurable, undefined);
+    assert.equal(document.services.dependent, undefined);
+    assert.ok(document.services.standalone);
+});
+
+test('without the missing capability, or with nothing missing, prepare is unchanged', async () => {
+    const f = fixture();
+    const prepared = await prepareProject(f.request, f.dependencies);
+    assert.equal(prepared.exclusions, undefined);
+    assert.equal(prepared.unattributable, undefined);
+    assert.deepEqual(
+        f.calls.some(([type]) => type === 'environment'),
+        true,
+    );
+    const document = parse(f.files.get(prepared.composeFiles[0]!)!);
+    assert.ok(document.services.app);
+    assert.ok(document.services.database);
+});
+
+test('multiple missing variables produce one exclusion each, sorted', async () => {
+    const f = fixture({ services: ['alpha', 'beta', 'standalone'] });
+    f.put('/project/services/modules/example/alpha.docker-compose.yaml', {
+        services: {
+            alpha: { image: 'a', environment: { NAME: '${VAR_A}' } },
+        },
+    });
+    f.put('/project/services/modules/example/beta.docker-compose.yaml', {
+        services: {
+            beta: { image: 'b', environment: { NAME: '${VAR_B}' } },
+        },
+    });
+    f.put('/project/services/modules/example/standalone.docker-compose.yaml', {
+        services: { standalone: { image: 'solo' } },
+    });
+    const prepared = await prepareProject(f.request, {
+        ...f.dependencies,
+        environment: {
+            enforce: async () => {
+                throw new Error(
+                    'enforce must not run when variables are missing',
+                );
+            },
+            missing: async () => ['VAR_B', 'VAR_A'],
+        },
+    });
+    assert.deepEqual(
+        prepared.exclusions?.map((exclusion) => exclusion.variable),
+        ['VAR_A', 'VAR_B'],
+    );
+    assert.deepEqual(prepared.exclusions?.[0].services, ['alpha']);
+    assert.deepEqual(prepared.exclusions?.[1].services, ['beta']);
+    assert.deepEqual(
+        prepared.inventory.map((entry) => entry.service),
+        ['standalone'],
+    );
+});
+
+test('a variable attributable to no service is reported and blocks nothing', async () => {
+    const f = fixture({ services: ['app', 'extra'] });
+    f.put('/project/services/modules/example/shared.docker-compose.yaml', {
+        services: { extra: { image: 'extra' } },
+        volumes: { shared: { driver: '${TOP_VAR}' } },
+    });
+    const prepared = await prepareProject(f.request, {
+        ...f.dependencies,
+        environment: {
+            enforce: async () => {
+                throw new Error(
+                    'enforce must not run when variables are missing',
+                );
+            },
+            missing: async () => ['TOP_VAR'],
+        },
+    });
+    assert.deepEqual(prepared.unattributable, ['TOP_VAR']);
+    assert.equal(prepared.exclusions, undefined);
+    assert.deepEqual(
+        prepared.inventory.map((entry) => entry.service),
+        ['app', 'database', 'extra'],
+    );
+    assert.deepEqual(prepared.environmentRequirements, ['TOP_VAR']);
+});
+
+test('after the variable is fixed a retry prepares the full stack', async () => {
+    const f = fixture({
+        services: ['configurable', 'dependent', 'standalone'],
+    });
+    f.put(
+        '/project/services/modules/example/configurable.docker-compose.yaml',
+        {
+            services: {
+                configurable: {
+                    image: 'cfg',
+                    environment: { PASSWORD: '${DB_PASSWORD}' },
+                },
+            },
+        },
+    );
+    f.put('/project/services/modules/example/dependent.docker-compose.yaml', {
+        services: { dependent: { image: 'dep', depends_on: ['configurable'] } },
+    });
+    f.put('/project/services/modules/example/standalone.docker-compose.yaml', {
+        services: { standalone: { image: 'solo' } },
+    });
+    let missing = ['DB_PASSWORD'];
+    const environment = {
+        enforce: async () => {},
+        missing: async () => missing,
+    };
+    const first = await prepareProject(f.request, {
+        ...f.dependencies,
+        environment,
+    });
+    assert.equal(first.exclusions?.length, 1);
+    missing = [];
+    const retried = await prepareProject(
+        { ...f.request, outputDirectory: '/state/retry' },
+        { ...f.dependencies, environment },
+    );
+    assert.equal(retried.exclusions, undefined);
+    assert.deepEqual(retried.inventory.map((entry) => entry.service).sort(), [
+        'configurable',
+        'dependent',
+        'standalone',
+    ]);
+});
+
+test('routed services publish their load-balancer port on loopback once', async () => {
+    const f = fixture({ services: ['published', 'unpublished'] });
+    f.files.set(
+        '/project/services/modules/example/published.docker-compose.yaml',
+        stringify({
+            services: {
+                published: {
+                    image: 'p',
+                    labels: [
+                        'traefik.http.routers.published.rule=Host(`p`)',
+                        'traefik.http.services.published.loadbalancer.server.port=8080',
+                    ],
+                    ports: ['8080:8080'],
+                },
+            },
+        }),
+    );
+    f.files.set(
+        '/project/services/modules/example/unpublished.docker-compose.yaml',
+        stringify({
+            services: {
+                unpublished: {
+                    image: 'u',
+                    labels: [
+                        'traefik.http.routers.unpublished.rule=Host(`u`)',
+                        'traefik.http.services.unpublished.loadbalancer.server.port=18636',
+                    ],
+                },
+            },
+        }),
+    );
+    const prepared = await prepareProject(f.request, f.dependencies);
+    const services = parse(f.files.get(prepared.composeFiles[0])!).services;
+    assert.deepEqual(services.published.ports, ['8080:8080']);
+    assert.match(
+        String(services.unpublished.ports[0]),
+        /^127\.0\.0\.1:\d{4,5}:18636$/,
+    );
+    assert.equal(services['ingress-proxy'], undefined);
 });

@@ -29,7 +29,11 @@ accepted operations and health monitoring running. After a new login or reboot,
 starting the environment is explicit. See [daemon operation](docs/daemon.md) for
 service controls, startup environment, recovery and the shared API.
 
-Press `q` outside search or `Ctrl+C` to exit and return to the shell.
+Press `q` outside text/search editing or `Ctrl+C` to exit and return to the shell.
+`Esc` never exits the TUI: it clears or leaves an active search, backs out of a
+detail view or overlay, or does nothing at an unmodified root screen. Press `?`
+on any root screen for the current keyboard shortcuts. Destructive stop/restart
+actions and unsaved service edits ask for confirmation.
 Switch between Services, Containers, Modules, Enabled, Logs, and Config with `Ctrl+N` / `Ctrl+P`
 (or Ctrl+Tab / Ctrl+Shift+Tab where supported). Left/right arrows switch tabs
 everywhere outside modals. Outside Modules, Tab and Shift+Tab also switch tabs.
@@ -65,7 +69,9 @@ Outside search, press **e** to cycle **All → Enabled → Disabled**. The heade
 the current choice and matching count. This uses configured Enabled values and
 combines with the name/module search; services with Unknown configuration appear
 only under All.
-Escape leaves search, then clears both filters; otherwise it exits the app.
+Escape clears the active search/filter and leaves search editing. Enter finishes
+editing while preserving the query. Filters remain when changing tabs until
+Escape clears them.
 Tab or Left/Right switches tabs and ends search while keeping the filters.
 
 Modules provides a two-panel explorer. Up/Down browses modules and services;
@@ -88,7 +94,8 @@ configuration modal. Scrolling stays centered except at list boundaries.
 Press Enter on a service to open its configuration modal. Up/Down selects a row;
 Enter or Space toggles Enabled or the supported mode. **Save & apply** (while the
 environment is running with auto-apply on) or **Save** writes the changes to
-`.chs-dev.yaml` and refreshes the list. Escape or Close discards unsaved edits. The modal captures navigation so the background list stays selected.
+`.chs-dev.yaml` and refreshes the list. Escape or Close asks before discarding
+unsaved edits. The modal captures navigation so the background list stays selected.
 The Provider row cycles Service, Development (with a builder label), and Mock (with
 a checked-in contract). Mock adds a scenario selector and explains dependency
 behaviour. Scenario changes take effect without restarting containers when applied.
@@ -131,6 +138,7 @@ The header identifies Details, Inspect or Logs and shows **← Back (Esc)**.
 Details include the full container ID, image reference, version/tag or digest, image ID,
 status and health, timestamps, exit code, published ports, mounts and networks.
 Use **s** to start/stop, **x** to restart, **l** for logs, and **i** for inspection JSON.
+Stop and restart actions ask for confirmation before they run.
 Up/Down and Page Up/Down scroll the details. Logs show the latest 200 lines with **r**
 to refresh. Long log lines wrap to the available width; scrolling and paging count
 the wrapped rows. The view adjusts when the terminal is resized.
@@ -246,7 +254,10 @@ any directory name. This checks its structure, not whether Docker or services ar
 
 The UI fills the terminal's alternate screen and resizes with the window, restoring your previous terminal content on exit.
 The development command runs TypeScript directly. Restart the daemon after server
-source changes with `npm run daemon -- restart`; reopen the TUI after frontend changes.
+source changes with `npm run daemon -- restart`; use `npm run dev:tui` to watch
+frontend changes independently. `npm run tui:preview -- 80x24` renders
+deterministic fixture frames for narrow-terminal checks. On exit the TUI prints
+that the daemon continues monitoring and how to query status.
 
 ```sh
 npm run typecheck
@@ -351,7 +362,9 @@ the actions that apply now, with the recommended one first:
   that are running. Press `d` for the planned service list.
 - **Apply changes** applies saved edits that are pending.
 - **Stop environment** stops and removes this checkout's containers; data volumes are kept.
+  It requires an explicit confirmation.
 - **Restart failing services**, **Auto-apply edits: On/Off** and **View logs**.
+  Restarting failing services also asks for confirmation.
 
 While an operation runs, the panel shows its steps and the last output lines. Esc closes the
 panel without cancelling; `x` cancels. When something needs you, the panel explains the
@@ -480,14 +493,14 @@ The Logs tab renders each event as a readable line, `time  category  message`, e
 warnings amber. Routine detail (command starts/successes, lock and revision events) is
 hidden until you press **v**.
 
-| Key           | Action                                                                    |
-| ------------- | ------------------------------------------------------------------------- |
-| `c` / `C`     | Cycle filter: All, Env, Docker, AWS, Config, App, Problems (errors/warns) |
-| `/`           | Search text; Enter keeps the query, Esc clears it                         |
-| `v`           | Show or hide routine detail                                               |
-| `r`           | Show the raw JSON lines (current filter still applies)                    |
-| `s`           | Switch between TUI events and in-memory environment output                |
-| ↑ ↓ PgUp PgDn | Scroll (pauses following); `f` or End resumes following                   |
+| Key           | Action                                                                         |
+| ------------- | ------------------------------------------------------------------------------ |
+| `c` / `C`     | Cycle filter: All, Env, Docker, AWS, Config, App, Problems (errors/warns)      |
+| `/`           | Start or resume search; Enter keeps the query, Esc clears it and leaves search |
+| `v`           | Show or hide routine detail                                                    |
+| `r`           | Show the raw JSON lines (current filter still applies)                         |
+| `s`           | Switch between TUI events and in-memory environment output                     |
+| ↑ ↓ PgUp PgDn | Scroll (pauses following); `f` or End resumes following                        |
 
 Environment output uses the same filters: phase messages are Env, Compose/runtime output is
 Docker, and lines mentioning errors, denials or non-zero exits are Problems.

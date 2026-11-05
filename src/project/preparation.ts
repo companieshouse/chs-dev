@@ -28,6 +28,8 @@ export interface ProjectPreparationDependencies {
     files: Pick<LiveFiles, 'mkdir' | 'remove'>;
     execute: ProcessExecutor;
     environment: RuntimeEnvironment;
+    /** Whether learned usage modes apply; polled per resolve and prepare. */
+    usageCache?: () => boolean;
     projectFs?: ProjectFs;
     operationId?: () => string;
     serviceImages?(
@@ -111,6 +113,7 @@ export class ProjectPreparation implements PreparationApi {
                 {
                     projectDirectory: this.dependencies.directory,
                     configuration: revision.yaml,
+                    usageCache: this.dependencies.usageCache?.() ?? false,
                 },
                 {
                     fs: this.fs,
@@ -182,6 +185,7 @@ export class ProjectPreparation implements PreparationApi {
                     projectDirectory: this.dependencies.directory,
                     configuration: revision.yaml,
                     outputDirectory: root,
+                    usageCache: this.dependencies.usageCache?.() ?? false,
                     mockRuntimeDirectory: join(
                         this.dependencies.stateDirectory,
                         'mocks',
@@ -192,11 +196,18 @@ export class ProjectPreparation implements PreparationApi {
                     env,
                     progress,
                     serviceImages: this.dependencies.serviceImages?.(context),
-                    environment: async (names) => {
-                        await this.dependencies.environment.resolve(
-                            names,
-                            signal,
-                        );
+                    environment: {
+                        enforce: async (names) => {
+                            await this.dependencies.environment.resolve(
+                                names,
+                                signal,
+                            );
+                        },
+                        missing: async (names) =>
+                            (await this.dependencies.environment.missing?.(
+                                names,
+                                signal,
+                            )) ?? [],
                     },
                     prepareRepository: this.repositoryCloner(env, context),
                 },

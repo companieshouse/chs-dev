@@ -9,6 +9,7 @@ export const settingKeys = [
     'awsProfile',
     'ecrProfiles',
     'autoApply',
+    'usageCache',
     'loginAction',
     'autoLogin',
 ] as const;
@@ -32,6 +33,7 @@ export interface FileSettings {
     awsProfile?: string;
     ecrProfiles?: string[];
     autoApply?: boolean;
+    usageCache?: boolean;
     loginAction?: LoginChoice;
     autoLogin?: AutoLoginMode;
 }
@@ -42,6 +44,7 @@ export interface SettingValues {
     awsProfile: string;
     ecrProfiles?: string[];
     autoApply: boolean;
+    usageCache: boolean;
     loginAction?: LoginChoice;
     autoLogin: AutoLoginMode;
 }
@@ -71,6 +74,7 @@ export const settingLabels: Record<SettingKey, string> = {
     awsProfile: 'AWS profile',
     ecrProfiles: 'ECR login profiles',
     autoApply: 'Auto-apply edits',
+    usageCache: 'Usage cache (learned lazy)',
     loginAction: 'Ctrl+L login',
     autoLogin: 'Automatic login',
 };
@@ -82,6 +86,7 @@ export const settingEnvironment: Record<SettingKey, readonly string[]> = {
     awsProfile: ['AWS_PROFILE', 'AWS_DEFAULT_PROFILE'],
     ecrProfiles: ['CHS_DEV_ECR_PROFILES'],
     autoApply: ['CHS_DEV_AUTO_APPLY'],
+    usageCache: ['CHS_DEV_USAGE_CACHE'],
     loginAction: ['CHS_DEV_LOGIN'],
     autoLogin: ['CHS_DEV_AUTO_LOGIN'],
 };
@@ -167,6 +172,13 @@ export function resolveSettings(
         autoApply: resolve(
             'autoApply',
             file.autoApply,
+            env,
+            parseBoolean,
+            true,
+        ),
+        usageCache: resolve(
+            'usageCache',
+            file.usageCache,
             env,
             parseBoolean,
             true,

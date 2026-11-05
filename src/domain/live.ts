@@ -10,9 +10,40 @@ export interface InventoryEntry {
     service: string;
     mode: ServiceMode;
     mockScenario?: string;
+    /** Set for lazy services: resolved into the stack but not started eagerly. */
+    lazy?: boolean;
+    /** Set when the usage cache, not a label or selection, made this lazy. */
+    lazySource?: 'learned';
+    /** What made this service lazy: override, journey, label, inheritance or cache. */
+    startModeSource?:
+        'override' | 'journey' | 'label' | 'inherited' | 'learned';
+    /**
+     * True for derived members the usage cache may reclaim when idle and
+     * learn about: unpinned, unlabelled, real (non-mock) services.
+     */
+    reclaimable?: boolean;
 }
 
 export const mockRuntimeService = 'chs-dev-microcks';
+
+/** The legacy Traefik container in the checkout's infrastructure compose. */
+export const ingressProxyService = 'ingress-proxy';
+
+/**
+ * The daemon-hosted proxy replaces Traefik locally. Flip to false for
+ * rollback: generated artifacts include the ingress-proxy container again
+ * and the old router labels keep driving it.
+ */
+export const ingressProxyRetired = true;
+
+export function withoutRetiredProxy(
+    inventory: InventoryEntry[],
+    retired: boolean = ingressProxyRetired,
+): InventoryEntry[] {
+    return retired
+        ? inventory.filter((entry) => entry.service !== ingressProxyService)
+        : inventory;
+}
 
 export function withMockRuntime(inventory: InventoryEntry[]): InventoryEntry[] {
     if (!inventory.some((entry) => entry.mockScenario)) return inventory;
@@ -32,6 +63,182 @@ export function mockOnlyInventory(
         )
     );
 }
+
+/** Learned-lazy rule: only derived (unpinned, unlabelled) members, never explicit. */
+function learnedLazy(entry: {
+    pinned: boolean;
+    labelled: boolean;
+    explicitLazy: boolean;
+    learned: boolean;
+}): boolean {
+    return (
+        !entry.pinned && !entry.labelled && !entry.explicitLazy && entry.learned
+    );
+}
+
+/**
+ * The lazy/reclaimable flags shared by the state resolver and the project
+ * selection: direct selections always start, only derived members honour the
+ * `chs.start-mode: lazy` label and the usage cache, and derived members the
+ * cache may learn about are reclaimable.
+ */
+export function inventoryFlags(entry: {
+    pinned: boolean;
+    labelled: boolean;
+    lazyLabel: boolean;
+    mock: boolean;
+    explicitLazy: boolean;
+    learned: boolean;
+}): Pick<InventoryEntry, 'lazy' | 'lazySource' | 'reclaimable'> {
+    const derived = !entry.pinned && !entry.labelled && !entry.mock;
+    const learned = learnedLazy(entry);
+    const flags: Pick<InventoryEntry, 'lazy' | 'lazySource' | 'reclaimable'> =
+        {};
+    if (entry.explicitLazy || learned || (!entry.pinned && entry.lazyLabel))
+        flags.lazy = true;
+    if (learned) flags.lazySource = 'learned';
+    if (derived) flags.reclaimable = true;
+    return flags;
+}
+
+/** One enabled service considered by the effective start-mode pass. */
+export interface StartModeCandidate {
+    service: string;
+    /** Directly selected (service, module, base or journey root). */
+    pinned: boolean;
+    base: boolean;
+    development: boolean;
+    mock: boolean;
+    label?: 'lazy' | 'always';
+    override?: 'lazy' | 'always';
+    /** Explicit journey `lazy:` member. */
+    explicitLazy: boolean;
+    learned: boolean;
+}
+
+/** The lazy flags an effective start-mode decision contributes to an entry. */
+export type StartModeFlags = Pick<
+    InventoryEntry,
+    'lazy' | 'lazySource' | 'startModeSource' | 'reclaimable'
+>;
+type LazyFlags = StartModeFlags;
+
+/** Reclaimable flag: derived, unlabelled, real services only. */
+function reclaimableFlags(candidate: StartModeCandidate): LazyFlags {
+    return !candidate.pinned && candidate.label === undefined && !candidate.mock
+        ? { reclaimable: true }
+        : {};
+}
+
+/** Seeds decided before inheritance: override, journey, pin and lazy label. */
+function seededLazy(candidate: StartModeCandidate): LazyFlags | undefined {
+    const reclaimable = reclaimableFlags(candidate);
+    if (candidate.base || candidate.development) return reclaimable;
+    if (candidate.override === 'lazy')
+        return { ...reclaimable, lazy: true, startModeSource: 'override' };
+    if (candidate.override) return reclaimable;
+    if (candidate.explicitLazy)
+        return { ...reclaimable, lazy: true, startModeSource: 'journey' };
+    if (candidate.pinned) return reclaimable;
+    if (candidate.label === 'lazy')
+        return { ...reclaimable, lazy: true, startModeSource: 'label' };
+    return undefined;
+}
+
+function parentMap(
+    candidates: readonly StartModeCandidate[],
+    dependencies: ReadonlyMap<string, readonly string[]>,
+): Map<string, string[]> {
+    const names = new Set(candidates.map((candidate) => candidate.service));
+    const parents = new Map<string, string[]>(
+        candidates.map((candidate) => [candidate.service, []]),
+    );
+    for (const candidate of candidates) {
+        for (const dependency of dependencies.get(candidate.service) ?? []) {
+            if (names.has(dependency))
+                parents.get(dependency)!.push(candidate.service);
+        }
+    }
+    return parents;
+}
+
+/**
+ * Effective start modes over the enabled closure. Precedence: user override,
+ * journey lists, manual enablement, `chs.start-mode` label, inheritance from
+ * lazy parents, then the learned usage cache. Base and Development-mode
+ * services are never lazy. An unlabelled (or `always`-labelled) service
+ * inherits lazy only when every enabled service directly depending on it is
+ * lazy, so whole exclusive subtrees defer with their lazy root.
+ */
+/** Promotes pending members whose every direct parent is already lazy. */
+function inheritPending(
+    decided: Map<string, LazyFlags>,
+    pending: Map<string, StartModeCandidate>,
+    parents: Map<string, string[]>,
+): void {
+    const allParentsLazy = (name: string) => {
+        const direct = parents.get(name) ?? [];
+        return (
+            direct.length > 0 &&
+            direct.every((parent) => decided.get(parent)?.lazy)
+        );
+    };
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const [name, candidate] of pending) {
+            if (!allParentsLazy(name)) continue;
+            decided.set(name, {
+                lazy: true,
+                startModeSource: 'inherited',
+                ...reclaimableFlags(candidate),
+            });
+            pending.delete(name);
+            changed = true;
+        }
+    }
+}
+
+/** Settles remaining members, applying the learned usage-cache rule. */
+function settlePending(
+    decided: Map<string, LazyFlags>,
+    pending: Map<string, StartModeCandidate>,
+): void {
+    for (const candidate of pending.values()) {
+        const learned = learnedLazy({
+            pinned: candidate.pinned,
+            labelled: candidate.label !== undefined,
+            explicitLazy: candidate.explicitLazy,
+            learned: candidate.learned,
+        });
+        decided.set(candidate.service, {
+            ...reclaimableFlags(candidate),
+            ...(learned
+                ? {
+                      lazy: true as const,
+                      lazySource: 'learned' as const,
+                      startModeSource: 'learned' as const,
+                  }
+                : {}),
+        });
+    }
+}
+
+export function effectiveStartModes(
+    candidates: readonly StartModeCandidate[],
+    dependencies: ReadonlyMap<string, readonly string[]>,
+): Map<string, LazyFlags> {
+    const decided = new Map<string, LazyFlags>();
+    const pending = new Map<string, StartModeCandidate>();
+    for (const candidate of candidates) {
+        const seeded = seededLazy(candidate);
+        if (seeded) decided.set(candidate.service, seeded);
+        else pending.set(candidate.service, candidate);
+    }
+    inheritPending(decided, pending, parentMap(candidates, dependencies));
+    settlePending(decided, pending);
+    return decided;
+}
 export interface ConfigurationRevision {
     identity: string;
     yaml: string;
@@ -47,12 +254,39 @@ export interface PreparedProject {
     inventory: InventoryEntry[];
     environmentRequirements: string[];
     sshRequirements?: SshSecretRequirement[];
+    /** Durable start: services excluded because required variables are missing. */
+    exclusions?: PreparationExclusion[];
+    /** Missing variables attributable to no service; the stack starts regardless. */
+    unattributable?: string[];
+}
+export interface PreparationExclusion {
+    /** The missing variable this exclusion attributes to. */
+    variable: string;
+    /** The owning services plus their transitive dependents, sorted. */
+    services: string[];
+    cause: string;
+    remediation: string;
 }
 export interface SshSecretRequirement {
     kind: 'container-ssh-secrets' | 'docker-ssh-secrets';
     services: string[];
     keyPath: string;
     passphrasePath: string;
+}
+
+/** Drops excluded services from SSH requirements; empty requirements are removed. */
+export function filterSshRequirements(
+    requirements: readonly SshSecretRequirement[],
+    excluded: ReadonlySet<string>,
+): SshSecretRequirement[] {
+    return requirements
+        .map((requirement) => ({
+            ...requirement,
+            services: requirement.services.filter(
+                (service) => !excluded.has(service),
+            ),
+        }))
+        .filter((requirement) => requirement.services.length > 0);
 }
 export type SshFileState = 'missing' | 'valid' | 'invalid';
 export interface SshSetupStatus {
@@ -201,6 +435,8 @@ export interface LiveState {
     /** Difference between saved configuration and containers. */
     changes?: EnvironmentChanges;
     stoppedByUser: readonly string[];
+    /** Durable-start exclusions from the last apply, with cause and remediation. */
+    exclusions?: readonly PreparationExclusion[];
     observed?: RuntimeSnapshot;
     logs: readonly string[];
     logSequence: number;
@@ -246,11 +482,21 @@ export function previewChanges(
             !['exited', 'dead', 'created'].includes(container.lifecycle),
     );
     const satisfied = [...running, ...actual.containers.filter(isCompletedJob)];
+    // A lazy service with an existing (created or stopped) container is in
+    // its intended state: it starts on first use, not on Apply.
+    const deferred = actual.containers.filter((container) =>
+        revision.inventory.some(
+            (entry) => entry.lazy && entry.service === container.service,
+        ),
+    );
     return {
         start: revision.inventory
             .filter(
                 (entry) =>
                     !satisfied.some(
+                        (container) => container.service === entry.service,
+                    ) &&
+                    !deferred.some(
                         (container) => container.service === entry.service,
                     ),
             )

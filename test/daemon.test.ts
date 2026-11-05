@@ -345,3 +345,53 @@ test('saving an unrelated setting does not activate an externally edited checkou
         await f.close();
     }
 });
+
+test('saving a journey writes the file into the checkout', async () => {
+    const f = await daemonFixture();
+    try {
+        const client = await f.client();
+        const result = await client.command('project.saveJourney', {
+            name: 'pilot',
+            services: ['api'],
+            lazy: [],
+        });
+        assert.match(result.path, /journeys[\\/]pilot\.yaml$/);
+        assert.equal(
+            await readFile(result.path, 'utf8'),
+            'services:\n  - api\n',
+        );
+        await assert.rejects(
+            client.command('project.saveJourney', {
+                name: 'pilot',
+                services: ['api'],
+                lazy: ['api'],
+            }),
+            /in both services and lazy/,
+        );
+    } finally {
+        await f.close();
+    }
+});
+
+test('journey list reports the journeys in the checkout', async () => {
+    const f = await daemonFixture();
+    try {
+        const client = await f.client();
+        const empty = await client.query('journey.list', {});
+        assert.deepEqual(empty, { journeys: [], invalid: [] });
+        await client.command('project.saveJourney', {
+            name: 'accounts',
+            services: ['api'],
+            lazy: [],
+        });
+        const listed = await client.query('journey.list', {});
+        assert.deepEqual(listed, {
+            journeys: [
+                { name: 'accounts', services: ['api'], lazy: [], excluded: [] },
+            ],
+            invalid: [],
+        });
+    } finally {
+        await f.close();
+    }
+});

@@ -40,6 +40,7 @@ const configurationKeys = [
     'serviceImages',
     'versionSource',
     'serviceVersionSources',
+    'journey',
 ] as const;
 
 export function profilePath(path: string, directory: string): string {

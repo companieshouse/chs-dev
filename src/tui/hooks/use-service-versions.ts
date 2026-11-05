@@ -67,10 +67,11 @@ function selectionLabel(
     pinned: string,
     details?: ServiceDetails,
 ) {
-    if (selection === 'custom') return `Version: ${imageVersion(pinned)}`;
+    if (selection === 'custom')
+        return `Version: ${imageVersion(pinned)} (service override)`;
     if (selection === 'default')
-        return `Versions: ${versionSourceLabels[details?.defaultVersionSource ?? 'cidev']} (environment default)`;
-    return `Versions: ${versionSourceLabels[selection]}`;
+        return `Versions: ${versionSourceLabels[details?.defaultVersionSource ?? 'cidev']} (inherited)`;
+    return `Versions: ${versionSourceLabels[selection]} (service override)`;
 }
 
 function sourceChoices(details?: ServiceDetails) {
@@ -80,13 +81,13 @@ function sourceChoices(details?: ServiceDetails) {
     return [
         {
             value: 'default',
-            label: `Environment default (${versionSourceLabels[details?.defaultVersionSource ?? 'cidev']})`,
+            label: `Environment default (${versionSourceLabels[details?.defaultVersionSource ?? 'cidev']} · inherited)`,
         },
         ...sources.map((source) => ({
             value: source,
-            label: versionSourceLabels[source],
+            label: `${versionSourceLabels[source]} (service override)`,
         })),
-        { value: 'custom', label: 'Specific version…' },
+        { value: 'custom', label: 'Specific version… (service override)' },
     ];
 }
 

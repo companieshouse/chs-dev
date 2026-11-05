@@ -16,6 +16,19 @@ import {
     expandHome,
 } from '../infrastructure/settings.js';
 import { readProjectConfig } from '../project/config.js';
+import { startDaemonProxy } from './proxy-service.js';
+import { measureProject } from '../project/measure.js';
+import { createUsageLedger } from '../proxy/usage-ledger.js';
+import { UsageTracker } from '../application/usage-tracker.js';
+import {
+    deleteJourney,
+    listJourneys,
+    saveJourney,
+} from '../project/journeys.js';
+import type { RequestAccounting } from '../proxy/accounting.js';
+import { createAccounting } from '../proxy/accounting.js';
+import type { LiveController } from '../application/live-controller.js';
+import type { ProxyState } from '../domain/environment.js';
 import { readServices } from '../project/catalog.js';
 import { saveServiceChanges } from '../project/service-configuration.js';
 import { EnvironmentProfiles } from '../project/environment-profiles.js';
@@ -59,6 +72,7 @@ import {
 } from '../project/discovery.js';
 import { ClientError, type ProjectSearch } from '../protocol/types.js';
 import type { RuntimeStrategy } from '../domain/runtime-strategy.js';
+import type { LiveIntent } from '../application/live-controller.js';
 import type { SettingsSnapshot } from '../domain/settings.js';
 import type { ProjectConfig } from '../domain/project.js';
 import type { ServiceGroup, ServiceDetails } from '../domain/services.js';
@@ -143,39 +157,112 @@ async function closeBackendSession(
     }
 }
 
+async function openSupervised(
+    project: ProjectConfig,
+    groups: ServiceGroup[],
+    runtime: RuntimeStrategy,
+    versions: ServiceVersions,
+    intent?: LiveIntent,
+) {
+    const release = await acquireSupervisor(project);
+    try {
+        const controller = createLiveSession(
+            runtime,
+            project.directory,
+            groups,
+            {
+                explicitStart: true,
+                initialIntent: intent,
+                lock: { acquire: heldSupervisorLease },
+                versions,
+            },
+        );
+        return { controller, release };
+    } catch (error) {
+        await release();
+        throw error;
+    }
+}
+
+function serviceSaver(
+    project: ProjectConfig,
+    groups: ServiceGroup[],
+): BackendSession['save'] {
+    return async (edit, revision) => {
+        await saveServiceChanges({
+            directory: project.directory,
+            name: edit.name,
+            enabled: edit.enabled,
+            development: edit.development,
+            provider: edit.provider,
+            mockScenario: edit.mockScenario,
+            image: edit.image,
+            versionSource: edit.versionSource,
+            startMode: edit.startMode,
+            groups,
+            exclusions: edit.exclusions,
+            expectedRevision: revision,
+        });
+    };
+}
+
+function accountingCapability(
+    project: ProjectConfig,
+    state: (() => ProxyState) | undefined,
+): BackendSession['accounting'] {
+    if (!project.valid || !state) return undefined;
+    return async () => state();
+}
+
+function usageCapability(
+    project: ProjectConfig,
+    tracker: UsageTracker | undefined,
+): BackendSession['usage'] {
+    if (!project.valid || !tracker) return undefined;
+    return () => tracker.snapshot(project.directory);
+}
+
+function journeySaver(project: ProjectConfig): BackendSession['saveJourney'] {
+    if (!project.valid) return undefined;
+    return (input) =>
+        saveJourney(project.directory, {
+            name: input.name,
+            services: input.services,
+            lazy: input.lazy,
+            excluded: input.excluded ?? [],
+        }).then((path) => ({ path }));
+}
+
 function createHostOpen(
-    options: { runtime?: () => RuntimeStrategy } = {},
+    runtimeOption: (() => RuntimeStrategy) | undefined,
+    accounting: RequestAccounting,
+    proxyState: () => ProxyState,
+    active: { controller?: LiveController },
+    usage: { tracker: UsageTracker | undefined; enabled: () => boolean },
 ): ApplicationHost['open'] {
     return async (intent) => {
         const project = await readProjectConfig();
         if (project.valid)
             project.directory = await realpath(project.directory);
-        const groups = project.valid ? await readServices(project) : [];
+        const groups = await readGroups(project);
         const { versions, profiles } = createVersionServices(
             project.directory,
             groups,
         );
-        const runtime = options.runtime?.() ?? selectRuntime();
+        const runtime = runtimeOption?.() ?? selectRuntime();
         let release: Awaited<ReturnType<typeof exclusiveLease>> | undefined;
         let controller: BackendSession['controller'];
         if (project.valid) {
-            release = await acquireSupervisor(project);
-            try {
-                controller = createLiveSession(
-                    runtime,
-                    project.directory,
-                    groups,
-                    {
-                        explicitStart: true,
-                        initialIntent: intent,
-                        lock: { acquire: heldSupervisorLease },
-                        versions,
-                    },
-                );
-            } catch (error) {
-                await release();
-                throw error;
-            }
+            const opened = await openSupervised(
+                project,
+                groups,
+                runtime,
+                versions,
+                intent,
+            );
+            controller = opened.controller;
+            release = opened.release;
+            active.controller = controller;
         }
         return {
             project,
@@ -183,9 +270,7 @@ function createHostOpen(
             ...profileServices(profiles, groups, versions),
             runtime,
             controller,
-            manager: project.valid
-                ? runtime.containers?.({ directory: project.directory })
-                : undefined,
+            manager: containerManager(project, runtime),
             readConfiguration: () =>
                 readProjectConfiguration(project, groups, versions),
             configurationSnapshot: () =>
@@ -200,22 +285,18 @@ function createHostOpen(
                 ),
             dependencyDiagram: (services, signal) =>
                 dependencyDiagrams(project.directory, groups, services, signal),
-            save: async (edit, revision) => {
-                await saveServiceChanges({
-                    directory: project.directory,
-                    name: edit.name,
-                    enabled: edit.enabled,
-                    development: edit.development,
-                    provider: edit.provider,
-                    mockScenario: edit.mockScenario,
-                    image: edit.image,
-                    versionSource: edit.versionSource,
-                    groups,
-                    exclusions: edit.exclusions,
-                    expectedRevision: revision,
-                });
+            measure: measureCapability(project, usage.enabled),
+            save: serviceSaver(project, groups),
+            saveJourney: journeySaver(project),
+            journeys: journeysCapability(project),
+            deleteJourney: deleteJourneyCapability(project),
+            accounting: accountingCapability(project, proxyState),
+            usage: usageCapability(project, usage.tracker),
+            close: () => {
+                if (active.controller === controller)
+                    active.controller = undefined;
+                return closeBackendSession(controller, release);
             },
-            close: () => closeBackendSession(controller, release),
         };
     };
 }
@@ -353,7 +434,14 @@ function createApplicationHost(
     settings: Awaited<ReturnType<typeof initializeSettings>>,
     state: DaemonState,
     sessionIdentity: string,
-    options: { runtime?: () => RuntimeStrategy },
+    daemon: {
+        runtime?: () => RuntimeStrategy;
+        accounting: RequestAccounting;
+        proxyState: () => ProxyState;
+        active: { controller?: LiveController };
+        usage: UsageTracker | undefined;
+        usageCacheEnabled: () => boolean;
+    },
 ): ApplicationHost {
     return {
         id: randomUUID,
@@ -371,7 +459,13 @@ function createApplicationHost(
         readIntent: () => state.readIntent(),
         writeIntent: (intent) => state.writeIntent(intent),
         validateProject: createHostValidateProject(),
-        open: createHostOpen(options),
+        open: createHostOpen(
+            daemon.runtime,
+            daemon.accounting,
+            daemon.proxyState,
+            daemon.active,
+            { tracker: daemon.usage, enabled: daemon.usageCacheEnabled },
+        ),
         aws: readAwsStatus,
         discovery: (directory) =>
             discoverAwsProfiles({
@@ -404,12 +498,27 @@ export async function createApplication(
     await state.initialize();
     initializeTuiLog(state.directory);
     const sessionIdentity = await hostSessionIdentity();
-    const host = createApplicationHost(
-        settings,
-        state,
-        sessionIdentity,
-        options,
-    );
+    const accounting = createAccounting();
+    const active: { controller?: LiveController } = {};
+    const ledger = createUsageLedger();
+    const usageCacheEnabled = () =>
+        settings.getSnapshot().resolved.usageCache.value;
+    const usage = new UsageTracker({ settings: settings.getSnapshot, ledger });
+    const proxy = startDaemonProxy({
+        ...options,
+        accounting,
+        controller: () => active.controller,
+        ledger,
+        usageCache: usageCacheEnabled,
+    });
+    const host = createApplicationHost(settings, state, sessionIdentity, {
+        runtime: options.runtime,
+        accounting,
+        proxyState: () => proxy.state(),
+        active,
+        usage,
+        usageCacheEnabled,
+    });
     const closeGuard = await startProcessGuard();
     const interactions = new Interactions(
         createTerminal,
@@ -417,9 +526,14 @@ export async function createApplication(
         randomUUID,
     );
     const application = new ProjectSession(host, interactions);
+    application.usage = usage;
     const operations = new Operations(state, () => application.changed());
     application.operations = operations;
-    const closeSteps = [() => operations.close(), () => application.close()];
+    const closeSteps = [
+        () => operations.close(),
+        () => application.close(),
+        () => proxy.close(),
+    ];
     try {
         await operations.initialize();
         await application.initialize();
@@ -433,4 +547,41 @@ export async function createApplication(
         state,
         close: () => shutdown([...closeSteps, () => state.flush(), closeGuard]),
     };
+}
+
+function readGroups(project: ProjectConfig): Promise<ServiceGroup[]> {
+    return project.valid ? readServices(project) : Promise.resolve([]);
+}
+
+function containerManager(project: ProjectConfig, runtime: RuntimeStrategy) {
+    return project.valid
+        ? runtime.containers?.({ directory: project.directory })
+        : undefined;
+}
+
+function measureCapability(
+    project: ProjectConfig,
+    usageCache: () => boolean,
+): BackendSession['measure'] {
+    if (!project.valid) return undefined;
+    return (journey?: string) =>
+        measureProject(project.directory, undefined, journey, usageCache());
+}
+
+function journeysCapability(
+    project: ProjectConfig,
+): BackendSession['journeys'] {
+    if (!project.valid) return undefined;
+    return async () => ({
+        ...(await listJourneys(project.directory)),
+        active: (await configurationSnapshot(project.directory)).selections
+            .journey,
+    });
+}
+
+function deleteJourneyCapability(
+    project: ProjectConfig,
+): BackendSession['deleteJourney'] {
+    if (!project.valid) return undefined;
+    return (name) => deleteJourney(project.directory, name);
 }

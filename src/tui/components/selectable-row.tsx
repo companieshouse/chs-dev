@@ -4,10 +4,12 @@ import { theme } from './theme.js';
 export default function SelectableRow({
     selected,
     heading = false,
+    wrap = 'truncate-end',
     children,
 }: {
     selected: boolean;
     heading?: boolean;
+    wrap?: 'truncate-end' | 'truncate-middle' | 'wrap';
     children: string;
 }) {
     return (
@@ -16,7 +18,7 @@ export default function SelectableRow({
             backgroundColor={selected ? theme.selectionBackground : undefined}
         >
             <Text
-                wrap="truncate-end"
+                wrap={wrap}
                 bold={heading || selected}
                 color={
                     heading

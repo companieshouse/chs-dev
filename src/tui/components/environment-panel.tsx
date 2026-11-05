@@ -1,5 +1,10 @@
 import { Box, Text, useInput, useWindowSize } from 'ink';
 import { useEffect, useState } from 'react';
+import { useOptionalClient } from '../context.js';
+import { usePollingEffect } from '../hooks/use-polling-effect.js';
+import type { ProxyState } from '../../domain/environment.js';
+import type { ServiceGroup } from '../../domain/services.js';
+import type { ServiceStatus } from '../../domain/runtime.js';
 import type { ReactNode } from 'react';
 import type { Key } from 'ink';
 import type { EnvironmentClient } from '../../client/environment.js';
@@ -8,6 +13,7 @@ import type { EnvironmentSummary } from '../../domain/environment.js';
 import {
     environmentActions,
     environmentDetailList,
+    blockerRows,
     environmentDetails,
     environmentOutput,
     environmentStatus,
@@ -24,8 +30,9 @@ import { theme } from './theme.js';
 import { useSpinner } from '../hooks/use-spinner.js';
 import EnvironmentProfilesModal from './environment-profiles-modal.js';
 import VersionSourceModal from './version-source-modal.js';
+import ConfirmModal from './confirm-modal.js';
 
-export const toneColors: Record<EnvironmentTone, string> = {
+export const toneColors: Record<EnvironmentTone, string | undefined> = {
     healthy: theme.healthy,
     busy: theme.development,
     warning: theme.development,
@@ -35,11 +42,11 @@ export const toneColors: Record<EnvironmentTone, string> = {
 
 interface Row {
     text: string;
-    color: string;
+    color: string | undefined;
     bold?: boolean;
 }
 
-type Wrap = (text: string, color: string, bold?: boolean) => Row[];
+type Wrap = (text: string, color: string | undefined, bold?: boolean) => Row[];
 
 interface PanelLayout {
     modalWidth: number;
@@ -57,11 +64,13 @@ interface EnvironmentPanelProps {
     controller?: EnvironmentClient;
     state: LiveState;
     summary?: EnvironmentSummary;
+    statuses?: Record<string, ServiceStatus>;
+    groups?: ServiceGroup[];
     onClose(): void;
     onSetupSsh(): void;
     onLogin(kind: 'aws' | 'registry'): void;
     onViewLogs(problems: boolean): void;
-    onAutoApply(value: boolean): void;
+    onAutoApply(value: boolean): void | Promise<void>;
     onProfiles?(): void;
     onVersions?(): void;
 }
@@ -69,6 +78,33 @@ interface EnvironmentPanelProps {
 interface Notice {
     text: string;
     ok: boolean;
+}
+
+/** Proxy counters and lazy/cold-start sets, polled while the panel is open. */
+function useProxyState(enabled: boolean): ProxyState | undefined {
+    const client = useOptionalClient();
+    const [proxy, setProxy] = useState<ProxyState | undefined>();
+    const refresh = async (signal: AbortSignal) => {
+        if (!client) return;
+        try {
+            const value = await client.query('proxy.accounting', {}, signal);
+            if (!signal.aborted) setProxy(value as ProxyState);
+        } catch {
+            /* The next poll retries a disconnected daemon. */
+        }
+    };
+    usePollingEffect(enabled, refresh, 2000);
+    return proxy;
+}
+
+function dependencyMap(groups: ServiceGroup[]) {
+    const map: Record<string, string[]> = {};
+    for (const group of groups)
+        for (const [name, definition] of Object.entries(
+            group.definitions ?? {},
+        ))
+            map[name] = [...definition.dependencies];
+    return map;
 }
 
 interface DetailInputs {
@@ -79,6 +115,13 @@ interface DetailInputs {
     list: string[];
     expanded: boolean;
     wrap: Wrap;
+    context: PanelStatusContext;
+}
+
+interface PanelStatusContext {
+    statuses: Record<string, ServiceStatus>;
+    dependencies: Record<string, string[]>;
+    proxy: ProxyState | undefined;
 }
 
 function computeLayout(
@@ -141,9 +184,17 @@ function idleDetailRows(
     state: LiveState,
     summary: EnvironmentSummary | undefined,
     wrap: Wrap,
+    context: PanelStatusContext,
 ): Row[] {
     const details: Row[] = [];
     for (const row of environmentDetails(state, summary))
+        details.push(...wrap(row.text, toneColors[row.tone]));
+    for (const row of blockerRows(
+        state,
+        context.statuses,
+        context.dependencies,
+        context.proxy,
+    ))
         details.push(...wrap(row.text, toneColors[row.tone]));
     return details;
 }
@@ -156,6 +207,7 @@ function buildDetails({
     list,
     expanded,
     wrap,
+    context,
 }: DetailInputs): Row[] {
     const details: Row[] = [];
     if (!available)
@@ -167,7 +219,7 @@ function buildDetails({
             ),
         );
     else if (state.busy) details.push(...busyDetailRows(state, wrap));
-    else details.push(...idleDetailRows(state, summary, wrap));
+    else details.push(...idleDetailRows(state, summary, wrap, context));
     if (notice)
         details.push(
             ...wrap(notice.text, notice.ok ? theme.healthy : theme.error),
@@ -248,15 +300,39 @@ function panelActions(
         'restart-failing': () => {
             void controller
                 ?.serviceAction(props.summary?.failed ?? [], 'restart')
-                .then((result) =>
-                    notify({ text: result.message, ok: result.ok }),
+                .then(
+                    (result) => notify({ text: result.message, ok: result.ok }),
+                    (error) =>
+                        notify({
+                            text:
+                                error instanceof Error
+                                    ? error.message
+                                    : String(error),
+                            ok: false,
+                        }),
                 );
         },
         stop: () => {
             clearSelection();
             void controller?.stop();
         },
-        'auto-apply': () => props.onAutoApply(!state.autoApply),
+        'auto-apply': () => {
+            void Promise.resolve(props.onAutoApply(!state.autoApply)).then(
+                () =>
+                    notify({
+                        text: `Auto-apply ${state.autoApply ? 'disabled' : 'enabled'}.`,
+                        ok: true,
+                    }),
+                (error) =>
+                    notify({
+                        text:
+                            error instanceof Error
+                                ? error.message
+                                : String(error),
+                        ok: false,
+                    }),
+            );
+        },
         'login-aws': () => props.onLogin('aws'),
         'login-registry': () => props.onLogin('registry'),
         ssh: props.onSetupSsh,
@@ -265,20 +341,50 @@ function panelActions(
             props.onViewLogs(
                 state.phase === 'Failed' || state.phase === 'Blocked',
             ),
+        profiles: () => props.onProfiles?.(),
+        versions: () => props.onVersions?.(),
         close: props.onClose,
     };
     return handlers;
 }
 
+function panelActionList(
+    props: EnvironmentPanelProps,
+    state: LiveState,
+    summary: EnvironmentSummary | undefined,
+    controller: EnvironmentClient | undefined,
+) {
+    const actions = environmentActions(state, summary, !!controller);
+    const extras: EnvironmentActionItem[] = [
+        ...(props.onVersions
+            ? [{ id: 'versions' as const, label: 'Version sources' }]
+            : []),
+        ...(props.onProfiles
+            ? [{ id: 'profiles' as const, label: 'Share environment' }]
+            : []),
+    ];
+    if (!extras.length) return actions;
+    const closeIndex = actions.findIndex((action) => action.id === 'close');
+    if (closeIndex < 0) return [...actions, ...extras];
+    return [
+        ...actions.slice(0, closeIndex),
+        ...extras,
+        ...actions.slice(closeIndex),
+    ];
+}
+
 function usePanelState(props: EnvironmentPanelProps) {
     const { controller, state } = props;
-    const actions = environmentActions(state, props.summary, !!controller);
+    const actions = panelActionList(props, state, props.summary, controller);
     const [selectedId, setSelectedId] = useState<
         EnvironmentActionId | undefined
     >(() => actions[0]?.id);
     const [offset, setOffset] = useState(0);
     const [expanded, setExpanded] = useState(false);
     const [notice, setNotice] = useState<Notice>();
+    const [confirming, setConfirming] = useState<
+        EnvironmentActionId | undefined
+    >();
     const selectedAvailable = actions.some(
         (action) => action.id === selectedId,
     );
@@ -303,9 +409,20 @@ function usePanelState(props: EnvironmentPanelProps) {
             const action = actions[choice];
             if (!action) return;
             setNotice(undefined);
+            if (action.id === 'stop' || action.id === 'restart-failing') {
+                setConfirming(action.id);
+                return;
+            }
             if (controller) handlers[action.id]();
             else props.onClose();
         },
+        confirming,
+        confirm: () => {
+            if (!confirming) return;
+            handlers[confirming]();
+            setConfirming(undefined);
+        },
+        cancelConfirm: () => setConfirming(undefined),
         move: (backward: boolean) => {
             if (!actions.length) return;
             const index =
@@ -473,6 +590,61 @@ function PanelModal({
     );
 }
 
+function EnvironmentConfirmation({
+    action,
+    onConfirm,
+    onCancel,
+}: {
+    action: EnvironmentActionId;
+    onConfirm(): void;
+    onCancel(): void;
+}) {
+    const stopping = action === 'stop';
+    return (
+        <ConfirmModal
+            title={stopping ? 'Stop environment' : 'Restart failing services'}
+            message={
+                stopping
+                    ? 'Stop all services in this environment?'
+                    : 'Restart the failing services now?'
+            }
+            confirmLabel={stopping ? 'Stop environment' : 'Restart services'}
+            onConfirm={onConfirm}
+            onCancel={onCancel}
+        />
+    );
+}
+
+function useEnvironmentPanelInput(
+    props: EnvironmentPanelProps,
+    panel: ReturnType<typeof usePanelState>,
+    detailHeight: number,
+    maxOffset: number,
+) {
+    const { controller, state, onClose } = props;
+    const { actions, run, move, scroll, toggleDetails } = panel;
+    const keyActions: Record<
+        Exclude<ReturnType<typeof panelKeyKind>, undefined>,
+        (key: Key) => void
+    > = {
+        close: onClose,
+        profiles: () => props.onProfiles?.(),
+        versions: () => props.onVersions?.(),
+        cancel: state.busy ? () => controller?.cancel() : () => undefined,
+        details: actions.length ? toggleDetails : () => undefined,
+        scroll: (key) => scroll(key.pageUp, detailHeight, maxOffset),
+        move: (key) => move(key.upArrow || key.shift),
+        activate: () => run(),
+    };
+    useInput(
+        (input, key) => {
+            const kind = panelKeyKind(input, key);
+            if (kind) keyActions[kind](key);
+        },
+        { isActive: !panel.confirming },
+    );
+}
+
 export default function EnvironmentPanel(props: EnvironmentPanelProps) {
     const [profilesOpen, setProfilesOpen] = useState(false);
     const [versionsOpen, setVersionsOpen] = useState(false);
@@ -497,6 +669,7 @@ function EnvironmentPanelContent(props: EnvironmentPanelProps) {
     const panel = usePanelState(props);
     const { offset, expanded, notice, actions, choice } = panel;
     const available = !!controller;
+    const proxy = useProxyState(available);
     const status = environmentStatus(state, summary, available);
     const busy = status.tone === 'busy';
     const spinner = useSpinner(busy);
@@ -511,30 +684,26 @@ function EnvironmentPanelContent(props: EnvironmentPanelProps) {
         list,
         expanded,
         wrap,
+        context: {
+            statuses: props.statuses ?? {},
+            dependencies: dependencyMap(props.groups ?? []),
+            proxy,
+        },
     });
     const { detailHeight, maxOffset, visibleOffset, visible } = viewport(
         details,
         layout.detailRoom,
         offset,
     );
-    const keyActions = {
-        close: onClose,
-        profiles: () => props.onProfiles?.(),
-        versions: () => props.onVersions?.(),
-        cancel: () => {
-            if (state.busy) controller?.cancel();
-        },
-        details: () => {
-            if (list.length) panel.toggleDetails();
-        },
-        scroll: (key: Key) => panel.scroll(key.pageUp, detailHeight, maxOffset),
-        move: (key: Key) => panel.move(key.upArrow || key.shift),
-        activate: panel.run,
-    };
-    useInput((input, key) => {
-        const kind = panelKeyKind(input, key);
-        if (kind) keyActions[kind](key);
-    });
+    useEnvironmentPanelInput(props, panel, detailHeight, maxOffset);
+    if (panel.confirming)
+        return (
+            <EnvironmentConfirmation
+                action={panel.confirming}
+                onConfirm={panel.confirm}
+                onCancel={panel.cancelConfirm}
+            />
+        );
     const statusText = statusLine(status, busy, spinner);
     const room = Math.max(0, layout.contentWidth - 'Environment'.length - 1);
     const hints = buildHints(

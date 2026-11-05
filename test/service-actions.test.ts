@@ -61,7 +61,12 @@ test('saves service overrides without dropping modules or unrelated settings', a
         development: false,
         groups,
     });
-    assert.deepEqual(enabled.api, { enabled: 'Yes', mode: 'Service' });
+    assert.deepEqual(enabled.api, {
+        enabled: 'Yes',
+        mode: 'Service',
+        effectiveStartMode: 'always',
+        startModeSource: 'manual',
+    });
     assert.deepEqual(parse(await readFile(path, 'utf8')).excludedServices, []);
     await assert.rejects(
         saveServiceChanges({

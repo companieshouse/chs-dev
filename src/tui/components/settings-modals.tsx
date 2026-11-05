@@ -13,10 +13,19 @@ import SelectableRow from './selectable-row.js';
 import Spinner from './spinner.js';
 import { editText } from './text-input.js';
 import { theme } from './theme.js';
+import ConfirmModal from './confirm-modal.js';
 
 function errorText(error: unknown) {
     return error instanceof Error ? error.message : String(error);
 }
+
+function initialChoiceIndex(choices: Choice[], current: string | undefined) {
+    return Math.max(
+        0,
+        choices.findIndex((choice) => choice.value === current),
+    );
+}
+
 function Messages({ lines }: { lines: (string | undefined)[] }) {
     return (
         <>
@@ -39,6 +48,7 @@ export function ChoiceModal({
     detail,
     choices,
     current,
+    active = true,
     loading,
     notes = [],
     onChoose,
@@ -48,36 +58,38 @@ export function ChoiceModal({
     detail?: string;
     choices: Choice[];
     current: string | undefined;
+    active?: boolean;
     loading?: string;
     notes?: (string | undefined)[];
     onChoose(value: string | undefined): Promise<void>;
     onClose(): void;
 }) {
     const { rows } = useWindowSize();
-    const initial = Math.max(
-        0,
-        choices.findIndex((choice) => choice.value === current),
+    const [selected, setSelected] = useState(
+        initialChoiceIndex(choices, current),
     );
-    const [selected, setSelected] = useState(initial);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const index = Math.min(selected, Math.max(0, choices.length - 1));
-    useInput((input, key) => {
-        if (busy) return;
-        if (key.escape || input === 'q') return onClose();
-        if (key.upArrow)
-            setSelected((index - 1 + choices.length) % choices.length);
-        else if (key.downArrow || key.tab)
-            setSelected((index + 1) % choices.length);
-        else if (key.return && choices[index]) {
-            setBusy(true);
-            setError('');
-            onChoose(choices[index].value).then(onClose, (reason) => {
-                setError(errorText(reason));
-                setBusy(false);
-            });
-        }
-    });
+    useInput(
+        (input, key) => {
+            if (busy) return;
+            if (key.escape || input === 'q') return onClose();
+            if (key.upArrow)
+                setSelected((index - 1 + choices.length) % choices.length);
+            else if (key.downArrow || key.tab)
+                setSelected((index + 1) % choices.length);
+            else if (key.return && choices[index]) {
+                setBusy(true);
+                setError('');
+                onChoose(choices[index].value).then(onClose, (reason) => {
+                    setError(errorText(reason));
+                    setBusy(false);
+                });
+            }
+        },
+        { isActive: active },
+    );
     const height = modalListHeight(rows, 9 + notes.filter(Boolean).length);
     const start = centeredStart(index, height, choices.length);
     return (
@@ -369,6 +381,7 @@ export function TextInputModal({
     onClose(): void;
 }) {
     const [value, setValue] = useState(initial);
+    const [discardOpen, setDiscardOpen] = useState(false);
     const save = useModalSave(async () => {
         const trimmed = value.trim();
         const problem = trimmed ? await validate(trimmed) : undefined;
@@ -376,16 +389,33 @@ export function TextInputModal({
         await onSave(trimmed || undefined);
     }, onClose);
     const { busy, error } = save;
-    useInput((input, key) => {
-        if (busy) return;
-        if (key.escape) return onClose();
-        if (key.return) {
-            void save.submit();
-            return;
-        }
-        const next = editText(value, input, key);
-        if (next !== undefined) setValue(next);
-    });
+    useInput(
+        (input, key) => {
+            if (busy) return;
+            if (key.escape) {
+                if (value !== initial) setDiscardOpen(true);
+                else onClose();
+                return;
+            }
+            if (key.return) {
+                void save.submit();
+                return;
+            }
+            const next = editText(value, input, key);
+            if (next !== undefined) setValue(next);
+        },
+        { isActive: !discardOpen },
+    );
+    if (discardOpen)
+        return (
+            <ConfirmModal
+                title="Discard unsaved value?"
+                message="The value you entered has not been saved."
+                confirmLabel="Discard value"
+                onConfirm={onClose}
+                onCancel={() => setDiscardOpen(false)}
+            />
+        );
     return (
         <ModalFrame title={title}>
             <Text color={theme.muted} wrap="wrap">

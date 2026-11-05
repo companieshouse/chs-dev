@@ -18,6 +18,7 @@ import SelectableRow from './selectable-row.js';
 import Spinner from './spinner.js';
 import { editText } from './text-input.js';
 import { theme } from './theme.js';
+import { displayPath as formatPath, plural } from '../models/formatting.js';
 
 const actions = [
     'Enter a path manually…',
@@ -26,12 +27,7 @@ const actions = [
 ] as const;
 
 const clean = (value: string) => value.replace(/[\x00-\x1f\x7f-\x9f]/g, '');
-const displayPath = (path: string, home = homedir()) =>
-    clean(
-        path === home || path.startsWith(`${home}/`)
-            ? `~${path.slice(home.length)}`
-            : path,
-    );
+const displayPath = (path: string) => clean(formatPath(path));
 const errorText = (error: unknown) =>
     error instanceof Error ? error.message : String(error);
 
@@ -393,7 +389,7 @@ function ListView({
             ) : (
                 <Text color={theme.muted} wrap="truncate-end">
                     {candidates.length
-                        ? `Found ${candidates.length} clone${candidates.length === 1 ? '' : 's'} in ${visited.toLocaleString()} directories.`
+                        ? `Found ${plural(candidates.length, 'clone')} in ${plural(visited, 'directory')}.`
                         : 'No clones found under your home directory.'}
                     {truncated ? ' Search limit reached.' : ''}
                 </Text>
@@ -403,6 +399,7 @@ function ListView({
                     <SelectableRow
                         key={`${start + offset}:${label}`}
                         selected={start + offset === index}
+                        wrap="truncate-middle"
                     >
                         {label}
                     </SelectableRow>

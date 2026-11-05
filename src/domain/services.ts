@@ -1,11 +1,14 @@
 import type { MockSupport, ServiceProvider } from './providers.js';
 import type { VersionSource } from './version-sources.js';
+import type { StartMode, StartModeSource } from './start-modes.js';
 
 export interface ServiceDefinition {
     dependencies: string[];
     module: string;
     base: boolean;
     deprecated: boolean;
+    /** Default start mode from the `chs.start-mode` Compose label. */
+    startMode?: 'lazy' | 'always';
     development?: boolean;
     mock?: MockSupport;
     image?: string;
@@ -20,6 +23,14 @@ export interface ServiceGroup {
 export interface ServiceDetails {
     enabled: 'Yes' | 'No' | 'Unknown';
     mode: 'Service' | 'Development' | 'Mock' | 'Unknown';
+    /** The user's start-mode override from `.chs-dev.yaml`, if any. */
+    startModeOverride?: StartMode;
+    /** Default start mode from the `chs.start-mode` Compose label. */
+    startModeLabel?: StartMode;
+    /** Effective start mode for an enabled service, after all rules. */
+    effectiveStartMode?: StartMode;
+    /** Where the effective start mode came from. */
+    startModeSource?: StartModeSource;
     excluded?: boolean;
     mockScenario?: string;
     savedMockScenario?: string;
@@ -41,6 +52,8 @@ export interface ServiceEdit {
     exclusions: Record<string, boolean>;
     image?: string | null;
     versionSource?: VersionSource | null;
+    /** Start-mode override to store; null clears it back to the default. */
+    startMode?: StartMode | null;
 }
 
 export type SaveService = (edit: ServiceEdit) => Promise<void>;

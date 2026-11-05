@@ -4,6 +4,13 @@ import { Client } from '../client/client.js';
 import { environmentMismatch } from '../daemon-control/environment.js';
 import { ensureDaemon } from '../daemon-control/discovery.js';
 
+function printExitHandoff(terminated: boolean) {
+    if (terminated) return;
+    process.stdout.write(
+        '\nchs-dev: TUI closed; the daemon continues monitoring. Run `chs-dev status` to check it.\n',
+    );
+}
+
 if (!process.stdin.isTTY || !process.stdout.isTTY) {
     console.error('Run chs-dev in an interactive terminal.');
     process.exitCode = 1;
@@ -17,10 +24,15 @@ if (!process.stdin.isTTY || !process.stdout.isTTY) {
         const application = render(<App client={client} />, {
             alternateScreen: true,
         });
-        const terminate = () => application.unmount();
+        let terminated = false;
+        const terminate = () => {
+            terminated = true;
+            application.unmount();
+        };
         process.once('SIGTERM', terminate);
         try {
             await application.waitUntilExit();
+            printExitHandoff(terminated);
         } finally {
             process.off('SIGTERM', terminate);
         }

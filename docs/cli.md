@@ -45,6 +45,12 @@ chs-dev environment diff ./team-environment.yaml
 chs-dev environment import ./team-environment.yaml --yes
 chs-dev environment versions cidev
 chs-dev environment versions cidev --yes
+chs-dev environment measure
+chs-dev environment measure --journey accounts
+chs-dev journey list
+chs-dev journey start accounts
+chs-dev journey start accounts --yes
+chs-dev cache clear
 chs-dev service start accounts-api other-service
 chs-dev service stop accounts-api
 chs-dev service restart accounts-api

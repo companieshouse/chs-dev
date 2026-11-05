@@ -46,9 +46,20 @@ export async function environmentCommand(
     if (name === 'stop' || name === 'legacy down')
         return submit(context, 'environment.stop', {});
     await previewDetachedStart(context);
+    return applyWithConfirmation(context);
+}
+
+/**
+ * Applies the saved configuration; the existing stop safeguards apply, and a
+ * pending plan raises CONFIRMATION_REQUIRED which interactive sessions can
+ * approve.
+ */
+export async function applyWithConfirmation(
+    context: CliContext,
+): Promise<CliResult> {
     try {
-        return await submit(context, startCommand(name), {
-            approveStops: options.yes === true,
+        return await submit(context, 'environment.apply', {
+            approveStops: context.invocation.options.yes === true,
         });
     } catch (error) {
         if (

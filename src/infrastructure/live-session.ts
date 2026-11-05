@@ -41,6 +41,7 @@ export function createLiveSession(
         files: liveFiles,
         execute,
         environment,
+        usageCache: () => activeSettings().usageCache.value,
         serviceImages: options.versions
             ? (context) => (inventory, selections) =>
                   options.versions!.images(

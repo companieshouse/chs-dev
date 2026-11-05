@@ -15,8 +15,12 @@ import {
 import { useContainers } from '../hooks/use-containers.js';
 import { useSpinner } from '../hooks/use-spinner.js';
 import { tabDirection } from '../models/navigation.js';
+import { useSearch } from '../hooks/use-search.js';
 import { theme, statusColor } from './theme.js';
 import KeyboardHints from './keyboard-hints.js';
+import { footerBindingsForTab } from '../models/keymap.js';
+import { plural } from '../models/formatting.js';
+import TabScreen from './tab-screen.js';
 
 export interface ContainerRequest {
     service: string;
@@ -102,7 +106,7 @@ function ContainersHeader({
         <>
             <Text color={theme.accent} bold wrap="truncate-end">
                 {all ? 'All containers on this engine' : 'This checkout'}
-                {service ? ` · ${service}` : ''} · {count} containers{' '}
+                {service ? ` · ${service}` : ''} · {plural(count, 'container')}{' '}
                 {loading ? spinner : ''}
             </Text>
             <SearchHeader
@@ -211,23 +215,23 @@ interface ContainersScreenProps {
 
 function useContainerFilters(exit: () => void) {
     const [all, setAll] = useState(false);
-    const [query, setQuery] = useState('');
-    const [searching, setSearching] = useState(false);
+    const searchState = useSearch();
+    const { query, searching, setQuery, setSearching, clear } = searchState;
     const [service, setService] = useState<string>();
     const [selected, setSelected] = useState<string>();
-    const showService = useCallback((name: string) => {
-        setService(name);
-        setAll(false);
-        setQuery('');
-        setSearching(false);
-        setSelected(undefined);
-    }, []);
-    const handleEscape = () => {
-        if (searching) setSearching(false);
-        else if (query || service) {
+    const showService = useCallback(
+        (name: string) => {
+            setService(name);
+            setAll(false);
             setQuery('');
-            setService(undefined);
-        } else exit();
+            setSearching(false);
+            setSelected(undefined);
+        },
+        [setQuery, setSearching],
+    );
+    const handleEscape = () => {
+        clear();
+        setService(undefined);
     };
     const editQuery = (input: string, key: Key) => {
         if (key.return) setSearching(false);
@@ -244,10 +248,7 @@ function useContainerFilters(exit: () => void) {
         escape: handleEscape,
         editQuery,
         leaveSearch: () => setSearching(false),
-        search: () => {
-            setSearching(true);
-            setQuery('');
-        },
+        search: () => setSearching(true),
         toggleScope: () => {
             setAll((value) => !value);
             setService(undefined);
@@ -367,7 +368,18 @@ export default function ContainersScreen(props: ContainersScreenProps) {
     const searching = header.searching;
     const height = props.height;
     return (
-        <Box height={height} flexDirection="column" overflow="hidden">
+        <TabScreen
+            height={height}
+            footer={
+                <KeyboardHints
+                    bindings={
+                        searching
+                            ? footerBindingsForTab('Containers', 'search')
+                            : footerBindingsForTab('Containers')
+                    }
+                />
+            }
+        >
             <ContainersHeader {...header} />
             <ColumnHeadings />
             {filtered.slice(start, start + capacity).map((c, row) => (
@@ -378,12 +390,6 @@ export default function ContainersScreen(props: ContainersScreenProps) {
                 />
             ))}
             <EmptyNotice {...empty} />
-            <Box flexGrow={1} />
-            <KeyboardHints>
-                {searching
-                    ? 'Type to filter · Enter done · Esc cancel'
-                    : '↑ ↓ select · Enter details · a scope · / filter · r refresh · Tab tabs · q quit'}
-            </KeyboardHints>
-        </Box>
+        </TabScreen>
     );
 }

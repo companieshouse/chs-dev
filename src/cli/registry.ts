@@ -28,6 +28,22 @@ export const commands: CommandDefinition[] = [
     command('stop', 'Stop the environment; retain volumes', 0, 0, waiting),
     command('logs', 'Read recent environment output', 0, 0, ['tail']),
     command('service list', 'List services'),
+    command('journey list', 'List journeys in this checkout'),
+    command('cache clear', 'Clear learned usage modes (usage cache)'),
+    command(
+        'journey start',
+        'Switch to a journey: preview, save, apply',
+        1,
+        1,
+        [...waiting, 'yes'],
+    ),
+    command(
+        'environment measure',
+        'Measure the selected stack, or a journey against it',
+        0,
+        0,
+        ['journey'],
+    ),
     command(
         'environment source',
         'Choose default Service versions; saves until Apply',

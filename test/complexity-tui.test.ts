@@ -117,7 +117,7 @@ function serviceProps(
 }
 async function selectSave(term: ReturnType<typeof terminal>) {
     await term.key('\r');
-    for (let index = 0; index < 3; index++) await term.key('\u001b[B');
+    for (let index = 0; index < 4; index++) await term.key('\u001b[B');
     await term.key('\r');
 }
 

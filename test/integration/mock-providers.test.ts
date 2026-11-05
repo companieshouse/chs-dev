@@ -133,7 +133,9 @@ async function fixture() {
                 env: {
                     COMPOSE_PROJECT_NAME: root.split('/').at(-1)!.toLowerCase(),
                 },
-                environment: async (names) => assert.deepEqual(names, []),
+                environment: {
+                    enforce: async (names) => assert.deepEqual(names, []),
+                },
                 prepareRepository: async () => {
                     throw new Error('Mocks must not clone repositories.');
                 },
@@ -450,10 +452,10 @@ test('mock definitions compile and adapt for native Docker and Apple without sta
     assert.deepEqual(project.services['accounts-filing-api'].expose, ['3000']);
     project.namespace = 'chs-apple-mock-test';
     await adaptPortableProject(project, prepared, f.state);
-    assert.ok(
-        project.services['ingress-proxy'].command?.includes(
-            '--providers.file.watch=true',
-        ),
+    assert.equal(
+        project.services['ingress-proxy'],
+        undefined,
+        'Traefik is retired: the daemon proxy routes instead',
     );
     for (const name of Object.keys((await readMockCatalogue()).services)) {
         assert.equal(project.services[name].mode, 'Mock');

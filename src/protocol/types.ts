@@ -15,6 +15,7 @@ import type {
     SettingValues,
 } from '../domain/settings.js';
 import type { ProjectConfig } from '../domain/project.js';
+import type { StackMeasurement } from '../domain/measurements.js';
 import type {
     EnvironmentProfile,
     ProfilePreview,
@@ -37,7 +38,7 @@ import type {
     RuntimeCapabilities,
 } from '../domain/runtime-strategy.js';
 
-export const protocolVersion = 2;
+export const protocolVersion = 4;
 export interface Scope {
     project: string;
     generation: string;
@@ -54,6 +55,12 @@ export interface ProjectSearch {
     searching: boolean;
     truncated: boolean;
 }
+export interface SessionUsage {
+    /** Services the usage cache demoted to lazy, sorted. */
+    learned: string[];
+    /** Last run's selected services that saw no traffic, sorted. */
+    unusedLastRun: string[];
+}
 export interface SessionSnapshot {
     protocol: number;
     daemonId: string;
@@ -67,6 +74,7 @@ export interface SessionSnapshot {
     configurationError: string;
     settings: SettingsSnapshot;
     settingsRevision: string;
+    usage: SessionUsage;
     runtime: {
         id: string;
         name: string;
@@ -143,6 +151,20 @@ export interface CommandMap {
         { ok: boolean; message: string }
     >;
     'configuration.save': Command<{ edit: ServiceEdit; revision: string }>;
+    'project.saveJourney': Command<
+        {
+            name: string;
+            services: string[];
+            lazy?: string[];
+            excluded?: string[];
+        },
+        { path: string }
+    >;
+    'project.deleteJourney': Command<
+        { name: string },
+        { deleted: boolean; selectionCleared: boolean }
+    >;
+    'usage.cacheClear': Command<Empty, { cleared: boolean }>;
     'configuration.legacyEdit': Command<
         { edit: LegacyEdit; revision: string },
         { revision: string; selections: ProjectSelections }
@@ -184,6 +206,29 @@ export interface QueryMap {
     'environment.profilePreview': Command<
         { profile: EnvironmentProfile; versionsOnly: boolean },
         ProfilePreview
+    >;
+    'environment.measure': Command<{ journey?: string }, StackMeasurement>;
+    'journey.list': Command<
+        Empty,
+        {
+            journeys: Array<{
+                name: string;
+                services: string[];
+                lazy: string[];
+                excluded: string[];
+            }>;
+            invalid: Array<{ file: string; error: string }>;
+            active?: string;
+        }
+    >;
+    'proxy.accounting': Command<
+        Empty,
+        {
+            counts: Record<string, number>;
+            excluded: Record<string, number>;
+            coldStarting: string[];
+            lazy: string[];
+        }
     >;
     'environment.cidevVersions': Command<
         CidevVersionOptions,

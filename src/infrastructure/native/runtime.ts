@@ -409,8 +409,9 @@ export class NativeOrchestrator implements LiveRuntime {
         resolved: ResolvedProject,
         observed: ObservedContainer[],
         reload: readonly string[],
+        deferred: readonly string[] = [],
     ) {
-        const plan = planProject(resolved, observed, { reload });
+        const plan = planProject(resolved, observed, { reload, deferred });
         const removals = plan.actions
             .filter(
                 (a) =>
@@ -437,6 +438,86 @@ export class NativeOrchestrator implements LiveRuntime {
             });
         return { plan, removals };
     }
+    /** Waits for a service's dependencies, skipping deferred (created-only) ones. */
+    private async awaitDependencies(
+        spec: ServiceSpec,
+        ids: Map<string, string>,
+        context: OperationContext,
+    ) {
+        for (const [dep, rule] of Object.entries(spec.dependencies)) {
+            if (!ids.has(dep)) continue;
+            const dependency = await this.adapter.containers.inspectOwned(
+                ids.get(dep)!,
+                context.signal,
+            );
+            // A deferred dependency is created but deliberately not started;
+            // it cold-starts through the proxy when actually used.
+            if (dependency.lifecycle === 'created') continue;
+            await this.waitFor(ids.get(dep)!, rule.condition, context);
+        }
+    }
+    /** Creates (or stops) a deferred container without starting it. */
+    private async performDeferred(
+        operation: string,
+        resolved: ResolvedProject,
+        ids: Map<string, string>,
+        action: PlannedAction,
+        context: OperationContext,
+    ) {
+        const spec = resolved.services[action.service];
+        await this.state.record(operation, action.action, spec.name, 'started');
+        try {
+            let id = ids.get(spec.name);
+            if (action.action === 'replace' && id) {
+                await this.remove(id, context);
+                id = undefined;
+            }
+            if (
+                action.action === 'create' ||
+                action.action === 'replace' ||
+                !id
+            ) {
+                const created = await this.adapter.containers.create(
+                    resolved,
+                    spec,
+                    await this.state.volumes(spec.name),
+                    context,
+                );
+                id = created.id;
+                ids.set(spec.name, id);
+                await this.state.saveVolumes(
+                    spec.name,
+                    created.anonymousVolumes,
+                );
+            } else {
+                const current = await this.adapter.containers.inspectOwned(
+                    id,
+                    context.signal,
+                );
+                if (active(current.lifecycle))
+                    await this.adapter.containers.action(
+                        'stop',
+                        current,
+                        context,
+                    );
+            }
+            await this.state.record(
+                operation,
+                action.action,
+                spec.name,
+                'success',
+                id,
+            );
+        } catch (error) {
+            await this.state.record(
+                operation,
+                action.action,
+                spec.name,
+                'failed',
+            );
+            throw error;
+        }
+    }
     private async performAction(
         operation: string,
         resolved: ResolvedProject,
@@ -445,9 +526,15 @@ export class NativeOrchestrator implements LiveRuntime {
         context: OperationContext,
     ) {
         const spec = resolved.services[action.service];
-        for (const [dep, rule] of Object.entries(spec.dependencies))
-            if (ids.has(dep))
-                await this.waitFor(ids.get(dep)!, rule.condition, context);
+        if (action.deferred)
+            return this.performDeferred(
+                operation,
+                resolved,
+                ids,
+                action,
+                context,
+            );
+        await this.awaitDependencies(spec, ids, context);
         await this.state.record(operation, action.action, spec.name, 'started');
         try {
             let id = ids.get(spec.name);
@@ -501,26 +588,30 @@ export class NativeOrchestrator implements LiveRuntime {
         resolved: ResolvedProject,
         ids: Map<string, string>,
         context: OperationContext,
+        deferred: readonly string[] = [],
     ) {
         await executeGraph(
-            Object.values(resolved.services).map((spec) => ({
-                id: spec.name,
-                dependencies: [],
-                run: async () => {
-                    const current = await this.adapter.containers.inspectOwned(
-                        ids.get(spec.name)!,
-                        context.signal,
-                    );
-                    await this.waitFor(
-                        current.id,
-                        readinessCondition({
-                            kind: spec.kind,
-                            health: current.health,
-                        }),
-                        context,
-                    );
-                },
-            })),
+            Object.values(resolved.services)
+                .filter((spec) => !deferred.includes(spec.name))
+                .map((spec) => ({
+                    id: spec.name,
+                    dependencies: [],
+                    run: async () => {
+                        const current =
+                            await this.adapter.containers.inspectOwned(
+                                ids.get(spec.name)!,
+                                context.signal,
+                            );
+                        await this.waitFor(
+                            current.id,
+                            readinessCondition({
+                                kind: spec.kind,
+                                health: current.health,
+                            }),
+                            context,
+                        );
+                    },
+                })),
             this.policy.concurrency,
             context.signal,
         );
@@ -537,7 +628,16 @@ export class NativeOrchestrator implements LiveRuntime {
             spec.fingerprint = await this.state.fingerprint(spec);
         }
         const observed = await this.adapter.containers.list(context.signal);
-        const { plan, removals } = this.planApply(resolved, observed, reload);
+        const deferred = project.inventory
+            .filter((entry) => entry.lazy)
+            .map((entry) => entry.service)
+            .filter((name) => resolved.services[name]);
+        const { plan, removals } = this.planApply(
+            resolved,
+            observed,
+            reload,
+            deferred,
+        );
         const operation = randomUUID();
         for (const action of plan.actions)
             context.onOutput?.({
@@ -578,7 +678,7 @@ export class NativeOrchestrator implements LiveRuntime {
             this.policy.concurrency,
             context.signal,
         );
-        await this.awaitReadiness(resolved, ids, context);
+        await this.awaitReadiness(resolved, ids, context, deferred);
         return ok(
             `Native ${this.adapter.name} configuration applied.`,
             plan.actions

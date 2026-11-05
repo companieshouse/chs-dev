@@ -93,6 +93,7 @@ function validateSelectionFields(selections: Record<string, unknown>) {
         'excludedFiles',
         'versionSource',
         'serviceVersionSources',
+        'journey',
     ]);
     if (Object.keys(selections).some((key) => !allowed.has(key)))
         throw new Error('Unknown environment selection field.');

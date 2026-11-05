@@ -22,34 +22,77 @@ function isModuleDirectory(recursive: boolean, file: Dirent): boolean {
     );
 }
 
+const startModeLabel = 'chs.start-mode';
+
+function parseStartMode(
+    name: string,
+    base: boolean,
+    labels: unknown,
+    listLabels: string[] | undefined,
+): 'lazy' | 'always' | undefined {
+    const raw = Array.isArray(listLabels)
+        ? listLabels
+              .find((label) => label.startsWith(`${startModeLabel}=`))
+              ?.slice(startModeLabel.length + 1)
+        : isRecord(labels)
+          ? labels[startModeLabel]
+          : undefined;
+    if (raw === undefined) return undefined;
+    if (base)
+        throw new Error(
+            `${startModeLabel} is not supported on base infrastructure: ${name}`,
+        );
+    if (raw !== 'lazy' && raw !== 'always')
+        throw new Error(
+            `Invalid ${startModeLabel} "${String(raw)}" on service ${name}: expected lazy or always`,
+        );
+    return raw;
+}
+
+function stringLabels(labels: unknown): {
+    list: string[] | undefined;
+    map: Record<string, unknown> | undefined;
+} {
+    if (Array.isArray(labels))
+        return {
+            list: labels.filter(
+                (item): item is string => typeof item === 'string',
+            ),
+            map: undefined,
+        };
+    return { list: undefined, map: isRecord(labels) ? labels : undefined };
+}
+
+function parseDependencies(dependencies: unknown): string[] {
+    if (Array.isArray(dependencies))
+        return dependencies.filter(
+            (item): item is string => typeof item === 'string',
+        );
+    return isRecord(dependencies) ? Object.keys(dependencies) : [];
+}
+
 function serviceDefinition(
+    name: string,
     spec: unknown,
     module: string,
     base: boolean,
 ): ServiceDefinition {
     const definition = isRecord(spec) ? spec : {};
-    const dependencies = definition.depends_on;
-    const labels = definition.labels;
+    const { list: listLabels, map: mapLabels } = stringLabels(
+        definition.labels,
+    );
+    const startMode = parseStartMode(name, base, mapLabels, listLabels);
     return {
-        dependencies: Array.isArray(dependencies)
-            ? dependencies.filter(
-                  (item): item is string => typeof item === 'string',
-              )
-            : isRecord(dependencies)
-              ? Object.keys(dependencies)
-              : [],
+        dependencies: parseDependencies(definition.depends_on),
         module,
         base,
-        deprecated: Array.isArray(labels)
-            ? labels.includes('chs.deprecated=true')
-            : isRecord(labels) && String(labels['chs.deprecated']) === 'true',
-        development: Array.isArray(labels)
-            ? labels.some(
-                  (label) =>
-                      typeof label === 'string' &&
-                      /^chs\.local\.builder=.+/.test(label),
-              )
-            : isRecord(labels) && Boolean(labels['chs.local.builder']),
+        deprecated: listLabels
+            ? listLabels.includes('chs.deprecated=true')
+            : String(mapLabels?.['chs.deprecated']) === 'true',
+        ...(startMode ? { startMode } : {}),
+        development: listLabels
+            ? listLabels.some((label) => /^chs\.local\.builder=.+/.test(label))
+            : Boolean(mapLabels?.['chs.local.builder']),
         ...(typeof definition.image === 'string'
             ? { image: definition.image }
             : {}),
@@ -76,6 +119,7 @@ async function readComposeFile(
         for (const [service, spec] of Object.entries(document.services)) {
             services.add(service);
             definitions[service] = serviceDefinition(
+                service,
                 spec,
                 directory.split(/[\\/]/).at(-1)!,
                 file.name === 'docker-compose.yaml',

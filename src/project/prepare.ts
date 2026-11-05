@@ -9,7 +9,12 @@ import {
 } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { InventoryEntry, PreparedProject } from '../domain/live.js';
-import { mockRuntimeService, mockOnlyInventory } from '../domain/live.js';
+import {
+    mockRuntimeService,
+    mockOnlyInventory,
+    withMockRuntime,
+    type PreparationExclusion,
+} from '../domain/live.js';
 import {
     mockProviderSpec,
     microcksSpec,
@@ -30,11 +35,16 @@ import { initialize } from './initialization.js';
 import {
     loadDefinitions,
     readState,
+    resolveSelection,
     resolveServices,
     resolveSshRequirements,
     type Definitions,
     type ServiceDefinition,
 } from './resolve.js';
+import { selectedJourney } from './journeys.js';
+import { loadUsagePolicy } from './usage-cache.js';
+import { routerLabels } from '../proxy/labels.js';
+import { attributeEnvironment, blockedSet } from './attribution.js';
 import type { ImageSelections } from '../domain/image-versions.js';
 
 export interface RepositoryRequest {
@@ -53,8 +63,13 @@ export interface ProjectDependencies {
     fs: ProjectFs;
     /** Environment used for `COMPOSE_PROJECT_NAME`; never written to generated files. */
     env: NodeJS.ProcessEnv;
-    /** Checks that every required name has a value. */
-    environment(names: readonly string[]): Promise<void>;
+    /** Environment requirement checks for the generated stack. */
+    environment: {
+        /** Fails when any requirement has no value. */
+        enforce(names: readonly string[]): Promise<void>;
+        /** Requirements that would fail, reported without throwing. */
+        missing?(names: readonly string[]): Promise<string[]>;
+    };
     prepareRepository(request: RepositoryRequest): Promise<string>;
     progress?(message: string): void;
     validate?(document: Mapping): Promise<void>;
@@ -362,6 +377,8 @@ export interface ProjectRequest {
     projectDirectory: string;
     /** The `.chs-dev.yaml` revision to resolve. */
     configuration: string;
+    /** Whether learned usage modes apply to the selection. */
+    usageCache?: boolean;
     mockRuntimeDirectory?: string;
 }
 
@@ -379,7 +396,17 @@ export async function resolveProject(
         identity.projectDirectory,
         dependencies.fs,
     );
-    const inventory = resolveServices(definitions, state);
+    const journey = await selectedJourney(
+        identity.projectDirectory,
+        state.journey,
+        dependencies.fs,
+    );
+    const usage = await loadUsagePolicy(
+        identity.projectDirectory,
+        request.usageCache,
+        dependencies.fs,
+    );
+    const inventory = resolveServices(definitions, state, journey, usage);
     return {
         ...identity,
         configurationIdentity: createHash('sha256')
@@ -497,6 +524,100 @@ function pruneDependencies(document: Mapping): void {
     }
 }
 
+/**
+ * Publishes each routed service's load-balancer port to the host on the
+ * loopback interface, so the daemon-hosted proxy (src/proxy) can reach the
+ * same upstreams Traefik reaches from inside the docker network. Host ports
+ * are ephemeral to avoid collisions; an already-published load-balancer port
+ * is left untouched.
+ */
+function exposeIngressPorts(document: Mapping): void {
+    const routed = routedServices(document);
+    const allocated = new Set<number>();
+    for (const entry of routed) {
+        for (const router of entry.routers.routers) {
+            const port =
+                entry.routers.ports[router.service ?? router.name] ??
+                fallbackContainerPort(entry.spec);
+            if (port === undefined || entry.published.has(port)) continue;
+            entry.published.add(port);
+            const host = allocateHostPort(entry.service, allocated);
+            entry.spec.ports = [
+                ...(Array.isArray(entry.spec.ports) ? entry.spec.ports : []),
+                `127.0.0.1:${host}:${port}`,
+            ];
+        }
+    }
+}
+
+function routedServices(document: Mapping) {
+    return Object.entries(document.services as Mapping)
+        .map(([service, spec]) => ({
+            service,
+            spec,
+            routers: routerLabels(labels(spec.labels)),
+            published: publishedContainerPorts(spec),
+        }))
+        .filter((entry) => entry.routers.routers.length > 0)
+        .sort((a, b) => a.service.localeCompare(b.service));
+}
+
+/**
+ * Deterministic loopback host port derived from the service name, so
+ * repeated preparations agree and container set changes rarely move ports.
+ */
+function allocateHostPort(service: string, used: Set<number>): number {
+    let candidate = 20000 + (fnv1a(service) % 20000);
+    while (used.has(candidate))
+        candidate = candidate >= 39999 ? 20000 : candidate + 1;
+    used.add(candidate);
+    return candidate;
+}
+
+function fnv1a(text: string): number {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < text.length; index++) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash >>> 0;
+}
+
+function publishedContainerPorts(spec: Mapping): Set<number> {
+    const entries = Array.isArray(spec.ports)
+        ? spec.ports
+        : spec.ports
+          ? [spec.ports]
+          : [];
+    const ports = new Set<number>();
+    for (const entry of entries) {
+        const port = publishedPortOf(entry);
+        if (port !== undefined) ports.add(port);
+    }
+    return ports;
+}
+
+function publishedPortOf(entry: unknown): number | undefined {
+    if (typeof entry === 'number') return entry;
+    if (typeof entry === 'string') {
+        return validPort(Number(entry.split(':').at(-1)!.split('/')[0]));
+    }
+    if (entry && typeof entry === 'object' && 'target' in entry)
+        return validPort(Number((entry as { target: unknown }).target));
+    return undefined;
+}
+
+function validPort(value: number): number | undefined {
+    return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function fallbackContainerPort(spec: Mapping): number | undefined {
+    const exposed = Array.isArray(spec.expose) ? spec.expose : [];
+    const first = Number(exposed[0]);
+    if (Number.isFinite(first) && first > 0) return first;
+    return publishedContainerPorts(spec).values().next().value;
+}
+
 function wireProxy(document: Mapping): void {
     const proxy = document.services['ingress-proxy'];
     if (!proxy) return;
@@ -541,6 +662,74 @@ async function writeArtifacts(
     return composeFile;
 }
 
+/**
+ * Durable start (D5): reports which required variables are missing and
+ * excludes the services they block — each owner plus its transitive
+ * dependents — from the document and inventory, so the remaining services
+ * start. Variables attributable to no service are reported unattributable.
+ * Without the `missing` capability, or with nothing missing, this is a
+ * no-op and `enforce` runs as before.
+ */
+async function excludeBlocked(
+    document: Mapping,
+    environment: ProjectDependencies['environment'],
+    initialization: readonly string[],
+    selection: { dependencies: ReadonlyMap<string, readonly string[]> },
+    inventory: readonly InventoryEntry[],
+): Promise<{
+    requirements: string[];
+    inventory: readonly InventoryEntry[];
+    /** True when any required variable was missing: enforce is skipped. */
+    engaged: boolean;
+    exclusions?: PreparationExclusion[];
+    unattributable?: string[];
+}> {
+    const requirements = [
+        ...new Set([...requiredEnvironment(document), ...initialization]),
+    ].sort();
+    const missing = (await environment.missing?.(requirements)) ?? [];
+    if (!missing.length) {
+        await environment.enforce(requirements);
+        return { requirements, inventory, engaged: false };
+    }
+
+    const attribution = attributeEnvironment(document, requirements);
+    const blocked = blockedSet(
+        missing,
+        attribution,
+        selection.dependencies,
+        new Set(inventory.map((entry) => entry.service)),
+    );
+    const exclusions = Object.entries(blocked.blocked).map(
+        ([variable, services]): PreparationExclusion => ({
+            variable,
+            services,
+            cause: `${variable} is not set`,
+            remediation: `Set ${variable} in this checkout's .env file, then apply the environment again.`,
+        }),
+    );
+    const excluded = new Set(Object.values(blocked.blocked).flat());
+    let filtered = inventory;
+    let updated = requirements;
+    if (excluded.size) {
+        filtered = inventory.filter((entry) => !excluded.has(entry.service));
+        for (const name of excluded) delete document.services[name];
+        pruneDependencies(document);
+        updated = [
+            ...new Set([...requiredEnvironment(document), ...initialization]),
+        ].sort();
+    }
+    return {
+        requirements: updated,
+        inventory: filtered,
+        engaged: true,
+        exclusions: exclusions.length ? exclusions : undefined,
+        unattributable: blocked.unattributable.length
+            ? blocked.unattributable
+            : undefined,
+    };
+}
+
 export async function prepareProject(
     request: ProjectRequest & { outputDirectory: string },
     dependencies: ProjectDependencies,
@@ -555,8 +744,10 @@ export async function prepareProject(
     const state = readState(request.configuration);
     progress('Loading service definitions');
     const { definitions, resources } = await loadDefinitions(project, fs);
-    const inventory = resolveServices(definitions, state);
-    const sshRequirements = resolveSshRequirements(definitions, inventory);
+    const journey = await selectedJourney(project, state.journey, fs);
+    const usage = await loadUsagePolicy(project, request.usageCache, fs);
+    const selection = resolveSelection(definitions, state, journey, usage);
+    const inventory = withMockRuntime(selection.entries);
     const images =
         (await dependencies.serviceImages?.(inventory, state)) ??
         state.serviceImages ??
@@ -575,18 +766,26 @@ export async function prepareProject(
     });
     pruneDependencies(document);
     wireProxy(document);
+    exposeIngressPorts(document);
     const initialization = mockOnlyInventory(inventory)
         ? []
         : await initialize(fs, project, document);
-    const environmentRequirements = [
-        ...new Set([...requiredEnvironment(document), ...initialization]),
-    ].sort();
     progress('Checking required environment');
-    await dependencies.environment(environmentRequirements);
+    const durable = await excludeBlocked(
+        document,
+        dependencies.environment,
+        initialization,
+        selection,
+        inventory,
+    );
+    const sshRequirements = resolveSshRequirements(
+        definitions,
+        durable.inventory,
+    );
     progress('Validating referenced files');
     await (dependencies.validate ?? ((d) => validateDocument(fs, d)))(document);
     const composeFile = await writeArtifacts(fs, output, document);
-    return {
+    const prepared: PreparedProject = {
         protocolVersion: 1,
         projectName: name,
         projectDirectory: project,
@@ -595,8 +794,24 @@ export async function prepareProject(
             .digest('hex'),
         composeFiles: [composeFile],
         sources,
-        inventory,
+        inventory: [...durable.inventory],
         sshRequirements,
-        environmentRequirements,
+        environmentRequirements: durable.requirements,
     };
+    return withDurable(prepared, durable);
+}
+
+/** Attaches durable-start findings to the prepared project. */
+function withDurable(
+    prepared: PreparedProject,
+    durable: {
+        exclusions?: PreparationExclusion[];
+        unattributable?: string[];
+    },
+): PreparedProject {
+    if (durable.exclusions) prepared.exclusions = durable.exclusions;
+    if (durable.unattributable) {
+        prepared.unattributable = durable.unattributable;
+    }
+    return prepared;
 }

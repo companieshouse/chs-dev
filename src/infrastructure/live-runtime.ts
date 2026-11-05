@@ -83,6 +83,7 @@ interface DockerInspection {
         Status: string;
         Health?: { Status: string };
         ExitCode?: number;
+        OOMKilled?: boolean;
     };
 }
 export class DockerLiveRuntime implements LiveRuntime {
@@ -96,7 +97,10 @@ export class DockerLiveRuntime implements LiveRuntime {
         return this.dependencies.execute({
             command: 'docker',
             args,
-            captureStdout: args[0] === 'ps' || args[0] === 'inspect',
+            captureStdout:
+                args[0] === 'ps' ||
+                args[0] === 'inspect' ||
+                args.includes('--services'),
             cwd: this.dependencies.directory,
             env: await this.dependencies.environment.resolve(
                 requirements,
@@ -211,6 +215,9 @@ export class DockerLiveRuntime implements LiveRuntime {
             ...(typeof value.State.ExitCode === 'number'
                 ? { exitCode: value.State.ExitCode }
                 : {}),
+            ...(typeof value.State.OOMKilled === 'boolean'
+                ? { oomKilled: value.State.OOMKilled }
+                : {}),
         };
     }
     async snapshot(signal?: AbortSignal): Promise<RuntimeSnapshot> {
@@ -269,19 +276,70 @@ export class DockerLiveRuntime implements LiveRuntime {
             'Compose validation',
         );
         context.signal?.throwIfAborted();
-        checkResult(
-            await this.run(
-                [...args, 'up', '--detach'],
-                context,
-                project.environmentRequirements,
-            ),
-            'Compose apply',
-        );
+        const lazy = project.inventory
+            .filter((entry) => entry.lazy)
+            .map((entry) => entry.service);
+        if (!lazy.length) {
+            checkResult(
+                await this.run(
+                    [...args, 'up', '--detach'],
+                    context,
+                    project.environmentRequirements,
+                ),
+                'Compose apply',
+            );
+        } else {
+            await this.applyWithLazy(project, args, lazy, context);
+        }
         return {
             outcome: 'success',
             message: 'Compose configuration applied.',
             affectedServices: project.inventory.map((entry) => entry.service),
         };
+    }
+    /**
+     * Applies with lazy services deferred: everything else starts, lazy
+     * containers are created but not started until first use. Listing the
+     * non-lazy services explicitly (with --no-deps) stops Compose pulling a
+     * lazy dependency up with an eager dependent.
+     */
+    private async applyWithLazy(
+        project: PreparedProject,
+        args: string[],
+        lazy: readonly string[],
+        context: OperationContext,
+    ): Promise<void> {
+        const listing = await this.run(
+            [...args, 'config', '--services'],
+            context,
+            project.environmentRequirements,
+        );
+        checkResult(listing, 'Compose service listing');
+        const services = listing.stdout
+            .split(/\r?\n/)
+            .map((name) => name.trim())
+            .filter(Boolean);
+        const deferred = services.filter((name) => lazy.includes(name));
+        const starting = services.filter((name) => !lazy.includes(name));
+        if (starting.length)
+            checkResult(
+                await this.run(
+                    [...args, 'up', '--detach', '--no-deps', ...starting],
+                    context,
+                    project.environmentRequirements,
+                ),
+                'Compose apply',
+            );
+        context.signal?.throwIfAborted();
+        if (deferred.length)
+            checkResult(
+                await this.run(
+                    [...args, 'up', '--no-start', '--no-deps', ...deferred],
+                    context,
+                    project.environmentRequirements,
+                ),
+                'Compose create',
+            );
     }
     async reload(
         project: PreparedProject,

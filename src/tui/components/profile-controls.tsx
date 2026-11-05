@@ -6,6 +6,7 @@ import KeyboardHints from './keyboard-hints.js';
 import { editText } from './text-input.js';
 import { theme } from './theme.js';
 import { useSpinner } from '../hooks/use-spinner.js';
+import ConfirmModal from './confirm-modal.js';
 
 interface ControlStatus {
     busy: boolean;
@@ -86,16 +87,34 @@ export function ProfileInput({
     onClose(): void;
 }) {
     const [value, setValue] = useState(initial);
-    useInput((input, key) => {
-        if (key.escape) return onClose();
-        if (status.busy) return;
-        if (key.return) {
-            if (value.trim()) onSubmit(value.trim());
-            return;
-        }
-        const next = editText(value, input, key);
-        if (next !== undefined) setValue(next);
-    });
+    const [discardOpen, setDiscardOpen] = useState(false);
+    useInput(
+        (input, key) => {
+            if (key.escape) {
+                if (value !== initial) setDiscardOpen(true);
+                else onClose();
+                return;
+            }
+            if (status.busy) return;
+            if (key.return) {
+                if (value.trim()) onSubmit(value.trim());
+                return;
+            }
+            const next = editText(value, input, key);
+            if (next !== undefined) setValue(next);
+        },
+        { isActive: !discardOpen },
+    );
+    if (discardOpen)
+        return (
+            <ConfirmModal
+                title="Discard environment path?"
+                message="The path you entered has not been submitted."
+                confirmLabel="Discard path"
+                onConfirm={onClose}
+                onCancel={() => setDiscardOpen(false)}
+            />
+        );
     return (
         <ModalFrame title={title}>
             <Text color={theme.foreground} wrap="truncate-start">

@@ -79,6 +79,11 @@ const detailBuilders: Record<
             ? 'On — saved edits apply while the environment runs'
             : 'Off — saved edits wait for Apply changes',
     }),
+    usageCache: ({ resolved }) => ({
+        value: resolved.usageCache.value
+            ? 'On — services unused for a run start lazy next time'
+            : 'Off — every service keeps its configured start mode',
+    }),
     loginAction: ({ resolved }) => ({
         value:
             resolved.loginAction.value === 'aws'
@@ -306,7 +311,7 @@ export default function ConfigScreen({
     // Compact terminals drop detail lines before the settings themselves.
     const detailed = height >= rows.length * 2 + 4;
     return (
-        <Box flexDirection="column" marginTop={1} overflow="hidden">
+        <Box flexDirection="column" overflow="hidden">
             {rows.map((row, index) => (
                 <ConfigRowView
                     key={row.key}

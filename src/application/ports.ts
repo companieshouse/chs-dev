@@ -17,6 +17,8 @@ import type {
     ServiceEdit,
 } from '../domain/services.js';
 import type { ProjectConfig } from '../domain/project.js';
+import type { StackMeasurement } from '../domain/measurements.js';
+import type { ProxyState } from '../domain/environment.js';
 import type { AwsStatus } from '../domain/aws.js';
 import type { ProfileDiscovery } from '../domain/aws-profiles.js';
 import type {
@@ -25,6 +27,7 @@ import type {
     Scope,
 } from '../protocol/types.js';
 import type { InteractiveCommand } from './interactions.js';
+import type { UsageSnapshot } from './usage-tracker.js';
 import type {
     EnvironmentProfile,
     ProfilePreview,
@@ -78,6 +81,12 @@ export interface BackendSession {
         error: string;
     }>;
     save(edit: ServiceEdit, revision: string): Promise<void>;
+    saveJourney?(input: {
+        name: string;
+        services: string[];
+        lazy: string[];
+        excluded?: string[];
+    }): Promise<{ path: string }>;
     configurationSnapshot?(): Promise<{
         revision: string;
         selections: ProjectSelections;
@@ -91,6 +100,24 @@ export interface BackendSession {
         services: string[],
         signal?: AbortSignal,
     ): Promise<{ paths: string[] }>;
+    measure?(journey?: string): Promise<StackMeasurement>;
+    journeys?(): Promise<{
+        journeys: Array<{
+            name: string;
+            services: string[];
+            lazy: string[];
+            excluded: string[];
+        }>;
+        invalid: Array<{ file: string; error: string }>;
+        active?: string;
+    }>;
+    deleteJourney?(name: string): Promise<{
+        deleted: boolean;
+        selectionCleared: boolean;
+    }>;
+    accounting?(): Promise<ProxyState>;
+    /** The checkout's usage cache state, for display. */
+    usage?(): Promise<UsageSnapshot>;
     close(): Promise<void>;
 }
 export interface SessionIntent {

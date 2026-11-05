@@ -23,7 +23,12 @@ test('configuration rules run without IO and leave their inputs untouched', () =
         servicesWithLiveUpdate: Object.freeze(['api']),
     });
     assert.deepEqual(resolveServiceState(state, groups), {
-        api: { enabled: 'Yes', mode: 'Development' },
+        api: {
+            enabled: 'Yes',
+            mode: 'Development',
+            effectiveStartMode: 'always',
+            startModeSource: 'manual',
+        },
     });
     assert.equal(serviceMode('sockpuppet', false), 'Mock');
     assert.equal(serviceMode('sockpuppet', true), 'Development');

@@ -1,9 +1,8 @@
 import { usePollingEffect } from '../hooks/use-polling-effect.js';
-import { Box, Text, useApp, useInput } from 'ink';
+import { Text, useApp, useInput } from 'ink';
 import type { Key } from 'ink';
 import { useCallback, useMemo, useState } from 'react';
 import { useClient } from '../context.js';
-const retention = '5 MiB active + 2 rotations; owner-only';
 import { logWindow } from '../../domain/live-logs.js';
 import {
     filterLogEntries,
@@ -19,16 +18,20 @@ import type { LiveState } from '../../domain/live.js';
 import { tabDirection } from '../models/navigation.js';
 import { editText } from './text-input.js';
 import { theme } from './theme.js';
+import { useSearch } from '../hooks/use-search.js';
+import TabScreen from './tab-screen.js';
+import { footerBindingsForTab } from '../models/keymap.js';
+import KeyboardHints from './keyboard-hints.js';
 const empty = { lines: [] as string[], sequence: 0, failure: '', path: '' };
 
-const categoryColors: Record<LogCategory, string> = {
+const categoryColors: Record<LogCategory, string | undefined> = {
     App: theme.muted,
     Config: theme.enabled,
     AWS: theme.development,
     Docker: theme.mocked,
     Env: theme.accent,
 };
-const levelColors: Record<LogLevel, string> = {
+const levelColors: Record<LogLevel, string | undefined> = {
     debug: theme.muted,
     info: theme.foreground,
     warn: theme.development,
@@ -133,7 +136,7 @@ function LogSourceLine({
     return (
         <Text color={theme.muted} wrap="truncate-middle">
             {source === 'tui'
-                ? `${path || 'File logging not initialized'} · ${retention}`
+                ? path || 'File logging not initialized'
                 : 'In memory only · preparation output also in runtime.log'}
         </Text>
     );
@@ -191,13 +194,17 @@ function useLogOptions(
     const [filterIndex, setFilterIndex] = useState(() =>
         Math.max(0, logFilters.indexOf(initialFilter)),
     );
-    const [query, setQuery] = useState('');
-    const [searching, setSearching] = useState(false);
+    const searchState = useSearch();
+    const { query, searching, setQuery, setSearching, clear } = searchState;
     const [verbose, setVerbose] = useState(false);
     const [raw, setRaw] = useState(false);
     const handleSearchInput = (input: string, key: Key) => {
-        if (key.return || key.escape) {
+        if (key.return) {
             setSearching(false);
+            return;
+        }
+        if (key.escape) {
+            clear();
             return;
         }
         setQuery((current) => editText(current, input, key) ?? current);
@@ -224,8 +231,8 @@ function useLogOptions(
         editQuery: handleSearchInput,
         leaveSearch: () => setSearching(false),
         clearSearch: () => {
-            if (!query) return false;
-            setQuery('');
+            if (!query && !searching) return false;
+            clear();
             return true;
         },
         command: (input: string) => {
@@ -265,7 +272,7 @@ function logViewport(
     pause: { offset: number; length: number } | undefined,
 ) {
     const hidden = count - shown;
-    const headerLines = 2 + (failure ? 1 : 0);
+    const headerLines = 3 + (failure ? 1 : 0);
     const visibleHeight = Math.max(1, height - headerLines);
     const maxOffset = Math.max(0, shown - visibleHeight);
     const offset = pause
@@ -341,7 +348,7 @@ function useLogBrowser({
                 resetView();
                 return;
             }
-            if (input === 'q' || key.escape) exit();
+            if (input === 'q') exit();
             else if (input === 'f' || key.end) resetView();
             else if (options.command(input)) resetView();
             else handleScroll(key);
@@ -382,7 +389,17 @@ export default function LogsScreen(props: LogsScreenProps) {
     } = useLogBrowser(props);
     const { height } = props;
     return (
-        <Box flexDirection="column">
+        <TabScreen
+            height={height}
+            footer={
+                <KeyboardHints
+                    bindings={footerBindingsForTab(
+                        'Logs',
+                        searching ? 'search' : 'normal',
+                    )}
+                />
+            }
+        >
             <LogStatusLine
                 source={source}
                 filter={filter}
@@ -394,11 +411,13 @@ export default function LogsScreen(props: LogsScreenProps) {
                 searching={searching}
                 query={query}
             />
-            <LogSourceLine source={source} path={durable.path} />
+            {(verbose || raw) && (
+                <LogSourceLine source={source} path={durable.path} />
+            )}
             {durable.failure && (
                 <Text color={theme.error}>{durable.failure}</Text>
             )}
             <LogLines visible={visible} raw={raw} hasEntries={hasEntries} />
-        </Box>
+        </TabScreen>
     );
 }

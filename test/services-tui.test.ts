@@ -62,7 +62,7 @@ test('Services cycles configured enabled states and targets actions at the visib
     await term.key('c');
     assert.deepEqual(containers, ['redis']);
     await term.key('e');
-    assert.match(term.frame(), /Show: Disabled · 1 services/);
+    assert.match(term.frame(), /Show: Disabled · 1 service/);
     assert.match(term.frame(), /› accounts-worker.*No.*Running/);
     assert.doesNotMatch(
         term.frame(),
@@ -85,7 +85,7 @@ test('enabled filtering combines with search and treats e as text while editing'
     await term.key('e');
     await term.key('/');
     await term.key('accounts');
-    assert.match(term.frame(), /Show: Enabled · 1 services/);
+    assert.match(term.frame(), /Show: Enabled · 1 service/);
     assert.match(term.frame(), /accounts-api/);
     assert.doesNotMatch(term.frame(), /accounts-worker|redis/);
     await term.key('e');
@@ -94,7 +94,7 @@ test('enabled filtering combines with search and treats e as text while editing'
     await term.key('\u007f');
     await term.key('\r');
     await term.key('e');
-    assert.match(term.frame(), /Show: Disabled · 1 services/);
+    assert.match(term.frame(), /Show: Disabled · 1 service/);
     assert.match(term.frame(), /Filter: accounts/);
     assert.match(term.frame(), /accounts-worker/);
     assert.doesNotMatch(term.frame(), /accounts-api|redis/);
@@ -124,7 +124,7 @@ test('filters survive inactive screens and control shortcuts do not cycle enable
     term.rerender(createElement(ServicesScreen, props));
     await delay(100);
     await term.key('e');
-    assert.match(term.frame(), /Show: Disabled · 1 services/);
+    assert.match(term.frame(), /Show: Disabled · 1 service/);
 });
 
 test('configuration updates clamp selection and empty filters cannot trigger actions', async (t) => {
@@ -141,7 +141,7 @@ test('configuration updates clamp selection and empty filters cannot trigger act
     };
     term.rerender(createElement(ServicesScreen, { ...props, details }));
     await delay(100);
-    assert.match(term.frame(), /Show: Enabled · 1 services/);
+    assert.match(term.frame(), /Show: Enabled · 1 service/);
     assert.match(term.frame(), /› accounts-api/);
     await term.key('\r');
     assert.deepEqual(opened, ['accounts-api']);

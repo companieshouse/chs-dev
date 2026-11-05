@@ -24,6 +24,7 @@ export interface ProjectFs {
     access(path: string): Promise<void>;
     stat(path: string): Promise<{ isDirectory(): boolean }>;
     replaceFile?(path: string, text: string): Promise<void>;
+    unlink?(path: string): Promise<void>;
 }
 
 export const nodeProjectFs: ProjectFs = {
@@ -36,6 +37,9 @@ export const nodeProjectFs: ProjectFs = {
     },
     access: (path) => fs.access(path),
     stat: (path) => fs.stat(path),
+    unlink: async (path) => {
+        await fs.unlink(path);
+    },
     replaceFile: async (path, text) => {
         const temporary = `${path}.${randomUUID()}.tmp`;
         try {

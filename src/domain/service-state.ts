@@ -16,11 +16,35 @@ import {
     type ImageSelections,
 } from './image-versions.js';
 import { environmentVersioned } from './version-sources.js';
+import {
+    effectiveStartModes,
+    type InventoryEntry,
+    type StartModeFlags,
+} from './live.js';
+import {
+    startModeSelections,
+    validateStartModeSelections,
+    type StartModeSelections,
+} from './start-modes.js';
 
-export function resolveServiceState(
+/** Parsed configuration state with the enabled closure over the catalogue. */
+interface SelectionState {
+    raw: Record<string, unknown>;
+    modules: Set<string>;
+    requested: Set<string>;
+    development: Set<string>;
+    excluded: Set<string>;
+    definitions: ReturnType<typeof serviceDefinitions>;
+    providers: ProviderSelections;
+    selections: ProviderSelections & { servicesWithLiveUpdate: string[] };
+    startModes: StartModeSelections;
+    enabled: Set<string>;
+}
+
+function selectionState(
     value: unknown,
     groups: ServiceGroup[],
-): Record<string, ServiceDetails> {
+): SelectionState {
     if (!value || typeof value !== 'object' || Array.isArray(value))
         throw new Error('Expected a state mapping');
     const state = value as Record<string, unknown>;
@@ -42,8 +66,9 @@ export function resolveServiceState(
     ]);
     const definitions = serviceDefinitions(groups);
     const providers = providerSelections(state);
-    const images = imageSelections(state);
-    validateImageSelections(images, definitions);
+    const startModes = startModeSelections(state);
+    validateStartModeSelections(startModes, definitions);
+    validateImageSelections(imageSelections(state), definitions);
     const selections = {
         ...providers,
         servicesWithLiveUpdate: [...development],
@@ -70,23 +95,127 @@ export function resolveServiceState(
         )
             visit(name);
     }
+    return {
+        raw: state,
+        modules,
+        requested,
+        development,
+        excluded,
+        definitions,
+        providers,
+        selections,
+        startModes,
+        enabled,
+    };
+}
+
+export function resolveServiceState(
+    value: unknown,
+    groups: ServiceGroup[],
+): Record<string, ServiceDetails> {
+    const state = selectionState(value, groups);
+    const modes = stateStartModeFlags(state, [...state.enabled]);
     return Object.fromEntries(
         groups.flatMap((group) =>
             group.services.map((name) => [
                 name,
                 {
-                    ...resolvedDetails(name, {
-                        enabled,
-                        development,
-                        excluded,
-                        providers,
-                        definitions,
-                    }),
-                    ...imageDetails(name, group, images),
+                    ...resolvedDetails(name, state, modes.get(name)),
+                    ...imageDetails(name, group, imageSelections(state.raw)),
                 },
             ]),
         ),
     );
+}
+
+/** Effective start-mode flags for the enabled closure of a parsed state. */
+export function stateStartModeFlags(
+    state: SelectionState,
+    names: readonly string[],
+): Map<string, StartModeFlags> {
+    const dependencies = new Map(
+        names.map((name) => [
+            name,
+            selectedProvider(name, state.selections) === 'mock'
+                ? []
+                : (state.definitions[name]?.dependencies ?? []).filter(
+                      (dependency) => state.enabled.has(dependency),
+                  ),
+        ]),
+    );
+    const modes = effectiveStartModes(
+        names.map((name) => {
+            const definition = state.definitions[name];
+            const mode = serviceMode(
+                name,
+                state.development.has(name),
+                state.providers.serviceProviders?.[name],
+            );
+            return {
+                service: name,
+                pinned:
+                    state.requested.has(name) ||
+                    state.modules.has(definition.module) ||
+                    definition.base,
+                base: definition.base,
+                development: mode === 'Development',
+                mock: selectedProvider(name, state.selections) === 'mock',
+                ...(definition.startMode
+                    ? { label: definition.startMode }
+                    : {}),
+                ...(state.startModes.serviceStartModes?.[name]
+                    ? {
+                          override: state.startModes.serviceStartModes[name],
+                      }
+                    : {}),
+                explicitLazy: false,
+                learned: false,
+            };
+        }),
+        dependencies,
+    );
+    return modes;
+}
+
+/**
+ * Inventory entries for the enabled services, matching the project
+ * resolver's entry shape so revision snapshots compare equal to resolutions.
+ */
+export function resolveStateInventory(
+    value: unknown,
+    groups: ServiceGroup[],
+): InventoryEntry[] {
+    const state = selectionState(value, groups);
+    const names = groups
+        .flatMap((group) => group.services)
+        .filter((name) => state.enabled.has(name));
+    const modes = stateStartModeFlags(state, names);
+    return names.map((name) => stateEntry(name, state, modes.get(name)));
+}
+
+function stateEntry(
+    name: string,
+    state: SelectionState,
+    flags: StartModeFlags | undefined,
+): InventoryEntry {
+    const definition = state.definitions[name];
+    const mock = selectedProvider(name, state.selections) === 'mock';
+    return {
+        service: name,
+        mode: serviceMode(
+            name,
+            state.development.has(name),
+            state.providers.serviceProviders?.[name],
+        ) as InventoryEntry['mode'],
+        ...(mock
+            ? {
+                  mockScenario:
+                      state.providers.mockScenarios?.[name] ??
+                      definition.mock!.defaultScenario,
+              }
+            : {}),
+        ...flags,
+    };
 }
 
 function imageDetails(
@@ -115,31 +244,71 @@ function pinnedImageDetails(image?: string): Partial<ServiceDetails> {
     return image ? { image, imagePinned: true } : {};
 }
 
+/** Start-mode fields for the details view: override, label and effective mode. */
+function startModeDetails(
+    name: string,
+    state: SelectionState,
+    definition: SelectionState['definitions'][string] | undefined,
+    flags?: StartModeFlags,
+): Partial<ServiceDetails> {
+    return {
+        ...(state.startModes.serviceStartModes?.[name]
+            ? { startModeOverride: state.startModes.serviceStartModes[name] }
+            : {}),
+        ...(definition?.startMode
+            ? { startModeLabel: definition.startMode }
+            : {}),
+        ...(state.enabled.has(name)
+            ? {
+                  effectiveStartMode: flags?.lazy
+                      ? ('lazy' as const)
+                      : ('always' as const),
+                  startModeSource: startModeSource(name, state, flags),
+              }
+            : {}),
+    };
+}
+
+/** Source label for the details view, covering eager outcomes too. */
+function startModeSource(
+    name: string,
+    state: SelectionState,
+    flags?: StartModeFlags,
+): ServiceDetails['startModeSource'] {
+    if (flags?.startModeSource) return flags.startModeSource;
+    if (state.startModes.serviceStartModes?.[name]) return 'override';
+    const definition = state.definitions[name];
+    if (
+        state.requested.has(name) ||
+        state.modules.has(definition.module) ||
+        definition.base
+    )
+        return 'manual';
+    if (definition.startMode) return 'label';
+    return 'default';
+}
+
 function resolvedDetails(
     name: string,
-    context: {
-        enabled: Set<string>;
-        development: Set<string>;
-        excluded: Set<string>;
-        providers: ProviderSelections;
-        definitions: ReturnType<typeof serviceDefinitions>;
-    },
+    state: SelectionState,
+    flags?: StartModeFlags,
 ): ServiceDetails {
-    const { enabled, development, excluded, providers, definitions } = context;
+    const definition = state.definitions[name];
     const details: ServiceDetails = {
-        enabled: enabled.has(name) ? 'Yes' : 'No',
+        enabled: state.enabled.has(name) ? 'Yes' : 'No',
         mode: serviceMode(
             name,
-            development.has(name),
-            providers.serviceProviders?.[name],
+            state.development.has(name),
+            state.providers.serviceProviders?.[name],
         ),
+        ...startModeDetails(name, state, definition, flags),
     };
-    if (providers.serviceProviders?.[name] === 'mock')
+    if (state.providers.serviceProviders?.[name] === 'mock')
         details.mockScenario =
-            providers.mockScenarios?.[name] ??
-            definitions[name].mock!.defaultScenario;
-    else if (providers.mockScenarios?.[name])
-        details.savedMockScenario = providers.mockScenarios[name];
-    if (excluded.has(name)) details.excluded = true;
+            state.providers.mockScenarios?.[name] ??
+            state.definitions[name].mock!.defaultScenario;
+    else if (state.providers.mockScenarios?.[name])
+        details.savedMockScenario = state.providers.mockScenarios[name];
+    if (state.excluded.has(name)) details.excluded = true;
     return details;
 }

@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { imageVersion } from '../domain/containers.js';
 import type { ProfilePreview } from '../domain/environment-profile.js';
 import { submit, type CliContext, type CliResult } from './context.js';
+import { baselineLines, journeyLines } from './measurement-text.js';
 import {
     versionSourceLabels,
     type VersionSource,
@@ -121,7 +122,26 @@ async function cidevVersions(context: CliContext): Promise<CliResult> {
     };
 }
 
+async function measure(context: CliContext): Promise<CliResult> {
+    const option = context.invocation.options.journey;
+    const m = await context.client.query(
+        'environment.measure',
+        option === undefined ? {} : { journey: String(option) },
+        context.signal,
+        context.scope,
+    );
+    return {
+        data: m,
+        text: [
+            ...baselineLines(m.baseline),
+            ...(m.journey ? journeyLines(m.journey) : []),
+        ].join('\n'),
+    };
+}
+
 export async function profileCommand(context: CliContext): Promise<CliResult> {
+    if (context.invocation.name === 'environment measure')
+        return measure(context);
     if (context.invocation.name === 'environment source')
         return sourceCommand(context);
     if (context.invocation.name === 'environment versions')

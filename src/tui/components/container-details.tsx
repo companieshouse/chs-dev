@@ -1,5 +1,6 @@
 import { usePollingEffect } from '../hooks/use-polling-effect.js';
 import { Box, Text, useInput, useWindowSize } from 'ink';
+import type { Key } from 'ink';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
     ContainerDetails as Details,
@@ -21,6 +22,7 @@ import { wrapText } from '../models/environment.js';
 import { theme } from './theme.js';
 import KeyboardHints from './keyboard-hints.js';
 import ServiceLogs from './service-logs.js';
+import ConfirmModal from './confirm-modal.js';
 import ScreenHeader from './screen-header.js';
 
 const date = (value?: string) =>
@@ -293,6 +295,7 @@ function useContainerDetailState({
     const [revision, setRevision] = useState(0);
     const [inspect, setInspect] = useState(false);
     const [logs, setLogs] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'stop' | 'restart'>();
     const [offset, setOffset] = useState(0);
     const { details, error, loading, busy, notice, running, allowed, act } =
         useManagedInspection(
@@ -312,33 +315,28 @@ function useContainerDetailState({
     );
     const maxOffset = Math.max(0, wrapped.length - height);
     const start = Math.min(offset, maxOffset);
-    const commands: Record<string, () => void> = {
-        l: () => {
-            if (details) setLogs(true);
-        },
-        i: () => {
-            setInspect((value) => !value);
-            setOffset(0);
-        },
-        r: () => setRevision((value) => value + 1),
-        s: () => act(running ? 'stop' : 'start'),
-        x: () => act('restart'),
-    };
     useInput(
         (input, key) => {
-            if (key.escape || input === 'q') {
-                onClose();
-                return;
-            }
-            if (commands[input]) return commands[input]();
-            if (key.upArrow || key.pageUp)
-                setOffset(Math.max(0, start - (key.pageUp ? height : 1)));
-            else if (key.downArrow || key.pageDown)
-                setOffset(
-                    Math.min(maxOffset, start + (key.pageDown ? height : 1)),
-                );
+            handleContainerInput(input, key, {
+                running,
+                details: Boolean(details),
+                start,
+                height,
+                maxOffset,
+                onClose,
+                openLogs: () => setLogs(true),
+                toggleInspect: () => {
+                    setInspect((value) => !value);
+                    setOffset(0);
+                },
+                refresh: () => setRevision((value) => value + 1),
+                startOrStop: () => act(running ? 'stop' : 'start'),
+                confirmRestart: () => setConfirmAction('restart'),
+                confirmStop: () => setConfirmAction('stop'),
+                setOffset,
+            });
         },
-        { isActive: !logs },
+        { isActive: !logs && !confirmAction },
     );
     const name = details?.name ?? id.slice(0, 12);
     const spinner = useSpinner(!!busy || loading);
@@ -358,11 +356,85 @@ function useContainerDetailState({
         },
         logs,
         closeLogs: () => setLogs(false),
+        confirmAction,
+        confirm: () => {
+            if (confirmAction) void act(confirmAction);
+            setConfirmAction(undefined);
+        },
+        cancelConfirm: () => setConfirmAction(undefined),
     };
 }
 
+function handleContainerInput(
+    input: string,
+    key: Key,
+    options: {
+        running: boolean;
+        details: boolean;
+        start: number;
+        height: number;
+        maxOffset: number;
+        onClose(): void;
+        openLogs(): void;
+        toggleInspect(): void;
+        refresh(): void;
+        startOrStop(): void;
+        confirmRestart(): void;
+        confirmStop(): void;
+        setOffset(value: number): void;
+    },
+) {
+    if (key.escape || input === 'q') return options.onClose();
+    if (handleContainerCommand(input, options)) return;
+    handleContainerScroll(key, options);
+}
+
+function handleContainerCommand(
+    input: string,
+    options: Parameters<typeof handleContainerInput>[2],
+) {
+    const commands: Partial<Record<string, () => void>> = {
+        x: options.confirmRestart,
+        s: options.running ? options.confirmStop : options.startOrStop,
+        l: options.details ? options.openLogs : undefined,
+        i: options.toggleInspect,
+        r: options.refresh,
+    };
+    const command = commands[input];
+    if (!command) return false;
+    command();
+    return true;
+}
+
+function handleContainerScroll(
+    key: Key,
+    options: Parameters<typeof handleContainerInput>[2],
+) {
+    if (key.upArrow || key.pageUp) {
+        options.setOffset(
+            Math.max(0, options.start - (key.pageUp ? options.height : 1)),
+        );
+        return;
+    }
+    if (key.downArrow || key.pageDown)
+        options.setOffset(
+            Math.min(
+                options.maxOffset,
+                options.start + (key.pageDown ? options.height : 1),
+            ),
+        );
+}
+
 export default function ContainerDetails(props: ContainerDetailsProps) {
-    const { frame, status, logs, closeLogs } = useContainerDetailState(props);
+    const {
+        frame,
+        status,
+        logs,
+        closeLogs,
+        confirmAction,
+        confirm,
+        cancelConfirm,
+    } = useContainerDetailState(props);
     const { columns, rows, paddingX, height, start, wrapped } = frame;
     if (logs)
         return (
@@ -373,6 +445,20 @@ export default function ContainerDetails(props: ContainerDetailsProps) {
                     props.manager.logs(props.id, tail, signal)
                 }
                 onClose={closeLogs}
+            />
+        );
+    if (confirmAction)
+        return (
+            <ConfirmModal
+                title={`${confirmAction[0].toUpperCase()}${confirmAction.slice(1)} container`}
+                message={`Really ${confirmAction} this container?`}
+                confirmLabel={
+                    confirmAction === 'stop'
+                        ? 'Stop container'
+                        : 'Restart container'
+                }
+                onConfirm={confirm}
+                onCancel={cancelConfirm}
             />
         );
     return (

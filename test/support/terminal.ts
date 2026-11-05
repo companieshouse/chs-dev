@@ -58,6 +58,16 @@ export function terminal(
         clear: () => {
             output = '';
         },
+        waitFor: async (pattern: RegExp, timeoutMs = 3000) => {
+            const deadline = Date.now() + timeoutMs;
+            while (Date.now() < deadline) {
+                if (pattern.test(stripVTControlCharacters(lastFrame))) return;
+                await delay(20);
+            }
+            throw new Error(
+                `Timed out waiting for ${pattern.source.slice(0, 80)}. Last frame:\n${stripVTControlCharacters(lastFrame)}`,
+            );
+        },
         key: async (key: string) => {
             stdin.write(key);
             await delay(100);

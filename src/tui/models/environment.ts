@@ -1,4 +1,10 @@
-import type { EnvironmentSummary } from '../../domain/environment.js';
+import type {
+    EnvironmentSummary,
+    ProxyState,
+    ServiceBlocker,
+} from '../../domain/environment.js';
+import { serviceBlockers } from '../../domain/environment.js';
+import type { ServiceStatus } from '../../domain/runtime.js';
 import type {
     EnvironmentChanges,
     LivePreview,
@@ -30,6 +36,8 @@ export type EnvironmentActionId =
     | 'retry'
     | 'cancel'
     | 'logs'
+    | 'profiles'
+    | 'versions'
     | 'close';
 
 export interface EnvironmentActionItem {
@@ -283,22 +291,22 @@ function runningActions(
     summary: Summary | undefined,
     auto: EnvironmentActionItem,
 ): EnvironmentActionItem[] {
-    const actions: EnvironmentActionItem[] = [];
-    if (state.changes)
-        actions.push({
+    const actions: EnvironmentActionItem[] = [
+        {
             id: 'apply',
-            label: state.changes.edited
-                ? 'Apply changes'
-                : 'Fix: apply saved configuration',
-        });
+            label: state.changes
+                ? state.changes.edited
+                    ? 'Apply changes'
+                    : 'Fix: apply saved configuration'
+                : 'Re-apply configuration',
+        },
+    ];
     if (summary?.failed.length)
         actions.push({
             id: 'restart-failing',
             label: `Restart failing services (${summary.failed.length})`,
         });
     actions.push(stopAction);
-    if (!state.changes)
-        actions.push({ id: 'apply', label: 'Re-apply configuration' });
     actions.push(auto, logsAction, closeAction);
     return actions;
 }
@@ -399,6 +407,49 @@ function pendingSuffix(state: LiveState) {
     if (state.deferredConfigurationRevision)
         return ' · saved changes wait for Apply';
     return state.autoApply ? '' : ' · auto-apply is off';
+}
+
+/** Per-service first causal blockers, for the environment panel. */
+export function blockerRows(
+    state: LiveState,
+    statuses: Readonly<Record<string, ServiceStatus>>,
+    dependencies: Readonly<Record<string, readonly string[]>>,
+    proxy?: Pick<ProxyState, 'coldStarting' | 'lazy'>,
+): { text: string; tone: EnvironmentTone }[] {
+    if (!state.running) return [];
+    const enabled = new Set<string>([
+        ...Object.entries(statuses)
+            .filter(([, status]) => status !== 'Unknown')
+            .map(([service]) => service),
+        ...(state.exclusions ?? []).flatMap((exclusion) => exclusion.services),
+        ...(proxy?.coldStarting ?? []),
+    ]);
+    const blockers = serviceBlockers({
+        enabled: [...enabled],
+        statuses,
+        containers: state.observed?.containers,
+        exclusions: state.exclusions,
+        dependencies,
+        lazy: new Set(proxy?.lazy ?? []),
+        coldStarting: proxy?.coldStarting,
+    });
+    return blockers.map((blocker) => blockerRow(blocker));
+}
+
+function blockerRow(blocker: ServiceBlocker): {
+    text: string;
+    tone: EnvironmentTone;
+} {
+    const tone: EnvironmentTone =
+        blocker.state === 'failing'
+            ? 'error'
+            : blocker.state === 'lazy-idle'
+              ? 'muted'
+              : 'warning';
+    return {
+        text: `${blocker.service}: ${blocker.state} - ${blocker.detail}`,
+        tone,
+    };
 }
 
 function runningRows(

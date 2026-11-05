@@ -3,12 +3,32 @@ import { test } from 'node:test';
 import { LiveController } from '../src/application/live-controller.js';
 import {
     LiveFailure,
+    previewChanges,
     type ConfigurationRevision,
+    type PreparationExclusion,
     type PreparedProject,
     type RuntimeContainer,
     type SshSecretRequirement,
 } from '../src/domain/live.js';
 import { logWindow, safeLog } from '../src/domain/live-logs.js';
+
+test('a created lazy container is not a pending start in the preview', () => {
+    const revision: ConfigurationRevision = {
+        identity: 'one',
+        yaml: 'one',
+        inventory: [
+            { service: 'api', mode: 'Service' },
+            { service: 'worker', mode: 'Service', lazy: true },
+        ],
+    };
+    const created = { ...container('worker'), lifecycle: 'created' };
+    const preview = previewChanges(revision, {
+        projectName: 'chs',
+        projectDirectory: '/project',
+        containers: [container('api'), created],
+    });
+    assert.deepEqual(preview.start, []);
+});
 
 const container = (
     service: string,
@@ -38,6 +58,9 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
     let sshReady = false;
     let output = '';
     let hold: (() => Promise<void>) | undefined;
+    let partialPrepare = false;
+    let partialExclusions: PreparationExclusion[] | undefined;
+    let partialUnattributable: string[] | undefined;
     const calls: string[] = [];
     const events: { event: string; fields?: Record<string, unknown> }[] = [];
     const snapshots: ConfigurationRevision[] = [];
@@ -58,6 +81,22 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
         inventory: [...revision.inventory],
         environmentRequirements: [],
         ...(sshRequired ? { sshRequirements: [sshRequirement] } : {}),
+    });
+    /** Durable start: prepare excludes services whose variables are missing. */
+    const partiallyPrepared = (
+        revision: ConfigurationRevision,
+    ): PreparedProject => ({
+        ...prepared(revision),
+        inventory: revision.inventory.filter(
+            (entry) =>
+                !(partialExclusions ?? []).some((exclusion) =>
+                    exclusion.services.includes(entry.service),
+                ),
+        ),
+        ...(partialExclusions?.length ? { exclusions: partialExclusions } : {}),
+        ...(partialUnattributable
+            ? { unattributable: partialUnattributable }
+            : {}),
     });
     const controller = new LiveController({
         autoApply: options.autoApply,
@@ -162,7 +201,9 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
             prepare: async (revision) => {
                 calls.push('prepare');
                 snapshots.push(revision);
-                return prepared(revision);
+                return partialPrepare
+                    ? partiallyPrepared(revision)
+                    : prepared(revision);
             },
         },
         configuration: { read: async () => revision },
@@ -232,6 +273,15 @@ function fixture(options: { autoApply?: boolean; native?: boolean } = {}) {
         },
         mismatch: () => {
             mismatch = true;
+        },
+        partial: (
+            exclusions?: PreparationExclusion[],
+            unattributable?: string[],
+        ) => {
+            partialExclusions = exclusions;
+            partialUnattributable = unattributable;
+            partialPrepare =
+                exclusions !== undefined || unattributable !== undefined;
         },
         unavailable: () => {
             available = false;
@@ -455,6 +505,64 @@ test('confirming rereads configuration and an unsupported CLI blocks the start',
     assert.equal(old.controller.getSnapshot().phase, 'Blocked');
     old.controller.confirmStart();
     assert.equal(old.controller.getSnapshot().running, false);
+});
+
+test('durable start applies with exclusions, reporting cause and remediation', async () => {
+    const f = fixture();
+    f.partial([
+        {
+            variable: 'DB_PASSWORD',
+            services: ['api'],
+            cause: 'DB_PASSWORD is not set',
+            remediation:
+                "Set DB_PASSWORD in this checkout's .env file, then apply the environment again.",
+        },
+    ]);
+    await f.controller.start();
+    await f.controller.waitUntilIdle();
+    assert.equal(f.controller.getSnapshot().phase, 'Running');
+    assert.equal(f.calls.includes('prepare'), true);
+    assert.equal(f.calls.includes('apply'), true);
+    const state = f.controller.getSnapshot();
+    assert.match(state.message, /1 service excluded/);
+    const logs = state.logs;
+    assert.ok(
+        logs.some((text) =>
+            text.includes('Excluded api: DB_PASSWORD is not set.'),
+        ),
+    );
+    assert.ok(
+        logs.some((text) =>
+            text.includes("Set DB_PASSWORD in this checkout's .env file"),
+        ),
+    );
+    assert.deepEqual(
+        state.observed?.containers.map((entry) => entry.service) ?? [],
+        [],
+    );
+    await f.controller.shutdown();
+});
+
+test('durable start reports unattributable variables without excluding services', async () => {
+    const f = fixture();
+    f.partial([], ['TOP_VAR']);
+    await f.controller.start();
+    await f.controller.waitUntilIdle();
+    assert.equal(f.controller.getSnapshot().phase, 'Running');
+    const state = f.controller.getSnapshot();
+    assert.equal(state.message, 'Configuration applied.');
+    assert.ok(
+        state.logs.some((text) =>
+            text.includes(
+                'TOP_VAR is required but could not be attributed to a service',
+            ),
+        ),
+    );
+    assert.deepEqual(
+        state.observed?.containers.map((entry) => entry.service) ?? [],
+        ['api'],
+    );
+    await f.controller.shutdown();
 });
 
 test('AWS expired blocks preparation; successful login recovers only while running', async () => {

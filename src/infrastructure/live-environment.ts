@@ -78,6 +78,16 @@ export class LiveEnvironment implements RuntimeEnvironment {
         }
         return env;
     }
+
+    /** Requirements that would fail resolution, reported without throwing. AWS_ variables are handled by resolve(). */
+    async missing(requirements: readonly string[]): Promise<string[]> {
+        if (!this.snapshot) await this.refresh();
+        return requirements.filter(
+            (name) =>
+                !name.startsWith('AWS_') &&
+                (!/^[A-Z_][A-Z0-9_]*$/.test(name) || !this.snapshot?.[name]),
+        );
+    }
 }
 
 function mergeCredentials(env: NodeJS.ProcessEnv, output: string) {

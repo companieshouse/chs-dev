@@ -1,6 +1,7 @@
 import { Box, Text } from 'ink';
 import { type AwsState, type AwsStatus } from '../../domain/aws.js';
 import { theme } from './theme.js';
+import { middleEllipsis } from '../models/formatting.js';
 import type { LiveState } from '../../domain/live.js';
 import type { EnvironmentSummary } from '../../domain/environment.js';
 import { environmentStatus } from '../models/environment.js';
@@ -58,9 +59,11 @@ function EnvironmentSegment({
 function NoticeSegment({
     notice,
     hint,
+    showLoginHint,
 }: {
     notice?: { text: string; tone: 'success' | 'muted' };
     hint?: string;
+    showLoginHint: boolean;
 }) {
     if (notice) {
         return (
@@ -76,7 +79,7 @@ function NoticeSegment({
             </Box>
         );
     }
-    if (hint === 'Ctrl+L') return null;
+    if (!showLoginHint || hint === 'Ctrl+L') return null;
     return (
         <Box flexShrink={0} marginRight={2}>
             <Text color={theme.muted}>
@@ -115,7 +118,10 @@ export default function StatusBar({
     const statusLabel = busy
         ? status.label.replace(/(?:…|\.+)$/, '')
         : status.label;
-    const profile = profileName.replace(/[\x00-\x1f\x7f-\x9f]/g, '');
+    const profile = middleEllipsis(
+        profileName.replace(/[\x00-\x1f\x7f-\x9f]/g, ''),
+        24,
+    );
     const color = awsStateColors[aws.state] ?? theme.development;
     return (
         <Box
@@ -132,13 +138,17 @@ export default function StatusBar({
                     statusLabel={statusLabel}
                 />
             )}
-            <NoticeSegment notice={notice} hint={status.hint} />
+            <NoticeSegment
+                notice={notice}
+                hint={status.hint}
+                showLoginHint={aws.state !== 'active'}
+            />
             {restartRequired && (
                 <Box flexShrink={0} marginRight={2}>
                     <Text color={theme.development}>Reconfigure in Config</Text>
                 </Box>
             )}
-            <Text wrap="truncate-end" color={theme.muted}>
+            <Text wrap="truncate-middle" color={theme.muted}>
                 <Text bold color={theme.foreground}>
                     AWS
                 </Text>{' '}

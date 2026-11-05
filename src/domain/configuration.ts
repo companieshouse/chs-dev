@@ -2,13 +2,20 @@ import { serviceDefinitions, type ServiceGroup } from './services.js';
 import { resolveServiceState } from './service-state.js';
 import { providerSelections, type ProviderSelections } from './providers.js';
 import { imageSelections, type ImageSelections } from './image-versions.js';
+import {
+    startModeSelections,
+    type StartModeSelections,
+} from './start-modes.js';
 
-export interface ProjectSelections extends ProviderSelections, ImageSelections {
+export interface ProjectSelections
+    extends ProviderSelections, ImageSelections, StartModeSelections {
     modules: string[];
     services: string[];
     servicesWithLiveUpdate: string[];
     excludedServices: string[];
     excludedFiles?: string[];
+    /** Selected journey in `journeys/<name>.yaml`, if any. */
+    journey?: string;
 }
 
 export interface LegacyEdit {
@@ -24,6 +31,13 @@ export const selectionKeys = [
     'servicesWithLiveUpdate',
     'excludedServices',
 ] as const;
+
+function journeySelection(value: unknown): string | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'string')
+        throw new Error('Invalid journey in .chs-dev.yaml');
+    return value;
+}
 
 export function projectSelections(value: unknown): ProjectSelections {
     if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -42,10 +56,13 @@ export function projectSelections(value: unknown): ProjectSelections {
     if (record.excludedFiles !== undefined) {
         result.excludedFiles = excludedFiles(record.excludedFiles);
     }
+    const journey = journeySelection(record.journey);
     return {
         ...result,
         ...providerSelections(record),
         ...imageSelections(record),
+        ...startModeSelections(record),
+        ...(journey ? { journey } : {}),
     };
 }
 

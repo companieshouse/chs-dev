@@ -19,6 +19,11 @@ export interface RuntimeEnvironment {
         requirements: readonly string[],
         signal?: AbortSignal,
     ): Promise<NodeJS.ProcessEnv>;
+    /** Requirements that would fail resolution, reported without throwing. */
+    missing?(
+        requirements: readonly string[],
+        signal?: AbortSignal,
+    ): Promise<string[]>;
 }
 
 export interface RuntimeCapabilities {

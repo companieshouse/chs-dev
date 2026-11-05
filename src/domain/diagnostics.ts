@@ -28,6 +28,7 @@ export const events = [
     'process',
     'process.signal',
     'process.timeout',
+    'proxy',
 ] as const;
 export type LogEvent = (typeof events)[number];
 export type LogFields = Record<string, unknown>;

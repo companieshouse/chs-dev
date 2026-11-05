@@ -5,6 +5,7 @@ export const tabs = [
     'Containers',
     'Modules',
     'Enabled',
+    'Journeys',
     'Logs',
     'Config',
 ] as const;

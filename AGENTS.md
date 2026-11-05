@@ -25,3 +25,20 @@ functions responsible for one clear operation.
 - Run `npm run check` and `npm test` before completing code changes. Use
   `npm run complexity:report` to investigate findings; run
   `npm run test:complexity` when changing audit rules or tooling.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs for this repo live as local Markdown under
+`.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Skills use the five canonical triage roles as literal label names
+(`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`,
+`wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Use a single-context domain-doc layout. See `docs/agents/domain.md`.

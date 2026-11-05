@@ -79,6 +79,8 @@ function mockLabels(
         ),
     );
     result['traefik.enable'] = 'true';
+    if (contract.healthPaths.length)
+        result['chs.dev.mock.health-paths'] = contract.healthPaths.join(',');
     const ports = Object.entries(result).filter(([key]) =>
         key.endsWith('.loadbalancer.server.port'),
     );

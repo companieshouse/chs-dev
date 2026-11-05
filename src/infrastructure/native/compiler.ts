@@ -56,7 +56,7 @@ export function duration(value: unknown): number | undefined {
     if (consumed !== text) throw new Error(`Invalid duration ${text}`);
     return Math.round(total);
 }
-function memory(value: unknown): number | undefined {
+export function parseMemoryValue(value: unknown): number | undefined {
     if (value === undefined) return undefined;
     if (typeof value === 'number') return value;
     const m = /^(\d+(?:\.\d+)?)\s*([bkmg])?b?$/i.exec(String(value));
@@ -202,8 +202,8 @@ function serviceRuntimePolicies(raw: any, where: string) {
         dns: raw.dns ?? [],
         dnsSearch: raw.dns_search ?? [],
         extraHosts: extraHosts(raw.extra_hosts, where),
-        memory: memory(raw.mem_limit),
-        memoryReservation: memory(raw.mem_reservation),
+        memory: parseMemoryValue(raw.mem_limit),
+        memoryReservation: parseMemoryValue(raw.mem_reservation),
         restart: raw.restart ?? 'no',
         stopSignal: raw.stop_signal,
         stopSeconds: (duration(raw.stop_grace_period) ?? 10e9) / 1e9,

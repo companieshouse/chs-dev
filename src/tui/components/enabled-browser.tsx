@@ -1,5 +1,7 @@
 import { statusColor, statusGlyph, theme } from './theme.js';
-import { Box, Text, useInput } from 'ink';
+import SearchHeader from './search-header.js';
+import { editText } from './text-input.js';
+import { Box, Text, useApp, useInput } from 'ink';
 import { useMemo, useState } from 'react';
 import type { ServiceGroup } from '../../domain/services.js';
 import type { ServiceDetails } from '../../domain/services.js';
@@ -7,11 +9,96 @@ import { enabledTree } from '../../domain/enabled-tree.js';
 import { centeredStart } from '../models/modules.js';
 import type { ServiceStatus } from '../../domain/runtime.js';
 import type { EnvironmentSummary } from '../../domain/environment.js';
+import { plural } from '../models/formatting.js';
+import { useSearch } from '../hooks/use-search.js';
+import { footerBindingsForTab } from '../models/keymap.js';
+import KeyboardHints from './keyboard-hints.js';
+import TabScreen from './tab-screen.js';
 
 function enabledServiceCount(rows: ReturnType<typeof enabledTree>) {
     return new Set(
         rows.filter((row) => row.kind === 'service').map((row) => row.name),
     ).size;
+}
+
+function filteredEnabledRows(
+    rows: ReturnType<typeof enabledTree>,
+    query: string,
+) {
+    if (!query) return rows;
+    const normalized = query.toLocaleLowerCase();
+    return rows.filter((row) =>
+        row.name.toLocaleLowerCase().includes(normalized),
+    );
+}
+
+function moveEnabledSelection(
+    selected: number,
+    services: number[],
+    backward: boolean,
+) {
+    return Math.max(
+        0,
+        Math.min(services.length - 1, selected + (backward ? -1 : 1)),
+    );
+}
+
+function editEnabledSearch(
+    search: ReturnType<typeof useSearch>,
+    input: string,
+    key: import('ink').Key,
+) {
+    if (key.return) {
+        search.finish();
+        return;
+    }
+    const next = editText(search.query, input, key);
+    if (next !== undefined) search.setQuery(next);
+}
+
+function useEnabledNavigation(
+    rows: ReturnType<typeof enabledTree>,
+    active: boolean,
+    onOpen: (name: string) => void,
+) {
+    const search = useSearch();
+    const { exit } = useApp();
+    const [selected, setSelected] = useState(0);
+    const visibleRows = useMemo(
+        () => filteredEnabledRows(rows, search.query),
+        [rows, search.query],
+    );
+    const services = visibleRows
+        .map((row, index) => (row.kind === 'service' ? index : -1))
+        .filter((index) => index >= 0);
+    const selection = Math.min(selected, Math.max(0, services.length - 1));
+    const selectedRow = services[selection] ?? 0;
+    useInput(
+        (input, key) => {
+            if (key.escape) return search.clear();
+            if (key.upArrow || key.downArrow) {
+                search.finish();
+                setSelected(
+                    moveEnabledSelection(selection, services, key.upArrow),
+                );
+                return;
+            }
+            if (search.searching) {
+                editEnabledSearch(search, input, key);
+                return;
+            }
+            if (input === '/') return search.begin();
+            if (input === 'q') return exit();
+            if (key.return && visibleRows[selectedRow]?.kind === 'service')
+                onOpen(visibleRows[selectedRow]!.name);
+        },
+        { isActive: active },
+    );
+    return {
+        search,
+        visibleRows,
+        selectedRow,
+    };
 }
 
 export default function EnabledBrowser({
@@ -34,42 +121,40 @@ export default function EnabledBrowser({
     onOpen: (name: string) => void;
 }) {
     const rows = useMemo(() => enabledTree(groups, details), [groups, details]);
-    const [selected, setSelected] = useState(0);
-    const services = rows
-        .map((row, index) => (row.kind === 'service' ? index : -1))
-        .filter((index) => index >= 0);
-    const selection = Math.min(selected, Math.max(0, services.length - 1));
-    const selectedRow = services[selection] ?? 0;
-    const capacity = Math.max(1, height - 1);
-    const start = centeredStart(selectedRow, capacity, rows.length);
-    const count = enabledServiceCount(rows);
-    useInput(
-        (_input, key) => {
-            if (key.upArrow || key.downArrow)
-                setSelected(
-                    Math.max(
-                        0,
-                        Math.min(
-                            services.length - 1,
-                            selection + (key.upArrow ? -1 : 1),
-                        ),
-                    ),
-                );
-            if (key.return && rows[selectedRow]?.kind === 'service')
-                onOpen(rows[selectedRow]!.name);
-        },
-        { isActive: active },
+    const { search, visibleRows, selectedRow } = useEnabledNavigation(
+        rows,
+        active,
+        onOpen,
     );
+    const capacity = Math.max(1, height - 1);
+    const start = centeredStart(selectedRow, capacity, visibleRows.length);
+    const count = enabledServiceCount(rows);
     return (
-        <Box flexDirection="column" height={height} overflow="hidden">
+        <TabScreen
+            height={height}
+            footer={
+                <KeyboardHints
+                    bindings={
+                        search.searching
+                            ? footerBindingsForTab('Enabled', 'search')
+                            : footerBindingsForTab('Enabled')
+                    }
+                />
+            }
+        >
             <Text color={theme.muted} wrap="truncate-end">
-                {count} enabled services
+                {plural(count, 'enabled service')}
                 {environment ? ` · ${environment.label}` : ''}
             </Text>
-            {rows.length === 0 && (
+            <SearchHeader
+                searching={search.searching}
+                query={search.query}
+                hint="/ to filter enabled services"
+            />
+            {visibleRows.length === 0 && (
                 <Text color={theme.foreground}>No services are enabled.</Text>
             )}
-            {rows.slice(start, start + capacity).map((row, index) =>
+            {visibleRows.slice(start, start + capacity).map((row, index) =>
                 row.kind === 'module' ? (
                     <Text
                         key={start + index}
@@ -90,7 +175,7 @@ export default function EnabledBrowser({
                     />
                 ),
             )}
-        </Box>
+        </TabScreen>
     );
 }
 

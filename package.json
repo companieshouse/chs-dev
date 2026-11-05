@@ -12,6 +12,7 @@
     },
     "scripts": {
         "dev": "node --import tsx src/entrypoints/chs-dev.ts",
+        "dev:tui": "tsx watch src/entrypoints/tui.tsx",
         "build": "tsc",
         "start": "node dist/entrypoints/chs-dev.js",
         "typecheck": "tsc --noEmit",
@@ -36,6 +37,7 @@
         "complexity:check": "node scripts/complexity.mjs check",
         "complexity:baseline": "node scripts/complexity.mjs baseline",
         "test:complexity": "node --test test/complexity-tooling.test.mjs test/combined-nesting.test.mjs",
+        "tui:preview": "node --import tsx scripts/tui-preview.ts",
         "lint:fix": "npm run lint -- --fix",
         "check": "npm run format:check && npm run lint && npm run complexity:check && npm run typecheck"
     },

@@ -16,6 +16,7 @@ import type { RuntimeContainer, LiveRuntime } from '../src/domain/live.js';
 import type { ServiceGroup } from '../src/domain/services.js';
 import type { MockSupport } from '../src/domain/providers.js';
 import { withMockRuntime } from '../src/domain/live.js';
+import { listJourneys, saveJourney } from '../src/project/journeys.js';
 import type { TerminalFactory } from '../src/application/interactions.js';
 import { listenApi } from '../src/server/api.js';
 import { Client } from '../src/client/client.js';
@@ -334,6 +335,14 @@ export async function daemonFixture(
                             };
                         actual!.revision++;
                     },
+                    saveJourney: async (input) => ({
+                        path: await saveJourney(path, {
+                            name: input.name,
+                            services: input.services,
+                            lazy: input.lazy,
+                        }),
+                    }),
+                    journeys: () => listJourneys(path),
                     configurationSnapshot: async () => ({
                         revision: revision().identity,
                         selections: projectSelections(actual!.selections),
