@@ -29,6 +29,7 @@ test('Docker strategy checks daemon and Compose and scopes inspection to the req
             cli,
             `#!/bin/sh
 case "$1" in
+context) if [ "$2" = "show" ]; then echo fixture; else echo '{"Host":"unix:///fixture/docker.sock"}'; fi ;;
 info) echo 28.0 ;;
 compose) echo 2.0 ;;
 ps) echo container-one ;;

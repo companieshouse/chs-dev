@@ -46,45 +46,14 @@ function stoppedService(
 }
 
 export class DockerContainerManager implements ContainerManager {
-    private connection?: Promise<NodeJS.ProcessEnv>;
     constructor(private readonly dependencies: Dependencies) {}
-
-    private async connect(signal?: AbortSignal) {
-        const env = {
-            ...(await this.dependencies.environment(signal)),
-        };
-        // Keep actions on the engine that supplied the list, even if the default context changes.
-        if (!env.DOCKER_CONTEXT && !env.DOCKER_HOST) {
-            const response = await this.dependencies.execute({
-                command: 'docker',
-                args: ['context', 'show'],
-                cwd: this.dependencies.directory,
-                env,
-                signal,
-                captureStdout: true,
-                privateOutput: true,
-                timeout: 10000,
-            });
-            if (response.code !== 0 || !response.stdout.trim())
-                throw new Error('Cannot determine the Docker context.');
-            env.DOCKER_CONTEXT = response.stdout.trim();
-        }
-        return env;
-    }
-    private environment(signal?: AbortSignal) {
-        this.connection ??= this.connect(signal).catch((error) => {
-            this.connection = undefined;
-            throw error;
-        });
-        return this.connection;
-    }
 
     private async run(args: string[], signal?: AbortSignal, timeout = 15000) {
         const result = await this.dependencies.execute({
             command: 'docker',
             args,
             cwd: this.dependencies.directory,
-            env: await this.environment(signal),
+            env: await this.dependencies.environment(signal),
             signal,
             timeout,
             captureStdout: true,
@@ -176,7 +145,7 @@ export class DockerContainerManager implements ContainerManager {
                 command: 'docker',
                 args: ['container', 'inspect', ...ids],
                 cwd: this.dependencies.directory,
-                env: await this.environment(signal),
+                env: await this.dependencies.environment(signal),
                 signal,
                 timeout: 15000,
                 captureStdout: true,
@@ -315,7 +284,7 @@ export class DockerContainerManager implements ContainerManager {
                 container.id,
             ],
             cwd: this.dependencies.directory,
-            env: await this.environment(context.signal),
+            env: await this.dependencies.environment(context.signal),
             ...context,
             timeout: options.follow ? 0 : 60000,
             captureStdout: false,

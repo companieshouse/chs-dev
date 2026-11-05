@@ -501,14 +501,16 @@ export async function createApplication(
     const usageCacheEnabled = () =>
         settings.getSnapshot().resolved.usageCache.value;
     const usage = new UsageTracker({ settings: settings.getSnapshot, ledger });
+    const runtime = options.runtime?.() ?? new DockerComposeStrategy();
+    const sharedRuntime = () => runtime;
     const proxy = startDaemonProxy({
-        ...options,
+        runtime: sharedRuntime,
         accounting,
         controller: () => active.controller,
         ledger,
     });
     const host = createApplicationHost(settings, state, sessionIdentity, {
-        runtime: options.runtime,
+        runtime: sharedRuntime,
         accounting,
         proxyState: () => proxy.state(),
         active,

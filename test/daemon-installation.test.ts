@@ -64,3 +64,22 @@ test('retired runtime overrides are excluded from new daemon environments', () =
         /CHS_DEV_RUNTIME is retired and ignored/,
     );
 });
+
+test('daemon startup retains Docker selector and TLS configuration without cloud credentials', () => {
+    const selected = {
+        DOCKER_HOST: 'tcp://fixture:2376',
+        DOCKER_CONTEXT: 'fixture',
+        DOCKER_TLS: '1',
+        DOCKER_TLS_VERIFY: '1',
+        DOCKER_CERT_PATH: '/fixture/certs',
+        DOCKER_CONFIG: '/fixture/docker',
+        DOCKER_API_VERSION: '1.47',
+    };
+    const env = daemonEnvironment({
+        ...selected,
+        AWS_SESSION_TOKEN: 'temporary',
+    });
+    for (const [key, value] of Object.entries(selected))
+        assert.equal(env[key], value);
+    assert.equal(env.AWS_SESSION_TOKEN, undefined);
+});

@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { dockerEnvironmentKeys } from '../infrastructure/docker-connection.js';
 import { expandHome } from '../infrastructure/settings.js';
 import { telemetryEnvironment } from '../infrastructure/telemetry.js';
 import {
@@ -29,9 +30,7 @@ export function daemonEnvironment(env: NodeJS.ProcessEnv = process.env) {
         'AWS_DEFAULT_PROFILE',
         'AWS_CONFIG_FILE',
         'AWS_SHARED_CREDENTIALS_FILE',
-        'DOCKER_HOST',
-        'DOCKER_CONTEXT',
-        'DOCKER_CONFIG',
+        ...dockerEnvironmentKeys,
     ];
     const selected: NodeJS.ProcessEnv = Object.fromEntries(
         names.flatMap((name) => (env[name] ? [[name, env[name]]] : [])),

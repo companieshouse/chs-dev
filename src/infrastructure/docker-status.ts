@@ -1,9 +1,7 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import type { ProcessExecutor } from './live-process.js';
 import { realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const exec = promisify(execFile);
 import { mergeStatus, type ServiceStatus } from '../domain/runtime.js';
 import {
     containerStatus,
@@ -18,28 +16,46 @@ export {
 
 export async function readDockerStatuses(
     directory: string,
+    dependencies: {
+        execute: ProcessExecutor;
+        environment(signal?: AbortSignal): Promise<NodeJS.ProcessEnv>;
+    },
     signal?: AbortSignal,
 ): Promise<Record<string, ServiceStatus>> {
-    const options = { timeout: 5000, maxBuffer: 4 * 1024 * 1024, signal };
-    const { stdout } = await exec(
-        'docker',
-        ['ps', '-aq', '--filter', 'label=com.docker.compose.service'],
-        options,
-    );
-    const ids = stdout.trim().split(/\s+/).filter(Boolean);
+    const options = {
+        timeout: 5000,
+        signal,
+        command: 'docker',
+        cwd: directory,
+        env: await dependencies.environment(signal),
+        privateOutput: true,
+        captureStdout: true,
+    };
+    const listed = await dependencies.execute({
+        ...options,
+        args: ['ps', '-aq', '--filter', 'label=com.docker.compose.service'],
+    });
+    signal?.throwIfAborted();
+    if (listed.code !== 0) throw new Error('Cannot list Docker containers.');
+    const ids = listed.stdout.trim().split(/\s+/).filter(Boolean);
     const containers: ContainerSnapshot[] = [];
     for (let offset = 0; offset < ids.length; offset += 100) {
-        const { stdout: snapshots } = await exec(
-            'docker',
-            [
+        const inspected = await dependencies.execute({
+            ...options,
+            args: [
                 'inspect',
                 '--format',
                 '{"labels":{{json .Config.Labels}},"state":{{json .State}}}',
                 ...ids.slice(offset, offset + 100),
             ],
-            options,
-        );
-        for (const line of snapshots.trim().split('\n').filter(Boolean)) {
+        });
+        signal?.throwIfAborted();
+        if (inspected.code !== 0)
+            throw new Error('Cannot inspect Docker containers.');
+        for (const line of inspected.stdout
+            .trim()
+            .split('\n')
+            .filter(Boolean)) {
             containers.push(JSON.parse(line) as ContainerSnapshot);
         }
     }

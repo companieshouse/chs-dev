@@ -1,6 +1,4 @@
 import { rethrowIfAborted } from '../cancellation.js';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { access, realpath } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { homedir } from 'node:os';
@@ -14,14 +12,16 @@ import type {
 import { readDockerStatuses } from '../docker-status.js';
 import { runInteractiveCommand } from '../interactive-command.js';
 import { ComposeBackend } from './compose-backend.js';
-import { createProcessExecutor } from '../live-process.js';
+import {
+    createProcessExecutor,
+    type ProcessExecutor,
+} from '../live-process.js';
+import { DockerConnection } from '../docker-connection.js';
 import { LiveEnvironment } from '../live-environment.js';
 import { awsProfile } from '../aws-status.js';
 import { liveFiles } from '../live-files.js';
 import { isProfileName } from '../../domain/settings.js';
 import { DockerContainerManager } from '../docker-containers.js';
-
-const exec = promisify(execFile);
 
 export function dockerRegistryCommand(
     profiles: readonly string[],
@@ -45,8 +45,38 @@ export class DockerComposeStrategy implements RuntimeStrategy {
         logs: true,
     });
 
+    private readonly execute: ProcessExecutor;
+    private readonly connection: DockerConnection;
+    constructor(
+        dependencies: {
+            execute?: ProcessExecutor;
+            environment?: NodeJS.ProcessEnv;
+            directory?: string;
+        } = {},
+    ) {
+        this.execute = dependencies.execute ?? createProcessExecutor();
+        this.connection = new DockerConnection({
+            execute: this.execute,
+            environment: dependencies.environment ?? process.env,
+            directory: dependencies.directory ?? process.cwd(),
+        });
+    }
+
+    engineIdentity(signal?: AbortSignal) {
+        return this.connection.identity(signal);
+    }
+
     live(project: RuntimeProject): import('../../domain/live.js').LiveRuntime {
-        const execute = createProcessExecutor();
+        const execute = this.execute;
+        const environment =
+            project.environment ??
+            new LiveEnvironment(
+                execute,
+                project.directory,
+                () => process.env,
+                awsProfile,
+                liveFiles,
+            );
         return new ComposeBackend({
             directory: project.directory,
             get projectName() {
@@ -56,35 +86,35 @@ export class DockerComposeStrategy implements RuntimeStrategy {
             },
             execute,
             realpath,
-            environment:
-                project.environment ??
-                new LiveEnvironment(
-                    execute,
-                    project.directory,
-                    () => process.env,
-                    awsProfile,
-                    liveFiles,
-                ),
+            environment: {
+                resolve: async (requirements, signal) =>
+                    this.connection.environment(
+                        await environment.resolve(requirements, signal),
+                        signal,
+                    ),
+            },
         });
     }
 
     containers(project: RuntimeProject) {
         return new DockerContainerManager({
             directory: project.directory,
-            execute: createProcessExecutor(),
-            environment: (signal) =>
-                project.environment?.resolve([], signal) ??
-                Promise.resolve({ ...process.env }),
+            execute: this.execute,
+            environment: async (signal) =>
+                this.connection.environment(
+                    await project.environment?.resolve([], signal),
+                    signal,
+                ),
         });
     }
     async checkAvailability(
         signal?: AbortSignal,
     ): Promise<RuntimeAvailability> {
         try {
-            await exec('docker', ['info', '--format', '{{.ServerVersion}}'], {
+            await this.checkCommand(
+                ['info', '--format', '{{.ServerVersion}}'],
                 signal,
-                timeout: 5000,
-            });
+            );
         } catch (error) {
             rethrowIfAborted(signal, error);
             return {
@@ -94,10 +124,7 @@ export class DockerComposeStrategy implements RuntimeStrategy {
             };
         }
         try {
-            await exec('docker', ['compose', 'version', '--short'], {
-                signal,
-                timeout: 5000,
-            });
+            await this.checkCommand(['compose', 'version', '--short'], signal);
             return {
                 available: true,
                 message: 'Docker and Compose are available.',
@@ -111,8 +138,29 @@ export class DockerComposeStrategy implements RuntimeStrategy {
         }
     }
 
+    private async checkCommand(args: string[], signal?: AbortSignal) {
+        const result = await this.execute({
+            command: 'docker',
+            args,
+            signal,
+            cwd: process.cwd(),
+            env: await this.connection.environment({}, signal),
+            timeout: 5000,
+            privateOutput: true,
+        });
+        if (result.code !== 0) throw new Error('Docker command failed.');
+    }
+
     inspect(project: RuntimeProject, signal?: AbortSignal) {
-        return readDockerStatuses(project.directory, signal);
+        return readDockerStatuses(
+            project.directory,
+            {
+                execute: this.execute,
+                environment: (signal) =>
+                    this.connection.environment({}, signal),
+            },
+            signal,
+        );
     }
 
     async loginRegistry(

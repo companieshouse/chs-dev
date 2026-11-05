@@ -60,13 +60,11 @@ function fixture() {
     ];
     const manager = new DockerContainerManager({
         directory: '/checkout',
-        environment: async () => ({}),
+        environment: async () => ({ DOCKER_CONTEXT: 'desktop-linux' }),
         execute: async (request) => {
             calls.push(request);
             request.signal?.throwIfAborted();
-            const [command, subcommand, ...args] = request.args;
-            if (command === 'context')
-                return { code: 0, stdout: 'desktop-linux\n', stderr: '' };
+            const [, subcommand, ...args] = request.args;
             if (subcommand === 'ls')
                 return {
                     code: 0,
@@ -156,7 +154,7 @@ test('container details include image, mounts, networks and redacted inspection'
     );
 });
 
-test('container actions stay pinned to the listed engine and use only the full selected ID', async () => {
+test('container actions use only the full selected ID', async () => {
     const { manager, calls } = fixture();
     const container = (await manager.list())[0];
     for (const action of ['stop', 'start', 'restart'] as const) {
@@ -165,9 +163,7 @@ test('container actions stay pinned to the listed engine and use only the full s
             'success',
         );
         assert.deepEqual(calls.at(-1)?.args, ['container', action, first]);
-        assert.equal(calls.at(-1)?.env.DOCKER_CONTEXT, 'desktop-linux');
     }
-    assert.equal(calls.filter((c) => c.args[0] === 'context').length, 1);
     await assert.rejects(manager.inspect('api'), /full container ID/);
     await assert.rejects(manager.logs('--all', 20), /full container ID/);
 });
