@@ -54,7 +54,6 @@ export interface LiveIntent {
     running: boolean;
     paused: boolean;
     applied?: string;
-    baseline?: string;
     stoppedByUser: readonly string[];
 }
 
@@ -199,8 +198,6 @@ export class LiveController {
     private authentication?: 'aws' | 'ecr';
     private applied?: string;
     private approvedStops: readonly string[] = [];
-    /** Configuration identity when a running environment was detected at launch. */
-    private baseline?: string;
     private polling = false;
     private configurationEpoch = 0;
     /** This checkout's Compose project identity has been confirmed. */
@@ -226,7 +223,6 @@ export class LiveController {
         if (intent) {
             this.paused = intent.paused;
             this.applied = intent.applied;
-            this.baseline = intent.baseline;
             this.state.running = intent.running;
             this.state.stoppedByUser = intent.stoppedByUser;
             this.state.phase = intent.running
@@ -248,7 +244,6 @@ export class LiveController {
             running: this.state.running,
             paused: this.paused,
             applied: this.applied,
-            baseline: this.baseline,
             stoppedByUser: [...this.state.stoppedByUser],
         };
     }
@@ -564,7 +559,6 @@ export class LiveController {
                 }),
             );
             this.applied = undefined;
-            this.baseline = undefined;
             this.authentication = undefined;
             stopped = true;
         } catch (error) {
@@ -976,7 +970,7 @@ export class LiveController {
                 await this.lock();
                 signal.throwIfAborted();
                 const revision = await this.dependencies.configuration.read();
-                if (revision.identity !== (this.applied ?? this.baseline))
+                if (revision.identity !== this.applied)
                     throw new LifecycleBlocked(
                         'Apply saved changes before reloading a service.',
                     );
@@ -1591,8 +1585,8 @@ export class LiveController {
             recreate: plan.recreate,
             modeChanged: modeChanges(revision, observed),
             edited:
-                (this.applied ?? this.baseline) !== undefined &&
-                revision.identity !== (this.applied ?? this.baseline),
+                this.applied !== undefined &&
+                revision.identity !== this.applied,
         };
 
         return changes.start.length ||
