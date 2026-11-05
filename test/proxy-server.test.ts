@@ -386,3 +386,121 @@ test('Path rules match the pathname, so a query string still routes', async (t) 
     assert.equal(hit.status, 200);
     assert.equal(hit.body, '/callback?code=1&state=2');
 });
+
+test('healthcheck traffic never cold-starts a stopped lazy service', async (t) => {
+    let starts = 0;
+    const proxy = createProxyServer({
+        routes: async () => [route('api', 'api.chs.local', ['/health'])],
+        upstream: async () => undefined,
+        lifecycle: createLazyLifecycle({
+            isLazy: () => true,
+            start: async () => {
+                starts++;
+            },
+            stop: async () => {},
+        }),
+        holdMs: 20,
+        pollMs: 5,
+    });
+    const port = await listen(proxy);
+    t.after(() => proxy.close());
+    const response = await get(port, 'api.chs.local', '/health?probe=1');
+    assert.equal(starts, 0);
+    assert.equal(response.status, 502);
+});
+
+test('the cold-start hold deadline includes a start that has not completed', async (t) => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    const proxy = createProxyServer({
+        routes: async () => [route('api', 'api.chs.local')],
+        upstream: async () => undefined,
+        lifecycle: createLazyLifecycle({
+            isLazy: () => true,
+            start: () => held,
+            stop: async () => {},
+        }),
+        holdMs: 20,
+        pollMs: 5,
+    });
+    const port = await listen(proxy);
+    t.after(() => proxy.close());
+    const response = get(port, 'api.chs.local', '/');
+    try {
+        const withinHold = await Promise.race([
+            response,
+            delay(100).then(() => undefined),
+        ]);
+        assert.equal(withinHold?.status, 503);
+    } finally {
+        release();
+        await response;
+    }
+});
+
+test('the acquisition deadline bounds held initial route and upstream inspection', async (t) => {
+    for (const stage of ['routes', 'upstream']) {
+        let release!: () => void;
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const proxy = createProxyServer({
+            routes: async () => {
+                if (stage === 'routes') await held;
+                return [route('api', 'api.chs.local')];
+            },
+            upstream: async () => {
+                if (stage === 'upstream') await held;
+                return undefined;
+            },
+            holdMs: 20,
+            pollMs: 5,
+        });
+        const port = await listen(proxy);
+        t.after(() => proxy.close());
+        const response = get(port, 'api.chs.local', '/');
+        try {
+            const result = await Promise.race([
+                response,
+                delay(100).then(() => undefined),
+            ]);
+            assert.equal(
+                result?.status,
+                503,
+                `${stage} must share the request acquisition deadline`,
+            );
+        } finally {
+            release();
+            await response;
+        }
+    }
+});
+
+test('proxy failure diagnostics exclude request queries and arbitrary adapter errors', async (t) => {
+    const logged: string[] = [];
+    const proxy = createProxyServer({
+        routes: async () => {
+            throw new Error('provider response contains private-oauth-code');
+        },
+        upstream: async () => undefined,
+        log: (message) => {
+            logged.push(message);
+        },
+    });
+    const port = await listen(proxy);
+    t.after(() => proxy.close());
+    const response = await get(
+        port,
+        'api.chs.local',
+        '/oauth?code=private-oauth-code',
+    );
+    assert.equal(response.status, 502);
+    assert.ok(logged.length > 0);
+    assert.doesNotMatch(
+        logged.join('\n'),
+        /private-oauth-code|\?code=|provider response/,
+    );
+    assert.doesNotMatch(response.body, /private-oauth-code|provider response/);
+});

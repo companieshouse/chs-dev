@@ -33,7 +33,7 @@ export interface ServiceLifecycle {
     /** Seeds the idle timer when a lazy service is first seen running. */
     seen(service: string): void;
     /** Starts the service; concurrent starts share one call. */
-    start(service: string): Promise<void>;
+    start(service: string, deadline?: number): Promise<void>;
     /** Gracefully stops the service. */
     stop(service: string): Promise<void>;
     /** Stops lazy services idle past the window; returns what unloaded. */
@@ -68,7 +68,7 @@ export function lazyChain(
 
 export function createLazyLifecycle(deps: {
     isLazy(service: string): boolean;
-    start(service: string): Promise<void>;
+    start(service: string, deadline?: number): Promise<void>;
     stop(service: string): Promise<void>;
     log?: ProxyLog;
 }): ServiceLifecycle {
@@ -82,11 +82,11 @@ export function createLazyLifecycle(deps: {
         seen: (service) => {
             if (!activity.has(service)) activity.set(service, Date.now());
         },
-        start: (service) => {
+        start: (service, deadline) => {
             const inflight = starting.get(service);
             if (inflight) return inflight;
             const started = deps
-                .start(service)
+                .start(service, deadline)
                 .catch((error: unknown) => {
                     starting.delete(service);
                     throw error;

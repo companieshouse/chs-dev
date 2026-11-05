@@ -41,16 +41,17 @@ export function handleProxyRequest(
     request: http.IncomingMessage,
     response: http.ServerResponse,
 ): Promise<void> {
-    const host = (request.headers.host ?? '').split(':')[0]!;
-    const path = request.url ?? '/';
-    return respond(options, request, response, host, path).catch((error) => {
-        options.log?.(`Proxy error for ${host}${path}: ${errorMessage(error)}`);
+    const deadline = Date.now() + (options.holdMs ?? COLD_START_HOLD_MS);
+    return respond(options, request, response, deadline).catch(() => {
+        options.log?.('Proxy request failed.', {
+            cause: 'route-load-failed',
+            status: 'failed',
+        });
+        if (response.destroyed) return;
         if (!response.headersSent) {
             response.writeHead(502, { 'content-type': 'text/plain' });
-            response.end(`Upstream failed: ${errorMessage(error)}`);
-        } else {
-            response.end();
-        }
+            response.end('Upstream failed.');
+        } else response.end();
     });
 }
 
@@ -58,10 +59,18 @@ async function respond(
     options: ProxyServerOptions,
     request: http.IncomingMessage,
     response: http.ServerResponse,
-    host: string,
-    path: string,
+    deadline: number,
 ): Promise<void> {
-    const routes = await options.routes();
+    const host = (request.headers.host ?? '').split(':')[0]!;
+    const path = request.url ?? '/';
+    const routes = await beforeDeadline(options.routes(), deadline);
+    if (!routes) {
+        response.writeHead(503, { 'content-type': 'text/plain' });
+        response.end(
+            'Routing inspection is still pending - try again shortly.',
+        );
+        return;
+    }
     // Traefik matches Path rules on the pathname, never the query string.
     const route = lookupRoute(routes, host, path.split('?')[0]!);
     if (!route) {
@@ -69,9 +78,28 @@ async function respond(
         return;
     }
     observeTraffic(options, route, path);
-    let upstream = await options.upstream(route);
-    if (!upstream && options.lifecycle?.isLazy(route.service))
-        upstream = await coldStart(options, route, response);
+    await serveRoute(options, request, response, route, deadline);
+}
+
+async function serveRoute(
+    options: ProxyServerOptions,
+    request: http.IncomingMessage,
+    response: http.ServerResponse,
+    route: Route,
+    deadline: number,
+) {
+    const path = request.url ?? '/';
+    let upstream = await beforeDeadline(options.upstream(route), deadline);
+    if (Date.now() >= deadline) {
+        holdExpired(options, route, response);
+        return;
+    }
+    if (
+        !upstream &&
+        !isHealthcheck(path, route.healthcheckPaths) &&
+        options.lifecycle?.isLazy(route.service)
+    )
+        upstream = await coldStart(options, route, response, deadline);
     if (!upstream) {
         if (response.headersSent) return;
         response.writeHead(502, { 'content-type': 'text/plain' });
@@ -106,6 +134,7 @@ async function coldStart(
     options: ProxyServerOptions,
     route: Route,
     response: http.ServerResponse,
+    deadline: number,
 ): Promise<ProxyUpstream | undefined> {
     const log: ProxyLog = options.log ?? (() => {});
     const lifecycle = options.lifecycle!;
@@ -115,9 +144,16 @@ async function coldStart(
         status: 'start',
     });
     try {
-        await lifecycle.start(route.service);
-    } catch (error) {
-        log(`cold start of ${route.service} failed: ${errorMessage(error)}`, {
+        const started = await beforeDeadline(
+            lifecycle.start(route.service, deadline).then(() => true),
+            deadline,
+        );
+        if (!started) {
+            holdExpired(options, route, response);
+            return undefined;
+        }
+    } catch {
+        log(`cold start of ${route.service} failed`, {
             service: route.service,
             cause: 'start-failed',
             status: 'failed',
@@ -126,11 +162,13 @@ async function coldStart(
         response.end(`Service ${route.service} could not be started.`);
         return undefined;
     }
-    const deadline = Date.now() + (options.holdMs ?? COLD_START_HOLD_MS);
     const poll = options.pollMs ?? COLD_START_POLL_MS;
     while (Date.now() < deadline) {
-        const upstream = await options.upstream(route);
-        if (upstream && (await reachable(upstream))) {
+        const upstream = await beforeDeadline(
+            options.upstream(route),
+            deadline,
+        );
+        if (upstream && (await beforeDeadline(reachable(upstream), deadline))) {
             log(`${route.service} served after cold start`, {
                 service: route.service,
                 cause: 'cold-start',
@@ -138,15 +176,37 @@ async function coldStart(
             });
             return upstream;
         }
-        await delay(poll);
+        await delay(Math.min(poll, Math.max(0, deadline - Date.now())));
     }
-    log(`cold start of ${route.service} hit the hold cap`, {
+    holdExpired(options, route, response);
+    return undefined;
+}
+
+function holdExpired(
+    options: ProxyServerOptions,
+    route: Route,
+    response: http.ServerResponse,
+) {
+    options.log?.(`cold start of ${route.service} hit the hold cap`, {
         service: route.service,
         cause: 'hold-cap',
         status: 'failed',
     });
     stillStarting(response, route.service);
-    return undefined;
+}
+
+function beforeDeadline<T>(
+    work: Promise<T>,
+    deadline: number,
+): Promise<T | undefined> {
+    let timer: ReturnType<typeof setTimeout>;
+    const expired = new Promise<undefined>((resolve) => {
+        timer = setTimeout(
+            () => resolve(undefined),
+            Math.max(0, deadline - Date.now()),
+        );
+    });
+    return Promise.race([work, expired]).finally(() => clearTimeout(timer));
 }
 
 function reachable(upstream: ProxyUpstream): Promise<boolean> {
@@ -215,20 +275,14 @@ async function forward(
         target.on('error', reject);
         request.pipe(target);
         request.on('error', reject);
-    }).catch((error: unknown) => {
+    }).catch(() => {
         if (response.headersSent) {
             response.end();
             return;
         }
         response.writeHead(502, { 'content-type': 'text/plain' });
-        response.end(
-            `Upstream ${route.service} failed: ${errorMessage(error)}`,
-        );
+        response.end(`Upstream ${route.service} failed.`);
     });
-}
-
-function errorMessage(error: unknown) {
-    return error instanceof Error ? error.message : String(error);
 }
 
 export function createProxyServer(options: ProxyServerOptions): http.Server {
