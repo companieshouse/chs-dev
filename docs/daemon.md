@@ -87,8 +87,13 @@ to change its startup connection inputs.
 
 Checkpoints retain only established intent, the canonical checkout, engine
 fingerprint, applied logical membership and manual holds. Merely observing existing
-containers never adopts them, including after repeated daemon restarts. A clean
-matching checkpoint restores from verified immutable applied Compose artifacts. Recovery does not prepare fresh
+containers never adopts them, including after repeated daemon restarts. Start/Apply
+establish new authority only when the controller actually begins activation; a fresh
+Start preview, Dismiss or cancellation before activation cannot authorize later
+cleanup, even after operation history is trimmed. Explicit Stop establishes stopped
+intent immediately. Checkout switching supersedes pending recovery and durably
+checkpoints the switch before cleanup; storage failure blocks cleanup and requires
+repair plus daemon restart. A clean matching checkpoint restores from verified immutable applied Compose artifacts. Recovery does not prepare fresh
 configuration or refresh image metadata; Compose image build/pull are disabled.
 Applied dependency/init jobs, including existing Development builder containers,
 can run according to Compose health/completion conditions. Current generated helpers
@@ -102,8 +107,8 @@ Before admitting traffic, clean stopped/manual-held intent re-stops any owned
 containers revived by engine restart policies such as `restart: always`. Clean
 running intent resumes stopped eager roots and leaves lazy roots demand-driven.
 The daemon verifies final observations before reporting restoration success.
-Interrupted/switching checkpoints and a failed latest accepted Environment Stop
-restore a paused/stopped gate with **no automatic engine mutations**, including
+Interrupted/switching checkpoints and the latest unsuccessful accepted lifecycle
+action (including failed/cancelled Start or Apply) restore a paused/stopped gate with **no automatic engine mutations**, including
 cleanup. Inspect those containers and Start, Apply or Stop explicitly; interrupted
 work is never replayed. Warm traffic obeys the same intent and applied membership
 as cold starts.

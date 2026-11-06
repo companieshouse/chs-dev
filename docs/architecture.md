@@ -137,8 +137,12 @@ inactive. Remote/TLS transports retain explicit use without automatic recovery o
 an immutable-endpoint guarantee.
 
 Operations are persisted separately. Startup marks unfinished operations
-interrupted; interrupted/switching state and a failed latest accepted Stop require
-explicit reconciliation with no automatic engine mutations. Clean stopped/manual
+interrupted; interrupted/switching state and the latest unsuccessful accepted
+lifecycle action require explicit reconciliation with no automatic engine mutations.
+Fresh Start previews, dismissal and cancellation before activation do not establish
+stopped authority, including after operation history is trimmed. Pending recovery
+is superseded and the switch durably checkpointed before checkout cleanup; failed
+storage prevents that cleanup. Clean stopped/manual
 holds re-stop containers revived by engine restart policy before traffic is allowed.
 Unavailable Docker defers recovery through bounded read-only identity checks on
 the existing observation schedule. Unknown legacy state requires explicit Start or

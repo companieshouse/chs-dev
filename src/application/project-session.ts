@@ -157,15 +157,19 @@ export class ProjectSession {
 
     private restoredIntent(previous: SessionIntent) {
         const latest = this.latestEnvironmentOperation(previous.scope.project);
-        const kind = latest?.kind;
-        const failedStop =
-            kind === 'environment.stop' && latest!.state !== 'succeeded';
+        if (latest && latest.state !== 'succeeded')
+            return {
+                ...previous.intent!,
+                running:
+                    latest.kind === 'environment.stop'
+                        ? false
+                        : previous.intent!.running,
+                paused: true,
+            };
         return {
             ...previous.intent!,
-            running: failedStop ? false : previous.intent!.running,
             paused: Boolean(
-                failedStop ||
-                kind === 'environment.cancel' ||
+                latest?.kind === 'environment.cancel' ||
                 previous.interrupted ||
                 previous.switching ||
                 this.operations?.interruptedOnStartup ||
@@ -287,7 +291,9 @@ export class ProjectSession {
             ready: true,
         });
         this.unsubscribe = backend.controller?.subscribe(() => {
-            this.update({ live: backend.controller!.getSnapshot() });
+            const live = backend.controller!.getSnapshot();
+            if (live.running) this.intentEstablished = true;
+            this.update({ live });
             void this.checkpoint().catch((error) =>
                 this.persistenceFailed(error),
             );
@@ -331,13 +337,22 @@ export class ProjectSession {
         this.backend?.controller?.cancel();
         this.update({ notice: this.stateFailure });
     }
-    private checkpoint(force = false) {
-        if (this.pendingRecovery) return Promise.resolve();
+    private persistedIntent() {
         const intent = this.intentEstablished
             ? this.backend?.controller?.getIntent()
             : undefined;
-        if (intent && ['Failed', 'Blocked'].includes(this.state.live.phase))
+        if (
+            intent &&
+            (this.state.live.plan ||
+                ['Failed', 'Blocked'].includes(this.state.live.phase))
+        )
             intent.paused = true;
+        return intent;
+    }
+
+    private checkpoint(force = false) {
+        if (this.pendingRecovery) return Promise.resolve();
+        const intent = this.persistedIntent();
         const value = {
             version: 1 as const,
             engineIdentity: this.engineIdentity,
@@ -504,7 +519,7 @@ export class ProjectSession {
             ].includes(request.command)
         ) {
             this.pendingRecovery = undefined;
-            this.intentEstablished = true;
+            this.intentEstablished ||= request.command === 'environment.stop';
         }
         const backend = this.backend!,
             controller = backend.controller;
@@ -551,7 +566,7 @@ export class ProjectSession {
             this.assertEnvironmentOutcome(request, controller);
         } finally {
             signal.removeEventListener('abort', cancel);
-            await this.checkpoint();
+            await this.checkpoint(true);
             this.update({
                 settings: this.host.settings(),
                 settingsRevision: this.host.settingsRevision(),
@@ -1031,12 +1046,17 @@ export class ProjectSession {
                 message: project.message,
             });
         const old = this.backend!;
+        this.pendingRecovery = undefined;
+        this.intentEstablished = true;
         this.switching = true;
         this.update({
             notice: 'Stopping the current environment before switching…',
         });
-        await this.checkpoint(true);
         try {
+            await this.checkpoint(true).catch((error) => {
+                this.persistenceFailed(error);
+                throw error;
+            });
             await this.usage?.closeRun();
             await this.stopCurrentEnvironment(old, signal);
             signal?.throwIfAborted();
@@ -1049,7 +1069,7 @@ export class ProjectSession {
             });
         } finally {
             this.switching = false;
-            await this.checkpoint(true);
+            if (!this.stateFailure) await this.checkpoint(true);
         }
     }
     private async stopCurrentEnvironment(
