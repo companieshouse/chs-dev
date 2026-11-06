@@ -1,0 +1,33 @@
+{
+    "name": "unit",
+    "files": [
+        "src/application/live-controller.ts",
+        "src/domain/enabled-tree.ts",
+        "src/domain/live.ts",
+        "src/domain/service-dependencies.ts",
+        "src/domain/service-state.ts",
+        "src/domain/services.ts",
+        "src/infrastructure/interactive-command.ts",
+        "src/infrastructure/live-environment.ts",
+        "src/infrastructure/live-files.ts",
+        "src/infrastructure/live-process.ts",
+        "src/infrastructure/live-runtime.ts",
+        "src/infrastructure/tui-log.ts",
+        "src/tui/models/modules.ts",
+        "src/tui/models/navigation.ts"
+    ],
+    "tests": [
+        "test/domain-state.test.ts",
+        "test/enabled-tree.test.ts",
+        "test/interactive-command.test.ts",
+        "test/live-controller.test.ts",
+        "test/live-domain.test.ts",
+        "test/live-runtime.test.ts",
+        "test/live-tui-log.test.ts",
+        "test/module-browser.test.ts",
+        "test/navigation.test.ts",
+        "test/service-dependencies.test.ts"
+    ],
+    "outputDirectory": ".scratch/mutation/unit",
+    "timeoutMs": 10000
+}
