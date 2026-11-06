@@ -21,3 +21,6 @@ is needed. The two Microcks live tests remain opt-in and skipped by this runner.
 Run `npm run check` and `npm run build` alongside the relevant tests. Fixture
 results establish local behavior, argument generation and error handling; they
 do not establish live Docker networking, AWS IAM access or image compatibility.
+
+For scoped fault-detection checks, see [mutation testing](mutation-testing.md).
+Its disposable source copies use this same local test runner.

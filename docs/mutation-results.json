@@ -1,0 +1,1833 @@
+{
+    "baselineCommit": "8f94e14a6732547cf41b82c31a006ee596b33042",
+    "testedCodeCommit": "fd100a0",
+    "scope": "All generated supported operators in the fourteen explicitly selected modules, evaluated against the complete package unit-test cohort before and after strengthening. This is not whole-repository mutation coverage.",
+    "scoring": "Strict killed/(killed+survived). Equivalent candidates stay in the score; timeouts, invalid mutations and infrastructure failures are separate.",
+    "generated": 1241,
+    "manifestHash": "4964a9c1f96ee8b11f3a08530c782527ed323896847e637808ecc64973864a74",
+    "before": {
+        "counts": {
+            "killed": 644,
+            "survived": 583,
+            "timeout": 14
+        },
+        "mutationScore": 0.5248573757131214,
+        "scored": 1227,
+        "baseline": {
+            "tests": 91,
+            "pass": 91,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0
+        },
+        "testHashes": {
+            "test/domain-state.test.ts": "feeafa9598a9e8ecfe22b36c1be4ae813bd515fbf33a7e7b7ac2ba8a7ba7b7e1",
+            "test/enabled-tree.test.ts": "22da4d4e09970363ec4c8840a455589931c9dcac90737076a972b9fafafec4ea",
+            "test/interactive-command.test.ts": "b679a592f223f975e3d9c228c56f666ca18666dd091b57e924b0d0f217e8d4fb",
+            "test/live-controller.test.ts": "ef7fd25d53ca1f384f678ef271397482c00eae5315e3245050ce8120c9ccc80f",
+            "test/live-runtime.test.ts": "052f2e22d5c5acd59545aa60767221c31d19afaba98f575126a211a29eccd4f2",
+            "test/live-tui-log.test.ts": "b18736bed9cfb50c1ae5ae9d08b5457e597e6e5827fb1bde4caf21920952f067",
+            "test/module-browser.test.ts": "16774f94756a326c7e63e1bf08dbf0b083e775231b91ae57eb76e9a849886a13",
+            "test/navigation.test.ts": "70c37433c624480ddf420ea0232e7157c9a8d7d7e8b7c9b89df648ecc473aa05",
+            "test/service-dependencies.test.ts": "ce4803d439fd29c0e69816d94954c3928a3deeae261d9bff0dc90df430126f44"
+        }
+    },
+    "after": {
+        "counts": {
+            "killed": 1111,
+            "timeout": 16,
+            "survived": 114
+        },
+        "mutationScore": 0.9069387755102041,
+        "scored": 1225,
+        "baseline": {
+            "tests": 199,
+            "pass": 199,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0
+        },
+        "testHashes": {
+            "test/domain-state.test.ts": "fd21a40eafd948f236f2317ea5fb14c8c4ec60fe9db265b935f7f01f8133a052",
+            "test/enabled-tree.test.ts": "4b5fb84858891b9a98ccf42e918fda573fd76967a27c4d021211d35dca5fbdd0",
+            "test/interactive-command.test.ts": "eed8b7e42d8a0e081be2a632e91b13d14e273a9fb0c8a6798d5b3e3fe2e4cb67",
+            "test/live-controller.test.ts": "f48e2870dbfa425be6a66324303a49675099fe617c26eee3808d9be03233c68a",
+            "test/live-domain.test.ts": "5915e6ebc39f21af1f79577fa9f2db834f099bd3030cb8651d4131728f082e5b",
+            "test/live-runtime.test.ts": "fae8462e0f6cbd6e985ea5800beebe60ebee5dc2417584cd617b2a1e46a16d0a",
+            "test/live-tui-log.test.ts": "f55b06a65d26c7ad3ce462f7dfdf12f934e9a6851ecb2884c580f24d0eff24b4",
+            "test/module-browser.test.ts": "16774f94756a326c7e63e1bf08dbf0b083e775231b91ae57eb76e9a849886a13",
+            "test/navigation.test.ts": "70c37433c624480ddf420ea0232e7157c9a8d7d7e8b7c9b89df648ecc473aa05",
+            "test/service-dependencies.test.ts": "7eda0e07d2cfdcecb662aba7a3c61a2639fdb624cf6445bc55ab17485fdfd1d1"
+        }
+    },
+    "newlyKilledBaselineSurvivors": 469,
+    "sourceHashes": {
+        "src/application/live-controller.ts": "1ac53907a57f611db49bb2476c2b703fe4d147b9c0b5231e7cd7d404892017d5",
+        "src/domain/enabled-tree.ts": "23197440dbb759afe72ff2d02c31d8d8eec0745e80a37cc543b5806dba3227e3",
+        "src/domain/live.ts": "0c56e911ae015e859c36a32b6876f3a34284fa901f1f9b981e9eba20224e4ba4",
+        "src/domain/service-dependencies.ts": "1f9af43cc33129266749a30bccf79aa87f77c34b54958a3f49314c7039ee2131",
+        "src/domain/service-state.ts": "86ab6606e8cf923a8436728d48be7fd61e461ff5d2d953dea7f7e288f75edb5b",
+        "src/domain/services.ts": "cefb5041d43ddd6e89c233ee92c4c11f08fab809e113daac2ae9363bbaca849c",
+        "src/infrastructure/interactive-command.ts": "2c2a5c72f36225341db64f7b02c8338eac5be073c1344600880a352f4ea389f7",
+        "src/infrastructure/live-environment.ts": "dcd59958ff4492cccfef4d5f4a6e11315dc73ddd24e836ff4076bdf8e0cfaba1",
+        "src/infrastructure/live-files.ts": "128a2477efd4a8a1410b60794150686430c1cfe6faaa61e26e351f0779e5ee22",
+        "src/infrastructure/live-process.ts": "dccecc60743627528a374680b4f4c91b20b6fada969ce35cf46c4b68ea06a83f",
+        "src/infrastructure/live-runtime.ts": "abd9fd8d05ad5cc5221d7486fc9045ec679c4ac45716994c27edc8699c4052d5",
+        "src/infrastructure/tui-log.ts": "0afcfa6677830039d48f34a9dc5f05316050529a80182992106542739cb684ac",
+        "src/tui/models/modules.ts": "c4b911c8f63c08242c02779e30e4d16fd31c1b0891f333bf431b94a5d2673f6c",
+        "src/tui/models/navigation.ts": "ea9c92e48d4bb07092fd8b381efa96c8838ddc70bc438515dd031ad77e6054b5"
+    },
+    "byFile": [
+        {
+            "file": "src/application/live-controller.ts",
+            "generated": 575,
+            "before": {
+                "counts": {
+                    "killed": 306,
+                    "survived": 260,
+                    "timeout": 9
+                },
+                "mutationScore": 0.5406360424028268,
+                "scored": 566
+            },
+            "after": {
+                "counts": {
+                    "killed": 463,
+                    "timeout": 9,
+                    "survived": 103
+                },
+                "mutationScore": 0.8180212014134276,
+                "scored": 566
+            }
+        },
+        {
+            "file": "src/domain/enabled-tree.ts",
+            "generated": 22,
+            "before": {
+                "counts": {
+                    "killed": 14,
+                    "survived": 8
+                },
+                "mutationScore": 0.6363636363636364,
+                "scored": 22
+            },
+            "after": {
+                "counts": {
+                    "killed": 22
+                },
+                "mutationScore": 1,
+                "scored": 22
+            }
+        },
+        {
+            "file": "src/domain/live.ts",
+            "generated": 124,
+            "before": {
+                "counts": {
+                    "killed": 37,
+                    "survived": 85,
+                    "timeout": 2
+                },
+                "mutationScore": 0.30327868852459017,
+                "scored": 122
+            },
+            "after": {
+                "counts": {
+                    "killed": 122,
+                    "timeout": 2
+                },
+                "mutationScore": 1,
+                "scored": 122
+            }
+        },
+        {
+            "file": "src/domain/service-dependencies.ts",
+            "generated": 19,
+            "before": {
+                "counts": {
+                    "killed": 15,
+                    "survived": 4
+                },
+                "mutationScore": 0.7894736842105263,
+                "scored": 19
+            },
+            "after": {
+                "counts": {
+                    "killed": 19
+                },
+                "mutationScore": 1,
+                "scored": 19
+            }
+        },
+        {
+            "file": "src/domain/service-state.ts",
+            "generated": 75,
+            "before": {
+                "counts": {
+                    "killed": 33,
+                    "survived": 42
+                },
+                "mutationScore": 0.44,
+                "scored": 75
+            },
+            "after": {
+                "counts": {
+                    "killed": 74,
+                    "survived": 1
+                },
+                "mutationScore": 0.9866666666666667,
+                "scored": 75
+            }
+        },
+        {
+            "file": "src/domain/services.ts",
+            "generated": 6,
+            "before": {
+                "counts": {
+                    "survived": 2,
+                    "killed": 4
+                },
+                "mutationScore": 0.6666666666666666,
+                "scored": 6
+            },
+            "after": {
+                "counts": {
+                    "killed": 6
+                },
+                "mutationScore": 1,
+                "scored": 6
+            }
+        },
+        {
+            "file": "src/infrastructure/interactive-command.ts",
+            "generated": 32,
+            "before": {
+                "counts": {
+                    "survived": 11,
+                    "killed": 21
+                },
+                "mutationScore": 0.65625,
+                "scored": 32
+            },
+            "after": {
+                "counts": {
+                    "killed": 29,
+                    "survived": 3
+                },
+                "mutationScore": 0.90625,
+                "scored": 32
+            }
+        },
+        {
+            "file": "src/infrastructure/live-environment.ts",
+            "generated": 32,
+            "before": {
+                "counts": {
+                    "survived": 13,
+                    "killed": 19
+                },
+                "mutationScore": 0.59375,
+                "scored": 32
+            },
+            "after": {
+                "counts": {
+                    "killed": 32
+                },
+                "mutationScore": 1,
+                "scored": 32
+            }
+        },
+        {
+            "file": "src/infrastructure/live-files.ts",
+            "generated": 19,
+            "before": {
+                "counts": {
+                    "survived": 15,
+                    "killed": 4
+                },
+                "mutationScore": 0.21052631578947367,
+                "scored": 19
+            },
+            "after": {
+                "counts": {
+                    "killed": 19
+                },
+                "mutationScore": 1,
+                "scored": 19
+            }
+        },
+        {
+            "file": "src/infrastructure/live-process.ts",
+            "generated": 95,
+            "before": {
+                "counts": {
+                    "survived": 72,
+                    "killed": 23
+                },
+                "mutationScore": 0.24210526315789474,
+                "scored": 95
+            },
+            "after": {
+                "counts": {
+                    "killed": 89,
+                    "survived": 6
+                },
+                "mutationScore": 0.9368421052631579,
+                "scored": 95
+            }
+        },
+        {
+            "file": "src/infrastructure/live-runtime.ts",
+            "generated": 155,
+            "before": {
+                "counts": {
+                    "killed": 108,
+                    "survived": 44,
+                    "timeout": 3
+                },
+                "mutationScore": 0.7105263157894737,
+                "scored": 152
+            },
+            "after": {
+                "counts": {
+                    "killed": 150,
+                    "timeout": 5
+                },
+                "mutationScore": 1,
+                "scored": 150
+            }
+        },
+        {
+            "file": "src/infrastructure/tui-log.ts",
+            "generated": 60,
+            "before": {
+                "counts": {
+                    "killed": 33,
+                    "survived": 27
+                },
+                "mutationScore": 0.55,
+                "scored": 60
+            },
+            "after": {
+                "counts": {
+                    "killed": 59,
+                    "survived": 1
+                },
+                "mutationScore": 0.9833333333333333,
+                "scored": 60
+            }
+        },
+        {
+            "file": "src/tui/models/modules.ts",
+            "generated": 9,
+            "before": {
+                "counts": {
+                    "killed": 9
+                },
+                "mutationScore": 1,
+                "scored": 9
+            },
+            "after": {
+                "counts": {
+                    "killed": 9
+                },
+                "mutationScore": 1,
+                "scored": 9
+            }
+        },
+        {
+            "file": "src/tui/models/navigation.ts",
+            "generated": 18,
+            "before": {
+                "counts": {
+                    "killed": 18
+                },
+                "mutationScore": 1,
+                "scored": 18
+            },
+            "after": {
+                "counts": {
+                    "killed": 18
+                },
+                "mutationScore": 1,
+                "scored": 18
+            }
+        }
+    ],
+    "residuals": [
+        {
+            "id": "src-application-live-controller-ts-84aef4cb10fc",
+            "file": "src/application/live-controller.ts",
+            "line": 222,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Changes admission/observation so existing callback-gate scenarios cannot reach their expected backend callback; raw TAP includes preceding assertions where applicable. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-application-live-controller-ts-26d44e23a94e",
+            "file": "src/application/live-controller.ts",
+            "line": 238,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Changes admission/observation so existing callback-gate scenarios cannot reach their expected backend callback; raw TAP includes preceding assertions where applicable. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill."
+        },
+        {
+            "id": "src-application-live-controller-ts-fe096c35b78e",
+            "file": "src/application/live-controller.ts",
+            "line": 277,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalent",
+            "reason": "AbortSignal dispatches abort once; restoreIntent removes the listener in finally, so changing the once option cannot replay cancellation."
+        },
+        {
+            "id": "src-application-live-controller-ts-daea0e8a452f",
+            "file": "src/application/live-controller.ts",
+            "line": 293,
+            "operator": "guard-false",
+            "original": "intent.paused",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only the restored-state explanatory message; restore phase, paused intent and actual mutation/reconciliation behavior remain checked."
+        },
+        {
+            "id": "src-application-live-controller-ts-a57243f84c10",
+            "file": "src/application/live-controller.ts",
+            "line": 293,
+            "operator": "guard-true",
+            "original": "intent.paused",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only the restored-state explanatory message; restore phase, paused intent and actual mutation/reconciliation behavior remain checked."
+        },
+        {
+            "id": "src-application-live-controller-ts-23ac7509db2b",
+            "file": "src/application/live-controller.ts",
+            "line": 312,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Forgets an already verified checkout identity and repeats the preparation compatibility check during a later poll. No mutation authorization is widened; a repeated failing check can suppress a later observation."
+        },
+        {
+            "id": "src-application-live-controller-ts-07dfaa83e64e",
+            "file": "src/application/live-controller.ts",
+            "line": 386,
+            "operator": "guard-false",
+            "original": "this.appliedServices.includes(service)",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalent",
+            "reason": "dependencyOrder(root, dependencies) includes the root itself; the fallback authorization admits every directly selected service just as the short-circuit does."
+        },
+        {
+            "id": "src-application-live-controller-ts-83c0daa6ffa3",
+            "file": "src/application/live-controller.ts",
+            "line": 409,
+            "operator": "guard-true",
+            "original": "operation !== this.operation",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Forces waitUntilIdle to repeat after the operation is stable, producing an unbounded resolved-promise loop. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-application-live-controller-ts-6617febc0357",
+            "file": "src/application/live-controller.ts",
+            "line": 409,
+            "operator": "comparison-negation",
+            "original": "!==",
+            "replacement": "===",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Forces waitUntilIdle to repeat after the operation is stable, producing an unbounded resolved-promise loop. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill."
+        },
+        {
+            "id": "src-application-live-controller-ts-a41dd5e1b883",
+            "file": "src/application/live-controller.ts",
+            "line": 414,
+            "operator": "guard-false",
+            "original": "this.closed || signal?.aborted",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "refresh() itself checks closed before reading and checks closed/aborted before publishing. Removing the probe precheck can issue a discarded read for an already-aborted signal but cannot publish it."
+        },
+        {
+            "id": "src-application-live-controller-ts-45608c6f574b",
+            "file": "src/application/live-controller.ts",
+            "line": 414,
+            "operator": "guard-true",
+            "original": "this.closed || signal?.aborted",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Changes admission/observation so existing callback-gate scenarios cannot reach their expected backend callback; raw TAP includes preceding assertions where applicable. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill."
+        },
+        {
+            "id": "src-application-live-controller-ts-088ca0f426c8",
+            "file": "src/application/live-controller.ts",
+            "line": 414,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "refresh() itself checks closed before reading and checks closed/aborted before publishing. Removing the probe precheck can issue a discarded read for an already-aborted signal but cannot publish it."
+        },
+        {
+            "id": "src-application-live-controller-ts-2c2ddea63e7a",
+            "file": "src/application/live-controller.ts",
+            "line": 429,
+            "operator": "guard-false",
+            "original": "update.phase && update.phase !== this.state.phase",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes phase-transition event emission and duration bookkeeping; the same public state updates and engine actions still occur."
+        },
+        {
+            "id": "src-application-live-controller-ts-537ad9c35bc9",
+            "file": "src/application/live-controller.ts",
+            "line": 429,
+            "operator": "guard-true",
+            "original": "update.phase && update.phase !== this.state.phase",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes phase-transition event emission and duration bookkeeping; the same public state updates and engine actions still occur."
+        },
+        {
+            "id": "src-application-live-controller-ts-29cc25565bea",
+            "file": "src/application/live-controller.ts",
+            "line": 429,
+            "operator": "logical",
+            "original": "&&",
+            "replacement": "||",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes phase-transition event emission and duration bookkeeping; the same public state updates and engine actions still occur."
+        },
+        {
+            "id": "src-application-live-controller-ts-4c6ef1804e87",
+            "file": "src/application/live-controller.ts",
+            "line": 429,
+            "operator": "comparison-negation",
+            "original": "!==",
+            "replacement": "===",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes phase-transition event emission and duration bookkeeping; the same public state updates and engine actions still occur."
+        },
+        {
+            "id": "src-application-live-controller-ts-510f3532beb1",
+            "file": "src/application/live-controller.ts",
+            "line": 451,
+            "operator": "guard-false",
+            "original": "!raw",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Adds timestamp-only log entries for empty output lines; no lifecycle behavior changes."
+        },
+        {
+            "id": "src-application-live-controller-ts-193901cb1bfb",
+            "file": "src/application/live-controller.ts",
+            "line": 477,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-ee4cfa2008a3",
+            "file": "src/application/live-controller.ts",
+            "line": 549,
+            "operator": "guard-false",
+            "original": "signal.aborted",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes how a failed/cancelled Start preview is labelled or reported; successful preview cancellation still does not activate containers."
+        },
+        {
+            "id": "src-application-live-controller-ts-c6a1cbe506f1",
+            "file": "src/application/live-controller.ts",
+            "line": 549,
+            "operator": "guard-true",
+            "original": "signal.aborted",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes how a failed/cancelled Start preview is labelled or reported; successful preview cancellation still does not activate containers."
+        },
+        {
+            "id": "src-application-live-controller-ts-4f20e89434ca",
+            "file": "src/application/live-controller.ts",
+            "line": 569,
+            "operator": "guard-false",
+            "original": "plan.stop.length === 1",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes singular/plural grammar in the stop-approval explanation only."
+        },
+        {
+            "id": "src-application-live-controller-ts-c51073829414",
+            "file": "src/application/live-controller.ts",
+            "line": 569,
+            "operator": "guard-true",
+            "original": "plan.stop.length === 1",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes singular/plural grammar in the stop-approval explanation only."
+        },
+        {
+            "id": "src-application-live-controller-ts-32d03e48fc18",
+            "file": "src/application/live-controller.ts",
+            "line": 569,
+            "operator": "comparison-negation",
+            "original": "===",
+            "replacement": "!==",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes singular/plural grammar in the stop-approval explanation only."
+        },
+        {
+            "id": "src-application-live-controller-ts-fc140904b089",
+            "file": "src/application/live-controller.ts",
+            "line": 569,
+            "operator": "guard-false",
+            "original": "plan.stop.length === 1",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes singular/plural grammar in the stop-approval explanation only."
+        },
+        {
+            "id": "src-application-live-controller-ts-52316920990c",
+            "file": "src/application/live-controller.ts",
+            "line": 569,
+            "operator": "guard-true",
+            "original": "plan.stop.length === 1",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes singular/plural grammar in the stop-approval explanation only."
+        },
+        {
+            "id": "src-application-live-controller-ts-9bffc1180ed8",
+            "file": "src/application/live-controller.ts",
+            "line": 569,
+            "operator": "comparison-negation",
+            "original": "===",
+            "replacement": "!==",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes singular/plural grammar in the stop-approval explanation only."
+        },
+        {
+            "id": "src-application-live-controller-ts-acf5f75c72a5",
+            "file": "src/application/live-controller.ts",
+            "line": 595,
+            "operator": "guard-false",
+            "original": "!this.state.plan",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Calling dismissPlan with no plan clears an unrelated message; membership, running intent and engine state remain unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-e2e7367f0bbe",
+            "file": "src/application/live-controller.ts",
+            "line": 631,
+            "operator": "guard-false",
+            "original": "this.closed",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalent-after-close",
+            "reason": "saved() can increment an internal epoch after shutdown, but poll() and its closed checks prevent publication or engine mutation; the controller cannot reopen."
+        },
+        {
+            "id": "src-application-live-controller-ts-1f22c296974c",
+            "file": "src/application/live-controller.ts",
+            "line": 640,
+            "operator": "guard-true",
+            "original": "this.state.busy",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-ordering-gap",
+            "reason": "A prior service operation publishes busy=false before awaiting asynchronous unlock. Always awaiting its still-pending operation can delay Stop until release completes, changing the valid release-window ordering. This is not proven equivalent and no failing-original case is claimed."
+        },
+        {
+            "id": "src-application-live-controller-ts-709d6120b9d4",
+            "file": "src/application/live-controller.ts",
+            "line": 657,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-overridden-state",
+            "reason": "update() forces running=false and busy=true for the entire active stopping promise; the promise finally clears busy after stopping is unset. This local update value is overwritten before publication."
+        },
+        {
+            "id": "src-application-live-controller-ts-e4032882a330",
+            "file": "src/application/live-controller.ts",
+            "line": 658,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalent-overridden-state",
+            "reason": "update() forces running=false and busy=true for the entire active stopping promise; the promise finally clears busy after stopping is unset. This local update value is overwritten before publication."
+        },
+        {
+            "id": "src-application-live-controller-ts-b2bb37ffd94f",
+            "file": "src/application/live-controller.ts",
+            "line": 678,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-overridden-state",
+            "reason": "update() forces running=false and busy=true for the entire active stopping promise; the promise finally clears busy after stopping is unset. This local update value is overwritten before publication."
+        },
+        {
+            "id": "src-application-live-controller-ts-6251bfac02d7",
+            "file": "src/application/live-controller.ts",
+            "line": 693,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalent-overridden-state",
+            "reason": "update() forces running=false and busy=true for the entire active stopping promise; the promise finally clears busy after stopping is unset. This local update value is overwritten before publication."
+        },
+        {
+            "id": "src-application-live-controller-ts-90302fa8e8ae",
+            "file": "src/application/live-controller.ts",
+            "line": 743,
+            "operator": "negation-removal",
+            "original": "!refreshed",
+            "replacement": "(refreshed)",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "The clean successful Stop returns through the preceding branch. In the remaining branches this changes whether an incomplete-cleanup detail is appended; it does not change actual cleanup, running intent or blocked/failed phase."
+        },
+        {
+            "id": "src-application-live-controller-ts-c65bcfcf146c",
+            "file": "src/application/live-controller.ts",
+            "line": 743,
+            "operator": "guard-true",
+            "original": "!refreshed || remaining",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "The clean successful Stop returns through the preceding branch. In the remaining branches this changes whether an incomplete-cleanup detail is appended; it does not change actual cleanup, running intent or blocked/failed phase."
+        },
+        {
+            "id": "src-application-live-controller-ts-09908019ea71",
+            "file": "src/application/live-controller.ts",
+            "line": 753,
+            "operator": "guard-false",
+            "original": "stopped",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes whether the prior stopping message is appended to the incomplete-cleanup explanation after reported success; remaining containers are still shown and completion is not claimed."
+        },
+        {
+            "id": "src-application-live-controller-ts-9722ae401fa3",
+            "file": "src/application/live-controller.ts",
+            "line": 757,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-overridden-state",
+            "reason": "update() forces running=false and busy=true for the entire active stopping promise; the promise finally clears busy after stopping is unset. This local update value is overwritten before publication."
+        },
+        {
+            "id": "src-application-live-controller-ts-2353f181362a",
+            "file": "src/application/live-controller.ts",
+            "line": 767,
+            "operator": "guard-false",
+            "original": "this.state.busy || this.closed",
+            "replacement": "false",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Admits a second exact-container action into the test backend while the first is held; the illegal concurrent action blocks the public serialization scenario. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill."
+        },
+        {
+            "id": "src-application-live-controller-ts-7fb39589a0c6",
+            "file": "src/application/live-controller.ts",
+            "line": 767,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Admits a second exact-container action into the test backend while the first is held; the illegal concurrent action blocks the public serialization scenario. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-application-live-controller-ts-90be30f1faf3",
+            "file": "src/application/live-controller.ts",
+            "line": 775,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-overwritten-result",
+            "reason": "The initial local result is overwritten on every successful path and every caught-failure path before it can be returned."
+        },
+        {
+            "id": "src-application-live-controller-ts-9cca3624db6a",
+            "file": "src/application/live-controller.ts",
+            "line": 793,
+            "operator": "guard-false",
+            "original": "container.service",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalent-unused-data",
+            "reason": "Changes affectedServices passed to accept(); accept() inspects only outcome/message/failureKind, so this derived list has no behavioral consumer here."
+        },
+        {
+            "id": "src-application-live-controller-ts-3a6884d4d372",
+            "file": "src/application/live-controller.ts",
+            "line": 793,
+            "operator": "guard-true",
+            "original": "container.service",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-unused-data",
+            "reason": "Changes affectedServices passed to accept(); accept() inspects only outcome/message/failureKind, so this derived list has no behavioral consumer here."
+        },
+        {
+            "id": "src-application-live-controller-ts-38e0c37c3035",
+            "file": "src/application/live-controller.ts",
+            "line": 806,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-4727ed26b4b3",
+            "file": "src/application/live-controller.ts",
+            "line": 859,
+            "operator": "guard-false",
+            "original": "action === 'start'",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes the activity or completed-action wording between Start and Restart; the actual requested backend action is unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-a6d05a5483cf",
+            "file": "src/application/live-controller.ts",
+            "line": 859,
+            "operator": "guard-true",
+            "original": "action === 'start'",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes the activity or completed-action wording between Start and Restart; the actual requested backend action is unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-34f74c1658cd",
+            "file": "src/application/live-controller.ts",
+            "line": 859,
+            "operator": "comparison-negation",
+            "original": "===",
+            "replacement": "!==",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes the activity or completed-action wording between Start and Restart; the actual requested backend action is unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-e068ce94649b",
+            "file": "src/application/live-controller.ts",
+            "line": 868,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-overwritten-result",
+            "reason": "The initial local result is overwritten on every successful path and every caught-failure path before it can be returned."
+        },
+        {
+            "id": "src-application-live-controller-ts-f3e047843f09",
+            "file": "src/application/live-controller.ts",
+            "line": 900,
+            "operator": "guard-false",
+            "original": "action === 'start'",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes the activity or completed-action wording between Start and Restart; the actual requested backend action is unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-43d52b408512",
+            "file": "src/application/live-controller.ts",
+            "line": 906,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-237af2283f47",
+            "file": "src/application/live-controller.ts",
+            "line": 954,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-overwritten-result",
+            "reason": "The initial local result is overwritten on every successful path and every caught-failure path before it can be returned."
+        },
+        {
+            "id": "src-application-live-controller-ts-db5cb698ffd9",
+            "file": "src/application/live-controller.ts",
+            "line": 969,
+            "operator": "guard-false",
+            "original": "!targets.length",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "For already stopped targets, the mutation sends an empty containerAction instead of returning early; the same manual hold and successful final state result for a conforming backend. Empty backend action behavior is not asserted."
+        },
+        {
+            "id": "src-application-live-controller-ts-fbe2081b4a16",
+            "file": "src/application/live-controller.ts",
+            "line": 989,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-1cba80e99c25",
+            "file": "src/application/live-controller.ts",
+            "line": 1024,
+            "operator": "guard-false",
+            "original": "Date.now() >= deadline",
+            "replacement": "false",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Suppresses the cold-start deadline check, so traffic waiting behind a held lifecycle operation repeatedly retries after expiry. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-application-live-controller-ts-be046c2a41a7",
+            "file": "src/application/live-controller.ts",
+            "line": 1054,
+            "operator": "guard-true",
+            "original": "error instanceof LifecycleBlocked",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-wrapper-failure-gap",
+            "reason": "The direct admission checks throw LifecycleBlocked, but waitUntilIdle can forward a rejected injected operation wrapper. That wrapper-rejection case is untested; assuming its safe type can expose an arbitrary message. This is not claimed unreachable or equivalent."
+        },
+        {
+            "id": "src-application-live-controller-ts-9f29f74c5518",
+            "file": "src/application/live-controller.ts",
+            "line": 1089,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-b4d4cec706b2",
+            "file": "src/application/live-controller.ts",
+            "line": 1089,
+            "operator": "guard-true",
+            "original": "error instanceof Error",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-public-gap",
+            "reason": "The adapter-failure matrix does not reject with an arbitrary non-Error value at this public operation. Assuming .message can lose the actual failure text or throw another error."
+        },
+        {
+            "id": "src-application-live-controller-ts-06daeb7ddab5",
+            "file": "src/application/live-controller.ts",
+            "line": 1123,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-overwritten-result",
+            "reason": "The initial local result is overwritten on every successful path and every caught-failure path before it can be returned."
+        },
+        {
+            "id": "src-application-live-controller-ts-3f3dc439c2ba",
+            "file": "src/application/live-controller.ts",
+            "line": 1134,
+            "operator": "guard-true",
+            "original": "this.state.stoppedByUser.length",
+            "replacement": "true",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Always checking requireUnheld for Reload is equivalent when there are no holds and valid applied metadata; it may reject malformed metadata that the no-holds fast path accepts. It cannot release a manual hold."
+        },
+        {
+            "id": "src-application-live-controller-ts-d31d76982dee",
+            "file": "src/application/live-controller.ts",
+            "line": 1149,
+            "operator": "guard-true",
+            "original": "error instanceof Error",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-public-gap",
+            "reason": "The adapter-failure matrix does not reject with an arbitrary non-Error value at this public operation. Assuming .message can lose the actual failure text or throw another error."
+        },
+        {
+            "id": "src-application-live-controller-ts-4e2d7d707d87",
+            "file": "src/application/live-controller.ts",
+            "line": 1160,
+            "operator": "guard-false",
+            "original": "result.ok",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only the Reload event success/failure classification; the public result and observed state are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-3297090d2829",
+            "file": "src/application/live-controller.ts",
+            "line": 1160,
+            "operator": "guard-true",
+            "original": "result.ok",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only the Reload event success/failure classification; the public result and observed state are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-f750481a333f",
+            "file": "src/application/live-controller.ts",
+            "line": 1218,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-d508adad1c22",
+            "file": "src/application/live-controller.ts",
+            "line": 1237,
+            "operator": "guard-true",
+            "original": "this.state.running",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-continuation-ordering-gap",
+            "reason": "For stopped intent retry calls apply then Start, but retry returns void while the original stopped branch awaits Start preview. Eventual activation authorization matches, yet setupSsh can resolve earlier while the preview remains pending. This is not strict equivalence. The opposite mutation that releases running manual holds is independently killed."
+        },
+        {
+            "id": "src-application-live-controller-ts-90823eb52d0d",
+            "file": "src/application/live-controller.ts",
+            "line": 1243,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "remaining-public-gap",
+            "reason": "A redundant-looking login gate can become permissive for paused/stopped/non-auth states; existing login tests do not cover every conjunction branch."
+        },
+        {
+            "id": "src-application-live-controller-ts-28e06402b154",
+            "file": "src/application/live-controller.ts",
+            "line": 1261,
+            "operator": "guard-true",
+            "original": "this.state.busy",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Unconditionally updates Cancelling while idle (with no active abort signal); it does not change the paused intent or mutate containers."
+        },
+        {
+            "id": "src-application-live-controller-ts-307efd8fe648",
+            "file": "src/application/live-controller.ts",
+            "line": 1272,
+            "operator": "guard-false",
+            "original": "!this.state.running ||\n            this.paused ||\n            this.closed ||\n            this.state.busy",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-guard",
+            "reason": "request() repeats admission checks already performed by most callers. Existing tests cover approved public entry paths, but a login callback arriving during another busy operation is not independently exercised for every branch."
+        },
+        {
+            "id": "src-application-live-controller-ts-911c36b208d2",
+            "file": "src/application/live-controller.ts",
+            "line": 1272,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "defensive-guard",
+            "reason": "request() repeats admission checks already performed by most callers. Existing tests cover approved public entry paths, but a login callback arriving during another busy operation is not independently exercised for every branch."
+        },
+        {
+            "id": "src-application-live-controller-ts-f0e956efb997",
+            "file": "src/application/live-controller.ts",
+            "line": 1273,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "defensive-guard",
+            "reason": "request() repeats admission checks already performed by most callers. Existing tests cover approved public entry paths, but a login callback arriving during another busy operation is not independently exercised for every branch."
+        },
+        {
+            "id": "src-application-live-controller-ts-06a54208afb0",
+            "file": "src/application/live-controller.ts",
+            "line": 1274,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "defensive-guard",
+            "reason": "request() repeats admission checks already performed by most callers. Existing tests cover approved public entry paths, but a login callback arriving during another busy operation is not independently exercised for every branch."
+        },
+        {
+            "id": "src-application-live-controller-ts-902e36200d11",
+            "file": "src/application/live-controller.ts",
+            "line": 1324,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-06e17af09236",
+            "file": "src/application/live-controller.ts",
+            "line": 1324,
+            "operator": "guard-true",
+            "original": "error instanceof Error",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-public-gap",
+            "reason": "The adapter-failure matrix does not reject with an arbitrary non-Error value at this public operation. Assuming .message can lose the actual failure text or throw another error."
+        },
+        {
+            "id": "src-application-live-controller-ts-a17d50bfaa96",
+            "file": "src/application/live-controller.ts",
+            "line": 1330,
+            "operator": "guard-false",
+            "original": "this.closed",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Other public closed/abort checks prevent state publication after shutdown. Removing this refresh guard can perform an extra read during final cleanup; it cannot activate containers."
+        },
+        {
+            "id": "src-application-live-controller-ts-95fdd5f8db55",
+            "file": "src/application/live-controller.ts",
+            "line": 1330,
+            "operator": "guard-true",
+            "original": "this.closed",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Changes admission/observation so existing callback-gate scenarios cannot reach their expected backend callback; raw TAP includes preceding assertions where applicable. The 5-second process-group deadline fired; this remains timeout and is never counted as an assertion kill."
+        },
+        {
+            "id": "src-application-live-controller-ts-5b6ebd1584a2",
+            "file": "src/application/live-controller.ts",
+            "line": 1330,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Other public closed/abort checks prevent state publication after shutdown. Removing this refresh guard can perform an extra read during final cleanup; it cannot activate containers."
+        },
+        {
+            "id": "src-application-live-controller-ts-7403735bf31e",
+            "file": "src/application/live-controller.ts",
+            "line": 1334,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-shutdown-verification-gap",
+            "reason": "Changing this early return value can mislead finishStop if shutdown closes the controller during the final observation. The normal abort/Stop cases are tested, but this concurrent shutdown verification-return edge is not."
+        },
+        {
+            "id": "src-application-live-controller-ts-c1bfc9bd39f3",
+            "file": "src/application/live-controller.ts",
+            "line": 1338,
+            "operator": "guard-false",
+            "original": "signal?.aborted",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Only probe supplies an abort signal to refresh, and probe ignores its boolean return. Changing aborted-failure handling changes whether an error is logged or an unused return value, without publishing observation or authorizing lifecycle work."
+        },
+        {
+            "id": "src-application-live-controller-ts-7b4ff09949d0",
+            "file": "src/application/live-controller.ts",
+            "line": 1338,
+            "operator": "guard-true",
+            "original": "signal?.aborted",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Only probe supplies an abort signal to refresh, and probe ignores its boolean return. Changing aborted-failure handling changes whether an error is logged or an unused return value, without publishing observation or authorizing lifecycle work."
+        },
+        {
+            "id": "src-application-live-controller-ts-23a25f95aa76",
+            "file": "src/application/live-controller.ts",
+            "line": 1338,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Only probe supplies an abort signal to refresh, and probe ignores its boolean return. Changing aborted-failure handling changes whether an error is logged or an unused return value, without publishing observation or authorizing lifecycle work."
+        },
+        {
+            "id": "src-application-live-controller-ts-24200ce9fcb3",
+            "file": "src/application/live-controller.ts",
+            "line": 1341,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-14c0213b7822",
+            "file": "src/application/live-controller.ts",
+            "line": 1341,
+            "operator": "guard-true",
+            "original": "error instanceof Error",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-public-gap",
+            "reason": "The adapter-failure matrix does not reject with an arbitrary non-Error value at this public operation. Assuming .message can lose the actual failure text or throw another error."
+        },
+        {
+            "id": "src-application-live-controller-ts-e937b48db4f1",
+            "file": "src/application/live-controller.ts",
+            "line": 1412,
+            "operator": "guard-true",
+            "original": "!revision.inventory.length",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-control-flow",
+            "reason": "The else branch runs only when partial is absent. applyChanges returns a PreparedProject or throws whenever inventory is nonempty; therefore the successful absent-partial branch necessarily has empty inventory and its guard is already true. Empty membership is independently tested."
+        },
+        {
+            "id": "src-application-live-controller-ts-453d123ddebc",
+            "file": "src/application/live-controller.ts",
+            "line": 1424,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Makes SSH inspection run on additional resolve paths; the same approved SSH requirements still gate activation and setup is not silently bypassed."
+        },
+        {
+            "id": "src-application-live-controller-ts-69ae3d6dee0c",
+            "file": "src/application/live-controller.ts",
+            "line": 1429,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Forgets an already verified checkout identity and repeats the preparation compatibility check during a later poll. No mutation authorization is widened; a repeated failing check can suppress a later observation."
+        },
+        {
+            "id": "src-application-live-controller-ts-5c1c04dc78c7",
+            "file": "src/application/live-controller.ts",
+            "line": 1456,
+            "operator": "guard-true",
+            "original": "checkSsh",
+            "replacement": "true",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Makes SSH inspection run on additional resolve paths; the same approved SSH requirements still gate activation and setup is not silently bypassed."
+        },
+        {
+            "id": "src-application-live-controller-ts-abc8c7fe8c7c",
+            "file": "src/application/live-controller.ts",
+            "line": 1543,
+            "operator": "guard-false",
+            "original": "!excluded.size",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalent-duplicate-validation",
+            "reason": "With no exclusions, excludedDrift computes the full expected inventory and compares the same identity/SSH fields as the direct branch."
+        },
+        {
+            "id": "src-application-live-controller-ts-8b49d3eadc77",
+            "file": "src/application/live-controller.ts",
+            "line": 1591,
+            "operator": "guard-false",
+            "original": "action === 'recreate'",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only Start/Recreate/Stop text in plan logging; preview arrays and applied engine operations are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-762f8d976410",
+            "file": "src/application/live-controller.ts",
+            "line": 1591,
+            "operator": "guard-true",
+            "original": "action === 'recreate'",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only Start/Recreate/Stop text in plan logging; preview arrays and applied engine operations are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-23ea4c3309e4",
+            "file": "src/application/live-controller.ts",
+            "line": 1591,
+            "operator": "comparison-negation",
+            "original": "===",
+            "replacement": "!==",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only Start/Recreate/Stop text in plan logging; preview arrays and applied engine operations are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-86f564fa7b0c",
+            "file": "src/application/live-controller.ts",
+            "line": 1591,
+            "operator": "guard-false",
+            "original": "action === 'start'",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only Start/Recreate/Stop text in plan logging; preview arrays and applied engine operations are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-0e934d824c21",
+            "file": "src/application/live-controller.ts",
+            "line": 1591,
+            "operator": "guard-true",
+            "original": "action === 'start'",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only Start/Recreate/Stop text in plan logging; preview arrays and applied engine operations are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-2579a999dcd7",
+            "file": "src/application/live-controller.ts",
+            "line": 1591,
+            "operator": "comparison-negation",
+            "original": "===",
+            "replacement": "!==",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only Start/Recreate/Stop text in plan logging; preview arrays and applied engine operations are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-a4535a294f48",
+            "file": "src/application/live-controller.ts",
+            "line": 1680,
+            "operator": "guard-false",
+            "original": "signal.aborted",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes the live.recovery event status from cancelled to failed; the separate signal.aborted branch still preserves the same paused intent, Blocked phase and cancelled reason."
+        },
+        {
+            "id": "src-application-live-controller-ts-ca35507221a6",
+            "file": "src/application/live-controller.ts",
+            "line": 1712,
+            "operator": "guard-false",
+            "original": "this.closed",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-release-order",
+            "reason": "Removing the early closed-controller unlock delays release until shutdown() finishes awaiting the operation and calls unlock() itself. The public shutdown promise still waits for release. The unconditional unlock mutation that prematurely releases a running environment lease is independently killed."
+        },
+        {
+            "id": "src-application-live-controller-ts-f2b427d3f585",
+            "file": "src/application/live-controller.ts",
+            "line": 1740,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "defensive-duplicate-guard",
+            "reason": "The coalescing-breaking variants are now killed. This remaining closed/busy conjunction variant can start observeOnce, but its repeated closed/busy guard and later obsolete check still discard the work before publication. It may perform an additional configuration read."
+        },
+        {
+            "id": "src-application-live-controller-ts-f8ae4d99f272",
+            "file": "src/application/live-controller.ts",
+            "line": 1753,
+            "operator": "guard-false",
+            "original": "error instanceof Error",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "For supported Error failures this changes Error.message to String(error), adding the error class prefix; redaction and operation failure status are unchanged."
+        },
+        {
+            "id": "src-application-live-controller-ts-8c9946430010",
+            "file": "src/application/live-controller.ts",
+            "line": 1753,
+            "operator": "guard-true",
+            "original": "error instanceof Error",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-public-gap",
+            "reason": "The adapter-failure matrix does not reject with an arbitrary non-Error value at this public operation. Assuming .message can lose the actual failure text or throw another error."
+        },
+        {
+            "id": "src-application-live-controller-ts-1a4edd282691",
+            "file": "src/application/live-controller.ts",
+            "line": 1755,
+            "operator": "guard-false",
+            "original": "signal.aborted || message === this.pollError",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes repeated/cancelled observation error deduplication or visibility; it does not alter running/applied/manual-stop intent or perform lifecycle actions."
+        },
+        {
+            "id": "src-application-live-controller-ts-13577d0d1795",
+            "file": "src/application/live-controller.ts",
+            "line": 1755,
+            "operator": "guard-true",
+            "original": "signal.aborted || message === this.pollError",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes repeated/cancelled observation error deduplication or visibility; it does not alter running/applied/manual-stop intent or perform lifecycle actions."
+        },
+        {
+            "id": "src-application-live-controller-ts-fe84c6bf5708",
+            "file": "src/application/live-controller.ts",
+            "line": 1755,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes repeated/cancelled observation error deduplication or visibility; it does not alter running/applied/manual-stop intent or perform lifecycle actions."
+        },
+        {
+            "id": "src-application-live-controller-ts-f543ae416324",
+            "file": "src/application/live-controller.ts",
+            "line": 1755,
+            "operator": "comparison-negation",
+            "original": "===",
+            "replacement": "!==",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes repeated/cancelled observation error deduplication or visibility; it does not alter running/applied/manual-stop intent or perform lifecycle actions."
+        },
+        {
+            "id": "src-application-live-controller-ts-07ff5e19c13f",
+            "file": "src/application/live-controller.ts",
+            "line": 1768,
+            "operator": "guard-true",
+            "original": "!this.identified",
+            "replacement": "true",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Always repeats the preparation compatibility check before observing. It can suppress later observations on a repeated failing check but cannot adopt or mutate an environment."
+        },
+        {
+            "id": "src-application-live-controller-ts-d6a757da6c4c",
+            "file": "src/application/live-controller.ts",
+            "line": 1770,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-extra-work",
+            "reason": "Forgets an already verified checkout identity and repeats the preparation compatibility check during a later poll. No mutation authorization is widened; a repeated failing check can suppress a later observation."
+        },
+        {
+            "id": "src-application-live-controller-ts-67ed47e6e6f3",
+            "file": "src/application/live-controller.ts",
+            "line": 1774,
+            "operator": "guard-false",
+            "original": "this.closed || this.state.busy",
+            "replacement": "false",
+            "status": "survived",
+            "category": "defensive-duplicate-guard",
+            "reason": "observeOnce repeats closed/busy checks in observationObsolete after the snapshot; removing this earlier guard can issue a read that the later guard discards."
+        },
+        {
+            "id": "src-application-live-controller-ts-d01f24c4bae2",
+            "file": "src/application/live-controller.ts",
+            "line": 1774,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "defensive-duplicate-guard",
+            "reason": "observeOnce repeats closed/busy checks in observationObsolete after the snapshot; removing this earlier guard can issue a read that the later guard discards."
+        },
+        {
+            "id": "src-application-live-controller-ts-2a32de5b4f48",
+            "file": "src/application/live-controller.ts",
+            "line": 1788,
+            "operator": "logical",
+            "original": "||",
+            "replacement": "&&",
+            "status": "survived",
+            "category": "remaining-public-gap",
+            "reason": "The newer-save epoch race is tested; remaining conjunction variants require an observation overlapping a busy lifecycle operation or shutdown to prove late state cannot publish."
+        },
+        {
+            "id": "src-application-live-controller-ts-684e10b7b093",
+            "file": "src/application/live-controller.ts",
+            "line": 1796,
+            "operator": "guard-true",
+            "original": "this.state.running",
+            "replacement": "true",
+            "status": "survived",
+            "category": "remaining-public-gap",
+            "reason": "Observation tests do not assert absent changes on a paused/stopped environment after every applied-state combination; this variant can stage changes while stopped."
+        },
+        {
+            "id": "src-application-live-controller-ts-7eb6f0321596",
+            "file": "src/application/live-controller.ts",
+            "line": 1801,
+            "operator": "logical",
+            "original": "&&",
+            "replacement": "||",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes when outside-change drift events and explanatory log lines are emitted; the same changes object is still returned and no automatic Apply occurs."
+        },
+        {
+            "id": "src-application-live-controller-ts-c970531464e1",
+            "file": "src/application/live-controller.ts",
+            "line": 1803,
+            "operator": "logical",
+            "original": "&&",
+            "replacement": "||",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes when outside-change drift events and explanatory log lines are emitted; the same changes object is still returned and no automatic Apply occurs."
+        },
+        {
+            "id": "src-application-live-controller-ts-076fc3d1ba93",
+            "file": "src/application/live-controller.ts",
+            "line": 1826,
+            "operator": "guard-true",
+            "original": "this.state.busy",
+            "replacement": "true",
+            "status": "survived",
+            "category": "defensive-extra-abort",
+            "reason": "The forced-true busy guard additionally aborts the last controller after an already-idle operation. The closed and paused flags still prevent subsequent work. Removing cancellation of a genuinely in-flight Apply is independently killed."
+        },
+        {
+            "id": "src-application-live-controller-ts-b7bb632784de",
+            "file": "src/application/live-controller.ts",
+            "line": 1845,
+            "operator": "guard-true",
+            "original": "excluded.length === 1",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only durable-exclusion completion wording/pluralization; actual excluded inventory and running state are checked elsewhere."
+        },
+        {
+            "id": "src-application-live-controller-ts-0234d02f790d",
+            "file": "src/application/live-controller.ts",
+            "line": 1851,
+            "operator": "guard-false",
+            "original": "excluded.length",
+            "replacement": "false",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only durable-exclusion completion wording/pluralization; actual excluded inventory and running state are checked elsewhere."
+        },
+        {
+            "id": "src-application-live-controller-ts-576ecb5da180",
+            "file": "src/application/live-controller.ts",
+            "line": 1851,
+            "operator": "guard-true",
+            "original": "excluded.length",
+            "replacement": "true",
+            "status": "survived",
+            "category": "diagnostic-only",
+            "reason": "Changes only durable-exclusion completion wording/pluralization; actual excluded inventory and running state are checked elsewhere."
+        },
+        {
+            "id": "src-domain-live-ts-22f1f0455f01",
+            "file": "src/domain/live.ts",
+            "line": 222,
+            "operator": "guard-true",
+            "original": "changed",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Forces the inheritance fixed-point loop to keep running after its candidates settle; the isolated process group exceeds the watchdog."
+        },
+        {
+            "id": "src-domain-live-ts-33aeec9c501b",
+            "file": "src/domain/live.ts",
+            "line": 223,
+            "operator": "boolean",
+            "original": "false",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "timeout-unscored",
+            "reason": "Forces the inheritance fixed-point loop to keep running after its candidates settle; the isolated process group exceeds the watchdog.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-domain-service-state-ts-97125d002687",
+            "file": "src/domain/service-state.ts",
+            "line": 164,
+            "operator": "guard-true",
+            "original": "definition.startMode",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-private-undefined-field",
+            "reason": "Adds label:undefined to a private start-mode candidate. Its consumer reads the property value without enumerating keys or exposing candidates; the supported public result is unchanged."
+        },
+        {
+            "id": "src-infrastructure-interactive-command-ts-071953114c61",
+            "file": "src/infrastructure/interactive-command.ts",
+            "line": 44,
+            "operator": "guard-true",
+            "original": "value",
+            "replacement": "true",
+            "status": "survived",
+            "category": "equivalent-supported-inputs",
+            "reason": "Adds empty or undefined environment credentials to the private secret list; safeLog independently skips falsy secrets, leaving public output unchanged."
+        },
+        {
+            "id": "src-infrastructure-interactive-command-ts-68f14c43d502",
+            "file": "src/infrastructure/interactive-command.ts",
+            "line": 118,
+            "operator": "guard-false",
+            "original": "!dependencies",
+            "replacement": "false",
+            "status": "survived",
+            "category": "unreachable-supported-inputs",
+            "reason": "The only caller supplies dependencies after both public and child-command defaults; the private missing-dependencies return cannot be reached by the supported request interface."
+        },
+        {
+            "id": "src-infrastructure-interactive-command-ts-09834aa7286b",
+            "file": "src/infrastructure/interactive-command.ts",
+            "line": 193,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalent-supported-inputs",
+            "reason": "A native AbortSignal emits its abort transition once and close/error cleanup removes the listener. Removing the once option does not change that supported lifecycle."
+        },
+        {
+            "id": "src-infrastructure-live-process-ts-fac4428d4da9",
+            "file": "src/infrastructure/live-process.ts",
+            "line": 47,
+            "operator": "guard-false",
+            "original": "request.stdin === undefined",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalence-candidate",
+            "reason": "With no stdin supplied, switching ignored stdin to a pipe closed immediately still gives the child EOF. Keep scored as a survivor; OS-level descriptor differences are not asserted."
+        },
+        {
+            "id": "src-infrastructure-live-process-ts-32668b787b2e",
+            "file": "src/infrastructure/live-process.ts",
+            "line": 60,
+            "operator": "guard-false",
+            "original": "(error as NodeJS.ErrnoException).code !== 'ESRCH'",
+            "replacement": "false",
+            "status": "survived",
+            "category": "coverage-gap",
+            "reason": "The default OS signal adapter ESRCH versus other kill-error paths are not exercised. Injected ProcessHost tests cover their own kill errors but bypass this default adapter."
+        },
+        {
+            "id": "src-infrastructure-live-process-ts-badfe549e922",
+            "file": "src/infrastructure/live-process.ts",
+            "line": 60,
+            "operator": "guard-true",
+            "original": "(error as NodeJS.ErrnoException).code !== 'ESRCH'",
+            "replacement": "true",
+            "status": "survived",
+            "category": "coverage-gap",
+            "reason": "The default OS signal adapter ESRCH versus other kill-error paths are not exercised. Injected ProcessHost tests cover their own kill errors but bypass this default adapter."
+        },
+        {
+            "id": "src-infrastructure-live-process-ts-5b2cc4c18124",
+            "file": "src/infrastructure/live-process.ts",
+            "line": 60,
+            "operator": "comparison-negation",
+            "original": "!==",
+            "replacement": "===",
+            "status": "survived",
+            "category": "coverage-gap",
+            "reason": "The default OS signal adapter ESRCH versus other kill-error paths are not exercised. Injected ProcessHost tests cover their own kill errors but bypass this default adapter."
+        },
+        {
+            "id": "src-infrastructure-live-process-ts-0e295d60b8be",
+            "file": "src/infrastructure/live-process.ts",
+            "line": 238,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalence-candidate",
+            "reason": "The finished flag is consulted only by abortRun. Native AbortSignal listeners and timers are removed at close, so no later ordinary abort invokes it. A custom scheduler invoking a cancelled callback is outside the exercised contract."
+        },
+        {
+            "id": "src-infrastructure-live-process-ts-3a533661f156",
+            "file": "src/infrastructure/live-process.ts",
+            "line": 263,
+            "operator": "boolean",
+            "original": "true",
+            "replacement": "false",
+            "status": "survived",
+            "category": "equivalence-candidate",
+            "reason": "AbortController emits its abort transition once; removing the once option does not change that normal lifecycle. Arbitrarily dispatched synthetic abort events are outside the exercised contract."
+        },
+        {
+            "id": "src-infrastructure-live-runtime-ts-2280538e9da1",
+            "file": "src/infrastructure/live-runtime.ts",
+            "line": 172,
+            "operator": "guard-true",
+            "original": "offset < ids.length",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "unscored-timeout",
+            "reason": "A mutated loop condition makes inspect/stop/batch fail to terminate for selected nonempty or empty inputs. Ten-second process-group deadline terminates it. It remains a timeout even when earlier TAP assertions already failed.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-infrastructure-live-runtime-ts-9fb3143cac2f",
+            "file": "src/infrastructure/live-runtime.ts",
+            "line": 559,
+            "operator": "guard-true",
+            "original": "offset < ids.length",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "unscored-timeout",
+            "reason": "A mutated loop condition makes inspect/stop/batch fail to terminate for selected nonempty or empty inputs. Ten-second process-group deadline terminates it. It remains a timeout even when earlier TAP assertions already failed.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-infrastructure-live-runtime-ts-ad468e4a02b8",
+            "file": "src/infrastructure/live-runtime.ts",
+            "line": 559,
+            "operator": "comparison-negation",
+            "original": "<",
+            "replacement": ">=",
+            "status": "timeout",
+            "category": "unscored-timeout",
+            "reason": "A mutated loop condition makes inspect/stop/batch fail to terminate for selected nonempty or empty inputs. Ten-second process-group deadline terminates it. It remains a timeout even when earlier TAP assertions already failed.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-infrastructure-live-runtime-ts-44881423d492",
+            "file": "src/infrastructure/live-runtime.ts",
+            "line": 597,
+            "operator": "guard-true",
+            "original": "offset < ids.length",
+            "replacement": "true",
+            "status": "timeout",
+            "category": "unscored-timeout",
+            "reason": "A mutated loop condition makes inspect/stop/batch fail to terminate for selected nonempty or empty inputs. Ten-second process-group deadline terminates it. It remains a timeout even when earlier TAP assertions already failed.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-infrastructure-live-runtime-ts-d857f1a7804d",
+            "file": "src/infrastructure/live-runtime.ts",
+            "line": 597,
+            "operator": "comparison-negation",
+            "original": "<",
+            "replacement": ">=",
+            "status": "timeout",
+            "category": "unscored-timeout",
+            "reason": "A mutated loop condition makes inspect/stop/batch fail to terminate for selected nonempty or empty inputs. Ten-second process-group deadline terminates it. It remains a timeout even when earlier TAP assertions already failed.",
+            "teardownWarning": "EPERM: kill EPERM"
+        },
+        {
+            "id": "src-infrastructure-tui-log-ts-5adae20f6553",
+            "file": "src/infrastructure/tui-log.ts",
+            "line": 205,
+            "operator": "guard-true",
+            "original": "this.context.getStore()",
+            "replacement": "true",
+            "status": "survived",
+            "category": "output-shape-gap",
+            "reason": "Outside an operation, correlation returns an own CHS_DEV_LOG_OPERATION key with undefined instead of omitting it. Current environment consumers ignore undefined; object-key presence is not asserted. This is an observable shape difference, not an unconditional equivalence claim."
+        }
+    ],
+    "validation": {
+        "codeCommit": "fd100a0",
+        "check": "passed",
+        "build": "passed",
+        "mutationToolingTests": 10,
+        "logs": {
+            "tests": ".scratch/mutation/acceptance-fd100a0-tests.log",
+            "check": ".scratch/mutation/acceptance-fd100a0-check.log",
+            "build": ".scratch/mutation/acceptance-fd100a0-build.log"
+        },
+        "logHashes": {
+            "tests": "faf8acc1771399ad9651ff90149bb51ab8485a8e5b4f154d7997955bd2a451d7",
+            "check": "d5ec2607477c6993238d84dec00003670ff13018c1e69fbe1e6bb3ebd6933681",
+            "build": "8441c22853eadc16f944ddffa977817f2f9aebce3c7ee7db3e2c919cceecfcf9"
+        },
+        "regression": {
+            "tests": 721,
+            "pass": 719,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 2
+        },
+        "applicationSourceUnchanged": true,
+        "rawOutcomesIndependentlyReclassified": 2482,
+        "recordedProcessGroupsVerifiedAbsent": 2484,
+        "sourceCopiesRemoved": true,
+        "notes": "Post-timeout process-group signal warnings remain in residual records; absence of the groups was checked independently after completion. No live platform or remote execution was used."
+    },
+    "artifacts": {
+        "original": ".scratch/mutation/unit-original/report.json",
+        "final": ".scratch/mutation/unit/report.json",
+        "review": ".scratch/mutation/review/final-domain-review.md",
+        "note": "Raw TAP, manifests and exploratory scoped runs remain untracked; this checked-in summary preserves results when scratch directories are excluded from a later sync."
+    }
+}
