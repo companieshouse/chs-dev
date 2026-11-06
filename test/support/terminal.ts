@@ -69,6 +69,7 @@ export function terminal(
             );
         },
         key: async (key: string) => {
+            await app.waitUntilRenderFlush();
             stdin.write(key);
             await delay(100);
         },

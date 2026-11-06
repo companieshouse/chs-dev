@@ -40,9 +40,11 @@ test('TUI export and import share file paths and require review before replacing
     assert.equal(f.files.get(path)!.selections.services[0], 'api');
     f.files.get(path)!.selections.services = [];
     await term.key('\u001b[B');
+    assert.match(term.frame(), /› Import environment/);
     await term.key('\r');
+    assert.match(term.frame(), /Import environment file/);
     await term.key('\r');
-    await eventually(() => term.frame().includes('Review environment import'));
+    await term.waitFor(/Review environment import/);
     assert.match(term.frame(), /api · enabled: Yes → No/);
     assert.equal(f.app.snapshot().details.api.enabled, 'Yes');
     await term.key('\u001b[A');
