@@ -5,6 +5,7 @@ import yaml from "yaml";
 import { deduplicate } from "../helpers/array-reducers.js";
 import { getInitialDockerComposeFile } from "../helpers/docker-compose-file.js";
 import { getAllFilesInDirectory } from "../helpers/file-utils.js";
+import { serviceEnvFilePath } from "../helpers/service-repository.js";
 import { DockerComposeSpec } from "../model/DockerComposeSpec.js";
 import { Service } from "../model/Service.js";
 import { getBuilder } from "../state/builders.js";
@@ -35,6 +36,8 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
         // Setup the ingress-proxy's dependencies (i.e. every service with an ingress route)
         dockerCompose.services["ingress-proxy"].depends_on = this.listIngressDependencies(runnableServices);
+
+        this.addServiceEnvFiles(dockerCompose, runnableServices);
 
         this.writeFile(
             yaml.stringify(dockerCompose).split(EOL),
@@ -128,6 +131,25 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
         // update the dockercompose on root
         this.generateDockerComposeFile(services, { runnableServices, infrastructureSources }, true);
 
+    }
+
+    /**
+     * Injects, for each service, the env file owned by the service repository
+     * (repositories/<repository>/chs-dev.env, repository being derived from the service's repository url) when present. Compose merges these root level
+     * service entries into the included service definitions; values from the
+     * service's own `environment` section still take precedence.
+     */
+    private addServiceEnvFiles (dockerCompose: DockerComposeSpec, services: ServiceWithLiveUpdate[]) {
+        services.forEach(service => {
+            const relativeEnvFile = serviceEnvFilePath(service);
+
+            if (existsSync(join(this.path, relativeEnvFile))) {
+                dockerCompose.services[service.name] = {
+                    ...dockerCompose.services[service.name],
+                    env_file: [relativeEnvFile]
+                };
+            }
+        });
     }
 
     /**

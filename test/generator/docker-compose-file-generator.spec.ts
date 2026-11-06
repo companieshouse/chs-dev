@@ -206,6 +206,26 @@ describe("DockerComposeFileGenerator", () => {
 
     });
 
+    describe("service env files", () => {
+        it("injects env_file only for services whose repository provides chs-dev.env", () => {
+            const repoDir = join(tempDir, "repositories", "shared-repo");
+            mkdirSync(repoDir, { recursive: true });
+            writeFileSync(join(repoDir, "chs-dev.env"), "FOO=bar\n");
+
+            const sharedRepo = { url: "git@github.com:companieshouse/shared-repo.git" };
+            dockerComposeFileGenerator.generateDockerComposeFile(
+                services.map(service => service.name === "service-one" ? { ...service, repository: sharedRepo } : service)
+            );
+
+            const output = parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8"));
+
+            expect(output.services["service-one"].env_file).toEqual(["repositories/shared-repo/chs-dev.env"]);
+            expect(output.services["service-two"]).toBeUndefined();
+
+            rmSync(join(tempDir, "repositories"), { recursive: true, force: true });
+        });
+    });
+
     describe("generateDevelopmentServiceDockerComposeFile without builderVersion", () => {
         let serviceDockerComposeFile: string;
 

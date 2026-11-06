@@ -14,6 +14,12 @@ export const CONSTANTS = {
     OTEL_DOCKER_COMPOSE_FILE: "services/infrastructure/open-telemetry/open-telemetry.docker-compose.yaml",
 
     /**
+     * Name of the env file, at the root of a repository, holding the
+     * service's non secret local environment variables
+     */
+    SERVICE_ENV_FILE: "chs-dev.env",
+
+    /**
      * Value for a boolean label to be considered true
      */
     BOOLEAN_LABEL_TRUE_VALUE: "true",

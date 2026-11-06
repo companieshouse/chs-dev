@@ -17,6 +17,8 @@ import { StateManager } from "../state/state-manager.js";
 import Service from "../model/Service.js";
 import { greenBright } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
+import { findMissingEnvVars } from "../helpers/missing-env-vars.js";
+import { ServiceLoader } from "../run/service-loader.js";
 import { documentationLink } from "../helpers/link.js";
 
 type ServicesBuildContext = {
@@ -159,6 +161,8 @@ export default class Up extends Command {
         ux.action.stop();
         this.log(customInitOutput);
 
+        this.checkServiceEnvVars();
+
         ux.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         try {
             await this.dockerCompose.up();
@@ -176,6 +180,36 @@ export default class Up extends Command {
             this.error(error as Error);
         }
         ux.action.stop();
+    }
+
+    /**
+     * Fails fast when a service env file (repositories/<repository>/chs-dev.env)
+     * references variables, typically secrets, that are not defined
+     */
+    private checkServiceEnvVars (): void {
+        const state = this.stateManager.snapshot;
+        const excluded = state.excludedServices ?? [];
+        const services = new ServiceLoader(this.inventory).loadServices(state)
+            .filter(service => !excluded.includes(service.name));
+
+        const missing = findMissingEnvVars(
+            this.chsDevConfig.projectPath, services, this.chsDevConfig.env
+        );
+
+        const lines = Object.entries(missing).map(
+            ([service, names]) => `  ${service}: ${names.join(", ")}`
+        );
+
+        if (lines.length) {
+            this.error(
+                `Missing environment variables required by service env files:\n${lines.join("\n")}`,
+                {
+                    suggestions: [
+                        "Define them in .env (e.g. via the init script loading the AWS param store) or global.env, then run again"
+                    ]
+                }
+            );
+        }
     }
 
     private get hasServicesInDevelopmentMode (): boolean {
