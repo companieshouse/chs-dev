@@ -2,9 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
+import { mkdtemp, stat, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
     DockerLiveRuntime,
     composeArguments,
+    ecrAuthorizationFailure,
 } from '../src/infrastructure/live-runtime.js';
 import {
     createProcessExecutor,
@@ -14,9 +18,11 @@ import { LiveEnvironment } from '../src/infrastructure/live-environment.js';
 import {
     configurationStore,
     projectLock,
+    liveFiles,
     type LiveFiles,
 } from '../src/infrastructure/live-files.js';
 import type { PreparedProject } from '../src/domain/live.js';
+import { initializeTuiLog } from '../src/infrastructure/tui-log.js';
 
 const project: PreparedProject = {
     protocolVersion: 1,
@@ -762,6 +768,7 @@ test('automatic startup rejects missing, foreign and unowned applied artifacts b
     for (const file of [
         '/checkout/docker-compose.yaml',
         '/state/operations/one/../../foreign/docker-compose.yaml',
+        '/state/operations/one/docker-compose.yaml,/state/operations/two/docker-compose.yaml',
         '/missing',
     ]) {
         const f = runtimeFixture();
@@ -828,4 +835,861 @@ test('Restart and Reload select current applied helpers instead of historical or
     await f.runtime.reloadApplied('api', {});
     assert.equal(f.requests.at(-1)!.args.includes('obsolete-builder'), false);
     assert.equal(f.requests.at(-1)!.args.includes('current-builder'), true);
+});
+
+test('environment preflight validates names, exempts AWS and reuses its snapshot until refresh', async () => {
+    const files = memoryFiles();
+    await files.writeExclusive('/checkout/.env', 'READY=yes\nEMPTY=\n');
+    const environment = new LiveEnvironment(
+        async () => {
+            throw new Error('Preflight must not execute AWS');
+        },
+        '/checkout',
+        () => ({ 'BAD-NAME': 'present' }),
+        () => 'profile',
+        files,
+    );
+    assert.deepEqual(
+        await environment.missing([
+            'READY',
+            'EMPTY',
+            'BAD-NAME',
+            'MISSING',
+            'AWS_SESSION_TOKEN',
+        ]),
+        ['EMPTY', 'BAD-NAME', 'MISSING'],
+    );
+    await files.remove('/checkout/.env');
+    await files.writeExclusive('/checkout/.env', 'MISSING=now-present\n');
+    assert.deepEqual(await environment.missing(['READY', 'MISSING']), [
+        'MISSING',
+    ]);
+    await environment.refresh();
+    assert.deepEqual(await environment.missing(['READY', 'MISSING']), [
+        'READY',
+    ]);
+});
+
+test('environment rejects unreadable files, failed credential acquisition and malformed credential fields', async () => {
+    const unavailable = new LiveEnvironment(
+        async () => ({ code: 0, stdout: '', stderr: '' }),
+        '/checkout',
+        () => ({}),
+        () => 'profile',
+        {
+            ...memoryFiles(),
+            read: async () => {
+                throw Object.assign(new Error('denied'), { code: 'EACCES' });
+            },
+        },
+    );
+    await assert.rejects(
+        unavailable.resolve([]),
+        /Cannot read project environment/,
+    );
+    for (const result of [
+        { code: 1, stdout: '{"AccessKeyId":"key"}', stderr: 'denied' },
+        { code: 0, stdout: 'null', stderr: '' },
+        { code: 0, stdout: '42', stderr: '' },
+        {
+            code: 0,
+            stdout: '{"AccessKeyId":42,"SecretAccessKey":null}',
+            stderr: '',
+        },
+    ]) {
+        const environment = new LiveEnvironment(
+            async () => result,
+            '/checkout',
+            () => ({}),
+            () => 'profile',
+            memoryFiles(),
+        );
+        await assert.rejects(
+            environment.resolve(['AWS_ACCESS_KEY_ID']),
+            /Cannot acquire AWS|Invalid AWS credential|Required environment variable/,
+        );
+    }
+});
+
+test('real file adapter creates private directories, preserves exclusive creation and removes complete trees idempotently', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'chs-live-files-'));
+    try {
+        const nested = join(directory, 'parent', 'nested');
+        await liveFiles.mkdir(nested);
+        assert.equal((await stat(nested)).mode & 0o777, 0o700);
+        await liveFiles.mkdir(nested);
+        const exclusive = join(directory, 'exclusive');
+        await liveFiles.mkdir(exclusive, true);
+        await assert.rejects(liveFiles.mkdir(exclusive, true), {
+            code: 'EEXIST',
+        });
+        await liveFiles.writeExclusive(join(nested, 'private'), 'secret');
+        assert.equal((await stat(join(nested, 'private'))).mode & 0o777, 0o600);
+        await liveFiles.remove(join(directory, 'parent'));
+        await assert.rejects(stat(nested), { code: 'ENOENT' });
+        await liveFiles.remove(join(directory, 'parent'));
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+const cacheGroups = [
+    {
+        name: 'module',
+        services: ['api', 'base'],
+        definitions: {
+            api: {
+                dependencies: ['base'],
+                base: false,
+                module: 'module',
+                deprecated: false,
+            },
+            base: {
+                dependencies: [],
+                base: false,
+                module: 'module',
+                deprecated: false,
+            },
+        },
+    },
+];
+
+test('configuration usage learning only applies when enabled and distinguishes missing from unreadable cache', async () => {
+    const files = memoryFiles();
+    await files.writeExclusive('/checkout/.chs-dev.yaml', 'services: [api]\n');
+    await files.writeExclusive(
+        '/checkout/.chs-dev-usage.yaml',
+        'format: chs-dev-usage\nversion: 1\nlearned: [base]\n',
+    );
+    const enabled = await configurationStore(
+        '/checkout',
+        cacheGroups,
+        files,
+        () => true,
+    ).read();
+    assert.equal(
+        enabled.inventory.find((entry) => entry.service === 'base')?.lazy,
+        true,
+    );
+    const disabled = await configurationStore(
+        '/checkout',
+        cacheGroups,
+        files,
+        () => false,
+    ).read();
+    assert.equal(
+        Boolean(
+            disabled.inventory.find((entry) => entry.service === 'base')?.lazy,
+        ),
+        false,
+    );
+    await files.remove('/checkout/.chs-dev-usage.yaml');
+    assert.equal(
+        (
+            await configurationStore(
+                '/checkout',
+                cacheGroups,
+                files,
+                () => true,
+            ).read()
+        ).inventory.length,
+        2,
+    );
+    const unreadable = {
+        ...files,
+        read: async (path: string) => {
+            if (path.endsWith('.chs-dev-usage.yaml'))
+                throw Object.assign(new Error('cache denied'), {
+                    code: 'EACCES',
+                });
+            return files.read(path);
+        },
+    };
+    await assert.rejects(
+        configurationStore(
+            '/checkout',
+            cacheGroups,
+            unreadable,
+            () => true,
+        ).read(),
+        /cache denied/,
+    );
+    const missing = await configurationStore(
+        '/empty',
+        cacheGroups,
+        files,
+    ).read();
+    assert.equal(missing.yaml, '{}\n');
+    await assert.rejects(
+        configurationStore('/checkout', cacheGroups, {
+            ...files,
+            read: async () => {
+                throw Object.assign(new Error('configuration denied'), {
+                    code: 'EACCES',
+                });
+            },
+        }).read(),
+        /configuration denied/,
+    );
+});
+
+test('project lock refuses a changed owner token and propagates storage failures', async () => {
+    const files = memoryFiles();
+    const release = await projectLock('/state', files, 'owner').acquire();
+    await files.remove('/state/live.lock');
+    await files.writeExclusive('/state/live.lock', 'replacement');
+    await assert.rejects(release(), /lock changed/);
+    assert.equal(await files.read('/state/live.lock'), 'replacement');
+    await assert.rejects(
+        projectLock('/state', {
+            ...files,
+            writeExclusive: async () => {
+                throw new Error('storage failed');
+            },
+        }).acquire(),
+        /storage failed/,
+    );
+});
+
+function processFixture() {
+    const child = Object.assign(new EventEmitter(), {
+        pid: 42,
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+    });
+    const kills: string[] = [];
+    const timers: { callback: () => void; ms: number; cancelled: boolean }[] =
+        [];
+    const execute = createProcessExecutor({
+        spawn: () => child,
+        kill: (pid, signal) => {
+            kills.push(`${pid}:${signal}`);
+        },
+        schedule: (callback, ms) => {
+            const timer = { callback, ms, cancelled: false };
+            timers.push(timer);
+            return () => {
+                timer.cancelled = true;
+            };
+        },
+    });
+    return { child, execute, kills, timers };
+}
+
+const processRequest = { command: 'fake', args: [], cwd: '/checkout', env: {} };
+
+test('process output streams real lines, preserves sanitized stderr and resumes after private key and oversized lines', async () => {
+    const f = processFixture();
+    const output: string[] = [];
+    const work = f.execute({
+        ...processRequest,
+        env: { API_TOKEN: 'hidden' },
+        onOutput: (entry) => output.push(`${entry.stream}:${entry.text}`),
+    });
+    f.child.stdout.write(
+        'ready hidden\n-----BEGIN RSA PRIVATE KEY-----\nkey body\n-----END RSA PRIVATE KEY-----\nafter key\n',
+    );
+    f.child.stderr.write('warning hidden\n');
+    f.child.stdout.write('x'.repeat(16385));
+    f.child.stdout.write('discarded remainder\nnext complete\nlast partial');
+    f.child.emit('close', 0);
+    const result = await work;
+    assert.equal(result.stderr, 'warning [REDACTED]\n');
+    assert.equal(result.registryAuthenticationFailed, undefined);
+    assert.deepEqual(output, [
+        'stdout:ready [REDACTED]',
+        'stdout:[REDACTED PRIVATE KEY]',
+        'stdout:[REDACTED PRIVATE KEY]',
+        'stdout:[REDACTED PRIVATE KEY]',
+        'stdout:after key',
+        'stderr:warning [REDACTED]',
+        'stdout:[Oversized output line truncated]',
+        'stdout:next complete',
+        'stdout:last partial',
+    ]);
+});
+
+test('private process output supports silence, captured diagnostics and explicitly requested private streaming', async () => {
+    for (const options of [
+        { privateOutput: true },
+        { privateOutput: true, captureStderr: true },
+        { privateOutput: true, streamPrivateOutput: true },
+    ]) {
+        const f = processFixture();
+        const output: string[] = [];
+        const work = f.execute({
+            ...processRequest,
+            ...options,
+            onOutput: (entry) => output.push(entry.text),
+        });
+        f.child.stdout.write('machine\n');
+        f.child.stderr.write('403 Forbidden\n');
+        f.child.emit('close', 3);
+        const result = await work;
+        assert.equal(result.stdout, 'machine\n');
+        assert.equal(
+            result.stderr,
+            options.captureStderr || options.streamPrivateOutput
+                ? '403 Forbidden\n'
+                : '',
+        );
+        assert.equal(result.registryAuthenticationFailed, true);
+        assert.deepEqual(
+            output,
+            options.streamPrivateOutput ? ['machine', '403 Forbidden'] : [],
+        );
+    }
+});
+
+test('process deadline cancels once, escalates and never replaces its timeout failure with cancellation', async () => {
+    const f = processFixture();
+    const abort = new AbortController();
+    const work = f.execute({
+        ...processRequest,
+        signal: abort.signal,
+        timeout: 73,
+    });
+    const rejected = assert.rejects(work, /Command timed out/);
+    assert.equal(f.timers[0].ms, 73);
+    f.timers[0].callback();
+    abort.abort();
+    assert.deepEqual(f.kills, ['42:SIGTERM']);
+    assert.equal(f.timers[1].ms, 1500);
+    f.timers[1].callback();
+    assert.deepEqual(f.kills, ['42:SIGTERM', '42:SIGKILL']);
+    f.child.emit('close', null);
+    await rejected;
+    assert.ok(f.timers.every((timer) => timer.cancelled));
+});
+
+test('zero deadline schedules no timeout and already-cancelled requests never spawn', async () => {
+    const f = processFixture();
+    const work = f.execute({ ...processRequest, timeout: 0 });
+    assert.equal(f.timers.length, 0);
+    f.child.emit('close', null);
+    assert.deepEqual(await work, { code: -1, stdout: '', stderr: '' });
+    const abort = new AbortController();
+    abort.abort();
+    const execute = createProcessExecutor({
+        spawn: () => {
+            throw new Error('Must not spawn');
+        },
+        kill: () => {},
+        schedule: () => () => {},
+    });
+    await assert.rejects(
+        execute({ ...processRequest, signal: abort.signal }),
+        /Operation cancelled/,
+    );
+});
+
+test('default process host sends stdin through a pipe and owns a detached process group', async () => {
+    const execute = createProcessExecutor();
+    const result = await execute({
+        command: process.execPath,
+        args: [
+            '-e',
+            "process.kill(-process.pid, 0); process.stdin.setEncoding('utf8'); let text = ''; process.stdin.on('data', chunk => { text += chunk; }); process.stdin.on('end', () => process.stdout.write(text));",
+        ],
+        cwd: process.cwd(),
+        env: { PATH: process.env.PATH },
+        stdin: 'private input',
+        timeout: 3000,
+    });
+    assert.equal(result.code, 0);
+    assert.equal(result.stdout, 'private input');
+});
+
+test('Compose argument validation rejects each missing identity or invalid path independently', () => {
+    for (const invalid of [
+        { projectName: '' },
+        { projectDirectory: 'relative' },
+        { composeFiles: [] },
+        { composeFiles: ['relative'] },
+    ])
+        assert.throws(
+            () => composeArguments({ ...project, ...invalid }),
+            /invalid Compose/,
+        );
+});
+
+test('availability checks both Docker and Compose and reports either failure without throwing', async () => {
+    for (const failureAt of [0, 1, -1]) {
+        const requests: ProcessRequest[] = [];
+        const runtime = new DockerLiveRuntime({
+            directory: '/checkout',
+            projectName: 'chs',
+            realpath: async (path) => path,
+            environment: { resolve: async () => ({}) },
+            execute: async (request) => {
+                requests.push(request);
+                return {
+                    code: requests.length - 1 === failureAt ? 1 : 0,
+                    stdout: '',
+                    stderr: '',
+                };
+            },
+        });
+        const result = await runtime.checkAvailability();
+        assert.equal(result.available, failureAt === -1);
+        assert.equal(requests.length, failureAt === 0 ? 1 : 2);
+        assert.ok(requests.every((request) => request.timeout === 5000));
+    }
+});
+
+test('snapshot machine requests capture only machine output while ordinary Compose calls stream diagnostics', async () => {
+    const f = runtimeFixture();
+    await f.runtime.snapshot();
+    assert.deepEqual(
+        f.requests.map((request) => [
+            request.args[0],
+            request.captureStdout,
+            request.privateOutput,
+        ]),
+        [
+            ['ps', true, false],
+            ['inspect', true, false],
+        ],
+    );
+    f.requests.length = 0;
+    await f.runtime.apply(project, {});
+    assert.ok(
+        f.requests.every(
+            (request) =>
+                request.captureStdout === false &&
+                request.privateOutput === false,
+        ),
+    );
+});
+
+test('ECR detection requires a registry and an authorization failure on the same line', () => {
+    const host = '123456789012.dkr.ecr.eu-west-2.amazonaws.com';
+    assert.equal(
+        ecrAuthorizationFailure(`resolving ${host}/api:latest`),
+        undefined,
+    );
+    assert.equal(
+        ecrAuthorizationFailure(
+            `resolving ${host}\n403 Forbidden from another host`,
+        ),
+        undefined,
+    );
+    assert.equal(
+        ecrAuthorizationFailure('403 Forbidden from another host'),
+        undefined,
+    );
+    assert.equal(
+        ecrAuthorizationFailure(`${host}/api:latest: 401 Unauthorized`),
+        host,
+    );
+});
+
+function observationFixture(
+    inspections: unknown,
+    listing = id,
+    canonical = async (path: string) => path,
+) {
+    const requests: ProcessRequest[] = [];
+    const runtime = new DockerLiveRuntime({
+        directory: '/checkout',
+        projectName: 'chs',
+        realpath: canonical,
+        environment: { resolve: async () => ({}) },
+        execute: async (request) => {
+            requests.push(request);
+            if (request.args[0] === 'ps')
+                return { code: 0, stdout: listing, stderr: '' };
+            return { code: 0, stdout: JSON.stringify(inspections), stderr: '' };
+        },
+    });
+    return { runtime, requests };
+}
+
+test('snapshot rejects malformed engine identities and inspection shapes before exposing containers', async () => {
+    await assert.rejects(
+        observationFixture([], 'not-a-container-id').runtime.snapshot(),
+        /invalid container ID/,
+    );
+    await assert.rejects(
+        observationFixture({}).runtime.snapshot(),
+        /Invalid Docker inspection response/,
+    );
+    for (const invalid of [
+        { ...inspect(), Id: '' },
+        { ...inspect(), Id: 'invalid' },
+        inspect({ 'com.docker.compose.service': '' }),
+        { ...inspect(), State: {} },
+    ])
+        await assert.rejects(
+            observationFixture([invalid]).runtime.snapshot(),
+            /Incomplete Docker container identity/,
+        );
+});
+
+test('snapshot skips missing working directories and propagates unexpected canonicalization failures', async () => {
+    const paths: string[] = [];
+    const noDirectory = observationFixture(
+        [inspect({ 'com.docker.compose.project.working_dir': '' })],
+        id,
+        async (path) => {
+            paths.push(path);
+            return path;
+        },
+    );
+    assert.equal((await noDirectory.runtime.snapshot()).containers.length, 0);
+    assert.deepEqual(paths, ['/checkout']);
+    for (const code of ['ENOENT', 'ENOTDIR', 'EACCES']) {
+        const f = observationFixture(
+            [
+                inspect({
+                    'com.docker.compose.project.working_dir': '/unreadable',
+                }),
+            ],
+            id,
+            async (path) => {
+                if (path === '/unreadable')
+                    throw Object.assign(new Error('canonicalization denied'), {
+                        code,
+                    });
+                return path;
+            },
+        );
+        if (code === 'EACCES')
+            await assert.rejects(
+                f.runtime.snapshot(),
+                /canonicalization denied/,
+            );
+        else assert.deepEqual((await f.runtime.snapshot()).containers, []);
+    }
+});
+
+test('snapshot treats invalid optional engine metadata as unknown rather than trusting wrong types', async () => {
+    const f = observationFixture([
+        {
+            ...inspect({ 'chs.dev.mode': 'unsupported' }),
+            State: { Status: 'running', ExitCode: 'bad', OOMKilled: 'bad' },
+        },
+    ]);
+    const [container] = (await f.runtime.snapshot()).containers;
+    assert.equal(container.mode, undefined);
+    assert.equal('exitCode' in container, false);
+    assert.equal('oomKilled' in container, false);
+});
+
+test('stop and container actions reject each independently mismatched identity field', async () => {
+    const f = runtimeFixture();
+    const [container] = (await f.runtime.snapshot()).containers;
+    for (const changed of [
+        { id: 'b'.repeat(64) },
+        { service: 'other' },
+        { projectDirectory: '/foreign' },
+        { projectName: 'foreign' },
+    ]) {
+        const start = f.requests.length;
+        const forged = { ...container, ...changed };
+        assert.deepEqual(
+            (await f.runtime.stop([forged], {})).affectedServices,
+            [],
+        );
+        assert.deepEqual(
+            (await f.runtime.containerAction('restart', [forged], {}))
+                .affectedServices,
+            [],
+        );
+        assert.equal(
+            f.requests
+                .slice(start)
+                .some((request) =>
+                    ['stop', 'restart'].includes(request.args[0]!),
+                ),
+            false,
+        );
+    }
+    const start = f.requests.length;
+    assert.deepEqual((await f.runtime.stop([], {})).affectedServices, []);
+    assert.equal(f.requests.length, start);
+});
+
+test('exactly one hundred containers form one inspection, stop and remove batch without empty requests', async () => {
+    const entries = Array.from({ length: 100 }, (_, index) => ({
+        ...inspect(),
+        Id: (index + 1).toString(16).padStart(64, '0'),
+    }));
+    const f = observationFixture(
+        entries,
+        entries.map((entry) => entry.Id).join('\n'),
+    );
+    await f.runtime.stopProject({});
+    assert.deepEqual(
+        f.requests.map((request) => [request.args[0], request.args.length]),
+        [
+            ['ps', 4],
+            ['inspect', 101],
+            ['stop', 101],
+            ['rm', 101],
+        ],
+    );
+    const empty = observationFixture([], '');
+    await empty.runtime.stopProject({});
+    assert.deepEqual(
+        empty.requests.map((request) => request.args[0]),
+        ['ps'],
+    );
+});
+
+test('all-held and missing held services never trigger a targetless Compose up', async () => {
+    const all = runtimeFixture();
+    await all.runtime.apply(project, { stoppedServices: ['api', 'worker'] });
+    assert.deepEqual(
+        all.requests
+            .filter((request) => request.args.includes('up'))
+            .map((request) =>
+                request.args.slice(composeArguments(project).length),
+            ),
+        [['up', '--no-start', '--no-deps', 'api', 'worker']],
+    );
+    const removed = runtimeFixture();
+    removed.composeServices({ api: {} });
+    await removed.runtime.apply(project, { stoppedServices: ['removed'] });
+    assert.deepEqual(
+        removed.requests
+            .filter((request) => request.args.includes('up'))
+            .map((request) =>
+                request.args.slice(composeArguments(project).length),
+            ),
+        [['up', '--detach', '--no-deps', 'api']],
+    );
+});
+
+test('applied start and restart keep distinct flags, targets and user messages', async () => {
+    const f = runtimeFixture();
+    f.set([
+        inspect({
+            'com.docker.compose.project.config_files':
+                '/state/operations/current/docker-compose.yaml',
+            'chs.dev.lifecycle':
+                '{"version":1,"lazy":false,"reclaimable":false,"dependencies":[]}',
+        }),
+    ]);
+    f.artifact(
+        'name: chs\nservices:\n  api:\n    image: api\n  builder:\n    labels:\n      chs.dev.owner-service: api\n',
+    );
+    const started = await f.runtime.startApplied('api', {});
+    assert.match(started.message, /^Started api/);
+    assert.equal(f.requests.at(-1)!.args.includes('builder'), false);
+    assert.equal(f.requests.at(-1)!.args.includes('--no-recreate'), true);
+    const restarted = await f.runtime.startApplied('api', {}, 'restart');
+    assert.match(restarted.message, /^Restarted api/);
+    assert.equal(f.requests.at(-1)!.args.includes('builder'), true);
+    assert.equal(f.requests.at(-1)!.args.includes('--force-recreate'), true);
+});
+
+test('machine output accepts exactly eight MiB and lines at the truncation boundary remain normal output', async () => {
+    const maximum = processFixture();
+    const large = maximum.execute(processRequest);
+    maximum.child.stdout.write('x'.repeat(8 * 1024 * 1024));
+    maximum.child.emit('close', 0);
+    assert.equal((await large).stdout.length, 8 * 1024 * 1024);
+    const line = processFixture();
+    const output: string[] = [];
+    const work = line.execute({
+        ...processRequest,
+        onOutput: (entry) => output.push(entry.text),
+    });
+    line.child.stdout.write('x'.repeat(16384));
+    line.child.emit('close', 0);
+    await work;
+    assert.equal(output.length, 1);
+    assert.ok(output[0].startsWith('x'));
+    assert.equal(output[0].length, 2000);
+});
+
+test('an oversized private key header keeps later body lines private until the key ends', async () => {
+    const f = processFixture();
+    const output: string[] = [];
+    const work = f.execute({
+        ...processRequest,
+        onOutput: (entry) => output.push(entry.text),
+    });
+    f.child.stdout.write(`-----BEGIN RSA PRIVATE KEY-----${'x'.repeat(16385)}`);
+    f.child.stdout.write(
+        '\nsecret body\n-----END RSA PRIVATE KEY-----\nvisible\n',
+    );
+    f.child.emit('close', 0);
+    await work;
+    assert.deepEqual(output, [
+        '[REDACTED PRIVATE KEY]',
+        '[REDACTED PRIVATE KEY]',
+        '[REDACTED PRIVATE KEY]',
+        'visible',
+    ]);
+});
+
+test('process cancellation reports termination errors consistently for Error and non-Error failures', async () => {
+    for (const failure of [new Error('denied'), 'denied']) {
+        const child = Object.assign(new EventEmitter(), {
+            pid: 42,
+            stdout: new PassThrough(),
+            stderr: new PassThrough(),
+        });
+        const abort = new AbortController();
+        const execute = createProcessExecutor({
+            spawn: () => child,
+            kill: () => {
+                throw failure;
+            },
+            schedule: () => () => {},
+        });
+        const work = execute({ ...processRequest, signal: abort.signal });
+        const rejected = assert.rejects(work, {
+            message: 'Cannot terminate owned command: denied',
+        });
+        abort.abort();
+        child.emit('close', null);
+        await rejected;
+    }
+});
+
+test('cancellation racing with spawn is observed before a missed abort event can finish successfully', async () => {
+    const child = Object.assign(new EventEmitter(), {
+        pid: 42,
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+    });
+    const abort = new AbortController();
+    const kills: string[] = [];
+    const execute = createProcessExecutor({
+        spawn: () => {
+            abort.abort();
+            return child;
+        },
+        kill: (_, signal) => {
+            kills.push(signal);
+        },
+        schedule: () => () => {},
+    });
+    const work = execute({ ...processRequest, signal: abort.signal });
+    const rejected = assert.rejects(work, /cancelled/);
+    assert.deepEqual(kills, ['SIGTERM']);
+    child.emit('close', 0);
+    await rejected;
+});
+
+test('failed spawn without a process ID never attempts to signal an unowned process', async () => {
+    const child = Object.assign(new EventEmitter(), {
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+    });
+    const abort = new AbortController();
+    const execute = createProcessExecutor({
+        spawn: () => child,
+        kill: () => {
+            throw new Error('Unowned process signalled');
+        },
+        schedule: () => () => {},
+    });
+    const work = execute({ ...processRequest, signal: abort.signal });
+    const rejected = assert.rejects(work, /spawn failed/);
+    child.emit('error', new Error('spawn failed'));
+    abort.abort();
+    child.emit('close', null);
+    await rejected;
+});
+
+test('registry authentication failures without a named registry keep the message free of fabricated hosts', async () => {
+    const f = runtimeFixture();
+    f.fail('no basic auth credentials');
+    await assert.rejects(
+        f.runtime.apply(project, {}),
+        (error: unknown) =>
+            error instanceof Error &&
+            error.message.startsWith('ECR authentication failed.'),
+    );
+});
+
+function processLogEntries(
+    logger: ReturnType<typeof initializeTuiLog>,
+    firstLine: number,
+) {
+    return logger
+        .getSnapshot()
+        .lines.slice(firstLine)
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .filter((entry) => entry.event === 'process');
+}
+
+test('process diagnostics distinguish success, failure and cancellation while hiding private command verbs', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'chs-process-diagnostics-'));
+    const logger = initializeTuiLog(directory);
+    try {
+        for (const scenario of [
+            { code: 0, status: 'success' },
+            { code: 7, status: 'failed' },
+            { code: 0, status: 'failed', error: true },
+            { code: null, status: 'cancelled', abort: true },
+        ]) {
+            const f = processFixture();
+            const signal = new AbortController();
+            const firstLine = logger.getSnapshot().lines.length;
+            const work = f.execute({
+                ...processRequest,
+                command: '/tools/docker',
+                args: ['compose', 'up', 'private-value'],
+                signal: signal.signal,
+            });
+            const settled = work.then(
+                () => undefined,
+                (error: unknown) => error,
+            );
+            if (scenario.error)
+                f.child.emit('error', new Error('process failure'));
+            if (scenario.abort) signal.abort();
+            f.child.emit('close', scenario.code);
+            const error = await settled;
+            assert.equal(
+                error instanceof Error,
+                !!(scenario.error || scenario.abort),
+            );
+            const entries = processLogEntries(logger, firstLine);
+            assert.ok(entries.length >= 2);
+            assert.equal(entries[0].status, 'start');
+            assert.equal(entries.at(-1)?.status, scenario.status);
+            assert.ok(
+                entries.every(
+                    (entry) =>
+                        entry.command === 'docker' &&
+                        entry.subcommand === 'compose up',
+                ),
+            );
+        }
+        const f = processFixture();
+        const firstLine = logger.getSnapshot().lines.length;
+        const work = f.execute({
+            ...processRequest,
+            command: '/tools/docker',
+            args: ['compose', 'up', 'private-value'],
+            privateOutput: true,
+        });
+        f.child.emit('close', 0);
+        await work;
+        const entries = processLogEntries(logger, firstLine);
+        assert.deepEqual(
+            entries.map((entry) => entry.status),
+            ['start', 'success'],
+        );
+        assert.ok(
+            entries.every(
+                (entry) =>
+                    entry.command === 'docker' && !('subcommand' in entry),
+            ),
+        );
+        assert.equal(
+            logger
+                .getSnapshot()
+                .lines.some((line) => line.includes('private-value')),
+            false,
+        );
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
 });
