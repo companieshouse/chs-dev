@@ -344,6 +344,9 @@ test('wait deadlines and interrupts disconnect without cancelling accepted work'
             connect: f.client,
         });
         assert.equal(timed.code, 124);
+        await eventually(
+            () => f.app.snapshot().live.busy && f.engine.applies === 1,
+        );
         assert.equal(f.app.snapshot().live.busy, true);
         const id = timed.json().operation.id;
         const controller = new AbortController();
