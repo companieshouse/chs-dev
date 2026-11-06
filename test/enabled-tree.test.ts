@@ -53,3 +53,59 @@ test('enabled forest groups roots, omits disabled nodes, and includes shared dep
     details.db = { enabled: 'No', mode: 'Service', excluded: true };
     assert.ok(!enabledTree(groups, details).some((row) => row.name === 'db'));
 });
+
+test('enabled forest shows each root once and keeps branch guides across module dependencies', () => {
+    const definition = (module: string, dependencies: string[]) => ({
+        module,
+        dependencies,
+        base: false,
+        deprecated: false,
+    });
+    const groups: ServiceGroup[] = [
+        {
+            name: 'app',
+            services: ['worker', 'api'],
+            definitions: {
+                api: definition('app', ['cache']),
+                worker: definition('app', ['db']),
+            },
+        },
+        {
+            name: 'infrastructure',
+            services: ['db', 'cache'],
+            definitions: {
+                cache: definition('infrastructure', ['db']),
+                db: definition('infrastructure', []),
+            },
+        },
+    ];
+    const details: Record<string, ServiceDetails> = {
+        api: { enabled: 'Yes', mode: 'Service' },
+        worker: { enabled: 'Yes', mode: 'Service' },
+        cache: { enabled: 'Yes', mode: 'Service' },
+        db: { enabled: 'Yes', mode: 'Service' },
+    };
+    assert.deepEqual(enabledTree(groups, details), [
+        { kind: 'module', name: 'app', prefix: '' },
+        { kind: 'service', name: 'api', prefix: '├─ ', reference: undefined },
+        {
+            kind: 'service',
+            name: 'cache',
+            prefix: '│  └─ ',
+            reference: undefined,
+        },
+        {
+            kind: 'service',
+            name: 'db',
+            prefix: '│     └─ ',
+            reference: undefined,
+        },
+        {
+            kind: 'service',
+            name: 'worker',
+            prefix: '└─ ',
+            reference: undefined,
+        },
+        { kind: 'service', name: 'db', prefix: '   └─ ', reference: 'shared' },
+    ]);
+});

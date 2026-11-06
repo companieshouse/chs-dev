@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { dependencyTree } from '../src/domain/service-dependencies.js';
+import {
+    dependencyOrder,
+    dependencyTree,
+    serviceDependencies,
+} from '../src/domain/service-dependencies.js';
 import type { ServiceGroup } from '../src/project/catalog.js';
 
 test('renders sorted branches, shared references, and cycles without infinite expansion', () => {
@@ -39,4 +43,60 @@ test('renders sorted branches, shared references, and cycles without infinite ex
     assert.equal(rows[1]?.required, true);
     assert.equal(rows[4]?.required, true);
     assert.deepEqual(dependencyTree('unknown', groups), []);
+});
+
+test('dependency queries retain uncatalogued dependencies without marking them required', () => {
+    const groups: ServiceGroup[] = [
+        {
+            name: 'app',
+            services: ['root', 'db', 'cache'],
+            definitions: {
+                root: {
+                    module: 'app',
+                    dependencies: ['db', 'missing'],
+                    base: false,
+                    deprecated: false,
+                },
+                db: {
+                    module: 'app',
+                    dependencies: ['cache'],
+                    base: true,
+                    deprecated: false,
+                },
+                cache: {
+                    module: 'app',
+                    dependencies: ['root'],
+                    base: false,
+                    deprecated: false,
+                },
+            },
+        },
+    ];
+    assert.deepEqual(serviceDependencies('root', groups), [
+        { name: 'cache', direct: false, required: false },
+        { name: 'db', direct: true, required: true },
+        { name: 'missing', direct: true, required: false },
+    ]);
+    assert.deepEqual(dependencyTree('root', groups).at(-1), {
+        name: 'missing',
+        prefix: '└─ ',
+        required: false,
+        reference: undefined,
+    });
+});
+
+test('start chains put dependencies before their caller and visit shared cyclic members once', () => {
+    const dependencies = new Map([
+        ['web', ['api', 'worker']],
+        ['api', ['db']],
+        ['worker', ['db']],
+        ['db', ['api']],
+    ]);
+    assert.deepEqual(dependencyOrder('web', dependencies), [
+        'db',
+        'api',
+        'worker',
+        'web',
+    ]);
+    assert.deepEqual(dependencyOrder('unknown', dependencies), ['unknown']);
 });
