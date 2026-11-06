@@ -607,23 +607,18 @@ test('AWS expired blocks preparation; successful login recovers only while runni
     assert.equal(f.calls.length, count);
 });
 
-test('stop-only work preserves shared/base services and needs neither AWS nor preparation', async () => {
+test('nonempty Start prepares fresh membership even when all selected services already run', async () => {
     const f = fixture();
     f.containers([container('api'), container('old')]);
-    f.aws('unavailable');
     await start(f);
-    assert.equal(f.calls.includes('prepare'), false);
-    assert.equal(f.calls.includes('aws'), false);
+    assert.equal(f.calls.includes('prepare'), true);
+    assert.equal(f.calls.includes('aws'), true);
     assert.ok(f.calls.includes('stop:old'));
-    assert.deepEqual(
-        f.controller
-            .getSnapshot()
-            .observed?.containers.map((entry) => entry.service),
-        ['api'],
-    );
+    assert.deepEqual(f.controller.getIntent().appliedServices, ['api']);
+    assert.doesNotThrow(() => f.controller.assertTrafficAllowed('api'));
 });
 
-test('development builder helpers remain while their owner is desired', async () => {
+test('fresh reconciliation keeps desired owner helpers out of obsolete-container cleanup', async () => {
     const f = fixture();
     f.edit('development', [{ service: 'api', mode: 'Development' }]);
     f.containers([
@@ -631,16 +626,15 @@ test('development builder helpers remain while their owner is desired', async ()
         { ...container('api-builder'), ownerService: 'api' },
         container('obsolete'),
     ]);
-    f.aws('expired');
     await start(f);
-    assert.deepEqual(
-        f.controller
-            .getSnapshot()
-            .observed?.containers.map((entry) => entry.service),
-        ['api', 'api-builder'],
-    );
     assert.ok(f.calls.includes('stop:obsolete'));
-    assert.equal(f.calls.includes('aws'), false);
+    assert.equal(
+        f.calls.some(
+            (call) => call.startsWith('stop:') && call.includes('api-builder'),
+        ),
+        false,
+    );
+    assert.equal(f.calls.includes('prepare'), true);
 });
 
 test('saves during Apply preserve its immutable input and wait for the next explicit Apply', async () => {
@@ -1117,7 +1111,7 @@ test('unchanged saved revisions need no AWS, preparation, or restart', async () 
     assert.equal(f.controller.getSnapshot().phase, 'Running');
 });
 
-test('inventory discrepancies block even credential-free stop-only mutations', async () => {
+test('inventory discrepancies block cleanup before any mutation', async () => {
     const f = fixture();
     f.containers([container('api'), container('obsolete')]);
     await f.controller.start();
@@ -1541,4 +1535,44 @@ test('traffic for a selected healthy service does not validate unrelated missing
         () => f.controller.assertTrafficAllowed('api'),
         /metadata.*unavailable/,
     );
+});
+
+test('explicit deselection narrows established membership and cannot resume a historical stopped root', async () => {
+    const f = fixture();
+    f.edit('pair', [
+        { service: 'api', mode: 'Service' },
+        { service: 'worker', mode: 'Service' },
+    ]);
+    await start(f);
+    assert.deepEqual(f.controller.getIntent().appliedServices, [
+        'api',
+        'worker',
+    ]);
+    f.edit('api-only', [{ service: 'api', mode: 'Service' }]);
+    await f.controller.start();
+    await f.controller.waitUntilIdle();
+    assert.deepEqual(f.controller.getIntent().appliedServices, ['api']);
+    f.containers([
+        container('api'),
+        { ...container('worker'), lifecycle: 'exited' },
+    ]);
+    assert.equal(
+        (await f.controller.coldStart('worker', Date.now() + 1000)).ok,
+        false,
+    );
+    assert.equal(
+        f.calls.some((call) => call === 'activate:start:worker'),
+        false,
+    );
+});
+
+test('dedicated Stop remains independent of AWS and preparation on a fresh observer', async () => {
+    const f = fixture();
+    f.containers([container('api'), container('obsolete')]);
+    f.aws('expired');
+    await f.controller.stop();
+    assert.equal(f.calls.includes('stopProject'), true);
+    assert.equal(f.calls.includes('aws'), false);
+    assert.equal(f.calls.includes('prepare'), false);
+    assert.equal(f.controller.getSnapshot().phase, 'Stopped');
 });

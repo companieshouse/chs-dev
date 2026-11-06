@@ -3,7 +3,6 @@ import {
     mockOnlyInventory,
     inventoryKey,
     filterSshRequirements,
-    isStopOnly,
     LiveFailure,
     LifecycleBlocked,
     PlanChangeRequired,
@@ -876,6 +875,8 @@ export class LiveController {
                 const observed =
                     await this.dependencies.runtime.snapshot(signal);
                 const roots = logicalRoots(services, observed);
+                for (const root of roots)
+                    this.requireAppliedService(root, observed);
                 const owners = new Map(
                     roots.map((root) => [
                         root,
@@ -1389,7 +1390,7 @@ export class LiveController {
             onOutput: (entry: { text: string }) => this.log(entry.text),
         };
         let partial: PreparedProject | undefined;
-        if (this.needsApply(revision, observed, changes))
+        if (revision.inventory.length)
             partial = await this.applyChanges(plan, signal, context);
 
         signal.throwIfAborted();
@@ -1593,29 +1594,6 @@ export class LiveController {
         }
     }
 
-    private needsApply(
-        revision: ConfigurationRevision,
-        observed: RuntimeSnapshot,
-        changes: LivePreview,
-    ) {
-        if (this.state.action === 'apply') return revision.inventory.length > 0;
-        const stopOnly = isStopOnly(revision, observed);
-        const modeDrift = modeChanges(revision, observed).length > 0;
-        const unchanged =
-            this.applied === revision.identity &&
-            changes.start.length === 0 &&
-            changes.stop.length === 0 &&
-            !modeDrift;
-
-        return (
-            revision.inventory.length > 0 &&
-            !unchanged &&
-            (!stopOnly ||
-                (this.applied !== revision.identity &&
-                    changes.stop.length === 0))
-        );
-    }
-
     private async verifyApplyAuthentication(
         revision: ConfigurationRevision,
         signal: AbortSignal,
@@ -1645,7 +1623,7 @@ export class LiveController {
             signal: AbortSignal;
             onOutput: (entry: { text: string }) => void;
         },
-    ): Promise<PreparedProject | undefined> {
+    ): Promise<PreparedProject> {
         const { revision, resolved, observed } = plan;
         await this.ensureSshSetup(resolved.sshRequirements, signal);
         await this.verifyApplyAuthentication(revision, signal);

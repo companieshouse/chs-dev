@@ -342,8 +342,8 @@ test('every requested logical root is validated before any applied service start
     assert.equal(store.containers[0]!.lifecycle, 'exited');
 });
 
-test('a later failed root preserves only unfinished holds and reports partial effects', async (t) => {
-    const { f, client, store } = await fixture('Mock', 'database');
+test('a later failed root reports partial effects after an earlier root started their shared dependencies', async (t) => {
+    const { f, client, store } = await fixture('Development', 'database');
     t.after(() => f.close());
     for (const container of store.containers) container.lifecycle = 'running';
     await client.command('service.action', {
@@ -365,9 +365,9 @@ test('a later failed root preserves only unfinished holds and reports partial ef
     assert.equal(
         store.containers.find((container) => container.service === 'database')!
             .lifecycle,
-        'exited',
+        'running',
     );
-    assert.deepEqual(f.controller.getSnapshot().stoppedByUser, ['database']);
+    assert.deepEqual(f.controller.getSnapshot().stoppedByUser, []);
     assert.match(
         f.controller.getSnapshot().logs.at(-1)!,
         /some services may already have changed/,

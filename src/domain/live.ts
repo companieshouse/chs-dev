@@ -592,21 +592,3 @@ export function retainsContainer(
 }
 
 // Unknown modes require preparation, rather than assuming a destructive edit is stop-only.
-export function isStopOnly(
-    revision: ConfigurationRevision,
-    actual: RuntimeSnapshot,
-): boolean {
-    // Mocks still need preparation to publish scenario files during stop-only plans.
-    if (revision.inventory.some((entry) => entry.mockScenario)) return false;
-    return revision.inventory.every((entry) =>
-        actual.containers.some(
-            (container) =>
-                container.service === entry.service &&
-                container.mode === entry.mode &&
-                (['running', 'restarting', 'paused'].includes(
-                    container.lifecycle,
-                ) ||
-                    isCompletedJob(container)),
-        ),
-    );
-}

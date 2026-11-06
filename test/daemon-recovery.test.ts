@@ -768,3 +768,72 @@ test('Cancel durably pauses pending recovery without losing applied membership o
         await f.close();
     }
 });
+
+test('approved Start prepares fresh applied membership before serving previously observed containers', async (t) => {
+    const f = await daemonFixture();
+    t.after(() => f.close());
+    const store = f.stores.get(f.directory)!;
+    store.containers = ['api', 'obsolete'].map((service) => ({
+        id: service,
+        service,
+        mode: 'Service',
+        projectName: 'fixture',
+        projectDirectory: f.directory,
+        lifecycle: 'running',
+        policy: {
+            version: 1,
+            lazy: false,
+            reclaimable: false,
+            dependencies: [],
+        },
+    }));
+    await (
+        await f.client()
+    ).command('environment.start', { approveStops: true });
+    assert.equal(f.engine.applies, 1);
+    assert.deepEqual(f.controller.getIntent().appliedServices, ['api']);
+    assert.doesNotThrow(() => f.controller.assertTrafficAllowed('api'));
+    assert.deepEqual(
+        store.containers.map((container) => container.service),
+        ['api'],
+    );
+});
+
+test('logical Start and Restart reject retired roots before any valid batch root mutates', async (t) => {
+    const started: string[] = [];
+    const f = await daemonFixture(undefined, undefined, {
+        runtime: (base) => ({
+            ...base,
+            startApplied: async (service, ...args) => {
+                started.push(service);
+                return base.startApplied(service, ...args);
+            },
+        }),
+    });
+    t.after(() => f.close());
+    const client = await f.client();
+    await client.command('environment.start', {});
+    const store = f.stores.get(f.directory)!;
+    store.containers.push({
+        ...store.containers[0],
+        id: 'old-worker',
+        service: 'old-worker',
+        lifecycle: 'exited',
+    });
+    for (const action of ['start', 'restart']) {
+        await assert.rejects(
+            client.command('service.action', {
+                services: ['api', 'old-worker'],
+                action,
+            }),
+            /no longer in the applied environment/,
+        );
+        assert.deepEqual(started, []);
+        assert.equal(
+            store.containers.find(
+                (container) => container.service === 'old-worker',
+            )!.lifecycle,
+            'exited',
+        );
+    }
+});
