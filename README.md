@@ -15,6 +15,10 @@ npm run dev -- start --yes
 See [CLI commands and compatibility](docs/cli.md) for installation, daemon controls,
 automation, exit codes and legacy behaviour. Both frontends operate the same daemon.
 
+Save stages configuration; explicit Apply or Start activates it. Manage private
+SSM values with [secret commands](docs/secrets.md). Optional
+[operation telemetry](docs/telemetry.md) is disabled until explicitly configured.
+
 Service providers default to **CIDEV** versions. Press **Ctrl+E → v** to choose a
 global version source, or use a service's **Versions** row for an environment,
 specific version or latest override. See [service versions](docs/service-versions.md).
@@ -25,16 +29,18 @@ while preserving your local setup. In the TUI, press Ctrl+E then p for sharing.
 
 The TUI connects to one daemon per user, which manages one selected checkout.
 On macOS the first launch also installs a login service. Closing the TUI leaves
-accepted operations and health monitoring running. After a new login or reboot,
-starting the environment is explicit. See [daemon operation](docs/daemon.md) for
-service controls, startup environment, recovery and the shared API.
+accepted operations and health monitoring running. Clean restart can restore
+applied intent after verifying the same checkout and local Docker engine;
+interrupted work stays blocked for explicit reconciliation. Detached mode resumes
+only when launched. See [daemon operation](docs/daemon.md) for the recovery
+conditions, service controls, startup environment and shared API.
 
 Press `q` outside text/search editing or `Ctrl+C` to exit and return to the shell.
 `Esc` never exits the TUI: it clears or leaves an active search, backs out of a
 detail view or overlay, or does nothing at an unmodified root screen. Press `?`
 on any root screen for the current keyboard shortcuts. Destructive stop/restart
 actions and unsaved service edits ask for confirmation.
-Switch between Services, Containers, Modules, Enabled, Logs, and Config with `Ctrl+N` / `Ctrl+P`
+Switch between Services, Containers, Modules, Enabled, Journeys, Logs, and Config with `Ctrl+N` / `Ctrl+P`
 (or Ctrl+Tab / Ctrl+Shift+Tab where supported). Left/right arrows switch tabs
 everywhere outside modals. Outside Modules, Tab and Shift+Tab also switch tabs.
 Services loads asynchronously after the first screen appears. It reads service names from
@@ -43,14 +49,16 @@ including nested infrastructure stacks, appear under Infrastructure. Names are s
 deduplicated within each group. Logs shows daemon events and environment output. Config lists and edits the
 TUI settings (see [Settings](#settings)). Invalid projects or unreadable service files show an error.
 
-Each service shows Enabled, Status, and Mode:
+The compact Services table separates saved selections, observed runtime and saved
+Service versions. Press `i` for full selected details, including long names and
+image references; PgUp/PgDn pages through the list. All seven tabs fit at 80 columns.
 
 - Enabled reads `.chs-dev.yaml` at startup, including module selections, transitive
   dependencies, and exclusions. Base infrastructure is included. A missing state file
   means no optional services are selected; an invalid state file shows Unknown.
 - Mode shows the selected Service, Development or Mock provider. Mock contracts and
-  scenarios live in this repository under `mocks/`; active scenarios appear in the
-  Services list. Mocked services omit their real dependencies and route to Microcks.
+  scenarios live in this repository under `mocks/`; saved scenarios appear in
+  selected details and may still be pending Apply. Mocked services omit their real dependencies and route to Microcks.
   Existing `servicesWithLiveUpdate` settings and dedicated mock services remain supported.
   See [mock providers](docs/mock-providers.md) for the catalogue and setup.
 - Docker status loads separately and refreshes every five seconds after each completed
@@ -58,8 +66,9 @@ Each service shows Enabled, Status, and Mode:
   one-off containers and other checkouts are ignored. Running means no reported health
   status; Healthy/Unhealthy come from Docker health checks. No container means Stopped.
   Exit codes are interpreted: 0 without a health check is Completed (one-shot jobs such
-  as `execute-mongo-scripts`), SIGTERM/SIGKILL exits from `docker stop` are Stopped, and
-  any other exit (including OOM kills) is Exited, shown as an error.
+  as `execute-mongo-scripts`), SIGTERM and engine-confirmed non-OOM SIGKILL exits are
+  Stopped, and other exits are Exited. Exit 137 without OOM evidence stays visible
+  as an exit; it does not establish an OOM kill.
   Docker failures show Unknown and retry without blocking navigation. Environment state
   and user intent are checkpointed privately, separately from project configuration.
 
@@ -274,8 +283,9 @@ npm start
 - `src/daemon-control/` discovers the daemon and manages its macOS login service.
 - `dist/` contains the compiled application after building.
 
-The UI saves configuration and reads Docker state. Containers change only when you start,
-stop or apply from the Environment panel, or use a per-service action.
+Saving configuration stages it until Start or Apply. The running environment uses
+its applied lazy policy to start called services and unload idle ones. Service
+actions and verified clean recovery also use the applied artifacts.
 
 See [architecture](docs/architecture.md) for data flow, input ownership, and extension guidance.
 
@@ -349,7 +359,8 @@ the actions that apply now, with the recommended one first:
   that are running. Press `d` for the planned service list.
 - **Apply changes** applies saved edits that are pending.
 - **Stop environment** stops and removes this checkout's containers; data volumes are kept.
-  It requires an explicit confirmation.
+  It requires an explicit confirmation and remains available while other work is
+  running. Stop preempts that work and persists stopped intent before cleanup.
 - **Restart failing services** and **View logs**.
   Restarting failing services also asks for confirmation.
 
@@ -363,11 +374,11 @@ configuration. Apply or Start activates saved changes. Ordinary Apply preserves
 manual service stops; service Start releases one, and Environment Start releases
 all manual stops.
 
-On launch the environment counts as running if this checkout's containers are up;
-nothing is started or stopped automatically. Containers stopped or started outside
-chs-dev are reported as **Changed outside chs-dev** with an Apply changes fix; this
-never blocks later edits. One-shot jobs that exit 0, such as `execute-mongo-scripts`,
-count as done.
+The daemon distinguishes saved intent from observed containers. Clean recovery
+uses the verified applied checkpoint; containers running without that checkpoint
+do not establish running intent. Containers stopped or started outside chs-dev
+are reported as **Changed outside chs-dev**. Explicit Start or Apply reconciles
+them. One-shot jobs that exit 0, such as `execute-mongo-scripts`, count as done.
 
 Initialization runs through the Compose script runner and its existing job
 dependencies. Inspect initialization task logs when seed data is incomplete.
@@ -386,11 +397,12 @@ The status bar shows one environment state and its next step:
 | `✕ Start failed · Ctrl+E details`   | The last operation failed; the panel opens with the error once |
 
 "Running" means configuration applied and containers up, not that every service is
-fully ready; the health columns remain authoritative. Failing services are not
-restarted automatically.
+fully ready; the health columns remain authoritative. Ordinary monitoring reports
+failing services without restarting them. Clean daemon recovery follows the
+persisted running intent described in [daemon recovery](docs/daemon.md#recovery).
 
-**The project checkout is read-only input.** chs-dev installs nothing in the project and
-runs no code from it. It reads `services/**/*docker-compose.yaml`, `local/builders/*`,
+**The checkout supplies configuration and builder templates.** The daemon reads
+`services/**/*docker-compose.yaml`, `local/builders/*`,
 `global.env`, `.env` and `.chs-dev.yaml`, and generates a self-contained Compose file for
 the current configuration in its own state directory. The only project files it writes are
 the ones the checkout already expects: `.chs-dev.yaml` (your selections), clones in
@@ -398,9 +410,11 @@ the ones the checkout already expects: `.chs-dev.yaml` (your selections), clones
 be a docker-chs-development checkout (`bin/chs-dev` and `services/` present).
 After changing service definitions externally, restart the daemon to rediscover them.
 Development services are built by the existing builder templates in `local/builders`.
-**Reload (rebuild from source)** runs a normal apply, then
+**Reload (rebuild from source)** uses the applied Compose artifacts and
 `compose up --build --force-recreate --no-deps` for the service and its builder (for
 example `SERVICE-builder`), so Java services re-run Maven and restart on the new jar.
+Apply saved configuration changes before Reload; refreshing version metadata alone
+does not change its applied image selection.
 chs-dev does not run `docker compose watch`.
 The standard `custom-init.sh` (which only exports AWS session credentials) is recognised
 and never run: services reading `aws-session.env` receive the credentials through Compose
@@ -436,26 +450,31 @@ passphrases. Existing valid setup is reused, while repair or replacement always
 requires an explicit confirmation. The legacy `bin/init` flow remains available
 for the separate interactive CLI but is not required here.
 
-Saved edits are debounced by 250 ms. Only one operation runs per checkout; later saves
-replace queued work, never the active snapshot. External configuration edits are detected
-by polling. A `live.lock` in the project's state directory prevents competing TUI sessions. If a session crashes,
-remove that lock only after confirming no session or owned command remains.
+Only one mutating operation runs per checkout; competing requests receive a busy
+response. Environment Stop can preempt active work. Saved edits never change an
+active operation's snapshot; external configuration edits are detected by polling.
+The daemon holds `live.lock` in the project's state directory. Multiple CLI, TUI
+and AI clients share that daemon. Remove a stale lock only after confirming its
+daemon and owned commands have ended.
 
-Cancel (`x`) terminates owned commands, refreshes actual state, and keeps pending work
-until you try again or save a newer edit. No operation rolls back completed Docker changes.
-Exit cancels commands and releases the lock without stopping containers.
+Cancel (`x`) terminates owned commands, refreshes actual state, and leaves saved
+changes pending until an explicit retry. No operation rolls back completed Docker changes.
+Closing a frontend leaves accepted operations and the daemon running.
 Failed operations open the Environment panel once with the error highlighted. If another
 modal is open, the notice waits until it closes; Ctrl+E and Logs retain the details.
 Preparation failures show the reason (for example an unknown service or a missing
 `env_file`) in the Environment panel.
 
-Fresh AWS verification is required before preparation and starting/recreating containers.
-Changes waiting for login stay pending; **Ctrl+L** (or the panel's login fix) resumes them
-after successful verification. ECR failures require **AWS + registry login**, not just AWS login.
-Stop-only changes for services with verified matching modes require neither AWS credentials
-nor fresh preparation. Containers without mode metadata are treated conservatively and may
-require preparation. Only verified container IDs belonging to this checkout and Compose
-project are stopped, restarted or removed; chs-dev never runs `down`, deletes volumes, or
+Preparing configuration verifies AWS before preparation and again before applying
+containers. Explicit Apply reevaluates a nonempty selection even when its YAML has
+not changed, so it can require credentials and refresh image metadata. Changes
+waiting for login stay pending; **Ctrl+L** (or the panel's login fix) resumes them
+after successful verification. ECR failures require **AWS + registry login**.
+Dedicated environment/service Stop does not require AWS login or preparation.
+Service Start/Restart and Reload reuse applied artifacts and resolve their required
+environment without activating refreshed image metadata or pending YAML edits.
+Only containers verified as belonging to this checkout and Compose project are
+controlled; chs-dev never runs `down`, deletes volumes, or
 removes broad orphans.
 
 Logs defaults to durable TUI lifecycle events, including errors while the environment is stopped.
@@ -503,18 +522,20 @@ retained because containers can reference generated files. Remove them only afte
 containers are no longer using them. Credentials are passed in child-process memory, never
 written to generated files.
 
-Environment validation is deliberately unit-only, using injected fakes and in-memory files:
+Local acceptance exercises the real client, daemon/application, Ink views, HTTP
+adapters and owned subprocesses with injected external dependencies and temporary
+fixtures. On the macOS development copy, use the outbound-denying runner:
 
 ```sh
-npm run test:unit
-npm run typecheck
+npm run test:local
+npm run check
 npm run build
-npm run format:check
 ```
 
-Real Docker/AWS, browser, subprocess, PTY, and integration compatibility verification is
-deferred to a later phase. The broader legacy `npm test` suite includes subprocess and
-filesystem tests and is not part of the unit-only validation.
+`npm test` runs the same portable test suite without that sandbox; `test:unit` is
+only a subset. See [local verification](docs/local-verification.md) for isolation
+and evidence limits. The two live Microcks tests remain opt-in. Fixture results do
+not establish live Docker networking, AWS permissions or business-service parity.
 
 For the interactive login regression check on macOS/Linux, run
 `npm run build && python3 test/login-terminal.py`. It uses stub AWS and Docker
@@ -527,7 +548,7 @@ Run `npm run format` to apply four-space Prettier formatting, or
 `npm run format:check` to verify it. Run `npm test` for application and tooling tests.
 
 Run `npm run complexity:report` to find nesting and complexity hotspots, and
-`npm run complexity:check` to check against the existing warning baseline.
+`npm run complexity:check` to enforce the empty warning baseline.
 See [code quality checks](docs/code-quality.md) for thresholds and limitations.
 
 Ink's `react-reconciler` dependency is pinned to 0.34.0 for the

@@ -1,6 +1,7 @@
 # Feedback coverage: RAND-739
 
-Local audit of the archived `local-dev-env-feedback` material on 2026-11-05.
+Local audit of the archived `local-dev-env-feedback` material on 2026-11-05,
+with delivery evidence reconciled on 2026-11-06.
 This is a coverage ledger, not a claim that every issue is fixed. It includes
 all 25 substantive top-level messages and 55 replies. Authors are credited as
 reporters or contributors, not assigned as owners. No Slack/Jira messages or
@@ -15,8 +16,9 @@ claims of resolution are not current acceptance evidence.
 ## Requirement dispositions
 
 Each source row below points to the disposition of every tagged requirement.
-Multiple requirements retain separate obligations. Work marked in progress must
-be replaced with tested evidence or a precise remaining gap at delivery close.
+Multiple requirements retain separate obligations. Local completion below means
+fixture-verified tooling behavior; organizational, platform and service gaps stay
+explicit.
 
 ### secure-local-secrets
 
@@ -24,7 +26,7 @@ W5 / RAND-733: `55c3d09` delivers configured, tested SSM CRUD; namespace, IAM an
 
 ### kafka-dependency-cleanup
 
-W3: both Compose dependency syntaxes must be supported. Dual Kafka can be intentional for migration/rollback; service owners decide removal.
+W3: preparation supports both Compose dependency syntaxes; `cd0183e` verifies a representative dual-Kafka docgen composition and causal exclusions. Dual Kafka can be intentional for migration/rollback; service owners decide removal. See [dependency findings](dependency-findings.md).
 
 ### lean-service-selection
 
@@ -44,7 +46,7 @@ Local fixture suite covers tooling behavior. Full Karate/CIDEV business suites, 
 
 ### reliable-service-startup
 
-W1/W3: explicit activation, stop intent, readiness and first causal blockers. Service-specific faults remain external without reproducible local evidence.
+W1/W3: explicit activation, durable priority Stop, applied dependency conditions, manual holds, bounded cold starts and verified clean daemon recovery are implemented and independently reviewed. Failed/interrupted work and unconfirmed previews cannot authorize automatic changes. Service-specific faults remain external without reproducible local evidence. [Recovery](daemon.md#recovery) records the Docker-only restart and unsupported-transport limits.
 
 ### simplify-service-architecture
 
@@ -52,7 +54,7 @@ External modernization/ownership/funding scope. Simplifying chs-dev does not con
 
 ### actionable-diagnostics
 
-W2/W3: visible failures, OOMKilled evidence, causal dependency blockers and command/progress diagnostics. Preserve absence of evidence as unknown.
+W2/W3: visible failures, causal dependency blockers and command/progress diagnostics. `6cfad7c` preserves exit 137 without OOM evidence as uncertain rather than declaring an OOM kill; 17 focused tests pass.
 
 ### personal-remote-environments
 
@@ -84,7 +86,7 @@ W3/W7: `cd0183e` tests representative docgen dual-Kafka composition, health/job 
 
 ### tester-friendly-interface
 
-W2: `fc5822d` delivers the compact TUI with exact details, clear saved/observed state, visible failures, help and paging. Real Ink interactions and 80/120/160-column frames are reviewed. This partially addresses usability; it does not deliver the originally requested graphical application or establish usability with testers outside the fixture scenarios.
+W2: `fc5822d` delivers the compact TUI with exact details, clear saved/observed state, visible failures, help and paging. `0262f8c` exposes manual Stop for idle services; `f8327a0` keeps confirmed Environment Stop available during other work. Real Ink interactions and 80/120/160-column frames are reviewed. This partially addresses usability; it does not deliver the originally requested graphical application or establish usability with testers outside the fixture scenarios.
 
 ### dotfiles-for-remote-environments
 
@@ -116,8 +118,13 @@ Superseded proposal in this archive: later Platform guidance favors SSM retrieva
 - W3/W4: `2c655fa` applies shared lifecycle guards and immutable Reload artifacts
   (103 focused tests). `f90b861` completes version provenance/cache acceptance;
   combined W4 suite: 84 pass, two intended live skips, 18 real Ink frames reviewed.
-  Durable Stop/recovery and final independent review remain active. [Dependency findings](dependency-findings.md) record
-  actual local closures and ten dual-Kafka declarations without changing them.
+  `00e5f15` makes stopped intent durable before cleanup; `6305865` uses applied
+  logical chains for manual Start/Restart. `6f4d555` pins the supported local
+  engine; `6132ea1` restores verified applied intent asynchronously. Independent
+  review corrections `0f9f86c` and `7a5d933` close membership, preview, failed-action
+  and checkout-switch authority gaps. Original public regression probes now pass.
+  [Dependency findings](dependency-findings.md) record actual local closures and
+  ten dual-Kafka declarations without changing them.
 - W5: `55c3d09` SSM CRUD; `ad526de` bounded opt-in operation telemetry.
   Independent review correction `68e9739` canonicalizes startup URLs and adds
   real process privacy and negative telemetry evidence; 32 focused tests/check
@@ -126,6 +133,14 @@ Superseded proposal in this archive: later Platform guidance favors SSM retrieva
 - W6: `59fbe4c`, [workspace/platform spike](workspaces-and-platforms.md), 29 local
   discovery/preparation tests passed. No live platform compatibility claimed.
 - [Local verification](local-verification.md) explains the enforced test boundary.
+
+Final source checkpoint `98d4c0e`: **603 tests, 601 passed, two intentional live
+Microcks skips, zero failures** under `npm run test:local`. `npm run check`
+(including an empty complexity baseline), build and built CLI/general/secret help
+pass. Separate Spec and Standards reviews have no unresolved findings. Terminal
+fixtures wait for Ink's render flush and visible operation completion; no timeout
+was raised or assertion removed to obtain the final result. Detailed review and
+handoff evidence is indexed in the [delivery tracker](../../DELIVERY-PLAN.md).
 
 ## Every source message and reply
 
