@@ -166,6 +166,7 @@ test('an idle service can be held stopped through the TUI and released by explic
         (await fixture.controller.coldStart('api', Date.now() + 1000)).ok,
         false,
     );
+    await view.waitFor(/Kept api stopped/);
     await view.key('\u001b');
     await view.waitFor(/Intent: manual stop/);
     await client.command('service.action', {
