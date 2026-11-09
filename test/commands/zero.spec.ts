@@ -6,7 +6,8 @@ import ChsDevConfig from "../../src/model/Config";
 import State from "../../src/model/State";
 import { StateManager } from "../../src/state/state-manager";
 
-const clearModulesAndServicesMock = jest.fn();
+const clearModulesMock = jest.fn();
+const clearServicesMock = jest.fn();
 const runHookMock = jest.fn();
 
 jest.mock("../../src/state/state-manager");
@@ -28,7 +29,7 @@ describe("Zero Command", () => {
         const testConfig: Config = { root: "./", configDir: "./config", cacheDir: "./cache", runHook: runHookMock };
 
         // @ts-expect-error
-        StateManager.mockReturnValue({ snapshot, clearModulesAndServices: clearModulesAndServicesMock });
+        StateManager.mockReturnValue({ snapshot, clearModules: clearModulesMock, clearServices: clearServicesMock });
 
         // @ts-expect-error
         configLoaderMock.mockReturnValue(chsDevConfig);
@@ -52,8 +53,11 @@ describe("Zero Command", () => {
 
         await zero.run();
 
-        expect(clearModulesAndServicesMock).toHaveBeenCalledTimes(1);
+        expect(clearModulesMock).toHaveBeenCalledTimes(1);
+        expect(clearServicesMock).toHaveBeenCalledTimes(1);
         expect(runHookMock).toHaveBeenCalledWith("generate-runnable-docker-compose", {});
+        expect(clearModulesMock.mock.invocationCallOrder[0]).toBeLessThan(runHookMock.mock.invocationCallOrder[0]);
+        expect(clearServicesMock.mock.invocationCallOrder[0]).toBeLessThan(runHookMock.mock.invocationCallOrder[0]);
     });
 
     it("logs each module and service that has been disabled", async () => {
@@ -81,7 +85,8 @@ describe("Zero Command", () => {
 
         await zero.run();
 
-        expect(clearModulesAndServicesMock).toHaveBeenCalledTimes(1);
+        expect(clearModulesMock).toHaveBeenCalledTimes(1);
+        expect(clearServicesMock).toHaveBeenCalledTimes(1);
         expect(runHookMock).toHaveBeenCalledTimes(1);
     });
 
@@ -95,7 +100,8 @@ describe("Zero Command", () => {
 
         await zero.run();
 
-        expect(clearModulesAndServicesMock).not.toHaveBeenCalled();
+        expect(clearModulesMock).not.toHaveBeenCalled();
+        expect(clearServicesMock).not.toHaveBeenCalled();
         expect(runHookMock).not.toHaveBeenCalled();
         expect(logMock).toHaveBeenCalledWith("No modules or services are enabled - nothing to disable");
     });

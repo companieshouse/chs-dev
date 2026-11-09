@@ -98,8 +98,12 @@ export class StateManager {
         }
     }
 
-    clearModulesAndServices (): void {
-        this.dumpState({ ...this.snapshot, modules: [], services: [] });
+    clearModules (): void {
+        this.dumpState({ ...this.snapshot, modules: [] });
+    }
+
+    clearServices (): void {
+        this.dumpState({ ...this.snapshot, services: [] });
     }
 
     cleanState (): void {

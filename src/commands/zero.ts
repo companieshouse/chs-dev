@@ -29,7 +29,8 @@ export default class Zero extends Command {
             return;
         }
 
-        this.stateManager.clearModulesAndServices();
+        this.stateManager.clearModules();
+        this.stateManager.clearServices();
 
         await this.config.runHook("generate-runnable-docker-compose", {});
 
