@@ -161,6 +161,38 @@ describe("StateManager", () => {
         });
     });
 
+    it("clears modules but keeps services, live update and excluded services", () => {
+        setStateFile("one-enabled-in-each.yaml");
+
+        stateManager.clearModules();
+
+        const expectedState = {
+            modules: [],
+            services: ["service-one"],
+            servicesWithLiveUpdate: ["service-one"],
+            excludedServices: ["service-one"]
+        };
+
+        expect(stateManager.snapshot).toEqual(expectedState);
+        expect(readSnapshotFile()).toEqual(expectedState);
+    });
+
+    it("clears services but keeps modules, live update and excluded services", () => {
+        setStateFile("one-enabled-in-each.yaml");
+
+        stateManager.clearServices();
+
+        const expectedState = {
+            modules: ["module-one"],
+            services: [],
+            servicesWithLiveUpdate: ["service-one"],
+            excludedServices: ["service-one"]
+        };
+
+        expect(stateManager.snapshot).toEqual(expectedState);
+        expect(readSnapshotFile()).toEqual(expectedState);
+    });
+
     it("handles old statefile without excluded files entry when including file", () => {
         setStateFile("no-excluded-files-entry.yaml");
 

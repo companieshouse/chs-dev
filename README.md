@@ -202,6 +202,7 @@ USAGE
 * [`chs-dev troubleshoot analyse [OUTPUTFILE]`](#chs-dev-troubleshoot-analyse-outputfile)
 * [`chs-dev troubleshoot report OUTPUTDIRECTORY`](#chs-dev-troubleshoot-report-outputdirectory)
 * [`chs-dev up`](#chs-dev-up)
+* [`chs-dev zero`](#chs-dev-zero)
 
 ## `chs-dev autocomplete [SHELL]`
 
@@ -797,6 +798,24 @@ EXAMPLES
 DOCUMENTATION
 OpenTelemetry is a framework for collecting and exporting traces, metrics, and logs to observe services in chs-dev. When enabled, service logs and metrics can be processed and viewed in the [Grafana interface](http://api.chs.local/grafana).
 [Link to the Opentelemetry documentation](https://companieshouse.atlassian.net/wiki/spaces/TP/pages/5369659489/OpenTelemetry+Instrumenting+Services+with+docker-chs-development)
+
+## `chs-dev zero`
+
+Disables all enabled modules and services. Services in development mode and excluded services are left unchanged
+
+```
+USAGE
+  $ chs-dev zero
+
+DESCRIPTION
+  Disables all enabled modules and services. Services in development mode and
+  excluded services are left unchanged
+
+EXAMPLES
+  Disable all enabled modules and services
+
+    $ chs-dev zero
+```
 <!-- commandsstop -->
 
 ## chs-dev Configuration
