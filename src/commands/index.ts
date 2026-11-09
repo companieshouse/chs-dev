@@ -26,6 +26,7 @@ import ComposeLogs from "./deprecated/compose-logs.js";
 import ServiceLogs from "./deprecated/service-logs.js";
 import TroubleshootAnalysis from "./troubleshoot/analyse.js";
 import TroubleshootReport from "./troubleshoot/report.js";
+import Zero from "./zero.js";
 
 export const commands = {
     down: Down,
@@ -55,7 +56,8 @@ export const commands = {
     "modules:disable": ModulesDisable,
     "service-logs": ServiceLogs,
     "troubleshoot:analyse": TroubleshootAnalysis,
-    "troubleshoot:report": TroubleshootReport
+    "troubleshoot:report": TroubleshootReport,
+    zero: Zero
 };
 
 export default commands;
