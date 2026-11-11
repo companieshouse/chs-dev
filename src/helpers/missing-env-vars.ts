@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "fs";
+import { parse } from "dotenv";
 import { join } from "path";
 import Service from "../model/Service.js";
 import { serviceEnvFilePath } from "./service-repository.js";
@@ -11,24 +12,10 @@ const REFERENCE = /\$\{([A-Za-z_][A-Za-z0-9_]*)([^}]*)\}/g;
 const isRequired = (modifier: string) => modifier === "" || /^:?\?/.test(modifier);
 
 /**
- * Parses KEY=VALUE lines of an env file, ignoring blanks and comments
+ * Parses an env file, returning an empty object when it does not exist
  */
-export const parseEnvFile = (path: string): Record<string, string> => {
-    if (!existsSync(path)) {
-        return {};
-    }
-
-    return readFileSync(path, "utf8").split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(line => line && !line.startsWith("#"))
-        .reduce((vars, line) => {
-            const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(.*)$/.exec(line);
-            if (match) {
-                vars[match[1]] = match[2].replace(/^(['"])(.*)\1$/, "$2");
-            }
-            return vars;
-        }, {} as Record<string, string>);
-};
+export const parseEnvFile = (path: string): Record<string, string> =>
+    existsSync(path) ? parse(readFileSync(path)) : {};
 
 /**
  * Lists the variables a service env file requires from the environment, i.e.
