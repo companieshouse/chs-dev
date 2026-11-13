@@ -1,3 +1,5 @@
+import { execFileSync } from "child_process";
+import { existsSync } from "fs";
 import { basename, join } from "path";
 import CONSTANTS from "../model/Constants.js";
 import Service from "../model/Service.js";
@@ -22,3 +24,25 @@ export const repositoryName = (service: Pick<Service, "name" | "repository">): s
  */
 export const serviceEnvFilePath = (service: Pick<Service, "name" | "repository">): string =>
     join("repositories", repositoryName(service), CONSTANTS.SERVICE_ENV_FILE);
+
+export const MISSING_REPOSITORY = "missing";
+
+/**
+ * Branch checked out in the given repository folder: "missing" when the
+ * folder does not exist, "unknown" when it is not a readable git repository
+ * ("HEAD" when detached).
+ */
+export const currentBranch = (repositoryPath: string): string => {
+    if (!existsSync(repositoryPath)) {
+        return MISSING_REPOSITORY;
+    }
+
+    try {
+        return execFileSync(
+            "git", ["-C", repositoryPath, "rev-parse", "--abbrev-ref", "HEAD"],
+            { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+        ).trim() || "unknown";
+    } catch {
+        return "unknown";
+    }
+};
