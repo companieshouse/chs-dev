@@ -28,6 +28,14 @@ const snapshot: State = {
 const getServiceStatusesMock = jest.fn();
 const otelServiceNamesMock = ["otel-collector", "loki", "tempo"];
 
+jest.mock("../../src/helpers/service-repository", () => {
+    const actual = jest.requireActual("../../src/helpers/service-repository") as object;
+    return {
+        ...actual,
+        currentBranch: (path: string) => path.endsWith("repo2") ? "missing" : "main"
+    };
+});
+
 jest.mock("../../src/state/inventory", () => {
     return {
         Inventory: function () {
