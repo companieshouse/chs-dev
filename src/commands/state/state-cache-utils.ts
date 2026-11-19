@@ -3,6 +3,7 @@ import path, { join } from "path";
 import yaml from "yaml";
 import { readFileContent, writeContentToFile } from "../../helpers/file-utils.js";
 import { hashAlgorithm } from "../../helpers/index.js";
+import { getIncludePath } from "../../helpers/include-entry.js";
 import ChsDevConfig from "../../model/Config.js";
 import { confirm } from "../../helpers/user-input.js";
 
@@ -88,7 +89,7 @@ export function validateCacheIncludePath (data: StateCache, chsDevConfig: ChsDev
         return data;
     }
 
-    const normalizedCacheIncludePath = path.normalize(includes[0]);
+    const normalizedCacheIncludePath = path.normalize(getIncludePath(includes[0]));
     const indexBeforeProjectName = normalizedCacheIncludePath.indexOf(projectName);
 
     if (indexBeforeProjectName === -1) {
@@ -117,11 +118,20 @@ export function restoreStateFiles (config: ChsDevConfig, state: StateCache["stat
     writeContentToFile(dockerCompose.snapshot, dockerComposeFilePath);
 }
 
-function remapCacheIncludePathWithProjectPath (pathList: string[], projectPath: string, cacheIncludeAbsolutePath:string): string[] {
-    return pathList.map((includePath: string) => {
-        return includePath.replace(
-            cacheIncludeAbsolutePath, projectPath
-        );
-    });
+function remapCacheIncludePathWithProjectPath<T> (value: T, projectPath: string, cacheIncludeAbsolutePath: string): T {
+    if (typeof value === "string") {
+        return value.replace(cacheIncludeAbsolutePath, projectPath) as T;
+    }
 
+    if (Array.isArray(value)) {
+        return value.map(item => remapCacheIncludePathWithProjectPath(item, projectPath, cacheIncludeAbsolutePath)) as T;
+    }
+
+    if (value && typeof value === "object") {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, item]) => [key, remapCacheIncludePathWithProjectPath(item, projectPath, cacheIncludeAbsolutePath)])
+        ) as T;
+    }
+
+    return value;
 }

@@ -4,6 +4,7 @@ import { Inventory } from "./inventory.js";
 import { join } from "path";
 import yaml from "yaml";
 import { cloneRepo, updateRepo } from "../helpers/git.js";
+import { getIncludePath } from "../helpers/include-entry.js";
 import Service from "../model/Service.js";
 
 /**
@@ -35,7 +36,7 @@ export class PermanentRepositories {
         const dockerComposeSpec = yaml.parse(readFileSync(dockerComposeSpecFile).toString("utf8"));
 
         for (const includedSpecFile of dockerComposeSpec.include) {
-            const service = this.findServiceWithSource(includedSpecFile);
+            const service = this.findServiceWithSource(getIncludePath(includedSpecFile));
 
             if (service) {
                 console.log(`Updating ${service.name}`);
