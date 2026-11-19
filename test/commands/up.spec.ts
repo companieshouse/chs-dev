@@ -63,6 +63,12 @@ const otelGeneratorMock = {
 
 jest.mock("../../src/state/state-manager");
 
+const findMissingRepositoriesMock = jest.fn();
+jest.mock("../../src/helpers/service-repository", () => ({
+    ...jest.requireActual("../../src/helpers/service-repository") as object,
+    findMissingRepositories: (...args: unknown[]) => findMissingRepositoriesMock(...args)
+}));
+
 jest.mock("../../src/state/inventory");
 
 jest.mock("../../src/run/dependency-cache");
@@ -85,6 +91,7 @@ describe("Up command", () => {
     let parseMock;
 
     const setUpCommand = (snapshot: State) => {
+        findMissingRepositoriesMock.mockReturnValue({});
         const cwdSpy = jest.spyOn(process, "cwd");
         cwdSpy.mockReturnValue("/users/user/docker-chs/");
 
@@ -168,6 +175,13 @@ describe("Up command", () => {
 
         expect(dockerComposeMock.up).toHaveBeenCalledTimes(1);
         expect(otelGeneratorMock.modifyGeneratedDockerCompose).toHaveBeenCalledWith(flagsMock);
+    });
+
+    it("should fail without starting when a required repository is not cloned", async () => {
+        findMissingRepositoriesMock.mockReturnValueOnce({ "repo-one": ["service-one"] });
+
+        await expect(up.run()).rejects.toThrow(/repo-one \(service-one\)/);
+        expect(dockerComposeMock.up).not.toHaveBeenCalled();
     });
 
     it("should set dynamicEnv with env flag", async () => {

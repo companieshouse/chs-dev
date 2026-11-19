@@ -18,6 +18,7 @@ import Service from "../model/Service.js";
 import { greenBright } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
 import { findMissingEnvVars } from "../helpers/missing-env-vars.js";
+import { findMissingRepositories } from "../helpers/service-repository.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import { documentationLink } from "../helpers/link.js";
 
@@ -191,6 +192,21 @@ export default class Up extends Command {
         const excluded = state.excludedServices ?? [];
         const services = new ServiceLoader(this.inventory).loadServices(state)
             .filter(service => !excluded.includes(service.name));
+
+        const missingRepositories = Object.entries(
+            findMissingRepositories(this.chsDevConfig.projectPath, services)
+        ).map(([repository, names]) => `  ${repository} (${names.join(", ")})`);
+
+        if (missingRepositories.length) {
+            this.error(
+                `Repositories not cloned under repositories/, so their chs-dev.env cannot be read:\n${missingRepositories.join("\n")}`,
+                {
+                    suggestions: [
+                        "Clone the repositories listed above into the repositories folder, then run again"
+                    ]
+                }
+            );
+        }
 
         const missing = findMissingEnvVars(
             this.chsDevConfig.projectPath, services, this.chsDevConfig.env

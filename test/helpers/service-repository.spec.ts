@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 import { mkdirSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { currentBranch, repositoryName } from "../../src/helpers/service-repository";
+import { currentBranch, findMissingRepositories, repositoryName } from "../../src/helpers/service-repository";
 
 describe("repositoryName", () => {
     it.each([
@@ -40,5 +40,24 @@ describe("currentBranch", () => {
     it("returns the checked out branch", () => {
         execSync("git init -q -b feature-x && git -c user.name=t -c user.email=t@t commit -q --allow-empty -m init", { cwd: dir });
         expect(currentBranch(dir)).toBe("feature-x");
+    });
+});
+
+describe("findMissingRepositories", () => {
+    it("groups services by missing repository and ignores infrastructure and cloned ones", () => {
+        const project = mkdtempSync(join(tmpdir(), "chs-dev-"));
+        mkdirSync(join(project, "repositories", "cloned"), { recursive: true });
+        const url = (name: string) => ({ url: `git@github.com:companieshouse/${name}.git` });
+
+        try {
+            expect(findMissingRepositories(project, [
+                { name: "eric", module: "m", repository: url("eric") },
+                { name: "eric-web", module: "m", repository: url("eric") },
+                { name: "a", module: "m", repository: url("cloned") },
+                { name: "redis", module: "infrastructure", repository: null }
+            ])).toEqual({ eric: ["eric", "eric-web"] });
+        } finally {
+            rmSync(project, { recursive: true, force: true });
+        }
     });
 });

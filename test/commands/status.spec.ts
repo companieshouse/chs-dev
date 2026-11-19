@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "util";
 import { jest, expect } from "@jest/globals";
 import Status from "../../src/commands/status";
 import { Config } from "@oclif/core";
@@ -32,7 +33,8 @@ jest.mock("../../src/helpers/service-repository", () => {
     const actual = jest.requireActual("../../src/helpers/service-repository") as object;
     return {
         ...actual,
-        currentBranch: (path: string) => path.endsWith("repo2") ? "missing" : "main"
+        currentBranch: (path: string) => path.endsWith("repo2") ? "missing" : "main",
+        findMissingRepositories: () => ({ repo2: ["service-two"] })
     };
 });
 
@@ -112,7 +114,7 @@ describe("Status command", () => {
     it("should log without docker compose statuses", async () => {
         await status.run();
 
-        expect(logMock.mock.calls).toMatchSnapshot();
+        expect(logMock.mock.calls.map(([message]) => [stripVTControlCharacters(message)])).toMatchSnapshot();
         expect(logJsonMock).not.toHaveBeenCalled();
     });
 
@@ -130,7 +132,7 @@ describe("Status command", () => {
 
         await status.run();
 
-        expect(logMock.mock.calls).toMatchSnapshot();
+        expect(logMock.mock.calls.map(([message]) => [stripVTControlCharacters(message)])).toMatchSnapshot();
     });
 
     it("should log with their docker compose statuses with otel services", async () => {
@@ -150,7 +152,7 @@ describe("Status command", () => {
 
         await status.run();
 
-        expect(logMock.mock.calls).toMatchSnapshot();
+        expect(logMock.mock.calls.map(([message]) => [stripVTControlCharacters(message)])).toMatchSnapshot();
     });
 
     it("should log json correctly", async () => {

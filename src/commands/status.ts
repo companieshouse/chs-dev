@@ -3,14 +3,15 @@ import { Command, Config, Flags } from "@oclif/core";
 import { statusColouriser } from "../helpers/colouriser.js";
 import loadConfig from "../helpers/config-loader.js";
 import ChsDevConfig from "../model/Config.js";
+import Service from "../model/Service.js";
 import State from "../model/State.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import { Inventory } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
-import { MISSING_REPOSITORY, repositoryName, currentBranch } from "../helpers/service-repository.js";
+import { MISSING_REPOSITORY, repositoryName, currentBranch, findMissingRepositories } from "../helpers/service-repository.js";
 import { join } from "path";
-import { red } from "ansis";
+import { red, yellow } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
 
 export default class Status extends Command {
@@ -107,14 +108,23 @@ export default class Status extends Command {
 
         enabledServiceNames = [...enabledServiceNames, ...enabledOtelServiceNames].sort();
 
+        const activeServices = enabledServiceNames
+            .map(name => this.inventory.services.find(s => s.name === name))
+            .filter((service): service is Service => !!service)
+            .filter(service => !state.excludedServices.includes(service.name));
+        const missingRepositories = findMissingRepositories(this.chsDevConfig.projectPath, activeServices);
+
         if (flags.json) {
-            const jsonRepresentation = this.constructJsonRepresentation(
-                state, enabledServiceNames, serviceState, branchOf
-            );
+            const jsonRepresentation = {
+                ...this.constructJsonRepresentation(
+                    state, enabledServiceNames, serviceState, branchOf
+                ),
+                missingRepositories
+            };
 
             this.logJson(jsonRepresentation);
         } else {
-            this.humanReadableLog(state, serviceState, enabledServiceNames, branchOf);
+            this.humanReadableLog(state, serviceState, enabledServiceNames, branchOf, missingRepositories);
         }
     }
 
@@ -142,7 +152,8 @@ export default class Status extends Command {
         state: State,
         serviceState: (serviceName: string, colourise: boolean) => string,
         enabledServiceNames: string[],
-        branchOf: (serviceName: string) => string
+        branchOf: (serviceName: string) => string,
+        missingRepositories: Record<string, string[]>
     ) {
         const branchLabel = (serviceName: string) => {
             const branch = branchOf(serviceName);
@@ -169,6 +180,15 @@ export default class Status extends Command {
         this.log("\nManually deactivated services:");
         for (const file of excludedServices.sort() || []) {
             this.log(` - ${file}`);
+        }
+
+        const missing = Object.entries(missingRepositories);
+
+        if (missing.length) {
+            this.log(yellow(`\n⚠ Required repositories not cloned under repositories/ (docker compose cannot read their chs-dev.env):`));
+            for (const [repository, names] of missing) {
+                this.log(red(` - ${repository} (used by ${names.join(", ")})`));
+            }
         }
     }
 }

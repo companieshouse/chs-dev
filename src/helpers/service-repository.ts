@@ -46,3 +46,26 @@ export const currentBranch = (repositoryPath: string): string => {
         return "unknown";
     }
 };
+
+/**
+ * Services of the infrastructure module (redis, mongo, kafka...) have no
+ * repository, so they never need one cloned.
+ */
+export const requiresRepository = (service: Pick<Service, "module">): boolean =>
+    service.module !== "infrastructure";
+
+/**
+ * Finds the repositories, which are not cloned under repositories/, of the
+ * given services: repository name -> names of the services using it.
+ */
+export const findMissingRepositories = (
+    projectPath: string, services: Pick<Service, "name" | "module" | "repository">[]
+): Record<string, string[]> =>
+    services.filter(requiresRepository).reduce((missing, service) => {
+        const repository = repositoryName(service);
+
+        if (!existsSync(join(projectPath, "repositories", repository))) {
+            missing[repository] = [...(missing[repository] ?? []), service.name];
+        }
+        return missing;
+    }, {} as Record<string, string[]>);
