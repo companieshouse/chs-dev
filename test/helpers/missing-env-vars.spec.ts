@@ -20,7 +20,8 @@ describe("missing-env-vars", () => {
             "C=${NOPE}",
             "D=${DEFAULTED:-x}",
             "E=${REQUIRED:?must be set}",
-            "F=plain"
+            "F=plain",
+            "G=${F}"
         ].join("\n"));
         writeFileSync(join(dir, "repositories/ok/chs-dev.env"), "A=${SECRET}\n");
     });

@@ -25,7 +25,9 @@ export const parseEnvFile = (path: string): Record<string, string> =>
 export const requiredVariables = (envFile: string): string[] => {
     const required = new Set<string>();
 
-    Object.values(parseEnvFile(envFile)).forEach(value => {
+    const entries = parseEnvFile(envFile);
+
+    Object.values(entries).forEach(value => {
         for (const match of value.matchAll(REFERENCE)) {
             if (isRequired(match[2])) {
                 required.add(match[1]);
@@ -33,7 +35,8 @@ export const requiredVariables = (envFile: string): string[] => {
         }
     });
 
-    return [...required];
+    // variables defined in the file itself are resolved by compose
+    return [...required].filter(name => !(name in entries));
 };
 
 /**
