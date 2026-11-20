@@ -242,6 +242,26 @@ describe("DockerComposeFileGenerator", () => {
             });
         });
 
+        it("applies the same env files to a service in development mode, using its local compose file", () => {
+            mkdirSync(join(tempDir, "repositories/env-repo"), { recursive: true });
+            writeFileSync(join(tempDir, ".env"), "A=1");
+            writeFileSync(join(tempDir, "repositories/env-repo/chs-dev.env"), "A=3");
+
+            dockerComposeFileGenerator.generateDockerComposeFile([{ ...envService, liveUpdate: true }]);
+
+            const output = parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8"));
+            const envFiles = [".env", "repositories/env-repo/chs-dev.env"].map(file => join(tempDir, file));
+            const overrideFile = join(tempDir, "local/env-overrides/env-service.docker-compose.yaml");
+
+            expect(output.include).toEqual([{
+                path: [join(tempDir, "local", "env-service", "docker-compose.yaml"), overrideFile],
+                env_file: envFiles
+            }]);
+            expect(parse(readFileSync(overrideFile).toString("utf8"))).toEqual({
+                services: { "env-service": { env_file: envFiles } }
+            });
+        });
+
         it("includes only existing env files and falls back to the path when there are none", () => {
             dockerComposeFileGenerator.generateDockerComposeFile([envService]);
             expect(parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8")).include)
