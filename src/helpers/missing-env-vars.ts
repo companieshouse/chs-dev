@@ -37,13 +37,26 @@ export const requiredVariables = (envFile: string): string[] => {
 };
 
 /**
+ * Lists the shared env files from the COMPOSE_ENV_FILES entry of the chs-dev
+ * config env (later files win), falling back to the defaults.
+ */
+export const sharedEnvFiles = (configEnv: Record<string, string> = {}): string[] => {
+    const files = (configEnv.COMPOSE_ENV_FILES ?? "")
+        .split(",")
+        .map(file => file.trim())
+        .filter(Boolean);
+
+    return files.length ? files : CONSTANTS.DEFAULT_COMPOSE_ENV_FILES;
+};
+
+/**
  * Loads the variables compose uses for interpolation: the shared env files
  * (later files win), the chs-dev config env, then the process environment.
  */
 export const loadInterpolationEnv = (
     projectPath: string, configEnv: Record<string, string> = {}
 ): Record<string, string | undefined> => ({
-    ...CONSTANTS.SHARED_ENV_FILES.reduce(
+    ...sharedEnvFiles(configEnv).reduce(
         (vars, file) => ({ ...vars, ...parseEnvFile(join(projectPath, file)) }), {}
     ),
     ...configEnv,

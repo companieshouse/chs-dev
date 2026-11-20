@@ -230,7 +230,7 @@ describe("DockerComposeFileGenerator", () => {
             dockerComposeFileGenerator.generateDockerComposeFile([envService]);
 
             const output = parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8"));
-            const envFiles = ["global.env", ".env", "repositories/env-repo/chs-dev.env"].map(file => join(tempDir, file));
+            const envFiles = [".env", "global.env", "repositories/env-repo/chs-dev.env"].map(file => join(tempDir, file));
             const overrideFile = join(tempDir, "local/env-overrides/env-service.docker-compose.yaml");
 
             expect(output.include).toEqual([{

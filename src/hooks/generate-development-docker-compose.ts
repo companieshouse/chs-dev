@@ -1,6 +1,7 @@
 import { IConfig } from "@oclif/config";
 import { Hook } from "@oclif/core";
 import { DockerComposeFileGenerator } from "../generator/docker-compose-file-generator.js";
+import { sharedEnvFiles } from "../helpers/missing-env-vars.js";
 import loadConfig from "../helpers/config-loader.js";
 import { Inventory } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
@@ -10,7 +11,7 @@ export const hook: Hook<"generate-development-docker-compose"> = async function 
     const chsDevConfig = loadConfig();
     const path = chsDevConfig.projectPath;
     const inventory = new Inventory(path, config.cacheDir);
-    const dockerComposeFileGenerator = new DockerComposeFileGenerator(path);
+    const dockerComposeFileGenerator = new DockerComposeFileGenerator(path, sharedEnvFiles(chsDevConfig.env));
     const service = inventory.services.find(service => service.name === serviceName && !service.source.includes("tilt/"));
 
     const stateManager = new StateManager(path);

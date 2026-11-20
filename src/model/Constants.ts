@@ -24,7 +24,7 @@ export const CONSTANTS = {
      * services. Listed in order of increasing precedence; the service's own
      * env file overrides both
      */
-    SHARED_ENV_FILES: ["global.env", ".env"],
+    DEFAULT_COMPOSE_ENV_FILES: [".env", "global.env"],
 
     /**
      * Directory, within the project, for the generated compose files which

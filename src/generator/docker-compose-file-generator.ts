@@ -17,7 +17,7 @@ import { RunnableServicesObject, ServiceWithLiveUpdate } from "./interface/index
 
 export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
-    constructor (path: string) {
+    constructor (path: string, private readonly sharedEnvFiles: string[] = CONSTANTS.DEFAULT_COMPOSE_ENV_FILES) {
         super(path, "docker-compose.yaml");
     }
 
@@ -201,7 +201,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
     /**
      * Creates the include entry for a service compose file. The env files
-     * (global.env, .env and the chs-dev.env from the service repository, in
+     * (the COMPOSE_ENV_FILES shared env files and the chs-dev.env from the service repository, in
      * increasing order of precedence) are used both to interpolate the
      * included file and, through a generated override file, as the env_file of
      * the services it defines. Infrastructure services and services with no
@@ -212,7 +212,7 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
      */
     private createIncludeEntry (composeFile: string, services: Service[]): IncludeEntry {
         const envFiles = new Map<string, string[]>();
-        const sharedEnvFiles = CONSTANTS.SHARED_ENV_FILES
+        const sharedEnvFiles = this.sharedEnvFiles
             .map(file => join(this.path, file))
             .filter(file => existsSync(file));
 
