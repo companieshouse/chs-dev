@@ -195,7 +195,13 @@ export default class Up extends Command {
 
         const missingRepositories = Object.entries(
             findMissingRepositories(this.chsDevConfig.projectPath, services)
-        ).map(([repository, names]) => `  ${repository} (${names.join(", ")})`);
+        ).map(([repository, names]) => {
+            const cloneable = services.some(
+                service => names.includes(service.name) && !!service.repository?.url
+            );
+
+            return `  ${repository} (${names.join(", ")})${cloneable ? "" : " - cannot be cloned: no repository.url configured for the service"}`;
+        });
 
         if (missingRepositories.length) {
             this.error(

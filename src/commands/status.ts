@@ -9,7 +9,7 @@ import { DockerCompose } from "../run/docker-compose.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import { Inventory } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
-import { MISSING_REPOSITORY, repositoryName, currentBranch, findMissingRepositories } from "../helpers/service-repository.js";
+import { MISSING_REPOSITORY, repositoryName, currentBranch, findMissingRepositories, requiresRepository } from "../helpers/service-repository.js";
 import { join } from "path";
 import { red, yellow } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
@@ -83,7 +83,7 @@ export default class Status extends Command {
         const branchOf = (serviceName: string): string => {
             const service = this.inventory.services.find(s => s.name === serviceName);
 
-            if (!service) {
+            if (!service || !requiresRepository(service)) {
                 return "n/a";
             }
 
