@@ -129,7 +129,7 @@ describe("PermanentRepositories", () => {
 
         await permanentRepositories.ensureAllExistAndAreUpToDate();
 
-        expect(existsSyncMock).toHaveBeenCalledWith(join(config.projectPath, "repositories", serviceOne.name));
+        expect(existsSyncMock).toHaveBeenCalledWith(join(config.projectPath, "repositories", "repo1"));
     });
 
     it("clones repo when permanent repo has not be cloned", async () => {
@@ -140,7 +140,7 @@ describe("PermanentRepositories", () => {
 
         expect(cloneRepoMock).toHaveBeenCalledWith({
             repositoryUrl: serviceOne.repository.url,
-            destinationPath: join(config.projectPath, "repositories", serviceOne.name)
+            destinationPath: join(config.projectPath, "repositories", "repo1")
         });
     });
 
@@ -156,7 +156,7 @@ describe("PermanentRepositories", () => {
 
         expect(cloneRepoMock).toHaveBeenCalledWith({
             repositoryUrl: serviceThree.repository.url,
-            destinationPath: join(config.projectPath, "repositories", serviceThree.name),
+            destinationPath: join(config.projectPath, "repositories", "repo3"),
             branch: serviceThree.repository.branch
         });
     });
@@ -184,7 +184,7 @@ describe("PermanentRepositories", () => {
         await permanentRepositories.ensureAllExistAndAreUpToDate();
 
         expect(updateRepoMock).toHaveBeenCalledWith(
-            join(config.projectPath, "repositories", serviceOne.name)
+            join(config.projectPath, "repositories", "repo1")
         );
     });
 
@@ -218,8 +218,46 @@ describe("PermanentRepositories", () => {
 
         await permanentRepositories.ensureAllExistAndAreUpToDate();
 
-        expect(cloneRepoMock).toHaveBeenCalledTimes(1);
+        expect(cloneRepoMock).toHaveBeenCalledTimes(3);
         expect(updateRepoMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("clones, without updating, the repo of a service not flagged as repository required", async () => {
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
+
+        readFileSyncMock.mockReturnValue(
+            Buffer.from(dockerComposeConfigurationIncludingServices(serviceTwo), "utf8")
+        );
+
+        await permanentRepositories.ensureAllExistAndAreUpToDate();
+
+        expect(cloneRepoMock).toHaveBeenCalledWith({
+            repositoryUrl: serviceTwo.repository.url,
+            destinationPath: join(config.projectPath, "repositories", "repo2")
+        });
+    });
+
+    it("clones once a repository shared by several services, into the folder named after the repository", async () => {
+        const shared = "git@github.com:companieshouse/eric.git";
+        const eric = { ...serviceTwo, name: "eric", repository: { url: shared } };
+        const ericWeb = { ...serviceTwo, name: "eric-web", repository: { url: shared } };
+        const redis = { ...serviceTwo, name: "redis", module: "infrastructure", repository: null };
+        const sharedServices = [eric, ericWeb, redis];
+
+        existsSyncMock.mockReturnValueOnce(true)
+            .mockReturnValue(false);
+        readFileSyncMock.mockReturnValue(
+            Buffer.from(yaml.stringify({ include: ["services/modules/module-one/service-two.docker-compose.yaml"] }), "utf8")
+        );
+
+        await new PermanentRepositories(config, { services: sharedServices } as unknown as Inventory).ensureAllExistAndAreUpToDate();
+
+        expect(cloneRepoMock).toHaveBeenCalledTimes(1);
+        expect(cloneRepoMock).toHaveBeenCalledWith({
+            repositoryUrl: shared,
+            destinationPath: join(config.projectPath, "repositories", "eric")
+        });
     });
 
     it("rejects if service does not have repository when repo required", async () => {

@@ -817,6 +817,41 @@ within the current working directory.
 * `ecr_login_threshold_hours` - `number` - Number of hours between attempting
   to login to ECR repos.
 
+#### Service env files
+
+The generated Docker Compose file uses the Compose
+[`include`](https://docs.docker.com/compose/how-tos/multiple-compose-files/include/)
+feature to bring in each service's compose file. The env files below are used
+both to interpolate that compose file and as the `env_file` of its services.
+In increasing order of precedence:
+
+1. `.env` (project root)
+2. `global.env` (project root)
+3. `chs-dev.env` (root of the service's repository, i.e.
+   `repositories/<repository>/chs-dev.env`)
+
+The shared files can be changed by setting `COMPOSE_ENV_FILES` (a
+comma-separated list of file names) in the `env` section of
+`chs-dev/config.yaml`; the default is `.env,global.env`. Files that do not
+exist are skipped. Infrastructure services (e.g. redis, mongo) have no
+repository, so only the shared files apply to them.
+
+The per-service overrides are generated in `local/env-overrides` and must not
+be edited manually.
+
+Before starting, `chs-dev up` checks that:
+
+* the repositories of all enabled (non-excluded) services are cloned under
+  `repositories/`; infrastructure services are skipped
+* every variable referenced by a service's `chs-dev.env` (typically secrets) is
+  defined in the env files or in `chs-dev/config.yaml`
+
+`up` stops and lists what is missing if either check fails.
+
+`chs-dev status` shows the checked-out branch of each service repository.
+It shows `missing` if the repository is not cloned, `unknown` if it is not a
+readable git repository, and `n/a` for infrastructure services.
+
 #### Environment variables
 
 * `CHS_DEV_PROJECT` - specifies the directory containing the project files to

@@ -1,11 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { EOL } from "os";
-import { join } from "path";
+import { basename, join } from "path";
 import yaml from "yaml";
 import { deduplicate } from "../helpers/array-reducers.js";
 import { getInitialDockerComposeFile } from "../helpers/docker-compose-file.js";
 import { getAllFilesInDirectory } from "../helpers/file-utils.js";
-import { DockerComposeSpec } from "../model/DockerComposeSpec.js";
+import { serviceEnvFilePath } from "../helpers/service-repository.js";
+import CONSTANTS from "../model/Constants.js";
+import { DockerComposeSpec, IncludeEntry } from "../model/DockerComposeSpec.js";
 import { Service } from "../model/Service.js";
 import { getBuilder } from "../state/builders.js";
 import DevelopmentDockerComposeSpecFactory from "./development/development-docker-compose-factory.js";
@@ -15,7 +17,7 @@ import { RunnableServicesObject, ServiceWithLiveUpdate } from "./interface/index
 
 export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
-    constructor (path: string) {
+    constructor (path: string, private readonly sharedEnvFiles: string[] = CONSTANTS.DEFAULT_COMPOSE_ENV_FILES) {
         super(path, "docker-compose.yaml");
     }
 
@@ -166,21 +168,92 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
      * @returns The modified Docker Compose configuration with the appropriate services included.
      */
     private handleIncludePropertiesInMainDockerCompose (dockerCompose:DockerComposeSpec, { runnableServices, infrastructureSources: infrastructuralServicesSources }:RunnableServicesObject, hasExcludedServices): DockerComposeSpec {
+        rmSync(join(this.path, CONSTANTS.ENV_OVERRIDES_DIRECTORY), { recursive: true, force: true });
+
         if (hasExcludedServices) {
             const localServicesCompose = runnableServices
                 .filter(service => service.liveUpdate)
-                .map(service => join(this.path, "local", service.name, "docker-compose.yaml"));
+                .map(service => this.createIncludeEntry(join(this.path, "local", service.name, "docker-compose.yaml"), [service]));
 
-            const genratedServicesCompose = getAllFilesInDirectory(join(this.path, "exclusion-runnable-services"));
+            const genratedServicesCompose = getAllFilesInDirectory(join(this.path, "exclusion-runnable-services"))
+                .map(file => this.createIncludeEntry(
+                    file,
+                    runnableServices.filter(service => basename(file) === `${service.name}.docker-compose.yaml`)
+                ));
 
             dockerCompose.include = [...localServicesCompose, ...genratedServicesCompose, ...infrastructuralServicesSources];
         } else {
-            dockerCompose.include = runnableServices.map(
-                service => service.liveUpdate
+            const servicesByComposeFile = new Map<string, ServiceWithLiveUpdate[]>();
+
+            runnableServices.forEach(service => {
+                const composeFile = service.liveUpdate
                     ? join(this.path, "local", service.name, "docker-compose.yaml")
-                    : service.source
-            ).reduce(deduplicate, []);
+                    : service.source;
+
+                servicesByComposeFile.set(composeFile, [...(servicesByComposeFile.get(composeFile) ?? []), service]);
+            });
+
+            dockerCompose.include = [...servicesByComposeFile.entries()]
+                .map(([composeFile, services]) => this.createIncludeEntry(composeFile, services));
         }
         return dockerCompose;
+    }
+
+    /**
+     * Creates the include entry for a service compose file. The env files
+     * (the COMPOSE_ENV_FILES shared env files and the chs-dev.env from the service repository, in
+     * increasing order of precedence) are used both to interpolate the
+     * included file and, through a generated override file, as the env_file of
+     * the services it defines. Infrastructure services and services with no
+     * env file available are included by path only.
+     *
+     * @param composeFile - path to the compose file to include.
+     * @param services - the services defined by the compose file.
+     */
+    private createIncludeEntry (composeFile: string, services: Service[]): IncludeEntry {
+        const envFiles = new Map<string, string[]>();
+        const sharedEnvFiles = this.sharedEnvFiles
+            .map(file => join(this.path, file))
+            .filter(file => existsSync(file));
+
+        services
+            .filter(service => service.module !== "infrastructure")
+            .forEach(service => {
+                const serviceEnvFile = join(this.path, serviceEnvFilePath(service));
+
+                envFiles.set(
+                    service.name,
+                    [...sharedEnvFiles, ...(existsSync(serviceEnvFile) ? [serviceEnvFile] : [])]
+                );
+            });
+
+        const interpolationEnvFiles = [...new Set([...envFiles.values()].flat())];
+
+        if (!interpolationEnvFiles.length) {
+            return composeFile;
+        }
+
+        const overridesDirectory = join(this.path, CONSTANTS.ENV_OVERRIDES_DIRECTORY);
+        const overrideFile = join(overridesDirectory, `${services[0].name}.docker-compose.yaml`);
+
+        mkdirSync(overridesDirectory, { recursive: true });
+        writeFileSync(
+            overrideFile,
+            [
+                "# DO NOT MODIFY THIS FILE MANUALLY - this file is generated automatically and changes may be lost",
+                yaml.stringify({
+                    services: Object.fromEntries(
+                        [...envFiles.entries()]
+                            .filter(([, files]) => files.length)
+                            .map(([name, files]) => [name, { env_file: files }])
+                    )
+                })
+            ].join(EOL)
+        );
+
+        return {
+            path: [composeFile, overrideFile],
+            env_file: interpolationEnvFiles
+        };
     }
 }

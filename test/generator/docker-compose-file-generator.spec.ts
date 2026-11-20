@@ -206,6 +206,74 @@ describe("DockerComposeFileGenerator", () => {
 
     });
 
+    describe("generateDockerComposeFile env files", () => {
+        const envService = {
+            ...services[0],
+            name: "env-service",
+            source: "services/modules/module-one/env-service.docker-compose.yaml",
+            repository: { url: "git@github.com:companieshouse/env-repo.git" },
+            liveUpdate: false
+        } as unknown as Service & { liveUpdate: boolean };
+
+        afterEach(() => {
+            rmSync(join(tempDir, ".env"), { force: true });
+            rmSync(join(tempDir, "global.env"), { force: true });
+            rmSync(join(tempDir, "repositories"), { recursive: true, force: true });
+        });
+
+        it("includes service with env files for interpolation and as env_file of the service", () => {
+            mkdirSync(join(tempDir, "repositories/env-repo"), { recursive: true });
+            writeFileSync(join(tempDir, ".env"), "A=1");
+            writeFileSync(join(tempDir, "global.env"), "A=2");
+            writeFileSync(join(tempDir, "repositories/env-repo/chs-dev.env"), "A=3");
+
+            dockerComposeFileGenerator.generateDockerComposeFile([envService]);
+
+            const output = parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8"));
+            const envFiles = [".env", "global.env", "repositories/env-repo/chs-dev.env"].map(file => join(tempDir, file));
+            const overrideFile = join(tempDir, "local/env-overrides/env-service.docker-compose.yaml");
+
+            expect(output.include).toEqual([{
+                path: [envService.source, overrideFile],
+                env_file: envFiles
+            }]);
+            expect(parse(readFileSync(overrideFile).toString("utf8"))).toEqual({
+                services: { "env-service": { env_file: envFiles } }
+            });
+        });
+
+        it("applies the same env files to a service in development mode, using its local compose file", () => {
+            mkdirSync(join(tempDir, "repositories/env-repo"), { recursive: true });
+            writeFileSync(join(tempDir, ".env"), "A=1");
+            writeFileSync(join(tempDir, "repositories/env-repo/chs-dev.env"), "A=3");
+
+            dockerComposeFileGenerator.generateDockerComposeFile([{ ...envService, liveUpdate: true }]);
+
+            const output = parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8"));
+            const envFiles = [".env", "repositories/env-repo/chs-dev.env"].map(file => join(tempDir, file));
+            const overrideFile = join(tempDir, "local/env-overrides/env-service.docker-compose.yaml");
+
+            expect(output.include).toEqual([{
+                path: [join(tempDir, "local", "env-service", "docker-compose.yaml"), overrideFile],
+                env_file: envFiles
+            }]);
+            expect(parse(readFileSync(overrideFile).toString("utf8"))).toEqual({
+                services: { "env-service": { env_file: envFiles } }
+            });
+        });
+
+        it("includes only existing env files and falls back to the path when there are none", () => {
+            dockerComposeFileGenerator.generateDockerComposeFile([envService]);
+            expect(parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8")).include)
+                .toEqual([envService.source]);
+
+            writeFileSync(join(tempDir, "global.env"), "A=2");
+            dockerComposeFileGenerator.generateDockerComposeFile([envService]);
+            expect(parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8")).include[0].env_file)
+                .toEqual([join(tempDir, "global.env")]);
+        });
+    });
+
     describe("generateDevelopmentServiceDockerComposeFile without builderVersion", () => {
         let serviceDockerComposeFile: string;
 

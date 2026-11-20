@@ -3,11 +3,15 @@ import { Command, Config, Flags } from "@oclif/core";
 import { statusColouriser } from "../helpers/colouriser.js";
 import loadConfig from "../helpers/config-loader.js";
 import ChsDevConfig from "../model/Config.js";
+import Service from "../model/Service.js";
 import State from "../model/State.js";
 import { DockerCompose } from "../run/docker-compose.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import { Inventory } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
+import { MISSING_REPOSITORY, repositoryName, currentBranch, findMissingRepositories, requiresRepository } from "../helpers/service-repository.js";
+import { join } from "path";
+import { red, yellow } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
 
 export default class Status extends Command {
@@ -75,6 +79,26 @@ export default class Status extends Command {
         };
         const { flags } = await this.parse(Status);
 
+        const branchCache = new Map<string, string>();
+        const branchOf = (serviceName: string): string => {
+            const service = this.inventory.services.find(s => s.name === serviceName);
+
+            if (!service || !requiresRepository(service)) {
+                return "n/a";
+            }
+
+            const repository = repositoryName(service);
+
+            if (!branchCache.has(repository)) {
+                branchCache.set(
+                    repository,
+                    currentBranch(join(this.chsDevConfig.projectPath, "repositories", repository))
+                );
+            }
+
+            return branchCache.get(repository)!;
+        };
+
         const serviceLoader = new ServiceLoader(this.inventory);
         let enabledServiceNames = serviceLoader.loadServicesNames(state);
 
@@ -84,21 +108,31 @@ export default class Status extends Command {
 
         enabledServiceNames = [...enabledServiceNames, ...enabledOtelServiceNames].sort();
 
+        const activeServices = enabledServiceNames
+            .map(name => this.inventory.services.find(s => s.name === name))
+            .filter((service): service is Service => !!service)
+            .filter(service => !state.excludedServices.includes(service.name));
+        const missingRepositories = findMissingRepositories(this.chsDevConfig.projectPath, activeServices);
+
         if (flags.json) {
-            const jsonRepresentation = this.constructJsonRepresentation(
-                state, enabledServiceNames, serviceState
-            );
+            const jsonRepresentation = {
+                ...this.constructJsonRepresentation(
+                    state, enabledServiceNames, serviceState, branchOf
+                ),
+                missingRepositories
+            };
 
             this.logJson(jsonRepresentation);
         } else {
-            this.humanReadableLog(state, serviceState, enabledServiceNames);
+            this.humanReadableLog(state, serviceState, enabledServiceNames, branchOf, missingRepositories);
         }
     }
 
     private constructJsonRepresentation (
         state: State,
         enabledServiceNames: string[],
-        serviceState: (serviceName: string, colourise: boolean) => string
+        serviceState: (serviceName: string, colourise: boolean) => string,
+        branchOf: (serviceName: string) => string
     ) {
         return {
             modules: [
@@ -107,6 +141,7 @@ export default class Status extends Command {
             services: enabledServiceNames.map((serviceName: string) => ({
                 name: serviceName,
                 composeStatus: serviceState(serviceName, false).replaceAll(/[()]/g, ""),
+                branch: branchOf(serviceName),
                 liveUpdate: state.servicesWithLiveUpdate.includes(serviceName),
                 transient: !state.services.includes(serviceName)
             }))
@@ -116,8 +151,14 @@ export default class Status extends Command {
     private humanReadableLog (
         state: State,
         serviceState: (serviceName: string, colourise: boolean) => string,
-        enabledServiceNames: string[]
+        enabledServiceNames: string[],
+        branchOf: (serviceName: string) => string,
+        missingRepositories: Record<string, string[]>
     ) {
+        const branchLabel = (serviceName: string) => {
+            const branch = branchOf(serviceName);
+            return `[branch: ${branch === MISSING_REPOSITORY ? red(branch) : branch}]`;
+        };
         const { modules, services, excludedServices } = state;
         this.log("Manually activated modules:");
         for (const module of modules) {
@@ -126,19 +167,28 @@ export default class Status extends Command {
 
         this.log("\nManually activated services:");
         for (const service of services) {
-            this.log(` - ${service} ${serviceState(service, true)}`);
+            this.log(` - ${service} ${serviceState(service, true)} ${branchLabel(service)}`);
         }
 
         this.log("\nAutomatically activated services:");
         enabledServiceNames = enabledServiceNames.filter(serviceName => !excludedServices.includes(serviceName));
 
         for (const serviceName of enabledServiceNames) {
-            this.log(` - ${serviceName} ${serviceState(serviceName, true)} ${state.servicesWithLiveUpdate.includes(serviceName) ? "[LIVE UPDATE]" : ""}`);
+            this.log(` - ${serviceName} ${serviceState(serviceName, true)} ${branchLabel(serviceName)} ${state.servicesWithLiveUpdate.includes(serviceName) ? "[LIVE UPDATE]" : ""}`);
         }
 
         this.log("\nManually deactivated services:");
         for (const file of excludedServices.sort() || []) {
             this.log(` - ${file}`);
+        }
+
+        const missing = Object.entries(missingRepositories);
+
+        if (missing.length) {
+            this.log(yellow(`\n⚠ Required repositories not cloned under repositories/ (docker compose cannot read their chs-dev.env):`));
+            for (const [repository, names] of missing) {
+                this.log(red(` - ${repository} (used by ${names.join(", ")})`));
+            }
         }
     }
 }

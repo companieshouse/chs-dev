@@ -3,6 +3,7 @@ import { EOL } from "os";
 import { join } from "path";
 import yaml from "yaml";
 import { getGeneratedDockerComposeFile } from "../helpers/docker-compose-file.js";
+import { getIncludePath } from "../helpers/include-entry.js";
 import CONSTANTS from "../model/Constants.js";
 import { DockerComposeSpec } from "../model/DockerComposeSpec.js";
 import { AbstractFileGenerator } from "./file-generator.js";
@@ -66,10 +67,10 @@ export class OtelGenerator extends AbstractFileGenerator {
         if (action === "add") {
             generatedDockerCompose.include = [
                 otelDockerComposeFilePath,
-                ...(generatedDockerCompose.include ?? []).filter(path => path !== otelDockerComposeFilePath)
+                ...(generatedDockerCompose.include ?? []).filter(entry => getIncludePath(entry) !== otelDockerComposeFilePath)
             ];
         } else {
-            generatedDockerCompose.include = generatedDockerCompose.include?.filter((path) => path !== otelDockerComposeFilePath) || [];
+            generatedDockerCompose.include = generatedDockerCompose.include?.filter((entry) => getIncludePath(entry) !== otelDockerComposeFilePath) || [];
         }
         return generatedDockerCompose;
     }

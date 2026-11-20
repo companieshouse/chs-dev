@@ -17,6 +17,9 @@ import { StateManager } from "../state/state-manager.js";
 import Service from "../model/Service.js";
 import { greenBright } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
+import { findMissingEnvVars } from "../helpers/missing-env-vars.js";
+import { findMissingRepositories } from "../helpers/service-repository.js";
+import { ServiceLoader } from "../run/service-loader.js";
 import { documentationLink } from "../helpers/link.js";
 
 type ServicesBuildContext = {
@@ -159,6 +162,8 @@ export default class Up extends Command {
         ux.action.stop();
         this.log(customInitOutput);
 
+        this.checkServiceEnvVars();
+
         ux.action.start(`Running chs-dev environment: ${basename(this.chsDevConfig.projectPath)}`);
         try {
             await this.dockerCompose.up();
@@ -176,6 +181,57 @@ export default class Up extends Command {
             this.error(error as Error);
         }
         ux.action.stop();
+    }
+
+    /**
+     * Fails fast when a service env file (repositories/<repository>/chs-dev.env)
+     * references variables, typically secrets, that are not defined
+     */
+    private checkServiceEnvVars (): void {
+        const state = this.stateManager.snapshot;
+        const excluded = state.excludedServices ?? [];
+        const services = new ServiceLoader(this.inventory).loadServices(state)
+            .filter(service => !excluded.includes(service.name));
+
+        const missingRepositories = Object.entries(
+            findMissingRepositories(this.chsDevConfig.projectPath, services)
+        ).map(([repository, names]) => {
+            const cloneable = services.some(
+                service => names.includes(service.name) && !!service.repository?.url
+            );
+
+            return `  ${repository} (${names.join(", ")})${cloneable ? "" : " - cannot be cloned: no repository.url configured for the service"}`;
+        });
+
+        if (missingRepositories.length) {
+            this.error(
+                `Repositories not cloned under repositories/, so their chs-dev.env cannot be read:\n${missingRepositories.join("\n")}`,
+                {
+                    suggestions: [
+                        "Clone the repositories listed above into the repositories folder, then run again"
+                    ]
+                }
+            );
+        }
+
+        const missing = findMissingEnvVars(
+            this.chsDevConfig.projectPath, services, this.chsDevConfig.env
+        );
+
+        const lines = Object.entries(missing).map(
+            ([service, names]) => `  ${service}: ${names.join(", ")}`
+        );
+
+        if (lines.length) {
+            this.error(
+                `Missing environment variables required by service env files:\n${lines.join("\n")}`,
+                {
+                    suggestions: [
+                        "Define them in .env (e.g. via the init script loading the AWS param store) or global.env, then run again"
+                    ]
+                }
+            );
+        }
     }
 
     private get hasServicesInDevelopmentMode (): boolean {
