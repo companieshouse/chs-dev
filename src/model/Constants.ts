@@ -14,6 +14,25 @@ export const CONSTANTS = {
     OTEL_DOCKER_COMPOSE_FILE: "services/infrastructure/open-telemetry/open-telemetry.docker-compose.yaml",
 
     /**
+     * Name of the env file, at the root of a repository, holding the
+     * service's local environment variables
+     */
+    SERVICE_ENV_FILE: "chs-dev.env",
+
+    /**
+     * Names of the env files, at the root of the project, shared by all the
+     * services. Listed in order of increasing precedence; the service's own
+     * env file overrides both
+     */
+    DEFAULT_COMPOSE_ENV_FILES: [".env", "global.env"],
+
+    /**
+     * Directory, within the project, for the generated compose files which
+     * add the env files to the included services
+     */
+    ENV_OVERRIDES_DIRECTORY: "local/env-overrides",
+
+    /**
      * Value for a boolean label to be considered true
      */
     BOOLEAN_LABEL_TRUE_VALUE: "true",

@@ -817,6 +817,71 @@ within the current working directory.
 * `ecr_login_threshold_hours` - `number` - Number of hours between attempting
   to login to ECR repos.
 
+#### Service env files
+
+The generated Docker Compose file uses the Compose
+[`include`](https://docs.docker.com/compose/how-tos/multiple-compose-files/include/)
+feature to bring in each service's compose file. The env files below are used
+both to interpolate that compose file and as the `env_file` of its services.
+In increasing order of precedence:
+
+1. `.env` (project root)
+2. `global.env` (project root)
+3. `chs-dev.env` (root of the service's repository, i.e.
+   `repositories/<repository>/chs-dev.env`)
+
+The shared files can be changed by setting `COMPOSE_ENV_FILES` (a
+comma-separated list of file names) in the `env` section of
+`chs-dev/config.yaml`; the default is `.env,global.env`. Files that do not
+exist are skipped. Infrastructure services (e.g. redis, mongo) have no
+repository, so only the shared files apply to them.
+
+The per-service overrides are generated in `local/env-overrides` and must not
+be edited manually.
+
+Before starting, `chs-dev up` checks that:
+
+* the repositories of all enabled (non-excluded) services are cloned under
+  `repositories/`; infrastructure services are skipped
+* every variable referenced by a service's `chs-dev.env` (typically secrets) is
+  defined in the env files or in `chs-dev/config.yaml`
+
+`up` stops and lists what is missing if either check fails.
+
+While starting, `up` also ensures the repositories of the services in the
+generated `docker-compose.yaml` are present and current: a missing repository
+is cloned and an existing one is updated with `git pull`. Infrastructure
+services and services without a repository url are skipped. If a pull fails
+(e.g. local changes or a deleted upstream branch) a `Skipped updating
+<repository>` warning is printed and `up` carries on; a failed clone stops it.
+
+`chs-dev status` shows the checked-out branch of each service repository and
+the image tag in use (the `TAG` in the generated env file, `latest` when
+none). When that differs from the latest release tag of the checked-out
+repository, it is shown in red as `[tag: 2.1.533 (repository: 2.1.540)]`, a hint that the
+environment needs regenerating or that the image does not match the checkout
+(`--json` has `tag` and `repositoryTag` fields). The branch shows
+`missing` if the repository is not cloned, `unknown` if it is not a readable
+git repository, and `n/a` for infrastructure services; the tag shows `none`
+when the repository has no release tag.
+
+#### Service image tags
+
+Service compose files reference their image as
+`<registry>/<service>:${TAG:-latest}`. For each service with a repository,
+`chs-dev` runs
+`git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*'` in
+`repositories/<repository>` and writes the result as `TAG=<tag>` to
+`local/env-overrides/<repository>.tag.env`, which is added last to the include's
+`env_file` list (so it wins over `TAG` in the shared env files). The service
+therefore runs the image of the latest release tag reachable from the
+checked-out commit (e.g. `2.1.533`).
+
+If the repository is not cloned, is not a git repository, or has no matching
+tag, `TAG` is not set and the image falls back to `latest`. A `TAG` exported in
+your shell still takes precedence. The tag file is regenerated whenever the
+compose files are.
+
 #### Environment variables
 
 * `CHS_DEV_PROJECT` - specifies the directory containing the project files to
@@ -878,7 +943,9 @@ are referenced by chs-dev for the given purposes:
   `ecs-image-buid/docker_start.sh` file
 * `chs.local.repositoryRequired` - marks the service as requiring the
   repository locally in order to be run. This is useful where there may not be
-  a remote repository to use for the service. The service can define its own
+  a remote repository to use for the service. It no longer controls whether
+  `chs-dev up` pulls the repository, which it does for every service with a
+  repository url. The service can define its own
   build configuration referencing its repository/Dockerfile.
 * `chs.deprecated` - when set to `true` the service is deprecated and no longer
   in use, useful where there are multiple service definitions for the same

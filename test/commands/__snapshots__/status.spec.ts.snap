@@ -3,56 +3,85 @@
 exports[`Status command should log json correctly 1`] = `
 [
   {
+    "missingRepositories": {
+      "repo2": [
+        "service-two",
+      ],
+    },
     "modules": [
       "module-one",
     ],
     "services": [
       {
+        "branch": "main",
         "composeStatus": "Not running",
         "liveUpdate": false,
         "name": "service-eight",
+        "repositoryTag": "1.2.3",
+        "tag": "1.2.3",
         "transient": false,
       },
       {
+        "branch": "main",
         "composeStatus": "stopped",
         "liveUpdate": false,
         "name": "service-five",
+        "repositoryTag": "1.2.3",
+        "tag": "1.2.3",
         "transient": false,
       },
       {
+        "branch": "main",
         "composeStatus": "stopped",
         "liveUpdate": false,
         "name": "service-four",
+        "repositoryTag": "1.2.3",
+        "tag": "1.2.3",
         "transient": true,
       },
       {
+        "branch": "main",
         "composeStatus": "running",
         "liveUpdate": false,
         "name": "service-one",
+        "repositoryTag": "1.2.3",
+        "tag": "1.2.0",
         "transient": false,
       },
       {
+        "branch": "main",
         "composeStatus": "Not running",
         "liveUpdate": false,
         "name": "service-seven",
+        "repositoryTag": "1.2.3",
+        "tag": "1.2.3",
         "transient": false,
       },
       {
+        "branch": "main",
         "composeStatus": "Not running",
         "liveUpdate": false,
         "name": "service-six",
+        "repositoryTag": "1.2.3",
+        "tag": "1.2.3",
         "transient": false,
       },
       {
+        "branch": "main",
         "composeStatus": "Not running",
         "liveUpdate": false,
         "name": "service-three",
+        "repositoryTag": "1.2.3",
+        "tag": "1.2.3",
         "transient": false,
       },
       {
+        "branch": "missing",
         "composeStatus": "running",
         "liveUpdate": true,
         "name": "service-two",
+        "repositoryTag": "1.2.3",
+        "tag": "latest",
         "transient": false,
       },
     ],
@@ -73,59 +102,59 @@ exports[`Status command should log with their docker compose statuses with otel 
 Manually activated services:",
   ],
   [
-    " - service-one ([31m[1mUp 3 seconds (unhealthy)[22m[39m)",
+    " - service-one (Up 3 seconds (unhealthy)) [branch: main] [tag: 1.2.0 (repository: 1.2.3)]",
   ],
   [
-    " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m)",
+    " - service-two (Up 2 minutes (healthy)) [branch: missing] [tag: latest (repository: 1.2.3)]",
   ],
   [
-    " - service-five ([33mExited (0)[39m)",
+    " - service-five (Exited (0)) [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-six ([31mExited (137)[39m)",
+    " - service-six (Exited (137)) [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-seven ([32mUp 33 minutes[39m)",
+    " - service-seven (Up 33 minutes) [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-eight ([32mUp About an hour[39m)",
+    " - service-eight (Up About an hour) [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-three ([90mNot running[39m)",
+    " - service-three (Not running) [branch: main] [tag: 1.2.3]",
   ],
   [
     "
 Automatically activated services:",
   ],
   [
-    " - loki ([32mUp About an hour[39m) ",
+    " - loki (Up About an hour) [branch: n/a] [tag: n/a] ",
   ],
   [
-    " - otel-collector ([32mUp About an hour[39m) ",
+    " - otel-collector (Up About an hour) [branch: n/a] [tag: n/a] ",
   ],
   [
-    " - service-eight ([32mUp About an hour[39m) ",
+    " - service-eight (Up About an hour) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-five ([33mExited (0)[39m) ",
+    " - service-five (Exited (0)) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-four ([36mUp 1 minute (health: starting)[39m) ",
+    " - service-four (Up 1 minute (health: starting)) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-one ([31m[1mUp 3 seconds (unhealthy)[22m[39m) ",
+    " - service-one (Up 3 seconds (unhealthy)) [branch: main] [tag: 1.2.0 (repository: 1.2.3)] ",
   ],
   [
-    " - service-seven ([32mUp 33 minutes[39m) ",
+    " - service-seven (Up 33 minutes) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-six ([31mExited (137)[39m) ",
+    " - service-six (Exited (137)) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m) [LIVE UPDATE]",
+    " - service-two (Up 2 minutes (healthy)) [branch: missing] [tag: latest (repository: 1.2.3)] [LIVE UPDATE]",
   ],
   [
-    " - tempo ([32mUp About an hour[39m) ",
+    " - tempo (Up About an hour) [branch: n/a] [tag: n/a] ",
   ],
   [
     "
@@ -133,6 +162,13 @@ Manually deactivated services:",
   ],
   [
     " - service-three",
+  ],
+  [
+    "
+⚠ Required repositories not cloned under repositories/ (docker compose cannot read their chs-dev.env):",
+  ],
+  [
+    " - repo2 (used by service-two)",
   ],
 ]
 `;
@@ -150,50 +186,50 @@ exports[`Status command should log with their docker compose statuses without ot
 Manually activated services:",
   ],
   [
-    " - service-one ([31m[1mUp 3 seconds (unhealthy)[22m[39m)",
+    " - service-one (Up 3 seconds (unhealthy)) [branch: main] [tag: 1.2.0 (repository: 1.2.3)]",
   ],
   [
-    " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m)",
+    " - service-two (Up 2 minutes (healthy)) [branch: missing] [tag: latest (repository: 1.2.3)]",
   ],
   [
-    " - service-five ([33mExited (0)[39m)",
+    " - service-five (Exited (0)) [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-six ([31mExited (137)[39m)",
+    " - service-six (Exited (137)) [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-seven ([32mUp 33 minutes[39m)",
+    " - service-seven (Up 33 minutes) [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-eight ([32mUp About an hour[39m)",
+    " - service-eight (Up About an hour) [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-three ([90mNot running[39m)",
+    " - service-three (Not running) [branch: main] [tag: 1.2.3]",
   ],
   [
     "
 Automatically activated services:",
   ],
   [
-    " - service-eight ([32mUp About an hour[39m) ",
+    " - service-eight (Up About an hour) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-five ([33mExited (0)[39m) ",
+    " - service-five (Exited (0)) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-four ([36mUp 1 minute (health: starting)[39m) ",
+    " - service-four (Up 1 minute (health: starting)) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-one ([31m[1mUp 3 seconds (unhealthy)[22m[39m) ",
+    " - service-one (Up 3 seconds (unhealthy)) [branch: main] [tag: 1.2.0 (repository: 1.2.3)] ",
   ],
   [
-    " - service-seven ([32mUp 33 minutes[39m) ",
+    " - service-seven (Up 33 minutes) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-six ([31mExited (137)[39m) ",
+    " - service-six (Exited (137)) [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-two ([32m[1mUp 2 minutes (healthy)[22m[39m) [LIVE UPDATE]",
+    " - service-two (Up 2 minutes (healthy)) [branch: missing] [tag: latest (repository: 1.2.3)] [LIVE UPDATE]",
   ],
   [
     "
@@ -201,6 +237,13 @@ Manually deactivated services:",
   ],
   [
     " - service-three",
+  ],
+  [
+    "
+⚠ Required repositories not cloned under repositories/ (docker compose cannot read their chs-dev.env):",
+  ],
+  [
+    " - repo2 (used by service-two)",
   ],
 ]
 `;
@@ -218,50 +261,50 @@ exports[`Status command should log without docker compose statuses 1`] = `
 Manually activated services:",
   ],
   [
-    " - service-one ",
+    " - service-one  [branch: main] [tag: 1.2.0 (repository: 1.2.3)]",
   ],
   [
-    " - service-two ",
+    " - service-two  [branch: missing] [tag: latest (repository: 1.2.3)]",
   ],
   [
-    " - service-five ",
+    " - service-five  [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-six ",
+    " - service-six  [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-seven ",
+    " - service-seven  [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-eight ",
+    " - service-eight  [branch: main] [tag: 1.2.3]",
   ],
   [
-    " - service-three ",
+    " - service-three  [branch: main] [tag: 1.2.3]",
   ],
   [
     "
 Automatically activated services:",
   ],
   [
-    " - service-eight  ",
+    " - service-eight  [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-five  ",
+    " - service-five  [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-four  ",
+    " - service-four  [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-one  ",
+    " - service-one  [branch: main] [tag: 1.2.0 (repository: 1.2.3)] ",
   ],
   [
-    " - service-seven  ",
+    " - service-seven  [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-six  ",
+    " - service-six  [branch: main] [tag: 1.2.3] ",
   ],
   [
-    " - service-two  [LIVE UPDATE]",
+    " - service-two  [branch: missing] [tag: latest (repository: 1.2.3)] [LIVE UPDATE]",
   ],
   [
     "
@@ -269,6 +312,13 @@ Manually deactivated services:",
   ],
   [
     " - service-three",
+  ],
+  [
+    "
+⚠ Required repositories not cloned under repositories/ (docker compose cannot read their chs-dev.env):",
+  ],
+  [
+    " - repo2 (used by service-two)",
   ],
 ]
 `;

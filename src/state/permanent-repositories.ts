@@ -4,6 +4,8 @@ import { Inventory } from "./inventory.js";
 import { join } from "path";
 import yaml from "yaml";
 import { cloneRepo, updateRepo } from "../helpers/git.js";
+import { getIncludePath } from "../helpers/include-entry.js";
+import { repositoryName, requiresRepository } from "../helpers/service-repository.js";
 import Service from "../model/Service.js";
 
 /**
@@ -34,27 +36,45 @@ export class PermanentRepositories {
 
         const dockerComposeSpec = yaml.parse(readFileSync(dockerComposeSpecFile).toString("utf8"));
 
+        const handled = new Set<string>();
+
         for (const includedSpecFile of dockerComposeSpec.include) {
-            const service = this.findServiceWithSource(includedSpecFile);
+            const sources = getIncludePath(includedSpecFile);
 
-            if (service) {
-                console.log(`Updating ${service.name}`);
+            for (const service of this.findServicesWithSource(sources)) {
+                const repository = repositoryName(service);
 
-                const localRepoPath = join(this.config.projectPath, "repositories", service.name);
-
-                if (!existsSync(localRepoPath)) {
-                    await this.cloneServiceRepo(service, localRepoPath);
-
+                if (handled.has(repository)) {
                     continue;
                 }
+                handled.add(repository);
 
-                await updateRepo(localRepoPath);
+                const localRepoPath = join(this.config.projectPath, "repositories", repository);
+
+                if (!existsSync(localRepoPath)) {
+                    console.log(`Cloning ${repository} for ${service.name}`);
+                    await this.cloneServiceRepo(service, localRepoPath);
+                } else {
+                    console.log(`Updating ${service.name}`);
+                    try {
+                        await updateRepo(localRepoPath);
+                    } catch (error) {
+                        console.warn(`Skipped updating ${repository}: ${(error as Error).message}`);
+                    }
+                }
             }
         }
     }
 
-    private findServiceWithSource (includedSpecFile: any) {
-        return this.inventory.services.find(({ source, metadata }) => source === includedSpecFile && metadata.repositoryRequired === "true");
+    /**
+     * Services of the spec file which have a repository to be cloned/updated:
+     * any non infrastructure service with a repository url
+     */
+    private findServicesWithSource (includedSpecFile: any) {
+        return this.inventory.services.filter(service =>
+            service.source === includedSpecFile &&
+            requiresRepository(service) && !!service.repository?.url
+        );
     }
 
     private cloneServiceRepo (service: Service, localRepoPath: string) {

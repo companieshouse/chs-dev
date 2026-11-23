@@ -5,6 +5,17 @@ type Secret = {
 }
 
 /**
+ * An entry of the top level `include` property: either the path to a compose
+ * file or the long syntax, which allows listing override files and the env
+ * files used to interpolate the included files
+ */
+export type IncludeEntry = string | {
+    path: string | string[],
+    env_file?: string[],
+    project_directory?: string
+};
+
+/**
  * Represents the Docker Compose Spec file when read in from yaml
  */
 export type DockerComposeSpec = {
@@ -21,7 +32,7 @@ export type DockerComposeSpec = {
         } & Record<string, any>
     },
     secrets?: Record<string, Secret>,
-    include?: string[],
+    include?: IncludeEntry[],
     networks?: Record<string, any>,
     volumes?: Record<string, any>
 };
