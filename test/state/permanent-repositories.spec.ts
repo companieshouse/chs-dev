@@ -188,11 +188,42 @@ describe("PermanentRepositories", () => {
         );
     });
 
-    it("does not do anything when service is not a permananent repo", async () => {
+    it("updates repo of a service without the repositoryRequired label", async () => {
         existsSyncMock.mockReturnValue(true);
 
         readFileSyncMock.mockReturnValue(
             Buffer.from(dockerComposeConfigurationIncludingServices(serviceTwo), "utf8")
+        );
+
+        await permanentRepositories.ensureAllExistAndAreUpToDate();
+
+        expect(cloneRepoMock).not.toHaveBeenCalled();
+        expect(updateRepoMock).toHaveBeenCalledWith(
+            join(config.projectPath, "repositories", "repo2")
+        );
+    });
+
+    it("skips, with a warning, a repo which fails to update and carries on", async () => {
+        existsSyncMock.mockReturnValue(true);
+        const warnMock = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+        (updateRepoMock as jest.Mock<any>).mockRejectedValueOnce(new Error("local changes would be overwritten"));
+
+        readFileSyncMock.mockReturnValue(
+            Buffer.from(dockerComposeConfigurationIncludingServices(serviceOne, serviceTwo), "utf8")
+        );
+
+        await expect(permanentRepositories.ensureAllExistAndAreUpToDate()).resolves.toBeUndefined();
+
+        expect(updateRepoMock).toHaveBeenCalledTimes(2);
+        expect(warnMock).toHaveBeenCalledWith("Skipped updating repo1: local changes would be overwritten");
+        warnMock.mockRestore();
+    });
+
+    it("does not do anything for a service without a repository", async () => {
+        existsSyncMock.mockReturnValue(true);
+
+        readFileSyncMock.mockReturnValue(
+            Buffer.from(dockerComposeConfigurationIncludingServices(serviceFive), "utf8")
         );
 
         await permanentRepositories.ensureAllExistAndAreUpToDate();
@@ -222,7 +253,7 @@ describe("PermanentRepositories", () => {
         expect(updateRepoMock).toHaveBeenCalledTimes(1);
     });
 
-    it("clones, without updating, the repo of a service not flagged as repository required", async () => {
+    it("clones, without updating, the repo of a service without the repositoryRequired label", async () => {
         existsSyncMock.mockReturnValueOnce(true)
             .mockReturnValue(false);
 
@@ -258,19 +289,6 @@ describe("PermanentRepositories", () => {
             repositoryUrl: shared,
             destinationPath: join(config.projectPath, "repositories", "eric")
         });
-    });
-
-    it("rejects if service does not have repository when repo required", async () => {
-        existsSyncMock.mockReturnValueOnce(true)
-            .mockReturnValue(false);
-
-        readFileSyncMock.mockReturnValue(
-            Buffer.from(dockerComposeConfigurationIncludingServices(serviceFive), "utf8")
-        );
-
-        await expect(permanentRepositories.ensureAllExistAndAreUpToDate()).rejects.toEqual(
-            new Error("Service: " + serviceFive.name + " has not been configured with a repository")
-        );
     });
 
     it("rejects if docker-compose.yaml file does not exist", async () => {

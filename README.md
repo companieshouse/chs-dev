@@ -848,6 +848,13 @@ Before starting, `chs-dev up` checks that:
 
 `up` stops and lists what is missing if either check fails.
 
+While starting, `up` also ensures the repositories of the services in the
+generated `docker-compose.yaml` are present and current: a missing repository
+is cloned and an existing one is updated with `git pull`. Infrastructure
+services and services without a repository url are skipped. If a pull fails
+(e.g. local changes or a deleted upstream branch) a `Skipped updating
+<repository>` warning is printed and `up` carries on; a failed clone stops it.
+
 `chs-dev status` shows the checked-out branch of each service repository and
 the image tag in use (the `TAG` in the generated env file, `latest` when
 none). When that differs from the latest release tag of the checked-out
@@ -936,7 +943,9 @@ are referenced by chs-dev for the given purposes:
   `ecs-image-buid/docker_start.sh` file
 * `chs.local.repositoryRequired` - marks the service as requiring the
   repository locally in order to be run. This is useful where there may not be
-  a remote repository to use for the service. The service can define its own
+  a remote repository to use for the service. It no longer controls whether
+  `chs-dev up` pulls the repository, which it does for every service with a
+  repository url. The service can define its own
   build configuration referencing its repository/Dockerfile.
 * `chs.deprecated` - when set to `true` the service is deprecated and no longer
   in use, useful where there are multiple service definitions for the same

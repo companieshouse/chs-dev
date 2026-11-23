@@ -54,24 +54,26 @@ export class PermanentRepositories {
                 if (!existsSync(localRepoPath)) {
                     console.log(`Cloning ${repository} for ${service.name}`);
                     await this.cloneServiceRepo(service, localRepoPath);
-                } else if (service.metadata.repositoryRequired === "true") {
+                } else {
                     console.log(`Updating ${service.name}`);
-                    await updateRepo(localRepoPath);
+                    try {
+                        await updateRepo(localRepoPath);
+                    } catch (error) {
+                        console.warn(`Skipped updating ${repository}: ${(error as Error).message}`);
+                    }
                 }
             }
         }
     }
 
     /**
-     * Services of the spec file which have a repository to be cloned: the
-     * ones flagged as repositoryRequired and, to provide their chs-dev.env,
+     * Services of the spec file which have a repository to be cloned/updated:
      * any non infrastructure service with a repository url
      */
     private findServicesWithSource (includedSpecFile: any) {
         return this.inventory.services.filter(service =>
             service.source === includedSpecFile &&
-            (service.metadata.repositoryRequired === "true" ||
-                (requiresRepository(service) && !!service.repository?.url))
+            requiresRepository(service) && !!service.repository?.url
         );
     }
 
