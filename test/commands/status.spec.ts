@@ -34,6 +34,8 @@ jest.mock("../../src/helpers/service-repository", () => {
     return {
         ...actual,
         currentBranch: (path: string) => path.endsWith("repo2") ? "missing" : "main",
+        latestReleaseTag: () => "1.2.3",
+        tagInUse: (_: string, service: { name: string }) => service.name === "service-one" ? "1.2.0" : service.name === "service-two" ? undefined : "1.2.3",
         findMissingRepositories: () => ({ repo2: ["service-two"] })
     };
 });

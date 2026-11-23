@@ -848,9 +848,32 @@ Before starting, `chs-dev up` checks that:
 
 `up` stops and lists what is missing if either check fails.
 
-`chs-dev status` shows the checked-out branch of each service repository.
-It shows `missing` if the repository is not cloned, `unknown` if it is not a
-readable git repository, and `n/a` for infrastructure services.
+`chs-dev status` shows the checked-out branch of each service repository and
+the image tag in use (the `TAG` in the generated env file, `latest` when
+none). When that differs from the latest release tag of the checked-out
+repository, it is shown in red as `[tag: 2.1.533 (repository: 2.1.540)]`, a hint that the
+environment needs regenerating or that the image does not match the checkout
+(`--json` has `tag` and `repositoryTag` fields). The branch shows
+`missing` if the repository is not cloned, `unknown` if it is not a readable
+git repository, and `n/a` for infrastructure services; the tag shows `none`
+when the repository has no release tag.
+
+#### Service image tags
+
+Service compose files reference their image as
+`<registry>/<service>:${TAG:-latest}`. For each service with a repository,
+`chs-dev` runs
+`git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*'` in
+`repositories/<repository>` and writes the result as `TAG=<tag>` to
+`local/env-overrides/<repository>.tag.env`, which is added last to the include's
+`env_file` list (so it wins over `TAG` in the shared env files). The service
+therefore runs the image of the latest release tag reachable from the
+checked-out commit (e.g. `2.1.533`).
+
+If the repository is not cloned, is not a git repository, or has no matching
+tag, `TAG` is not set and the image falls back to `latest`. A `TAG` exported in
+your shell still takes precedence. The tag file is regenerated whenever the
+compose files are.
 
 #### Environment variables
 

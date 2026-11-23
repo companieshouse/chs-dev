@@ -1,5 +1,5 @@
 import { execFileSync } from "child_process";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { basename, join } from "path";
 import CONSTANTS from "../model/Constants.js";
 import Service from "../model/Service.js";
@@ -44,6 +44,45 @@ export const currentBranch = (repositoryPath: string): string => {
         ).trim() || "unknown";
     } catch {
         return "unknown";
+    }
+};
+
+/**
+ * Latest release tag (x.y.z) reachable from HEAD in the given repository
+ * folder, or undefined when the folder is missing, is not a git repository
+ * or has no such tag.
+ */
+export const latestReleaseTag = (repositoryPath: string): string | undefined => {
+    if (!existsSync(join(repositoryPath, ".git"))) {
+        return undefined;
+    }
+
+    try {
+        return execFileSync(
+            "git", ["describe", "--tags", "--abbrev=0", "--match", "[0-9]*.[0-9]*.[0-9]*"],
+            { cwd: repositoryPath, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+        ).trim() || undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+/**
+ * Path, relative to the project, of the generated env file defining the TAG
+ * of the images of the services using the repository
+ */
+export const tagEnvFilePath = (service: Pick<Service, "name" | "repository">): string =>
+    join(CONSTANTS.ENV_OVERRIDES_DIRECTORY, `${repositoryName(service)}.tag.env`);
+
+/**
+ * TAG defined in the generated env file of the service, undefined when the
+ * file does not exist (so docker compose falls back to latest).
+ */
+export const tagInUse = (projectPath: string, service: Pick<Service, "name" | "repository">): string | undefined => {
+    try {
+        return /^TAG=(.+)$/m.exec(readFileSync(join(projectPath, tagEnvFilePath(service)), "utf8"))?.[1].trim();
+    } catch {
+        return undefined;
     }
 };
 

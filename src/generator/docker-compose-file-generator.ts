@@ -5,7 +5,7 @@ import yaml from "yaml";
 import { deduplicate } from "../helpers/array-reducers.js";
 import { getInitialDockerComposeFile } from "../helpers/docker-compose-file.js";
 import { getAllFilesInDirectory } from "../helpers/file-utils.js";
-import { serviceEnvFilePath } from "../helpers/service-repository.js";
+import { latestReleaseTag, repositoryName, requiresRepository, serviceEnvFilePath, tagEnvFilePath } from "../helpers/service-repository.js";
 import CONSTANTS from "../model/Constants.js";
 import { DockerComposeSpec, IncludeEntry } from "../model/DockerComposeSpec.js";
 import { Service } from "../model/Service.js";
@@ -200,6 +200,29 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
     }
 
     /**
+     * Writes an env file defining TAG as the latest release tag of the
+     * repository of the service, used to interpolate the image of the service
+     * (ex. image: .../service:${TAG:-latest}).
+     *
+     * @returns the path of the file, or undefined when no tag is available.
+     */
+    private createTagEnvFile (services: Service[], overridesDirectory: string): string | undefined {
+        const service = services.find(requiresRepository);
+        const tag = service && latestReleaseTag(join(this.path, "repositories", repositoryName(service)));
+
+        if (!service || !tag) {
+            return undefined;
+        }
+
+        const tagEnvFile = join(this.path, tagEnvFilePath(service));
+
+        mkdirSync(overridesDirectory, { recursive: true });
+        writeFileSync(tagEnvFile, `TAG=${tag}${EOL}`);
+
+        return tagEnvFile;
+    }
+
+    /**
      * Creates the include entry for a service compose file. The env files
      * (the COMPOSE_ENV_FILES shared env files and the chs-dev.env from the service repository, in
      * increasing order of precedence) are used both to interpolate the
@@ -229,11 +252,18 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
         const interpolationEnvFiles = [...new Set([...envFiles.values()].flat())];
 
+        const overridesDirectory = join(this.path, CONSTANTS.ENV_OVERRIDES_DIRECTORY);
+        const tagEnvFile = this.createTagEnvFile(services, overridesDirectory);
+
+        // Last so that the TAG of the repository wins over any shared one
+        if (tagEnvFile) {
+            interpolationEnvFiles.push(tagEnvFile);
+        }
+
         if (!interpolationEnvFiles.length) {
             return composeFile;
         }
 
-        const overridesDirectory = join(this.path, CONSTANTS.ENV_OVERRIDES_DIRECTORY);
         const overrideFile = join(overridesDirectory, `${services[0].name}.docker-compose.yaml`);
 
         mkdirSync(overridesDirectory, { recursive: true });

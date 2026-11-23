@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, expect, jest } from "@jest/globals";
 
 import fs, { copyFileSync, Dirent, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { execFileSync } from "child_process";
 import { DockerComposeFileGenerator } from "../../src/generator/docker-compose-file-generator";
 import { Service } from "../../src/model/Service";
 import path, { join, resolve } from "path";
@@ -260,6 +261,26 @@ describe("DockerComposeFileGenerator", () => {
             expect(parse(readFileSync(overrideFile).toString("utf8"))).toEqual({
                 services: { "env-service": { env_file: envFiles } }
             });
+        });
+
+        it("defines TAG from the latest release tag of the service repository", () => {
+            const repo = join(tempDir, "repositories/env-repo");
+            const git = (...args: string[]) => execFileSync("git", ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@t", ...args], { stdio: "ignore" });
+
+            mkdirSync(repo, { recursive: true });
+            git("init");
+            git("commit", "--allow-empty", "-m", "one", "--no-gpg-sign");
+            git("tag", "2.1.533");
+            git("tag", "latest");
+            git("commit", "--allow-empty", "-m", "two", "--no-gpg-sign");
+
+            dockerComposeFileGenerator.generateDockerComposeFile([envService]);
+
+            const output = parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8"));
+            const tagFile = join(tempDir, "local/env-overrides/env-repo.tag.env");
+
+            expect(output.include[0].env_file).toEqual([tagFile]);
+            expect(readFileSync(tagFile).toString("utf8").trim()).toBe("TAG=2.1.533");
         });
 
         it("includes only existing env files and falls back to the path when there are none", () => {

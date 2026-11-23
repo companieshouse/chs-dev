@@ -9,10 +9,18 @@ import { DockerCompose } from "../run/docker-compose.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import { Inventory } from "../state/inventory.js";
 import { StateManager } from "../state/state-manager.js";
-import { MISSING_REPOSITORY, repositoryName, currentBranch, findMissingRepositories, requiresRepository } from "../helpers/service-repository.js";
+import { MISSING_REPOSITORY, repositoryName, currentBranch, latestReleaseTag, tagInUse, findMissingRepositories, requiresRepository } from "../helpers/service-repository.js";
 import { join } from "path";
 import { red, yellow } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
+
+/**
+ * inUse: TAG docker compose uses for the images (latest when not set);
+ * repository: latest release tag of the checked-out repository;
+ * stale: the two differ, so the environment needs regenerating or the image
+ * does not match the checkout.
+ */
+type ServiceTag = { inUse: string, repository: string, stale: boolean };
 
 export default class Status extends Command {
     static description = "print status of an environment";
@@ -79,24 +87,38 @@ export default class Status extends Command {
         };
         const { flags } = await this.parse(Status);
 
-        const branchCache = new Map<string, string>();
-        const branchOf = (serviceName: string): string => {
+        const repositoryInfoOf = (lookup: (repositoryPath: string) => string | undefined) => {
+            const cache = new Map<string, string | undefined>();
+
+            return (serviceName: string): string => {
+                const service = this.inventory.services.find(s => s.name === serviceName);
+
+                if (!service || !requiresRepository(service)) {
+                    return "n/a";
+                }
+
+                const repository = repositoryName(service);
+
+                if (!cache.has(repository)) {
+                    cache.set(repository, lookup(join(this.chsDevConfig.projectPath, "repositories", repository)));
+                }
+
+                return cache.get(repository) ?? "none";
+            };
+        };
+        const branchOf = repositoryInfoOf(currentBranch);
+        const repositoryTagOf = repositoryInfoOf(latestReleaseTag);
+        const tagOf = (serviceName: string): ServiceTag => {
             const service = this.inventory.services.find(s => s.name === serviceName);
 
             if (!service || !requiresRepository(service)) {
-                return "n/a";
+                return { inUse: "n/a", repository: "n/a", stale: false };
             }
 
-            const repository = repositoryName(service);
+            const inUse = tagInUse(this.chsDevConfig.projectPath, service) ?? "latest";
+            const repository = repositoryTagOf(serviceName);
 
-            if (!branchCache.has(repository)) {
-                branchCache.set(
-                    repository,
-                    currentBranch(join(this.chsDevConfig.projectPath, "repositories", repository))
-                );
-            }
-
-            return branchCache.get(repository)!;
+            return { inUse, repository, stale: inUse !== repository && !(inUse === "latest" && repository === "none") };
         };
 
         const serviceLoader = new ServiceLoader(this.inventory);
@@ -117,14 +139,14 @@ export default class Status extends Command {
         if (flags.json) {
             const jsonRepresentation = {
                 ...this.constructJsonRepresentation(
-                    state, enabledServiceNames, serviceState, branchOf
+                    state, enabledServiceNames, serviceState, branchOf, tagOf
                 ),
                 missingRepositories
             };
 
             this.logJson(jsonRepresentation);
         } else {
-            this.humanReadableLog(state, serviceState, enabledServiceNames, branchOf, missingRepositories);
+            this.humanReadableLog(state, serviceState, enabledServiceNames, branchOf, tagOf, missingRepositories);
         }
     }
 
@@ -132,7 +154,8 @@ export default class Status extends Command {
         state: State,
         enabledServiceNames: string[],
         serviceState: (serviceName: string, colourise: boolean) => string,
-        branchOf: (serviceName: string) => string
+        branchOf: (serviceName: string) => string,
+        tagOf: (serviceName: string) => ServiceTag
     ) {
         return {
             modules: [
@@ -142,6 +165,8 @@ export default class Status extends Command {
                 name: serviceName,
                 composeStatus: serviceState(serviceName, false).replaceAll(/[()]/g, ""),
                 branch: branchOf(serviceName),
+                tag: tagOf(serviceName).inUse,
+                repositoryTag: tagOf(serviceName).repository,
                 liveUpdate: state.servicesWithLiveUpdate.includes(serviceName),
                 transient: !state.services.includes(serviceName)
             }))
@@ -153,11 +178,16 @@ export default class Status extends Command {
         serviceState: (serviceName: string, colourise: boolean) => string,
         enabledServiceNames: string[],
         branchOf: (serviceName: string) => string,
+        tagOf: (serviceName: string) => ServiceTag,
         missingRepositories: Record<string, string[]>
     ) {
+        const tagLabel = (serviceName: string) => {
+            const { inUse, repository, stale } = tagOf(serviceName);
+            return stale ? red(`[tag: ${inUse} (repository: ${repository})]`) : `[tag: ${inUse}]`;
+        };
         const branchLabel = (serviceName: string) => {
             const branch = branchOf(serviceName);
-            return `[branch: ${branch === MISSING_REPOSITORY ? red(branch) : branch}]`;
+            return `[branch: ${branch === MISSING_REPOSITORY ? red(branch) : branch}] ${tagLabel(serviceName)}`;
         };
         const { modules, services, excludedServices } = state;
         this.log("Manually activated modules:");
