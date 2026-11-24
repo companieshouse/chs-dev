@@ -23,6 +23,11 @@ const CONTAINER_STARTED_HEALTHY_STATUS_PATTERN =
 const AWS_PROFILE = process.env.AWS_PROFILE;
 const INVALID_PROFILE_NAMES = ["undefined"];
 
+const quoteShellArgument = (argument: string): string =>
+    /^[a-zA-Z0-9_@%+=:,./-]+$/.test(argument)
+        ? argument
+        : `'${argument.replace(/'/g, "'\\''")}'`;
+
 type LogsArgs = {
     serviceNames: string[] | undefined,
     tail: string | undefined,
@@ -86,8 +91,10 @@ export class DockerCompose {
             cwd: this.config.projectPath,
             env: this.getAwsCredentials
         };
+        const command = "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"";
+        this.logDockerShellCommand(command, this.config.projectPath);
         const dockerComposePsOutput = execSync(
-            "docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\"",
+            command,
             execOptions
         ).toString("utf-8");
 
@@ -169,7 +176,9 @@ export class DockerCompose {
     healthCheck (serviceNames:string[]): void {
         const servicesNotReady: string[] = [];
         const serviceNamesToString = serviceNames.join(" ");
-        const containersInspection = JSON.parse(execSync(`docker inspect ${serviceNamesToString}`).toString("utf8"));
+        const command = `docker inspect ${serviceNamesToString}`;
+        this.logDockerShellCommand(command);
+        const containersInspection = JSON.parse(execSync(command).toString("utf8"));
 
         if (containersInspection.length > 0) {
             for (const container of containersInspection) {
@@ -206,13 +215,19 @@ export class DockerCompose {
         try {
             let logMsg: string;
             if (commandArg === Prune.VOLUME) {
-                const volumes = execSync(`docker volume ls -qf dangling=true`, { encoding: "utf-8" });
+                const listCommand = "docker volume ls -qf dangling=true";
+                this.logDockerShellCommand(listCommand);
+                const volumes = execSync(listCommand, { encoding: "utf-8" });
                 if (volumes.length === 0) {
                     return;
                 }
-                logMsg = execSync(`docker volume rm $(docker volume ls -qf dangling=true)`, { encoding: "utf-8" });
+                const removeCommand = "docker volume rm $(docker volume ls -qf dangling=true)";
+                this.logDockerShellCommand(removeCommand);
+                logMsg = execSync(removeCommand, { encoding: "utf-8" });
             } else {
-                logMsg = execSync(`docker ${commandArg} prune -f`, { encoding: "utf-8" });
+                const command = `docker ${commandArg} prune -f`;
+                this.logDockerShellCommand(command);
+                logMsg = execSync(command, { encoding: "utf-8" });
             }
             const log = new LogNothingLogHandler(logMsg, this.logger);
         } catch (error) {
@@ -224,6 +239,21 @@ export class DockerCompose {
         return new PatternMatchingConsoleLogHandler(
             pattern, this.logFile, this.logger, colouriser
         );
+    }
+
+    private logDockerComposeCommand (composeArgs: string[]): void {
+        if (process.env.CHS_DEV_SHOW_COMMANDS === "1") {
+            const command = ["docker", "compose", ...composeArgs]
+                .map(quoteShellArgument)
+                .join(" ");
+            this.logger.log(`$ (cd ${quoteShellArgument(this.config.projectPath)} && ${command})`);
+        }
+    }
+
+    private logDockerShellCommand (command: string, cwd = process.cwd()): void {
+        if (process.env.CHS_DEV_SHOW_COMMANDS === "1") {
+            this.logger.log(`$ (cd ${quoteShellArgument(cwd)} && ${command})`);
+        }
     }
 
     private async runDockerCompose (composeArgs: string[], logHandler: LogHandler, signal?: AbortSignal): Promise<void> {
@@ -251,6 +281,7 @@ export class DockerCompose {
         }
 
         try {
+            this.logDockerComposeCommand(composeArgs);
             await spawn(
                 "docker",
                 [

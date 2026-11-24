@@ -169,6 +169,17 @@ USAGE
 ```
 <!-- usagestop -->
 
+Set `CHS_DEV_SHOW_COMMANDS=1` to print Docker commands run directly by the CLI
+and their working directory before execution. Arguments are shell-quoted where
+necessary; environment values (including credentials) are not printed. Copied
+commands may need the same environment variables and generated Compose files
+as `chs-dev`. Commands run inside external scripts, including ECR login and
+custom initialisation scripts, are not displayed.
+
+```sh
+$ CHS_DEV_SHOW_COMMANDS=1 chs-dev up
+```
+
 ### Commands
 
 <!-- commands -->

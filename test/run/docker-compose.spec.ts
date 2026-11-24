@@ -4,7 +4,7 @@ import fs, { mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import Config from "../../src/model/Config";
-import { ContainerType } from "../../src/model";
+import { ContainerType, Prune } from "../../src/model";
 
 describe("DockerCompose", () => {
     const execSyncMock = jest.spyOn(childProcess, "execSync");
@@ -250,6 +250,26 @@ describe("DockerCompose", () => {
                     "down",
                     "--remove-orphans"
                 ], expectedSpawnOptions);
+        });
+
+        it("prints docker compose commands when command display is enabled", async () => {
+            const previousSetting = process.env.CHS_DEV_SHOW_COMMANDS;
+            process.env.CHS_DEV_SHOW_COMMANDS = "1";
+
+            try {
+                await dockerCompose.down();
+
+                expect(logger.log).toHaveBeenCalledWith(
+                    "$ (cd ./ && docker compose down --remove-orphans)"
+                );
+                expect(JSON.stringify((logger.log as jest.Mock).mock.calls)).not.toContain(mockAwsCredentialsObject.AWS_SECRET_ACCESS_KEY);
+            } finally {
+                if (previousSetting === undefined) {
+                    delete process.env.CHS_DEV_SHOW_COMMANDS;
+                } else {
+                    process.env.CHS_DEV_SHOW_COMMANDS = previousSetting;
+                }
+            }
         });
 
         it("env not set in config then no environment vars set", async () => {
@@ -715,6 +735,69 @@ describe("DockerCompose", () => {
                 ],
                 expect.anything()
             );
+        });
+    });
+
+    describe("command display", () => {
+        let dockerCompose;
+        let previousSetting: string | undefined;
+
+        beforeEach(() => {
+            previousSetting = process.env.CHS_DEV_SHOW_COMMANDS;
+            jest.resetAllMocks();
+            existsSyncMock.mockReturnValue(true);
+            (execSyncMock as jest.Mock).mockReturnValue(mockAwsCredentialsCmdOutput);
+            spawnMock.mockResolvedValue(undefined as never);
+            dockerCompose = new DockerCompose(config, logger);
+        });
+
+        afterEach(() => {
+            if (previousSetting === undefined) {
+                delete process.env.CHS_DEV_SHOW_COMMANDS;
+            } else {
+                process.env.CHS_DEV_SHOW_COMMANDS = previousSetting;
+            }
+        });
+
+        it("does not display commands unless explicitly enabled", async () => {
+            delete process.env.CHS_DEV_SHOW_COMMANDS;
+            await dockerCompose.up();
+            expect(logger.log).not.toHaveBeenCalled();
+        });
+
+        it("quotes paths and arguments for copying", async () => {
+            process.env.CHS_DEV_SHOW_COMMANDS = "1";
+            dockerCompose = new DockerCompose({ ...config, projectPath: "/tmp/it's here" }, logger);
+            await dockerCompose.pull("service's name");
+            expect(logger.log).toHaveBeenCalledWith(
+                "$ (cd '/tmp/it'\\''s here' && docker compose pull 'service'\\''s name')"
+            );
+        });
+
+        it("displays the direct Docker status and inspect commands", () => {
+            process.env.CHS_DEV_SHOW_COMMANDS = "1";
+            (execSyncMock as jest.Mock)
+                .mockReturnValueOnce(mockAwsCredentialsCmdOutput)
+                .mockReturnValueOnce(Buffer.from(""))
+                .mockReturnValueOnce(Buffer.from("[]"));
+
+            dockerCompose.getServiceStatuses();
+            dockerCompose.healthCheck(["example"]);
+
+            expect(logger.log).toHaveBeenCalledWith(
+                "$ (cd ./ && docker compose ps -a --format '{{.Service}},{{.Status}}' 2>/dev/null || : \"\")"
+            );
+            expect(logger.log).toHaveBeenCalledWith(`$ (cd ${process.cwd()} && docker inspect example)`);
+        });
+
+        it("displays the volume removal only when volumes exist", () => {
+            process.env.CHS_DEV_SHOW_COMMANDS = "1";
+            (execSyncMock as jest.Mock).mockReturnValueOnce("volume-id\n").mockReturnValueOnce("volume-id\n");
+
+            dockerCompose.prune(Prune.VOLUME);
+
+            expect(logger.log).toHaveBeenCalledWith(`$ (cd ${process.cwd()} && docker volume ls -qf dangling=true)`);
+            expect(logger.log).toHaveBeenCalledWith(`$ (cd ${process.cwd()} && docker volume rm $(docker volume ls -qf dangling=true))`);
         });
     });
 });
