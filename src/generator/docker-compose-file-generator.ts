@@ -229,10 +229,10 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
     /**
      * Creates the include entry for a service compose file. The env of each
-     * service is resolved (see resolveServiceEnv: ECS global, shared env
-     * files, ECS service and chs-dev.env, in increasing order of precedence)
-     * into a generated env file, used both to interpolate the included file
-     * and, through a generated override file, as the env_file of the service.
+     * service is resolved (see resolveServiceEnv): the ECS global and shared
+     * env files are used only to interpolate the included file, while the
+     * env_file of the service, set through a generated override file, holds
+     * just the ECS service env overridden by chs-dev.env.
      * Infrastructure services, and those with no env, are included by path only.
      *
      * @param composeFile - path to the compose file to include.
@@ -240,18 +240,23 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
      */
     private createIncludeEntry (composeFile: string, services: Service[]): IncludeEntry {
         const envFiles = new Map<string, string[]>();
+        const interpolationEnvFiles: string[] = [];
 
         services
             .filter(service => service.module !== "infrastructure")
             .forEach(service => {
-                const { path } = writeServiceEnvFile(this.path, service, this.sharedEnvFiles, this.configEnv);
+                const { path, interpolationPath } = writeServiceEnvFile(
+                    this.path, service, this.sharedEnvFiles, this.configEnv
+                );
+
+                if (interpolationPath && !interpolationEnvFiles.includes(interpolationPath)) {
+                    interpolationEnvFiles.push(interpolationPath);
+                }
 
                 if (path) {
                     envFiles.set(service.name, [path]);
                 }
             });
-
-        const interpolationEnvFiles = [...new Set([...envFiles.values()].flat())];
 
         const overridesDirectory = join(this.path, CONSTANTS.ENV_OVERRIDES_DIRECTORY);
         const tagEnvFile = this.createTagEnvFile(services, overridesDirectory);

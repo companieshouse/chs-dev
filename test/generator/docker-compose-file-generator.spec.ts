@@ -222,7 +222,7 @@ describe("DockerComposeFileGenerator", () => {
             rmSync(join(tempDir, "repositories"), { recursive: true, force: true });
         });
 
-        it("includes service with its resolved env file for interpolation and as env_file of the service", () => {
+        it("interpolates with the shared env and sets only the service env as env_file of the service", () => {
             mkdirSync(join(tempDir, "repositories/env-repo"), { recursive: true });
             writeFileSync(join(tempDir, ".env"), "A=1");
             writeFileSync(join(tempDir, "global.env"), "A=2");
@@ -232,31 +232,34 @@ describe("DockerComposeFileGenerator", () => {
 
             const output = parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8"));
             const envFile = join(tempDir, "local/env-overrides/env-service.env");
+            const interpolationFile = join(tempDir, "local/env-overrides/interpolation.env");
             const overrideFile = join(tempDir, "local/env-overrides/env-service.docker-compose.yaml");
 
             expect(output.include).toEqual([{
                 path: [envService.source, overrideFile],
-                env_file: [envFile]
+                env_file: [interpolationFile]
             }]);
             expect(parse(readFileSync(overrideFile).toString("utf8"))).toEqual({
                 services: { "env-service": { env_file: [envFile] } }
             });
-            expect(readFileSync(envFile).toString("utf8")).toContain("A='1'");
+            expect(readFileSync(interpolationFile).toString("utf8")).toContain("A='1'");
+            expect(readFileSync(envFile).toString("utf8")).not.toContain("A=");
             expect(readFileSync(envFile).toString("utf8")).toContain("B='3'");
         });
 
         it("applies the same env file to a service in development mode, using its local compose file", () => {
+            mkdirSync(join(tempDir, "repositories/env-repo"), { recursive: true });
             writeFileSync(join(tempDir, ".env"), "A=1");
+            writeFileSync(join(tempDir, "repositories/env-repo/chs-dev.env"), "B=3");
 
             dockerComposeFileGenerator.generateDockerComposeFile([{ ...envService, liveUpdate: true }]);
 
             const output = parse(readFileSync(join(tempDir, "docker-compose.yaml")).toString("utf8"));
-            const envFile = join(tempDir, "local/env-overrides/env-service.env");
             const overrideFile = join(tempDir, "local/env-overrides/env-service.docker-compose.yaml");
 
             expect(output.include).toEqual([{
                 path: [join(tempDir, "local", "env-service", "docker-compose.yaml"), overrideFile],
-                env_file: [envFile]
+                env_file: [join(tempDir, "local/env-overrides/interpolation.env")]
             }]);
         });
 

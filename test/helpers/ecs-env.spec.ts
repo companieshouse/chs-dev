@@ -35,8 +35,8 @@ describe("ecs-env", () => {
 
     afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-    it("layers ECS global < shared < ECS service < chs-dev.env, expanding each against the layers below", () => {
-        const { env, unresolved } = resolveServiceEnv(dir, service, shared, { ECS_CONFIG_PATH: "ecs" });
+    it("injects only ECS service env overridden by chs-dev.env, resolved against the global and shared env", () => {
+        const { env, interpolation, unresolved } = resolveServiceEnv(dir, service, shared, { ECS_CONFIG_PATH: "ecs" });
 
         expect(env).toMatchObject({
             API_LOCAL_URL: "http://local",
@@ -46,11 +46,16 @@ describe("ecs-env", () => {
             KEEP: "local",
             BUILT: "local-x"
         });
+        expect(Object.keys(env).sort()).toEqual(
+            ["ACCOUNTS", "API_LOCAL_URL", "BUILT", "DEFAULTED", "KEEP", "TOKEN", "VAULT"]
+        );
+        expect(interpolation).toMatchObject({ ACCOUNT_URL: "https://cidev", SECRET: "s3cr$t" });
+        expect(interpolation).not.toHaveProperty("BUILT");
         expect(unresolved).toEqual([{ name: "VAULT_ONLY", layer: "ecs-service" }]);
     });
 
     it("uses the ECS environment selected by ECS_ENV", () => {
-        expect(resolveServiceEnv(dir, service, shared, { ECS_CONFIG_PATH: "ecs", ECS_ENV: "live" }).env.ACCOUNT_URL)
+        expect(resolveServiceEnv(dir, service, shared, { ECS_CONFIG_PATH: "ecs", ECS_ENV: "live" }).interpolation.ACCOUNT_URL)
             .toBe("https://live");
         expect(() => resolveServiceEnv(dir, service, shared, { ECS_ENV: "nope" })).toThrow("Unknown ECS_ENV");
     });

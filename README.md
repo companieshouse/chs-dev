@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/3.0.0 darwin-arm64 node-v20.18.0
+chs-dev/4.0.0 darwin-x64 node-v20.11.1
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -793,10 +793,6 @@ EXAMPLES
 
   $ chs-dev up --env cidev
 ```
-
-DOCUMENTATION
-OpenTelemetry is a framework for collecting and exporting traces, metrics, and logs to observe services in chs-dev. When enabled, service logs and metrics can be processed and viewed in the [Grafana interface](http://api.chs.local/grafana).
-[Link to the Opentelemetry documentation](https://companieshouse.atlassian.net/wiki/spaces/TP/pages/5369659489/OpenTelemetry+Instrumenting+Services+with+docker-chs-development)
 <!-- commandsstop -->
 
 ## chs-dev Configuration
@@ -821,24 +817,24 @@ within the current working directory.
 
 The generated Docker Compose file uses the Compose
 [`include`](https://docs.docker.com/compose/how-tos/multiple-compose-files/include/)
-feature to bring in each service's compose file. The env of each service is
-resolved by chs-dev from the layers below, in increasing order of precedence,
-and written to `local/env-overrides/<service>.env`, which is used both to
-interpolate the service's compose file and as the `env_file` of the service:
+feature to bring in each service's compose file. chs-dev builds two kinds of
+generated env file in `local/env-overrides/`:
 
-1. `global_vars.env` of the ECS environment being mimicked
-2. the shared project files: `global.env`, then `.env` (where the init script
-   loading the AWS param store adds the secrets)
-3. `<service>.env` of the ECS environment (the compose service name must be
-   the same as the ECS env file name)
-4. `chs-dev.env` (root of the service's repository, i.e.
-   `repositories/<repository>/chs-dev.env`)
+* `interpolation.env`, used only to interpolate the compose files. It is made
+  by sourcing, in order:
+  1. `global_vars.env` of the ECS environment being mimicked
+  2. the shared project files: `global.env`, then `.env` (where the init script
+     loading the AWS param store adds the secrets)
+* `<service>.env`, the `env_file` injected in the container. It holds only
+  `<service>.env` of the ECS environment (the compose service name must be the
+  same as the ECS env file name), overridden by `chs-dev.env` (root of the
+  service's repository, i.e. `repositories/<repository>/chs-dev.env`).
 
-Each file's `${VAR}` references (also `${VAR:-default}`, `${VAR:+alt}`) are
-expanded against the layers below it (and the file's own earlier entries), so
-an ECS service file such as `API_URL="${API_LOCAL_URL}"` picks up the local
-override of `API_LOCAL_URL` in `global.env`. Only what differs locally needs
-defining; everything else comes from the ECS configuration.
+The `${VAR}` references (also `${VAR:-default}`, `${VAR:+alt}`) of the service
+files are resolved against `interpolation.env` (and the files' own earlier
+entries), so an ECS service file such as `API_URL="${API_LOCAL_URL}"` picks up
+the local override of `API_LOCAL_URL` in `global.env`, without the container
+receiving all the global variables.
 
 The ECS environment is selected with `ECS_ENV` (`cidev` - default, `staging`
 or `live`) and the folder holding the clones of the ECS config repositories

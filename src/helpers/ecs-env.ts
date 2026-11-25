@@ -1,7 +1,7 @@
 import { execFileSync } from "child_process";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { EOL } from "os";
-import { isAbsolute, join } from "path";
+import { dirname, isAbsolute, join } from "path";
 import CONSTANTS from "../model/Constants.js";
 import Service from "../model/Service.js";
 import { parseEnvFile } from "./env-file.js";
@@ -15,6 +15,9 @@ export type EnvLayer = "ecs-global" | "shared" | "ecs-service" | "service";
 export type UnresolvedReference = { name: string, layer: EnvLayer };
 
 export type ResolvedServiceEnv = {
+    // Variables used only to interpolate: ECS global and shared env files
+    interpolation: Record<string, string>,
+    // Variables injected in the container: <service>.env and chs-dev.env only
     env: Record<string, string>,
     unresolved: UnresolvedReference[]
 };
@@ -120,13 +123,16 @@ const applyLayer = (
 };
 
 /**
- * Resolves the env of a service, in increasing order of precedence:
+ * Resolves the env of a service. The following are sourced in order to
+ * build the variables used for interpolation only:
  *
  * 1. global_vars.env of the ECS environment
  * 2. the shared project env files (global.env, .env - where the secrets
  *    retrieved from the param store end up)
- * 3. <service>.env of the ECS environment (can use all of the above)
- * 4. chs-dev.env of the service's repository
+ *
+ * The env injected in the container is just <service>.env of the ECS
+ * environment overridden by chs-dev.env of the service's repository, with
+ * their references resolved against the variables above.
  */
 export const resolveServiceEnv = (
     projectPath: string, service: Pick<Service, "name" | "repository">, sharedFiles: string[], configEnv: ConfigEnv = {}
@@ -134,15 +140,23 @@ export const resolveServiceEnv = (
     const ecsDirectory = ecsEnvDirectory(projectPath, configEnv);
     const unresolved: UnresolvedReference[] = [];
 
-    let env = applyLayer({}, parseEnvFile(join(ecsDirectory, CONSTANTS.ECS_GLOBAL_ENV_FILE)), "ecs-global", unresolved);
+    let interpolation = applyLayer({}, parseEnvFile(join(ecsDirectory, CONSTANTS.ECS_GLOBAL_ENV_FILE)), "ecs-global", unresolved);
 
-    env = sharedFiles.reduce(
-        (vars, file) => applyLayer(vars, parseEnvFile(join(projectPath, file)), "shared", unresolved), env
+    interpolation = sharedFiles.reduce(
+        (vars, file) => applyLayer(vars, parseEnvFile(join(projectPath, file)), "shared", unresolved), interpolation
     );
-    env = applyLayer(env, parseEnvFile(join(ecsDirectory, `${service.name}.env`)), "ecs-service", unresolved);
-    env = applyLayer(env, parseEnvFile(join(projectPath, serviceEnvFilePath(service))), "service", unresolved);
 
-    return { env, unresolved };
+    const serviceEntries = parseEnvFile(join(ecsDirectory, `${service.name}.env`));
+    const overrideEntries = parseEnvFile(join(projectPath, serviceEnvFilePath(service)));
+    const keys = new Set([...Object.keys(serviceEntries), ...Object.keys(overrideEntries)]);
+
+    const resolved = applyLayer(
+        applyLayer(interpolation, serviceEntries, "ecs-service", unresolved), overrideEntries, "service", unresolved
+    );
+
+    const env = Object.fromEntries([...keys].map(key => [key, resolved[key]]));
+
+    return { interpolation, env, unresolved };
 };
 
 // Single quotes keep compose from interpolating; unresolved references are
@@ -162,34 +176,47 @@ const formatValue = (value: string): string => {
     return `"${escaped.replace(/"/g, "\\\"")}"`;
 };
 
-/**
- * Path of the generated env file of a service
- */
-export const generatedEnvFilePath = (projectPath: string, service: Pick<Service, "name">): string =>
-    join(projectPath, CONSTANTS.ENV_OVERRIDES_DIRECTORY, `${service.name}.env`);
-
-/**
- * Writes the resolved env of the service, returning its path (undefined, with
- * nothing written, when there are no variables) and what could not be
- * resolved.
- */
-export const writeServiceEnvFile = (
-    projectPath: string, service: ServiceRef, sharedFiles: string[], configEnv: ConfigEnv = {}
-): { path?: string, unresolved: UnresolvedReference[] } => {
-    const { env, unresolved } = resolveServiceEnv(projectPath, service, sharedFiles, configEnv);
-
-    if (!Object.keys(env).length) {
-        return { unresolved };
-    }
-
-    const path = generatedEnvFilePath(projectPath, service);
-
-    mkdirSync(join(projectPath, CONSTANTS.ENV_OVERRIDES_DIRECTORY), { recursive: true });
+const writeEnvFile = (path: string, env: Record<string, string>): void => {
+    mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, [
         "# DO NOT MODIFY THIS FILE MANUALLY - this file is generated automatically and changes may be lost",
         ...Object.entries(env).map(([key, value]) => `${key}=${formatValue(value)}`),
         ""
     ].join(EOL));
+};
 
-    return { path, unresolved };
+/**
+ * Path of the generated env file of a service (injected in the container)
+ */
+export const generatedEnvFilePath = (projectPath: string, service: Pick<Service, "name">): string =>
+    join(projectPath, CONSTANTS.ENV_OVERRIDES_DIRECTORY, `${service.name}.env`);
+
+/**
+ * Path of the generated env file used to interpolate the compose files
+ */
+export const interpolationEnvFilePath = (projectPath: string): string =>
+    join(projectPath, CONSTANTS.ENV_OVERRIDES_DIRECTORY, "interpolation.env");
+
+/**
+ * Writes the container env file of the service and the interpolation env
+ * file, returning their paths (undefined, with nothing written, when there
+ * are no variables) and what could not be resolved.
+ */
+export const writeServiceEnvFile = (
+    projectPath: string, service: ServiceRef, sharedFiles: string[], configEnv: ConfigEnv = {}
+): { path?: string, interpolationPath?: string, unresolved: UnresolvedReference[] } => {
+    const { env, interpolation, unresolved } = resolveServiceEnv(projectPath, service, sharedFiles, configEnv);
+    const result: { path?: string, interpolationPath?: string, unresolved: UnresolvedReference[] } = { unresolved };
+
+    if (Object.keys(interpolation).length) {
+        result.interpolationPath = interpolationEnvFilePath(projectPath);
+        writeEnvFile(result.interpolationPath, interpolation);
+    }
+
+    if (Object.keys(env).length) {
+        result.path = generatedEnvFilePath(projectPath, service);
+        writeEnvFile(result.path, env);
+    }
+
+    return result;
 };
