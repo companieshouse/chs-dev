@@ -20,7 +20,7 @@ export const hook: Hook<["generate-runnable-docker-compose"]> = async function (
     const path = chsDevConfig.projectPath;
     const inventory = new Inventory(path, config.cacheDir);
     const stateManager = new StateManager(path);
-    const dockerComposeFileGenerator = new DockerComposeFileGenerator(path, sharedEnvFiles(chsDevConfig.env));
+    const dockerComposeFileGenerator = new DockerComposeFileGenerator(path, sharedEnvFiles(chsDevConfig.env), chsDevConfig.env);
 
     const state = stateManager.snapshot;
 

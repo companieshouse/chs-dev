@@ -21,10 +21,35 @@ export const CONSTANTS = {
 
     /**
      * Names of the env files, at the root of the project, shared by all the
-     * services. Listed in order of increasing precedence; the service's own
-     * env file overrides both
+     * services. Listed in order of increasing precedence
      */
-    DEFAULT_COMPOSE_ENV_FILES: [".env", "global.env"],
+    DEFAULT_COMPOSE_ENV_FILES: ["global.env", ".env"],
+
+    /**
+     * ECS environments the service env can mimic: the repository (under the
+     * ECS config folder) and the directory within it holding the env files
+     */
+    ECS_ENVIRONMENTS: {
+        cidev: { repository: "ecs-service-configs-dev", directory: "development-eu-west-2/cidev" },
+        staging: { repository: "ecs-service-configs-production", directory: "staging-eu-west-2/staging" },
+        live: { repository: "ecs-service-configs-production", directory: "live-eu-west-2/live" }
+    } as Record<string, { repository: string, directory: string }>,
+
+    /**
+     * ECS environment used when ECS_ENV is not set
+     */
+    DEFAULT_ECS_ENV: "cidev",
+
+    /**
+     * Folder, within the project, holding the clones of the ECS config
+     * repositories, unless ECS_CONFIG_PATH is set
+     */
+    DEFAULT_ECS_CONFIG_PATH: "ecs-config",
+
+    /**
+     * Env file, within the ECS environment directory, shared by all services
+     */
+    ECS_GLOBAL_ENV_FILE: "global_vars.env",
 
     /**
      * Directory, within the project, for the generated compose files which

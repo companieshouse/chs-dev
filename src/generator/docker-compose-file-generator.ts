@@ -5,7 +5,8 @@ import yaml from "yaml";
 import { deduplicate } from "../helpers/array-reducers.js";
 import { getInitialDockerComposeFile } from "../helpers/docker-compose-file.js";
 import { getAllFilesInDirectory } from "../helpers/file-utils.js";
-import { latestReleaseTag, repositoryName, requiresRepository, serviceEnvFilePath, tagEnvFilePath } from "../helpers/service-repository.js";
+import { writeServiceEnvFile } from "../helpers/ecs-env.js";
+import { latestReleaseTag, repositoryName, requiresRepository, tagEnvFilePath } from "../helpers/service-repository.js";
 import CONSTANTS from "../model/Constants.js";
 import { DockerComposeSpec, IncludeEntry } from "../model/DockerComposeSpec.js";
 import { Service } from "../model/Service.js";
@@ -17,7 +18,11 @@ import { RunnableServicesObject, ServiceWithLiveUpdate } from "./interface/index
 
 export class DockerComposeFileGenerator extends AbstractFileGenerator {
 
-    constructor (path: string, private readonly sharedEnvFiles: string[] = CONSTANTS.DEFAULT_COMPOSE_ENV_FILES) {
+    constructor (
+        path: string,
+        private readonly sharedEnvFiles: string[] = CONSTANTS.DEFAULT_COMPOSE_ENV_FILES,
+        private readonly configEnv: Record<string, string> = {}
+    ) {
         super(path, "docker-compose.yaml");
     }
 
@@ -223,31 +228,27 @@ export class DockerComposeFileGenerator extends AbstractFileGenerator {
     }
 
     /**
-     * Creates the include entry for a service compose file. The env files
-     * (the COMPOSE_ENV_FILES shared env files and the chs-dev.env from the service repository, in
-     * increasing order of precedence) are used both to interpolate the
-     * included file and, through a generated override file, as the env_file of
-     * the services it defines. Infrastructure services and services with no
-     * env file available are included by path only.
+     * Creates the include entry for a service compose file. The env of each
+     * service is resolved (see resolveServiceEnv: ECS global, shared env
+     * files, ECS service and chs-dev.env, in increasing order of precedence)
+     * into a generated env file, used both to interpolate the included file
+     * and, through a generated override file, as the env_file of the service.
+     * Infrastructure services, and those with no env, are included by path only.
      *
      * @param composeFile - path to the compose file to include.
      * @param services - the services defined by the compose file.
      */
     private createIncludeEntry (composeFile: string, services: Service[]): IncludeEntry {
         const envFiles = new Map<string, string[]>();
-        const sharedEnvFiles = this.sharedEnvFiles
-            .map(file => join(this.path, file))
-            .filter(file => existsSync(file));
 
         services
             .filter(service => service.module !== "infrastructure")
             .forEach(service => {
-                const serviceEnvFile = join(this.path, serviceEnvFilePath(service));
+                const { path } = writeServiceEnvFile(this.path, service, this.sharedEnvFiles, this.configEnv);
 
-                envFiles.set(
-                    service.name,
-                    [...sharedEnvFiles, ...(existsSync(serviceEnvFile) ? [serviceEnvFile] : [])]
-                );
+                if (path) {
+                    envFiles.set(service.name, [path]);
+                }
             });
 
         const interpolationEnvFiles = [...new Set([...envFiles.values()].flat())];

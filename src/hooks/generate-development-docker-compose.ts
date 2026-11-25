@@ -11,7 +11,7 @@ export const hook: Hook<"generate-development-docker-compose"> = async function 
     const chsDevConfig = loadConfig();
     const path = chsDevConfig.projectPath;
     const inventory = new Inventory(path, config.cacheDir);
-    const dockerComposeFileGenerator = new DockerComposeFileGenerator(path, sharedEnvFiles(chsDevConfig.env));
+    const dockerComposeFileGenerator = new DockerComposeFileGenerator(path, sharedEnvFiles(chsDevConfig.env), chsDevConfig.env);
     const service = inventory.services.find(service => service.name === serviceName && !service.source.includes("tilt/"));
 
     const stateManager = new StateManager(path);

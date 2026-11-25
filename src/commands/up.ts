@@ -17,8 +17,9 @@ import { StateManager } from "../state/state-manager.js";
 import Service from "../model/Service.js";
 import { greenBright } from "ansis";
 import { OtelGenerator } from "../generator/otel-generator.js";
-import { findMissingEnvVars } from "../helpers/missing-env-vars.js";
-import { findMissingRepositories } from "../helpers/service-repository.js";
+import { findMissingEcsEnvVars, findMissingEnvVars, sharedEnvFiles } from "../helpers/missing-env-vars.js";
+import { ecsEnvName, updateEcsConfig, writeServiceEnvFile } from "../helpers/ecs-env.js";
+import { findMissingRepositories, requiresRepository } from "../helpers/service-repository.js";
 import { ServiceLoader } from "../run/service-loader.js";
 import { documentationLink } from "../helpers/link.js";
 
@@ -149,6 +150,13 @@ export default class Up extends Command {
         await this.permanentRepositories.ensureAllExistAndAreUpToDate();
         ux.action.stop();
 
+        ux.action.start(`Updating the ECS config of ${ecsEnvName(this.chsDevConfig.env)}`);
+        const ecsUpdateIssue = updateEcsConfig(this.chsDevConfig.projectPath, this.chsDevConfig.env);
+        ux.action.stop(ecsUpdateIssue ? "skipped" : undefined);
+        if (ecsUpdateIssue) {
+            this.warn(`ECS config not updated: ${ecsUpdateIssue}`);
+        }
+
         let customInitOutput = "";
         ux.action.start("Running init shell script");
         try {
@@ -212,6 +220,19 @@ export default class Up extends Command {
                     ]
                 }
             );
+        }
+
+        // The init script can add secrets to .env, so the env files are refreshed here
+        services.filter(requiresRepository).forEach(service => writeServiceEnvFile(
+            this.chsDevConfig.projectPath, service, sharedEnvFiles(this.chsDevConfig.env), this.chsDevConfig.env
+        ));
+
+        const missingEcs = Object.entries(
+            findMissingEcsEnvVars(this.chsDevConfig.projectPath, services.filter(requiresRepository), this.chsDevConfig.env)
+        ).map(([service, names]) => `  ${service}: ${names.join(", ")}`);
+
+        if (missingEcs.length) {
+            this.warn(`Variables referenced by the ECS env files which are not defined (left for compose to interpolate):\n${missingEcs.join("\n")}`);
         }
 
         const missing = findMissingEnvVars(

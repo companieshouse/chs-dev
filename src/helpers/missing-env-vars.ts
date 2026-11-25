@@ -1,43 +1,8 @@
-import { existsSync, readFileSync } from "fs";
-import { parse } from "dotenv";
-import { join } from "path";
 import CONSTANTS from "../model/Constants.js";
 import Service from "../model/Service.js";
-import { serviceEnvFilePath } from "./service-repository.js";
+import { EnvLayer, resolveServiceEnv } from "./ecs-env.js";
 
 export type MissingEnvVars = Record<string, string[]>;
-
-const REFERENCE = /\$\{([A-Za-z_][A-Za-z0-9_]*)([^}]*)\}/g;
-
-// ${VAR} and ${VAR:?msg} require a value; ${VAR:-default}, ${VAR-default} and ${VAR:+alt} do not
-const isRequired = (modifier: string) => modifier === "" || /^:?\?/.test(modifier);
-
-/**
- * Parses an env file, returning an empty object when it does not exist
- */
-export const parseEnvFile = (path: string): Record<string, string> =>
-    existsSync(path) ? parse(readFileSync(path)) : {};
-
-/**
- * Lists the variables a service env file requires from the environment, i.e.
- * the ${VAR} references with no default.
- */
-export const requiredVariables = (envFile: string): string[] => {
-    const required = new Set<string>();
-
-    const entries = parseEnvFile(envFile);
-
-    Object.values(entries).forEach(value => {
-        for (const match of value.matchAll(REFERENCE)) {
-            if (isRequired(match[2])) {
-                required.add(match[1]);
-            }
-        }
-    });
-
-    // variables defined in the file itself are resolved by compose
-    return [...required].filter(name => !(name in entries));
-};
 
 /**
  * Lists the shared env files from the COMPOSE_ENV_FILES entry of the chs-dev
@@ -53,34 +18,34 @@ export const sharedEnvFiles = (configEnv: Record<string, string> = {}): string[]
 };
 
 /**
- * Loads the variables compose uses for interpolation: the shared env files
- * (later files win), the chs-dev config env, then the process environment.
+ * Finds, per service, the variables referenced by the env layers given which
+ * are not defined by any layer below them nor in the process environment.
  */
-export const loadInterpolationEnv = (
-    projectPath: string, configEnv: Record<string, string> = {}
-): Record<string, string | undefined> => ({
-    ...sharedEnvFiles(configEnv).reduce(
-        (vars, file) => ({ ...vars, ...parseEnvFile(join(projectPath, file)) }), {}
-    ),
-    ...configEnv,
-    ...process.env
-});
+const findUnresolved = (
+    projectPath: string, services: Pick<Service, "name" | "repository">[], configEnv: Record<string, string>, layers: EnvLayer[]
+): MissingEnvVars =>
+    services.reduce((missing, service) => {
+        const { unresolved } = resolveServiceEnv(projectPath, service, sharedEnvFiles(configEnv), configEnv);
+        const names = [...new Set(unresolved.filter(({ layer }) => layers.includes(layer)).map(({ name }) => name))];
 
-/**
- * Finds, per service, the variables its repository env file requires which
- * are not defined anywhere in the interpolation environment.
- */
-export const findMissingEnvVars = (
-    projectPath: string, services: Pick<Service, "name" | "repository">[], configEnv: Record<string, string> = {}
-): MissingEnvVars => {
-    const env = loadInterpolationEnv(projectPath, configEnv);
-
-    return services.reduce((missing, service) => {
-        const absent = requiredVariables(join(projectPath, serviceEnvFilePath(service))).filter(name => typeof env[name] === "undefined");
-
-        if (absent.length) {
-            missing[service.name] = absent;
+        if (names.length) {
+            missing[service.name] = names;
         }
         return missing;
     }, {} as MissingEnvVars);
-};
+
+/**
+ * Variables required by the chs-dev.env of each service which are not defined
+ * anywhere
+ */
+export const findMissingEnvVars = (
+    projectPath: string, services: Pick<Service, "name" | "repository">[], configEnv: Record<string, string> = {}
+): MissingEnvVars => findUnresolved(projectPath, services, configEnv, ["service"]);
+
+/**
+ * Variables referenced by the ECS env files (typically secrets added by Vault
+ * when deploying to ECS) which are not defined anywhere
+ */
+export const findMissingEcsEnvVars = (
+    projectPath: string, services: Pick<Service, "name" | "repository">[], configEnv: Record<string, string> = {}
+): MissingEnvVars => findUnresolved(projectPath, services, configEnv, ["ecs-global", "ecs-service"]);
