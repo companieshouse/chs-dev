@@ -161,7 +161,7 @@ $ npm install -g chs-dev
 $ chs-dev COMMAND
 running command...
 $ chs-dev (--version)
-chs-dev/3.0.0 darwin-arm64 node-v20.18.0
+chs-dev/4.0.0 darwin-x64 node-v20.11.1
 $ chs-dev --help [COMMAND]
 USAGE
   $ chs-dev COMMAND
@@ -793,10 +793,6 @@ EXAMPLES
 
   $ chs-dev up --env cidev
 ```
-
-DOCUMENTATION
-OpenTelemetry is a framework for collecting and exporting traces, metrics, and logs to observe services in chs-dev. When enabled, service logs and metrics can be processed and viewed in the [Grafana interface](http://api.chs.local/grafana).
-[Link to the Opentelemetry documentation](https://companieshouse.atlassian.net/wiki/spaces/TP/pages/5369659489/OpenTelemetry+Instrumenting+Services+with+docker-chs-development)
 <!-- commandsstop -->
 
 ## chs-dev Configuration
@@ -821,32 +817,54 @@ within the current working directory.
 
 The generated Docker Compose file uses the Compose
 [`include`](https://docs.docker.com/compose/how-tos/multiple-compose-files/include/)
-feature to bring in each service's compose file. The env files below are used
-both to interpolate that compose file and as the `env_file` of its services.
-In increasing order of precedence:
+feature to bring in each service's compose file. chs-dev builds two kinds of
+generated env file in `local/env-overrides/`:
 
-1. `.env` (project root)
-2. `global.env` (project root)
-3. `chs-dev.env` (root of the service's repository, i.e.
-   `repositories/<repository>/chs-dev.env`)
+* `interpolation.env`, used only to interpolate the compose files. It is made
+  by sourcing, in order:
+  1. `global_vars.env` of the ECS environment being mimicked
+  2. the shared project files: `global.env`, then `.env` (where the init script
+     loading the AWS param store adds the secrets)
+* `<service>.env`, the `env_file` injected in the container. It holds only
+  `<service>.env` of the ECS environment (the compose service name must be the
+  same as the ECS env file name), overridden by `chs-dev.env` (root of the
+  service's repository, i.e. `repositories/<repository>/chs-dev.env`).
 
-The shared files can be changed by setting `COMPOSE_ENV_FILES` (a
-comma-separated list of file names) in the `env` section of
-`chs-dev/config.yaml`; the default is `.env,global.env`. Files that do not
-exist are skipped. Infrastructure services (e.g. redis, mongo) have no
-repository, so only the shared files apply to them.
+The `${VAR}` references (also `${VAR:-default}`, `${VAR:+alt}`) of the service
+files are resolved against `interpolation.env` (and the files' own earlier
+entries), so an ECS service file such as `API_URL="${API_LOCAL_URL}"` picks up
+the local override of `API_LOCAL_URL` in `global.env`, without the container
+receiving all the global variables.
 
-The per-service overrides are generated in `local/env-overrides` and must not
-be edited manually.
+The ECS environment is selected with `ECS_ENV` (`cidev` - default, `staging`
+or `live`) and the folder holding the clones of the ECS config repositories
+with `ECS_CONFIG_PATH` (default `ecs-config` in the project), both set in the
+`env` section of `chs-dev/config.yaml`. The expected layout is:
+
+* `cidev`: `<ECS_CONFIG_PATH>/ecs-service-configs-dev/development-eu-west-2/cidev`
+* `staging`: `<ECS_CONFIG_PATH>/ecs-service-configs-production/staging-eu-west-2/staging`
+* `live`: `<ECS_CONFIG_PATH>/ecs-service-configs-production/live-eu-west-2/live`
+
+`chs-dev up` runs `git pull --ff-only` on the repository in use (a failure is
+only a warning). The shared files can be changed by setting
+`COMPOSE_ENV_FILES` (a comma-separated list of file names, later files win);
+the default is `global.env,.env`. Files that do not exist are skipped.
+Infrastructure services (e.g. redis, mongo) are not given an env file.
+
+The generated files are refreshed by `up` after the init script has run, and
+must not be edited manually.
 
 Before starting, `chs-dev up` checks that:
 
 * the repositories of all enabled (non-excluded) services are cloned under
   `repositories/`; infrastructure services are skipped
 * every variable referenced by a service's `chs-dev.env` (typically secrets) is
-  defined in the env files or in `chs-dev/config.yaml`
+  defined in a layer below it or in `chs-dev/config.yaml`
 
-`up` stops and lists what is missing if either check fails.
+`up` stops and lists what is missing if either check fails. Variables
+referenced by the ECS env files but not defined (e.g. secrets only injected
+by Vault in ECS) are only reported as a warning and left to compose to
+interpolate.
 
 While starting, `up` also ensures the repositories of the services in the
 generated `docker-compose.yaml` are present and current: a missing repository

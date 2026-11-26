@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
-import { findMissingEnvVars, requiredVariables } from "../../src/helpers/missing-env-vars";
+import { findMissingEcsEnvVars, findMissingEnvVars } from "../../src/helpers/missing-env-vars";
 
 describe("missing-env-vars", () => {
     let dir: string;
@@ -28,11 +28,6 @@ describe("missing-env-vars", () => {
 
     afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-    it("lists only references without defaults", () => {
-        expect(requiredVariables(join(dir, "repositories/svc/chs-dev.env")))
-            .toEqual(["URL", "SECRET", "NOPE", "REQUIRED"]);
-    });
-
     it("reports variables absent from the compose env files, config env and process env", () => {
         expect(findMissingEnvVars(dir, [
             { name: "svc-web", repository: { url: "git@github.com:companieshouse/svc.git" } },
@@ -40,5 +35,13 @@ describe("missing-env-vars", () => {
             { name: "no-file", repository: null }
         ]))
             .toEqual({ "svc-web": ["NOPE", "REQUIRED"] });
+    });
+
+    it("reports variables absent from the ECS env files separately", () => {
+        mkdirSync(join(dir, "ecs/ecs-service-configs-dev/development-eu-west-2/cidev"), { recursive: true });
+        writeFileSync(join(dir, "ecs/ecs-service-configs-dev/development-eu-west-2/cidev/ok.env"), "X=${VAULT_ONLY}\n");
+
+        expect(findMissingEcsEnvVars(dir, [{ name: "ok", repository: null }, { name: "svc-web", repository: null }], { ECS_CONFIG_PATH: "ecs" }))
+            .toEqual({ ok: ["VAULT_ONLY"] });
     });
 });
